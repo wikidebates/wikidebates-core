@@ -15,8 +15,8 @@ $data = file_get_contents($resources . 'WD-I18N-Data.snapshot.lua');
 $logic = file_get_contents($resources . 'WD-I18N.reference.lua');
 $compiled = require $resources . 'I18nData.php';
 same($compiled['data'], (new LiteralData)->read($data), 'Compiled translations match the complete Lua snapshot');
-$reference = I18n::bundled($data, false, $logic);
-$optimized = I18n::bundled($data, true, $logic);
+$reference = I18n::bundled(false);
+$optimized = I18n::bundled(true);
 $messages = 0;
 $walk = static function(array $table, string $path = '') use (&$walk, &$messages, $reference, $optimized): void {
 	foreach ($table as $key => $value) {
@@ -33,8 +33,8 @@ $walk = static function(array $table, string $path = '') use (&$walk, &$messages
 $walk($compiled['data']);
 same('fr', $reference->language(new Table(['lang' => ' FR-ca ']), 'en'), 'Explicit language');
 same('en', $reference->language(new Table, 'de'), 'English fallback');
-rejects(static fn() => I18n::bundled($data . ' ', true, $logic), 'Reject changed translation data');
-rejects(static fn() => I18n::bundled($data, true, $logic . 'changed'), 'Reject changed translation logic');
+same($compiled['sha256'], hash('sha256', $data), 'Offline snapshot data hash');
+same($compiled['logic_sha256'], hash('sha256', rtrim($logic, "\r\n")), 'Offline snapshot logic hash');
 rejects(static fn() => (new LiteralData)->read('return os.execute("false")'), 'Never execute Lua');
 
 same(true, Lua::truth('0'), 'Lua zero string is truthy');
@@ -47,7 +47,7 @@ same('A_é', rawurldecode(TextEscaper::uriEncode('A é', 'WIKI')), 'Wiki URL enc
 check(!str_contains(TextEscaper::nowiki('{{x}} [[y]] https://example.test', ['https://']), '{{'), 'Escape wikitext delimiters');
 same('mailto&#58;test@example.test', TextEscaper::nowiki('mailto:test@example.test', ['mailto:']), 'Configured protocols');
 $json = json_encode(['outer' => ['inner' => new stdClass], 'text' => '}}} "\\'], JSON_THROW_ON_ERROR);
-same(json_decode($json, true, 512, JSON_THROW_ON_ERROR), json_decode(TextEscaper::spaceStructuralClosures($json), true, 512, JSON_THROW_ON_ERROR), 'JSON whitespace never changes strings');
+check(!method_exists(TextEscaper::class, 'spaceStructuralClosures'), 'No obsolete JSON structural whitespace pass');
 same('<a title="&quot;&lt;&amp;">text</a>', (string)HtmlBuilder::create('a')->attr('title', '"<&')->wikitext('text'), 'Attribute escaping');
 
 $events = [];
@@ -71,4 +71,12 @@ foreach (['en', 'fr'] as $language) {
 	$messagesFile = json_decode(file_get_contents(__DIR__ . '/../debatephp/i18n/' . $language . '.json'), true, 512, JSON_THROW_ON_ERROR);
 	check(isset($messagesFile['htmltags-notagname'], $messagesFile['htmltags-unsupportedtag']), 'HTML Tags translations loaded');
 }
-echo "OK: $messages translation comparisons, source guards, Lua semantics, escaping and telemetry\n";
+echo "OK: $messages translation comparisons, offline snapshot checks, Lua semantics, escaping and telemetry\n";
+
+foreach (['argument_adapter.php', 'i18n_bundle.php', 'telemetry.php', 'cache_fifo.php'] as $test) {
+	$command = [PHP_BINARY];
+	if (php_ini_loaded_file()) { array_push($command, '-c', php_ini_loaded_file()); }
+	$command[] = __DIR__ . '/../debatephp/tests/' . $test;
+	$process = proc_open($command, [STDIN, STDOUT, STDERR], $pipes);
+	check(is_resource($process) && proc_close($process) === 0, 'Upstream test: ' . $test);
+}

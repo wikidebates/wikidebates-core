@@ -1,5 +1,0 @@
-normal: identical output with observations on/off
-exception: identical output with observations on/off
-result: identical output with observations on/off
-seo-exception: identical output with observations on/off
-Error diagnostics, timing stages and preprocessing counters verified; values omitted. WikiSEO absent.

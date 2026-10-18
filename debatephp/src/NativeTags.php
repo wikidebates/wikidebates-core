@@ -8,6 +8,16 @@ use MediaWiki\Parser\Sanitizer;
 
 /** HTML Tags 0.3-compatible pipeline, without its hook or a constructed tag invocation. */
 final class NativeTags {
+	private static ?Telemetry $telemetry = null;
+	/** Scoped observation also covers our htmltag hook during a fallback expansion. */
+	public static function observe(?Telemetry $telemetry, callable $operation): string {
+		$previous = self::$telemetry; self::$telemetry = $telemetry;
+		try { return $operation(); }
+		finally { self::$telemetry = $previous; }
+	}
+	private static function expand(string $reason, callable $operation): string {
+		return self::$telemetry ? self::$telemetry->preprocess($reason, $operation) : $operation();
+	}
 	public static function policy(): array {
 		return \MediaWiki\MediaWikiServices::getInstance()->getMainConfig()->get('DebatePHPHTMLAttributes')
 			?? ($GLOBALS['wgHTMLTagsAttributes'] ?? ['a'=>['href','data-href','class','title'], 'script'=>['class','type']]);
@@ -18,11 +28,13 @@ final class NativeTags {
 		$name = $attributes['tagname']; unset($attributes['tagname']);
 		return self::body($parser, $frame, $name, $input ?? '', $attributes, self::policy());
 	}
-	public static function argument(Parser $parser, PPFrame $frame, string $text): string {
+	public static function argument(Parser $parser, PPFrame $frame, string $text, string $reason = 'htmltag.argument'): string {
 		$text = str_replace(["\r\n", "\r"], "\n", $text);
 		if (!str_contains($text, '{{') && !str_contains($text, '<')) { return $text; }
-		$node = $parser->getPreprocessor()->preprocessToObj($text, $frame->depth ? Parser::PTD_FOR_INCLUSION : 0);
-		return $frame->expand($node);
+		return self::expand($reason, static function() use ($parser, $frame, $text): string {
+			$node = $parser->getPreprocessor()->preprocessToObj($text, $frame->depth ? Parser::PTD_FOR_INCLUSION : 0);
+			return $frame->expand($node);
+		});
 	}
 	public static function render(Parser $parser, PPFrame $frame, string $name, string $content, array $attributes, bool $xml, array $policy): string {
 		$content = str_replace(["\r\n", "\r"], "\n", $content);
@@ -59,11 +71,15 @@ final class NativeTags {
 		if (!array_key_exists($name, $policy)) { return wfMessage('htmltags-unsupportedtag', $name)->escaped(); }
 		// HTMLTags::render expands the body before its allowed attributes, then Html::element
 		// deliberately escapes content (including script content). Preserve that behavior.
-		if (str_contains($content, '{{') || str_contains($content, '<')) { $content = $parser->replaceVariables($content, $frame); }
+		if (str_contains($content, '{{') || str_contains($content, '<')) {
+			$content = self::expand('htmltag.body', static fn() => $parser->replaceVariables($content, $frame));
+		}
 		$filtered = [];
 		foreach ($attributes as $key => $value) {
 			if (!in_array($key, $policy[$name])) { continue; }
-			if (str_contains($value, '{{') || str_contains($value, '<')) { $value = $parser->replaceVariables($value, $frame); }
+			if (str_contains($value, '{{') || str_contains($value, '<')) {
+				$value = self::expand('htmltag.attribute', static fn() => $parser->replaceVariables($value, $frame));
+			}
 			$filtered[$key] = str_replace('&amp;', '&', htmlspecialchars($value, ENT_QUOTES));
 		}
 		return Html::element($name, $filtered, $content);

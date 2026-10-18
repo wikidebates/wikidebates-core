@@ -1,7 +1,0 @@
-{
-  "cases": 86,
-  "comparisons": 172,
-  "passed": true,
-  "failures": [],
-  "scope": "Real MediaWiki parser, LuaStandalone, Cite, ParserFunctions, ShortDescription and PageForms; no production SMW store"
-}

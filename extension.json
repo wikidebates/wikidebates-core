@@ -9,12 +9,9 @@
 	"license-name": "GPL-3.0-or-later",
 	"type": "other",
 	"requires": {
-		"MediaWiki": ">= 1.43.0",
+		"MediaWiki": ">= 1.43.0 < 1.44.0",
 		"platform": {
 			"php": ">= 8.1.0"
-		},
-		"extensions": {
-			"Scribunto": "*"
 		}
 	},
 	"AutoloadNamespaces": {
@@ -286,11 +283,11 @@
 	"config": {
 		"DebatePHPMode": {
 			"value": "reference",
-			"description": "DebatePHP 0.6.0 renderer: reference or optimized."
+			"description": "DebatePHP 0.8.0 renderer: reference or optimized; reference is the default."
 		},
 		"DebatePHPProfiling": {
 			"value": false,
-			"description": "Log per-invocation renderer timings to the DebatePHP debug channel."
+			"description": "Log per-invocation timings and actual preprocessing counts by reason to the DebatePHP debug channel."
 		},
 		"DebatePHPDiagnostics": {
 			"value": false,

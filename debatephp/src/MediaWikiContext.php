@@ -27,22 +27,9 @@ final class MediaWikiContext implements ArgumentContext {
 		$this->parser = $parser; $this->caller = $caller; $this->optimize = $optimize; $this->tracing = $tracing;
 		if (!in_array($moduleName, ['Debate', 'Argument'], true)) { throw new \InvalidArgumentException('Unknown renderer'); }
 		$title = Title::newFromText('Module:' . $moduleName);
-		// Retain all three wiki dependencies. Never read revision text directly from SQL.
-		$reference = $this->fetch('Module:' . $moduleName);
-		$expected = file_get_contents(__DIR__ . '/../resources/Module-' . $moduleName . '.reference.lua');
-		if (rtrim($reference, "\r\n") !== rtrim($expected, "\r\n")) { throw new \RuntimeException('Module:' . $moduleName . ' changed: rebase and revalidate the PHP port.'); }
+		// Keep the historical parameter-frame identity without reading a wiki module.
 		$this->module = $caller->newChild($nodes, $title);
-		$logic = $this->fetch('Module:WD/I18N');
-		$source = $this->fetch('Module:WD/I18N/Data');
-		// Both reference and optimized renderers load native PHP translations.
-		// Fetching wiki sources above retains dependencies and checks synchronization.
-		$this->i18n = I18n::bundled($source, $optimize, $logic);
-	}
-	private function fetch(string $name): string {
-		$title = Title::newFromText($name);
-		if (!$title || !$title->hasContentModel(CONTENT_MODEL_SCRIBUNTO)) { throw new \RuntimeException('Missing Scribunto data source: ' . $name); }
-		[$text] = $this->parser->fetchTemplateAndTitle($title);
-		if ($text === false) { throw new \RuntimeException('Cannot read ' . $name); } return $text;
+		$this->i18n = I18n::bundled($optimize);
 	}
 	public function arguments(): Table {
 		$started = $this->telemetry?->start();
@@ -76,33 +63,39 @@ final class MediaWikiContext implements ArgumentContext {
 		try { return $this->expand($text); }
 		finally { $this->telemetry?->finish('expansions', $started); }
 	}
-	private function expand(string $text): string {
+	private function expand(string $text, string $reason = 'explicit'): string {
 		// LuaEngine::preprocess, including mandatory argument forcing BEFORE a cache hit.
 		$this->module->getArguments(); $key = md5($text);
-		if (isset($this->expansions[$key])) { $result = $this->expansions[$key]; $hit = true; }
+		if (isset($this->expansions[$key])) {
+			$result = $this->expansions[$key]; $hit = true;
+			$this->telemetry?->count('preprocess_cache_hits');
+		}
 		else {
 			$input = str_replace(["\r\n", "\r"], "\n", $text);
-			$dom = $this->parser->getPreprocessor()->preprocessToObj($input, $this->module->depth ? Parser::PTD_FOR_INCLUSION : 0);
-			$result = $this->module->expand($dom); $hit = false;
-			if (!$this->module->isVolatile()) {
-				if (count($this->expansions) > 100) { unset($this->expansions[array_key_first($this->expansions)]); }
-				$this->expansions[$key] = $result;
-			}
+			$operation = function() use ($input): string {
+				$dom = $this->parser->getPreprocessor()->preprocessToObj($input, $this->module->depth ? Parser::PTD_FOR_INCLUSION : 0);
+				return $this->module->expand($dom);
+			};
+			$result = NativeTags::observe($this->telemetry, fn() => $this->telemetry
+				? $this->telemetry->preprocess($reason, $operation) : $operation());
+			$hit = false; $this->rememberExpansion($key, $result);
 		}
 		if ($this->tracing) { $this->trace[] = ['input' => $text, 'output' => $result, 'hit' => $hit, 'volatile' => $this->module->isVolatile(), 'ttl' => $this->module->getTTL()]; }
 		return $result;
 	}
 	public function trace(): array { return $this->trace; }
+	private function rememberExpansion(string $key, string $result): void {
+		if ($this->module->isVolatile()) { return; }
+		if (count($this->expansions) > 100) { unset($this->expansions[array_key_first($this->expansions)]); }
+		$this->expansions[$key] = $result;
+	}
 	private function nativeOperation(string $hash, callable $operation, ?string $source, string $kind): string {
 		// Preserve Scribunto's invocation-local cache, including collisions with field expansions.
 		$this->module->getArguments(); $hit = isset($this->expansions[$hash]);
-		if ($hit) { $result = $this->expansions[$hash]; }
+		if ($hit) { $result = $this->expansions[$hash]; $this->telemetry?->count('native_cache_hits'); }
 		else {
 			$result = $operation();
-			if (!$this->module->isVolatile()) {
-				if (count($this->expansions) > 100) { unset($this->expansions[array_key_first($this->expansions)]); }
-				$this->expansions[$hash] = $result;
-			}
+			$this->rememberExpansion($hash, $result);
 		}
 		if ($this->tracing) { $this->trace[] = ['kind' => $kind, 'input' => $source, 'output' => $result, 'hit' => $hit, 'volatile' => $this->module->isVolatile(), 'ttl' => $this->module->getTTL()]; }
 		return $result;
@@ -116,7 +109,7 @@ final class MediaWikiContext implements ArgumentContext {
 			// A delimiter in generated wikitext can change argument boundaries or close the call.
 			// Retain the original parse in those cases and for a different SHORTDESC implementation.
 			if (strpbrk($text, '{}|<[]=') !== false || !$registered) {
-				return $this->expand($source);
+				return $this->expand($source, 'shortdesc.fallback');
 			}
 			return $this->nativeOperation(md5($source), function() use ($text): string {
 				// Only literal PP text remains: no template, tag/comment, link or heading opener.
@@ -149,7 +142,7 @@ final class MediaWikiContext implements ArgumentContext {
 				$source = $xml ? '<htmltag tagname="' . $name . '"' : '{{#tag:htmltag|' . $content . '|tagname=' . $name;
 				foreach ($attrs as $key => $value) { $source .= $xml ? ' ' . $key . '="' . $value . '"' : '|' . $key . '=' . $value; }
 				$source .= $xml ? '>' . $content . '</htmltag>' : '}}';
-				return $this->expand($source);
+				return $this->expand($source, 'htmltag.fallback');
 			}
 			// Incremental legacy cache key: no constructed HTML tag/#tag invocation in normal use.
 			$hash = hash_init('md5'); $source = $this->tracing ? '' : null;
@@ -157,7 +150,8 @@ final class MediaWikiContext implements ArgumentContext {
 			$append($xml ? '<htmltag tagname="' . $name . '"' : '{{#tag:htmltag|' . $content . '|tagname=' . $name);
 			foreach ($attrs as $key => $value) { $append($xml ? ' ' . $key . '="' . $value . '"' : '|' . $key . '=' . $value); }
 			$append($xml ? '>' . $content . '</htmltag>' : '}}');
-			return $this->nativeOperation(hash_final($hash), fn() => NativeTags::render($this->parser, $this->module, $name, $content, $attrs, $xml, $this->htmlAttributes), $source, 'native-htmltag');
+			return $this->nativeOperation(hash_final($hash), fn() => NativeTags::observe($this->telemetry,
+				fn() => NativeTags::render($this->parser, $this->module, $name, $content, $attrs, $xml, $this->htmlAttributes)), $source, 'native-htmltag');
 		} finally { $this->telemetry?->finish('native_tags', $started); }
 	}
 	/** The JSON is generated by our renderer: never run wiki expansion inside its strings. */
@@ -173,10 +167,11 @@ final class MediaWikiContext implements ArgumentContext {
 		} finally { $this->telemetry?->finish('native_jsonld', $started); }
 	}
 	/** Preserve second expansion only for actual template or extension-tag syntax. */
-	public function expandField(string $text): string {
+	public function expandField(string $text, string $reason = 'field'): string {
 		$started = $this->telemetry?->start();
 		try {
-			if (str_contains($text, '{{') || str_contains($text, '<')) { return $this->expand($text); }
+			if (str_contains($text, '{{') || str_contains($text, '<')) { return $this->expand($text, $reason); }
+			$this->telemetry?->count('literal_fields');
 			return $this->nativeOperation(md5($text), static fn() => str_replace(["\r\n", "\r"], "\n", $text), $this->tracing ? $text : null, 'native-field-data');
 		} finally { $this->telemetry?->finish('fields', $started); }
 	}
@@ -187,7 +182,7 @@ final class MediaWikiContext implements ArgumentContext {
 		$started = $this->telemetry?->start();
 		try {
 		$result = FormatJson::encode(TextEscaper::jsonValue($data), false, FormatJson::ALL_OK);
-		if ($result === false) { throw new \RuntimeException('Unable to encode JSON-LD'); } return TextEscaper::spaceStructuralClosures($result);
+		if ($result === false) { throw new \RuntimeException('Unable to encode JSON-LD'); } return $result;
 		} finally { $this->telemetry?->finish('json', $started); }
 	}
 	public function uriEncode(string $text, string $mode = 'QUERY'): string { return TextEscaper::uriEncode($text, $mode); }
@@ -311,7 +306,9 @@ final class MediaWikiContext implements ArgumentContext {
 					if ($value === true) { $args[] = (string)$name; continue; }
 					$text = (string)$value;
 					// Only actual user/template syntax needs expansion; parameter boundaries stay structured.
-					if (str_contains($text, '{{') || str_contains($text, '<')) { $text = NativeTags::argument($this->parser, $this->module, $text); }
+					if (str_contains($text, '{{') || str_contains($text, '<')) {
+						$text = NativeTags::observe($this->telemetry, fn() => NativeTags::argument($this->parser, $this->module, $text, 'autoedit.parameter'));
+					}
 					$args[] = (string)$name . '=' . $text;
 				}
 				$result = $this->parser->callParserFunction($this->module, '#autoedit', $args);
@@ -321,6 +318,6 @@ final class MediaWikiContext implements ArgumentContext {
 		} finally { $this->telemetry?->finish('autoedit', $started); }
 	}
 	/** Serialized quote data is already expanded in normal model arguments. */
-	public function expandQuotes(string $text): string { return $this->expandField($text); }
+	public function expandQuotes(string $text): string { return $this->expandField($text, 'argument.quotes'); }
 
 }

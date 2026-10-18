@@ -1,7 +1,0 @@
-{
-  "cases": 87,
-  "renderer_comparisons": 174,
-  "passed": true,
-  "failures": [],
-  "scope": "Lua 5.1 versus PHP, mocked MediaWiki boundary; not a live wiki benchmark"
-}

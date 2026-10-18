@@ -34,21 +34,4 @@ final class TextEscaper {
 		} unset($value);
 		return $sequence ? array_values($a) : $a;
 	}
-	/** PHP and Lua enumerate object keys differently. Prevent a structural }}} from
-	 * surviving the source's non-overlapping gsub("}}", "} }") and closing #tag early.
-	 * Only insignificant JSON whitespace is inserted; string bytes are untouched.
-	 */
-	public static function spaceStructuralClosures(string $json): string {
-		$out = ''; $quoted = false; $escaped = false; $n = strlen($json);
-		for ($i = 0; $i < $n; $i++) {
-			$c = $json[$i]; $out .= $c;
-			if ($quoted) {
-				if ($escaped) { $escaped = false; }
-				elseif ($c === '\\') { $escaped = true; }
-				elseif ($c === '"') { $quoted = false; }
-			} elseif ($c === '"') { $quoted = true; }
-			elseif ($c === '}' && ($json[$i + 1] ?? '') === '}') { $out .= ' '; }
-		} return $out;
-	}
-
 }

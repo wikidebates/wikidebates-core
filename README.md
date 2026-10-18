@@ -1,108 +1,119 @@
-# Wikidebates
+# Wikidebates — DebatePHP 0.8.0
 
-Wikidebates integrates the complete imported DebatePHP 0.6.0 sources into one
-MediaWiki extension. The existing reading interfaces, recent contributions,
-parent linking and authentication hooks remain registered. DebatePHP lives in
-`debatephp/` as an internal component; no second extension needs to be loaded.
+Wikidebates intègre les moteurs natifs Débat et Argument de DebatePHP 0.8.0,
+tout en conservant les interfaces de lecture, contributions récentes, liens
+parentaux et hooks d’authentification existants.
 
-Requirements: MediaWiki 1.43 or later, PHP 8.1 or later, and Scribunto. The
-integration suite targets MediaWiki 1.43. The registered parser functions are
-`#debate:render`, `#argument:render` and `#recentdebatechanges`.
+La cible est **MediaWiki 1.43.x**, avec PHP 8.1 ou supérieur. Le manifeste reprend
+la borne supérieure du paquet 0.8 ; MediaWiki 1.44 n’est pas annoncé compatible
+sans validation de ses API internes.
 
-The DebatePHP renderers retain their integrations with Semantic MediaWiki and
-SemanticScribunto, WikiSEO, Variables/VariablesLua, ShortDescription and Page
-Forms. These extensions remain necessary for the corresponding semantic,
-metadata, shared variable and form features. The bundled `htmltag` implementation
-preserves an existing HTML Tags hook when one is already registered.
+## Chargement et dépendances
+
+Un seul chargement enregistre `#debate:render`, `#argument:render` et
+`#recentdebatechanges` :
+
+```php
+wfLoadExtension( 'Wikidebates' );
+```
+
+Ne pas charger en plus le paquet autonome DebatePHP. Le composant `debatephp/`
+n’a pas de manifeste indépendant. Scribunto et HTML Tags ne sont plus requis
+pour le rendu PHP. Les quatre anciennes pages de modules Lua ne sont plus lues
+et ne créent plus de dépendance de cache. Les modèles utilisant encore `#invoke`
+ont toujours besoin de Scribunto ; l’extension ne réécrit aucune page du wiki.
+
+| Fonction tierce | Extensions nécessaires à cette fonction |
+| --- | --- |
+| Données et requêtes sémantiques | Semantic MediaWiki et SemanticScribunto, via sa `LibraryFactory` |
+| Formulaires et boutons `#autoedit` | Page Forms |
+| Descriptions | ShortDescription |
+| Métadonnées SEO | WikiSEO |
+| Variables partagées | Variables et VariablesLua |
+| Autres modèles Lua du site | Scribunto |
+
+SemanticScribunto et VariablesLua peuvent eux-mêmes requérir Scribunto.
+Le chargement unique concerne Wikidebates/DebatePHP ; il ne remplace pas les
+extensions tierces du site. Leur absence conserve les mécanismes de repli du
+paquet et peut retirer la fonction tierce correspondante.
 
 ## Configuration
 
-The original configuration names are retained. Existing values continue to work.
-
-| Setting | Default | Purpose |
+| Paramètre historique | Défaut | Rôle |
 | --- | --- | --- |
-| `$wgDebatePHPMode` | `reference` | Choose `reference` or `optimized` for both renderers. |
-| `$wgDebatePHPProfiling` | `false` | Per-invocation timing on the `DebatePHP` debug channel. |
-| `$wgDebatePHPDiagnostics` | `false` | Integration diagnostics on the same channel. |
-| `$wgDebatePHPHTMLAttributes` | `null` | Override the HTML Tags attribute policy. |
+| `$wgDebatePHPMode` | `reference` | `reference` ou `optimized`, pour les deux moteurs |
+| `$wgDebatePHPProfiling` | `false` | Durées et compteurs, canal privé `DebatePHP` |
+| `$wgDebatePHPDiagnostics` | `false` | Erreurs d’intégration sans leurs valeurs sensibles |
+| `$wgDebatePHPHTMLAttributes` | `null` | Politique d’attributs des balises natives |
 
-A null attribute policy uses `$wgHTMLTagsAttributes` when defined, otherwise the
-bundled policy for `a` and `script`. Both modes use native PHP rendering and
-translations. `optimized` retains expansion order and only changes the imported
-pure string/table operations and invocation-local lookup caches. An unknown mode
-is rejected.
+Une politique HTML nulle hérite de `$wgHTMLTagsAttributes` lorsqu’il existe,
+sinon des règles embarquées pour `a` et `script`. Un hook `htmltag` tiers
+déjà enregistré est conservé.
 
-The wiki pages `Module:Debate`, `Module:Argument`, `Module:WD/I18N` and
-`Module:WD/I18N/Data` must match the snapshots in `debatephp/resources/`. Source
-checks and parser dependencies are deliberately retained in both modes. The
-French template snapshots in that directory demonstrate the parser-function
-calls; installing this extension does not write or replace wiki pages.
+Les deux modes exécutent du PHP ; `optimized` active notamment la mémorisation
+des traductions. Les lectures de marqueurs sont désormais partagées. Une valeur
+de mode inconnue est refusée. Le JSON-LD conserve ses valeurs et protège les
+fermetures de script, sans réinterpréter ses chaînes comme du wiki.
 
-Do not load the former standalone DebatePHP extension alongside Wikidebates.
-This repository does not modify a site's `LocalSettings.php`, migrate wiki
-content, or perform a deployment.
+Le profilage fournit `preprocess_executed`, `preprocess_cache_hits`,
+`native_cache_hits` et `literal_fields`, ainsi que les durées par origine.
+Il compte les entrées supplémentaires déclenchées par DebatePHP après cache,
+pas le développement initial des paramètres par MediaWiki. Un zéro est explicite.
+Les durées imbriquées ne doivent pas être additionnées.
 
 ## Tests
 
-Run the independent translation, synchronization, escaping and telemetry checks:
+Sans MediaWiki, y compris les tests amont isolés dans des processus séparés :
 
 ```sh
 php tests/run.php
 ```
 
-Run the actual MediaWiki parser against both modes using an independent checkout
-with its matching `vendor/` dependencies and `extensions/Scribunto/`:
+Avec un checkout MediaWiki 1.43 et son `vendor/` correspondant :
 
 ```sh
 MW_INSTALL_PATH=/path/to/mediawiki-1.43 php tests/mediawiki.php
+WD_TEST_EXTENSIONS=PageForms,ShortDescription,WikiSEO,Variables MW_INSTALL_PATH=/path/to/mediawiki-1.43 php tests/mediawiki.php
+WD_TEST_EXTENSIONS=Scribunto,PageForms,ShortDescription,WikiSEO,Variables MW_INSTALL_PATH=/path/to/mediawiki-1.43 php tests/mediawiki.php
 ```
 
-The harness creates its own temporary SQLite database and uses
-`MW_CONFIG_CALLBACK`; it never reads or writes `LocalSettings.php` or connects
-to an installed wiki. PHP's PDO SQLite extension is required in addition to
-MediaWiki's normal PHP extensions. The temporary database is removed on exit.
+Le banc utilise `MW_CONFIG_CALLBACK` et une base SQLite temporaire supprimée en
+fin d’exécution. Il ne lit ni n’écrit `LocalSettings.php` et n’utilise aucune base
+existante. PDO SQLite et les extensions PHP normales de MediaWiki sont requis.
+Sans `WD_TEST_EXTENSIONS`, il vérifie que seule Wikidebates est chargée.
 
-To include installed optional extensions in the isolated tests:
+Les oracles hors ligne nécessitent Python, `lupa` et `luaparser` :
 
 ```sh
-WD_TEST_EXTENSIONS=PageForms,ShortDescription,WikiSEO,Variables MW_INSTALL_PATH=/path/to/mediawiki-1.43 php tests/mediawiki.php
+python3 debatephp/tests/conditions_differential.py php
+python3 debatephp/tests/serialized_differential.py php
+python3 debatephp/tests/differential_i18n.py php
+python3 debatephp/tests/argument_differential.py php
 ```
 
-The parser tests compare HTML, page properties, categories and template/module
-dependencies. Cases cover French/English debate and argument pages, the supplied
-French templates, references, quotes, argument maps, warnings, initialization,
-Unicode, zero values and parameter delimiters. They also exercise existing
-parser hooks, HTML Tags coexistence and policies, invalid modes and source
-guards. Optional Page Forms checks verify button generation without editing a
-page; ShortDescription checks verify its page property, and WikiSEO checks
-verify its pre-add hook and page properties. Semantic MediaWiki and VariablesLua
-still require validation with the versions and data installed by the consuming
-wiki.
+La comparaison historique, les mesures et leurs commandes de reproduction sont
+détaillées dans [le bilan de migration](docs/debatephp-upgrade.md). Les doubles
+sémantiques et outils de test ne sont jamais chargés par le manifeste.
 
-The source import in commit `1ee0cfe` contained no upstream tests or revision
-manifest. The tests here were added for this integration; they do not claim to
-reconstruct the absent upstream test suite or establish Lua/PHP equivalence.
+## Traductions, outils et provenance
 
-## Translation synchronization
+Les traductions installées dans `debatephp/resources/I18nData.php` font autorité.
+Modifier les anciennes pages Lua n’affecte plus le rendu PHP. Les snapshots Lua
+sont conservés pour les tests et les outils hors ligne.
 
-`debatephp/resources/I18nData.php` contains the complete imported native
-translation table. Regenerate it offline from reviewed snapshots with:
+L’interface de compilation de la première intégration est conservée :
 
 ```sh
 php tools/compileI18n.php debatephp/resources/WD-I18N-Data.snapshot.lua debatephp/resources/WD-I18N.reference.lua > /tmp/I18nData.php
 ```
 
-Review the generated file and rerun the tests before replacing the bundled table.
-The compiler reads literal Lua data and never executes Lua or edits wiki pages.
-Updating the module logic also requires reviewing its PHP implementation; source
-hash updates alone do not establish equivalent behavior.
+Le compilateur amont avec remplacement atomique reste sous `debatephp/tools/`.
+Les générateurs des moteurs, fixtures et références utiles remplacent les
+dossiers provisoires `imports/`.
 
-## Attribution and licenses
-
-The combined extension is distributed under GPL-3.0-or-later because its
-DebatePHP component is GPL-3.0-or-later. Existing Wikidebates sources retain their
-original MIT licensing. Original Lua/template snapshots retain their own
-licenses. See [the retained DebatePHP notice](debatephp/NOTICE) and
-[GPLv3 license](debatephp/LICENSE). The imported notice refers to upstream
-documentation and `tests/fixtures/revisions.json` that were not included in the
-source import; those historical revision identifiers have not been invented.
+Voir les [empreintes recalculées](debatephp/UPSTREAM.json), la
+[notice conservée](debatephp/NOTICE) et la [licence GPLv3](debatephp/LICENSE).
+La distribution combinée est GPL-3.0-or-later ; les sources Wikidebates
+préexistantes conservent leur licence MIT. Les snapshots conservent leurs
+licences et attributions. Les révisions historiques sont maintenant conservées
+dans `debatephp/tests/fixtures/revisions.json`.

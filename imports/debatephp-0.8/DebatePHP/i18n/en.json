@@ -1,7 +1,0 @@
-{
-  "@metadata": {
-    "authors": []
-  },
-  "htmltags-notagname": "The attribute \"tagname\" must be set for this tag.",
-  "htmltags-unsupportedtag": "The tag name \"$1\" is not supported for <htmltag>."
-}

@@ -9,15 +9,9 @@ final class I18n {
 	private array $messages = [];
 	private bool $memoize;
 	public function __construct(array $data, bool $memoize = false) { $this->data = $data; $this->memoize = $memoize; }
-	/** Native table for all render modes. Wiki text is checked, never interpreted. */
-	public static function bundled(string $wikiSource, bool $memoize = false, ?string $wikiLogic = null): self {
+	/** The installed PHP table is the runtime source of truth in both modes. */
+	public static function bundled(bool $memoize = false): self {
 		$compiled = require __DIR__ . '/../resources/I18nData.php';
-		if ($wikiLogic !== null && !hash_equals($compiled['logic_sha256'], hash('sha256', rtrim($wikiLogic, "\r\n")))) {
-			throw new \RuntimeException('WD/I18N logic changed: revalidate its PHP implementation.');
-		}
-		if (!hash_equals($compiled['sha256'], hash('sha256', $wikiSource))) {
-			throw new \RuntimeException('WD/I18N/Data changed: regenerate resources/I18nData.php with tools/compileI18n.php before using the PHP renderer.');
-		}
 		return new self($compiled['data'], $memoize);
 	}
 	public static function normalize(string $code): string {

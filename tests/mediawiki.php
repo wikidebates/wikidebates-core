@@ -1,59 +1,6 @@
 <?php
 
-/** Isolated MediaWiki 1.43 integration tests. No existing wiki settings or database is used. */
-$install = getenv('MW_INSTALL_PATH');
-if (!$install || !is_file($install . '/includes/Setup.php')) {
-	fwrite(STDERR, "Set MW_INSTALL_PATH to a MediaWiki 1.43 checkout with vendor/ and extensions/Scribunto/.\n");
-	exit(1);
-}
-if (!extension_loaded('pdo_sqlite')) { throw new RuntimeException('Tests require pdo_sqlite'); }
-$temporary = sys_get_temp_dir() . '/wikidebates-' . bin2hex(random_bytes(8));
-mkdir($temporary, 0700);
-register_shutdown_function(static function() use ($temporary): void {
-	$files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($temporary, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST);
-	foreach ($files as $file) { $file->isDir() ? rmdir($file->getPathname()) : unlink($file->getPathname()); }
-	rmdir($temporary);
-});
-$db = new PDO('sqlite:' . $temporary . '/wikidebates_test.sqlite');
-$db->exec(file_get_contents($install . '/maintenance/sqlite/tables-generated.sql'));
-$db = null;
-
-define('MEDIAWIKI', true);
-define('MW_ENTRY_POINT', 'cli');
-define('MW_INSTALL_PATH', realpath($install));
-define('MW_CONFIG_CALLBACK', 'wikidebatesTestConfig');
-function wikidebatesTestConfig($settings): void {
-	global $temporary;
-	$settings->overrideConfigValues([
-		'Server' => 'https://example.test',
-		'ScriptPath' => '/w',
-		'ArticlePath' => '/wiki/$1',
-		'Sitename' => 'Wikidebates tests',
-		'LanguageCode' => 'en',
-		'DBtype' => 'sqlite',
-		'DBname' => 'wikidebates_test',
-		'SQLiteDataDir' => $temporary,
-		'SecretKey' => 'isolated-wikidebates-tests',
-		'CacheDirectory' => $temporary,
-		'MainCacheType' => CACHE_NONE,
-		'MessageCacheType' => CACHE_NONE,
-		'ParserCacheType' => CACHE_NONE,
-		'UseDatabaseMessages' => false,
-		'JobRunRate' => 0,
-		'ShowExceptionDetails' => true
-	]);
-	wfLoadExtension('Scribunto');
-	foreach (array_filter(explode(',', getenv('WD_TEST_EXTENSIONS') ?: '')) as $extension) {
-		if (!in_array($extension, ['PageForms', 'ShortDescription', 'Variables', 'VariablesLua', 'WikiSEO'], true)) {
-			throw new RuntimeException('Unsupported test extension: ' . $extension);
-		}
-		wfLoadExtension($extension);
-	}
-	wfLoadExtension('Wikidebates', dirname(__DIR__) . '/extension.json');
-}
-require MW_INSTALL_PATH . '/includes/BootstrapHelperFunctions.php';
-require MW_INSTALL_PATH . '/includes/Setup.php';
-require __DIR__ . '/bootstrap.php';
+require __DIR__ . '/mediawikiEnvironment.php';
 check(str_starts_with(MW_VERSION, '1.43.'), 'Run integration tests with MediaWiki 1.43');
 $validator = new \JsonSchema\Validator;
 $extensionManifest = json_decode(file_get_contents(dirname(__DIR__) . '/extension.json'));
@@ -69,6 +16,11 @@ use MediaWiki\Parser\ParserOptions;
 use MediaWiki\Title\Title;
 
 $services = MediaWikiServices::getInstance();
+same('reference', $services->getMainConfig()->get('DebatePHPMode'), 'Reference is the default mode');
+check(!\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('DebatePHP'), 'No standalone DebatePHP extension is loaded');
+if (!getenv('WD_TEST_EXTENSIONS')) {
+	same(['Wikidebates'], array_keys(\MediaWiki\Registration\ExtensionRegistry::getInstance()->getAllThings()), 'One wfLoadExtension call is sufficient');
+}
 // Skin selection remains in the existing display hook; ResourceLoader ignores a 'skins' key.
 foreach (['vector', 'vector-2022', 'minerva', 'minervaneue', 'minervaNeue'] as $skinName) {
 	$skin = new class(['name' => $skinName]) extends \Skin {
@@ -88,17 +40,16 @@ if (\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('WikiSEO'
 		return true;
 	});
 }
+$sourceReads = [];
 $sources = [
-	'Module:Debate' => 'Module-Debate.reference.lua',
-	'Module:Argument' => 'Module-Argument.reference.lua',
-	'Module:WD/I18N' => 'WD-I18N.reference.lua',
-	'Module:WD/I18N/Data' => 'WD-I18N-Data.snapshot.lua',
 	'Template:Débat' => 'Template-Debat.php.wikitext',
 	'Template:Argument' => 'Template-Argument.php.wikitext'
 ];
 $resources = dirname(__DIR__) . '/debatephp/resources/';
-$fetch = static function($title) use (&$sources, $resources): array {
+$fetch = static function($title) use (&$sources, &$sourceReads, $resources): array {
 	$name = $title->getPrefixedText();
+	$sourceReads[] = $name;
+	if (str_starts_with($name, 'Module:')) { throw new RuntimeException('Unexpected runtime Lua dependency: ' . $name); }
 	return [
 		'text' => isset($sources[$name]) ? file_get_contents($resources . $sources[$name]) : false,
 		'finalTitle' => $title,
@@ -117,16 +68,27 @@ $parse = static function(string $text, string $mode) use ($services, $fetch): ar
 	return [$output->getText(), $output->getPageProperties(), $output->getCategoryNames(), $dependencies];
 };
 $count = 0;
+$observationLog = $temporary . '/observations.log';
+$GLOBALS['wgDebugLogGroups']['DebatePHP'] = $observationLog;
 $fixtures = require __DIR__ . '/renderCases.php';
 $fixtures['argument initialization'] = '{{#argument:render|lang=en|initialization=Pro argument@42|creation-date=2000-01-01}}';
 foreach ($fixtures as $name => $text) {
 	$reference = $parse($text, 'reference');
 	$optimized = $parse($text, 'optimized');
 	same($reference, $optimized, 'Renderer output and parser effects: ' . $name);
+	$GLOBALS['wgDebatePHPProfiling'] = true;
+	$GLOBALS['wgDebatePHPDiagnostics'] = true;
+	try {
+		same($reference, $parse($text, 'reference'), 'Observations preserve reference output: ' . $name);
+		same($optimized, $parse($text, 'optimized'), 'Observations preserve optimized output: ' . $name);
+	} finally {
+		$GLOBALS['wgDebatePHPProfiling'] = false;
+		$GLOBALS['wgDebatePHPDiagnostics'] = false;
+	}
 	check(strlen($reference[0]) > 200, 'Substantial renderer output: ' . $name);
 	check(!str_contains($reference[0], '{{#debate:') && !str_contains($reference[0], '{{#argument:'), 'Functions registered: ' . $name);
 	check(str_contains($reference[0], 'application/ld+json'), 'JSON-LD retained: ' . $name);
-	check(in_array('828:WD/I18N/Data', array_column($reference[3], 0), true), 'Translation dependency retained: ' . $name);
+	check(!array_filter($reference[3], static fn(array $dep): bool => str_starts_with($dep[0], '828:')), 'No artificial Lua dependencies: ' . $name);
 	if (\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('ShortDescription')
 		&& (str_contains($text, '#debate:') || str_contains($text, '{{Débat|'))) {
 		check(isset($reference[1]['shortdesc']), 'ShortDescription callback retained: ' . $name);
@@ -136,6 +98,16 @@ foreach ($fixtures as $name => $text) {
 	}
 	$count++;
 }
+$profileEvents = [];
+foreach (file($observationLog, FILE_IGNORE_NEW_LINES) as $line) {
+	$start = strpos($line, '{');
+	if ($start === false) { continue; }
+	$event = json_decode(substr($line, $start), true, 512, JSON_THROW_ON_ERROR);
+	if ($event['event'] !== 'profile') { continue; }
+	same($event['counters']['preprocess_executed'], array_sum(array_column($event['preprocessing'], 'calls')), 'Production hook reason counters agree');
+	$profileEvents[] = $event;
+}
+same(2 * $count, count($profileEvents), 'Each observed invocation emits one profile');
 
 // Exercise Page Forms through a genuine child frame, with literal delimiters in values.
 if (\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('PageForms')) {
@@ -183,9 +155,8 @@ $output = $parser->parse('<htmltag tagname="a">body</htmltag>', Title::newFromTe
 check(str_contains($output->getText(), 'existing HTML Tags handler'), 'Preserve external HTML Tags hook');
 
 rejects(static fn() => $parse('{{#debate:render}}', 'invalid'), 'Invalid mode rejected');
-$sources['Module:Debate'] = 'Module-Argument.reference.lua';
-rejects(static fn() => $parse('{{#debate:render}}', 'reference'), 'Changed module source rejected');
-unset($sources['Module:Argument']);
-rejects(static fn() => $parse('{{#argument:render}}', 'reference'), 'Missing module source rejected');
+same([], array_values(array_filter($sourceReads, static fn(string $name): bool => str_starts_with($name, 'Module:'))), 'No module source read in either mode');
+check(!class_exists(\MediaWiki\Extension\DebatePHP\LiteralData::class, false), 'Runtime never loads the offline Lua reader');
+require __DIR__ . '/mediawikiOperations.php';
 
-echo "OK: MediaWiki " . MW_VERSION . ", $count render fixtures in both modes, dependencies, hooks, policy and source guards\n";
+echo "OK: MediaWiki " . MW_VERSION . ", $count render fixtures in both modes, single extension load, hooks, policy and no runtime Lua dependencies\n";
