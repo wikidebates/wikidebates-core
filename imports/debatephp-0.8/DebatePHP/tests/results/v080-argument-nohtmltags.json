@@ -1,0 +1,8 @@
+{
+  "cases": 86,
+  "comparisons": 172,
+  "passed": true,
+  "failures": [],
+  "jsonld_encoding_corrections": 84,
+  "comparison": "Visible output and metadata unchanged except removal of obsolete Lua source dependencies; JSON nodes checked against Lua after reproducing its old escaping on the new raw values"
+}

@@ -1,0 +1,366 @@
+{
+  "cases": [
+    {
+      "title": "Contexte parent enfant",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 5,
+      "timing": {}
+    },
+    {
+      "title": "Doubles expansions multiples",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 8,
+      "timing": {}
+    },
+    {
+      "title": "Paramètres anglais hérités",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 4,
+      "timing": {}
+    },
+    {
+      "title": "Priorité valeur vide",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 4,
+      "timing": {}
+    },
+    {
+      "title": "Priorité explicite",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 4,
+      "timing": {}
+    },
+    {
+      "title": "Paramètres directs",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 4,
+      "timing": {}
+    },
+    {
+      "title": "Tous bandeaux",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 7,
+      "timing": {}
+    },
+    {
+      "title": "Bandeaux anglais",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 6,
+      "timing": {}
+    },
+    {
+      "title": "Séparateurs incomplets",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 11,
+      "timing": {}
+    },
+    {
+      "title": "Bibliographie complète",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 7,
+      "timing": {}
+    },
+    {
+      "title": "Bibliographie lien seul",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 7,
+      "timing": {}
+    },
+    {
+      "title": "Sitographie auteurs côtés",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 7,
+      "timing": {}
+    },
+    {
+      "title": "Vidéographie mixte",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 7,
+      "timing": {}
+    },
+    {
+      "title": "Wikipedia connexes rubriques",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 5,
+      "timing": {}
+    },
+    {
+      "title": "Ébauche minimale",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 4,
+      "timing": {}
+    },
+    {
+      "title": "Progression inconnue",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 4,
+      "timing": {}
+    },
+    {
+      "title": "Utilisateur:Test apostrophe & pourcent % / sous-page",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 5,
+      "timing": {}
+    },
+    {
+      "title": "Titre et références avec accolades",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 5,
+      "timing": {}
+    },
+    {
+      "title": "Citations et nowiki",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 5,
+      "timing": {}
+    },
+    {
+      "title": "Deux débats dans une page",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 9,
+      "timing": {}
+    },
+    {
+      "title": "Argument inutilisé avec effet",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 5,
+      "timing": {}
+    },
+    {
+      "title": "Horodatage dynamique",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 5,
+      "timing": {}
+    },
+    {
+      "title": "Paramètre spécial dépendance",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 4,
+      "timing": {}
+    },
+    {
+      "title": "Arguments identiques et notes",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 7,
+      "timing": {}
+    }
+  ],
+  "failures": [],
+  "all_passed": true
+}

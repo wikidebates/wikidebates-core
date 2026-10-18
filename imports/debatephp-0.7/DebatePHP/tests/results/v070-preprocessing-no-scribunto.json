@@ -1,0 +1,211 @@
+{
+    "assertions": 42,
+    "passed": true,
+    "without_scribunto": true,
+    "profiles": {
+        "literal": {
+            "event": "profile",
+            "total_ms": 8.7291,
+            "render_other_ms": 0,
+            "stages": {
+                "fields": {
+                    "calls": 2,
+                    "milliseconds": 0.0247
+                },
+                "json": {
+                    "calls": 1,
+                    "milliseconds": 0.1475
+                },
+                "native_jsonld": {
+                    "calls": 1,
+                    "milliseconds": 1.4107
+                }
+            },
+            "counters": {
+                "preprocess_executed": 0,
+                "preprocess_cache_hits": 0,
+                "native_cache_hits": 1,
+                "literal_fields": 2
+            },
+            "preprocessing": []
+        },
+        "dynamic": {
+            "event": "profile",
+            "total_ms": 3.1381,
+            "render_other_ms": 0,
+            "stages": {
+                "fields": {
+                    "calls": 2,
+                    "milliseconds": 1.1918
+                }
+            },
+            "counters": {
+                "preprocess_executed": 1,
+                "preprocess_cache_hits": 1,
+                "native_cache_hits": 0,
+                "literal_fields": 0
+            },
+            "preprocessing": {
+                "test.field": {
+                    "calls": 1,
+                    "milliseconds": 1.1473
+                }
+            }
+        },
+        "volatile": {
+            "event": "profile",
+            "total_ms": 1.0523,
+            "render_other_ms": 0,
+            "stages": {
+                "fields": {
+                    "calls": 2,
+                    "milliseconds": 0.2393
+                }
+            },
+            "counters": {
+                "preprocess_executed": 2,
+                "preprocess_cache_hits": 0,
+                "native_cache_hits": 0,
+                "literal_fields": 0
+            },
+            "preprocessing": {
+                "test.field": {
+                    "calls": 2,
+                    "milliseconds": 0.219
+                }
+            }
+        },
+        "tags": {
+            "event": "profile",
+            "total_ms": 1.3594,
+            "render_other_ms": 0,
+            "stages": [],
+            "counters": {
+                "preprocess_executed": 2,
+                "preprocess_cache_hits": 0,
+                "native_cache_hits": 0,
+                "literal_fields": 0
+            },
+            "preprocessing": {
+                "htmltag.argument": {
+                    "calls": 2,
+                    "milliseconds": 0.1739
+                }
+            }
+        },
+        "xml-tags": {
+            "event": "profile",
+            "total_ms": 1.8668,
+            "render_other_ms": 0,
+            "stages": {
+                "native_tags": {
+                    "calls": 1,
+                    "milliseconds": 0.7026
+                }
+            },
+            "counters": {
+                "preprocess_executed": 2,
+                "preprocess_cache_hits": 0,
+                "native_cache_hits": 0,
+                "literal_fields": 0
+            },
+            "preprocessing": {
+                "htmltag.body": {
+                    "calls": 1,
+                    "milliseconds": 0.0851
+                },
+                "htmltag.attribute": {
+                    "calls": 1,
+                    "milliseconds": 0.0361
+                }
+            }
+        },
+        "fallback": {
+            "event": "profile",
+            "total_ms": 0.958,
+            "render_other_ms": 0,
+            "stages": {
+                "native_tags": {
+                    "calls": 1,
+                    "milliseconds": 0.1889
+                }
+            },
+            "counters": {
+                "preprocess_executed": 1,
+                "preprocess_cache_hits": 0,
+                "native_cache_hits": 0,
+                "literal_fields": 0
+            },
+            "preprocessing": {
+                "htmltag.fallback": {
+                    "calls": 1,
+                    "milliseconds": 0.1633
+                }
+            }
+        },
+        "shortdesc": {
+            "event": "profile",
+            "total_ms": 13.5201,
+            "render_other_ms": 0,
+            "stages": {
+                "shortdesc": {
+                    "calls": 1,
+                    "milliseconds": 12.8318
+                }
+            },
+            "counters": {
+                "preprocess_executed": 1,
+                "preprocess_cache_hits": 0,
+                "native_cache_hits": 0,
+                "literal_fields": 0
+            },
+            "preprocessing": {
+                "shortdesc.fallback": {
+                    "calls": 1,
+                    "milliseconds": 12.8088
+                }
+            }
+        },
+        "autoedit": {
+            "event": "profile",
+            "total_ms": 9.2354,
+            "render_other_ms": 0,
+            "stages": {
+                "autoedit": {
+                    "calls": 1,
+                    "milliseconds": 8.4609
+                }
+            },
+            "counters": {
+                "preprocess_executed": 1,
+                "preprocess_cache_hits": 0,
+                "native_cache_hits": 0,
+                "literal_fields": 0
+            },
+            "preprocessing": {
+                "autoedit.parameter": {
+                    "calls": 1,
+                    "milliseconds": 0.081
+                }
+            }
+        },
+        "nested": {
+            "event": "profile",
+            "total_ms": 0.7806,
+            "render_other_ms": 0,
+            "stages": [],
+            "counters": {
+                "preprocess_executed": 1,
+                "preprocess_cache_hits": 0,
+                "native_cache_hits": 0,
+                "literal_fields": 0
+            },
+            "preprocessing": {
+                "htmltag.argument": {
+                    "calls": 1,
+                    "milliseconds": 0.0685
+                }
+            }
+        }
+    }
+}

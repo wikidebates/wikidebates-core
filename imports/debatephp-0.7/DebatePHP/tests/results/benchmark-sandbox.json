@@ -1,0 +1,228 @@
+{
+  "cases": [
+    {
+      "title": "Test vide",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 4,
+      "timing": {
+        "lua": {
+          "n": 25,
+          "median_ms": 32.332,
+          "p95_ms": 38.16,
+          "min_ms": 29.914,
+          "max_ms": 43.664
+        },
+        "reference": {
+          "n": 25,
+          "median_ms": 27.756,
+          "p95_ms": 34.8,
+          "min_ms": 25.632,
+          "max_ms": 38.719
+        },
+        "optimized": {
+          "n": 25,
+          "median_ms": 22.092,
+          "p95_ms": 25.971,
+          "min_ms": 19.706,
+          "max_ms": 29.526
+        }
+      }
+    },
+    {
+      "title": "Dieu existe-t-il ?",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 17,
+      "timing": {
+        "lua": {
+          "n": 25,
+          "median_ms": 109.096,
+          "p95_ms": 133.017,
+          "min_ms": 99.072,
+          "max_ms": 145.502
+        },
+        "reference": {
+          "n": 25,
+          "median_ms": 102.148,
+          "p95_ms": 131.354,
+          "min_ms": 85.277,
+          "max_ms": 156.805
+        },
+        "optimized": {
+          "n": 25,
+          "median_ms": 95.014,
+          "p95_ms": 114.846,
+          "min_ms": 79.076,
+          "max_ms": 115.868
+        }
+      }
+    },
+    {
+      "title": "Faut-il accepter l'immigration ?",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 15,
+      "timing": {
+        "lua": {
+          "n": 25,
+          "median_ms": 73.175,
+          "p95_ms": 98.689,
+          "min_ms": 68.037,
+          "max_ms": 113.048
+        },
+        "reference": {
+          "n": 25,
+          "median_ms": 63.468,
+          "p95_ms": 93.961,
+          "min_ms": 59.224,
+          "max_ms": 94.472
+        },
+        "optimized": {
+          "n": 25,
+          "median_ms": 55.84,
+          "p95_ms": 83.094,
+          "min_ms": 51.838,
+          "max_ms": 85.715
+        }
+      }
+    },
+    {
+      "title": "Un revenu de base doit-il être instauré ?",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 14,
+      "timing": {
+        "lua": {
+          "n": 25,
+          "median_ms": 89.4,
+          "p95_ms": 126.525,
+          "min_ms": 82.968,
+          "max_ms": 142.151
+        },
+        "reference": {
+          "n": 25,
+          "median_ms": 100.835,
+          "p95_ms": 114.554,
+          "min_ms": 72.21,
+          "max_ms": 117.488
+        },
+        "optimized": {
+          "n": 25,
+          "median_ms": 74.082,
+          "p95_ms": 114.915,
+          "min_ms": 65.361,
+          "max_ms": 121.542
+        }
+      }
+    },
+    {
+      "title": "Pour ou contre l'IA générative ?",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 8,
+      "timing": {
+        "lua": {
+          "n": 25,
+          "median_ms": 41.687,
+          "p95_ms": 54.876,
+          "min_ms": 37.564,
+          "max_ms": 93.042
+        },
+        "reference": {
+          "n": 25,
+          "median_ms": 35.02,
+          "p95_ms": 40.418,
+          "min_ms": 32.856,
+          "max_ms": 80.382
+        },
+        "optimized": {
+          "n": 25,
+          "median_ms": 31.6,
+          "p95_ms": 74.596,
+          "min_ms": 26.677,
+          "max_ms": 79.77
+        }
+      }
+    },
+    {
+      "title": "Ecosia est-il un moteur de recherche écologique ?",
+      "results": {
+        "reference": {
+          "pass": true,
+          "differences": []
+        },
+        "optimized": {
+          "pass": true,
+          "differences": []
+        }
+      },
+      "expansions": 11,
+      "timing": {
+        "lua": {
+          "n": 25,
+          "median_ms": 58.162,
+          "p95_ms": 115.331,
+          "min_ms": 47.492,
+          "max_ms": 120.401
+        },
+        "reference": {
+          "n": 25,
+          "median_ms": 45.98,
+          "p95_ms": 86.467,
+          "min_ms": 42.454,
+          "max_ms": 112.898
+        },
+        "optimized": {
+          "n": 25,
+          "median_ms": 38.177,
+          "p95_ms": 92.377,
+          "min_ms": 35.426,
+          "max_ms": 101.01
+        }
+      }
+    }
+  ],
+  "failures": [],
+  "all_passed": true
+}
