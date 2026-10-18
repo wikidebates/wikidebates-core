@@ -1,0 +1,9 @@
+{
+	"@metadata": {
+		"authors": [
+			"Wikidébats"
+		]
+	},
+	"htmltags-notagname": "Error for an htmltag invocation without the required tagname attribute. Compatibility message from HTML Tags 0.3.",
+	"htmltags-unsupportedtag": "Error for a tag name absent from the configured HTML Tags policy. $1 is the requested tag name. Compatibility message from HTML Tags 0.3."
+}

@@ -25,6 +25,7 @@ class Hooks {
 
 	public static function onParserFirstCallInit( Parser $parser ): void {
 		RecentDebateChanges::register( $parser );
+		\MediaWiki\Extension\DebatePHP\Hooks::onParserFirstCallInit( $parser );
 	}
 
 	public static function onPageSaveComplete(

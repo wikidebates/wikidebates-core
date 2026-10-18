@@ -6,10 +6,20 @@
 	],
 	"url": "https://example.invalid/",
 	"descriptionmsg": "wikidebates-desc",
-	"license-name": "MIT",
+	"license-name": "GPL-3.0-or-later",
 	"type": "other",
+	"requires": {
+		"MediaWiki": ">= 1.43.0",
+		"platform": {
+			"php": ">= 8.1.0"
+		},
+		"extensions": {
+			"Scribunto": "*"
+		}
+	},
 	"AutoloadNamespaces": {
-		"MediaWiki\\Extension\\Wikidebates\\": "src/"
+		"MediaWiki\\Extension\\Wikidebates\\": "src/",
+		"MediaWiki\\Extension\\DebatePHP\\": "debatephp/src/"
 	},
 	"Hooks": {
 		"BeforePageDisplay": "MediaWiki\\Extension\\Wikidebates\\Hooks::onBeforePageDisplay",
@@ -98,20 +108,11 @@
 		"ext.wikidebates.reading.styles.vector": {
 			"styles": [
 				"reading/vector-2022.css"
-			],
-			"skins": [
-				"vector",
-				"vector-2022"
 			]
 		},
 		"ext.wikidebates.reading.styles.minerva": {
 			"styles": [
 				"reading/minerva.css"
-			],
-			"skins": [
-				"minerva",
-				"minervaneue",
-				"minervaNeue"
 			]
 		},
 		"ext.wikidebates.reading.ui.vector": {
@@ -123,10 +124,6 @@
 				"ext.wikidebates.reading.core",
 				"ext.wikidebates.reading.styles.base",
 				"ext.wikidebates.reading.styles.vector"
-			],
-			"skins": [
-				"vector",
-				"vector-2022"
 			]
 		},
 		"ext.wikidebates.reading.ui.minerva": {
@@ -138,11 +135,6 @@
 				"ext.wikidebates.reading.core",
 				"ext.wikidebates.reading.styles.base",
 				"ext.wikidebates.reading.styles.minerva"
-			],
-			"skins": [
-				"minerva",
-				"minervaneue",
-				"minervaNeue"
 			]
 		},
 		"ext.wikidebates.boot.vector": {
@@ -154,10 +146,6 @@
 				"ext.wikidebates.common.core",
 				"ext.wikidebates.common.i18n",
 				"ext.wikidebates.features.scan"
-			],
-			"skins": [
-				"vector",
-				"vector-2022"
 			]
 		},
 		"ext.wikidebates.boot.minerva": {
@@ -169,23 +157,11 @@
 				"ext.wikidebates.common.core",
 				"ext.wikidebates.common.i18n",
 				"ext.wikidebates.features.scan"
-			],
-			"skins": [
-				"minerva",
-				"minervaneue",
-				"minervaNeue"
 			]
 		},
 		"ext.wikidebates.i18n.fr": {
 			"scripts": [
 				"i18n/fr.js"
-			],
-			"skins": [
-				"vector",
-				"vector-2022",
-				"minerva",
-				"minervaneue",
-				"minervaNeue"
 			]
 		},
 		"ext.wikidebates.features.frCollapsible": {
@@ -257,10 +233,6 @@
 				"jquery",
 				"ext.wikidebates.common.core",
 				"ext.wikidebates.common.i18n"
-			],
-			"skins": [
-				"vector",
-				"vector-2022"
 			]
 		},
 		"ext.wikidebates.vector.ns0.idleTooltips": {
@@ -271,10 +243,6 @@
 				"jquery",
 				"ext.wikidebates.common.core",
 				"ext.wikidebates.common.i18n"
-			],
-			"skins": [
-				"vector",
-				"vector-2022"
 			]
 		},
 		"ext.wikidebates.vector.headerButtons": {
@@ -285,10 +253,6 @@
 				"jquery",
 				"ext.wikidebates.common.core",
 				"ext.wikidebates.common.i18n"
-			],
-			"skins": [
-				"vector",
-				"vector-2022"
 			]
 		},
 		"ext.wikidebates.minerva.headerButtons": {
@@ -299,33 +263,43 @@
 				"jquery",
 				"ext.wikidebates.common.core",
 				"ext.wikidebates.common.i18n"
-			],
-			"skins": [
-				"minerva",
-				"minervaneue",
-				"minervaNeue"
 			]
 		},
 		"ext.wikidebates.i18n.en": {
 			"scripts": [
 				"i18n/en.js"
-			],
-			"skins": [
-				"vector",
-				"vector-2022",
-				"minerva",
-				"minervaneue",
-				"minervaNeue"
 			]
 		}
 	},
 	"ExtensionMessagesFiles": {
-		"WikidebatesMagic": "i18n/magic.php"
+		"WikidebatesMagic": "i18n/magic.php",
+		"DebatePHPMagic": "debatephp/DebatePHP.i18n.magic.php"
 	},
 	"MessagesDirs": {
 		"Wikidebates": [
 			"i18n"
+		],
+		"DebatePHP": [
+			"debatephp/i18n"
 		]
+	},
+	"config": {
+		"DebatePHPMode": {
+			"value": "reference",
+			"description": "DebatePHP 0.6.0 renderer: reference or optimized."
+		},
+		"DebatePHPProfiling": {
+			"value": false,
+			"description": "Log per-invocation renderer timings to the DebatePHP debug channel."
+		},
+		"DebatePHPDiagnostics": {
+			"value": false,
+			"description": "Log renderer integration diagnostics to the DebatePHP debug channel."
+		},
+		"DebatePHPHTMLAttributes": {
+			"value": null,
+			"description": "Optional HTML Tags attribute policy; null uses wgHTMLTagsAttributes or the bundled policy."
+		}
 	},
 	"manifest_version": 2,
 	"AuthManagerAutoConfig": {
