@@ -1,0 +1,70 @@
+Syntax: all PHP files passed
+24 native adapter assertions passed (MediaWiki/SMW doubles).
+Native PHP table, FR/EN, no wiki-source requirement and absence of literal reader: passed
+Disabled logging, actual/failed preprocessing counts, cache hits, omitted values and failing log sink: passed
+{"cases": 87, "renderer_comparisons": 174, "passed": true, "failures": [], "scope": "Lua 5.1 versus PHP, mocked MediaWiki boundary; not a live wiki benchmark"}
+reference 1255 i18n comparisons passed
+memoized 1255 i18n comparisons passed
+{"comparisons": 1740, "passed": true, "failures": []}
+Both renderers: reproducible builds, native JSON-LD, no direct preprocess calls
+
+with HTML Tags: 86 real-parser Argument cases completed. 172 comparisons passed
+
+without HTML Tags: 86 real-parser Argument cases completed. 172 comparisons passed
+
+with Variables/VariablesLua and without HTML Tags: 86 real-parser Argument cases completed. 172 comparisons passed
+
+52 tag/SHORTDESC comparisons passed (HTML and preprocess modes), including notes, policies and shared cache.
+
+22 native date/quote/autoedit comparisons passed in HTML and preprocess modes.
+
+31 assertions passed: direct JSON-LD, exact values, script boundaries, no wiki expansion, literal/dynamic fields (HTML and preprocess modes).
+
+Test vide
+Dieu existe-t-il ?
+Faut-il accepter l'immigration ?
+Un revenu de base doit-il être instauré ?
+Pour ou contre l'IA générative ?
+Ecosia est-il un moteur de recherche écologique ?
+Contexte parent enfant
+Doubles expansions multiples
+Paramètres anglais hérités
+Priorité valeur vide
+Priorité explicite
+Paramètres directs
+Tous bandeaux
+Bandeaux anglais
+Séparateurs incomplets
+Bibliographie complète
+Bibliographie lien seul
+Sitographie auteurs côtés
+Vidéographie mixte
+Wikipedia connexes rubriques
+Ébauche minimale
+Progression inconnue
+Utilisateur:Test apostrophe & pourcent % / sous-page
+Titre et références avec accolades
+Citations et nowiki
+Deux débats dans une page
+Argument inutilisé avec effet
+Horodatage dynamique
+Paramètre spécial dépendance
+Arguments identiques et notes
+Chaînes homonymes de fonctions PHP
+Shortdesc avec pipe produit
+Shortdesc avec nowiki
+Shortdesc avec note
+Shortdesc espaces et entités
+
+Debate: 35 cases, 70 comparisons passed
+
+Direct comparison with/without HTML Tags: identical native parser outputs and metadata
+
+normal: identical output with observations on/off
+exception: identical output with observations on/off
+result: identical output with observations on/off
+seo-exception: identical output with observations on/off
+Error diagnostics, timing stages and preprocessing counters verified; values omitted. WikiSEO absent.
+
+Counters: 41 assertions with Scribunto; 42 without Scribunto and HTML Tags. Both passed.
+Profiles: 172 Argument and 72 Debate invocation profiles collected.

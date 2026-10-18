@@ -1,0 +1,494 @@
+[
+  {
+    "event": "profile",
+    "total_ms": 10.8492,
+    "render_other_ms": 1.3087,
+    "stages": {
+      "setup": {
+        "calls": 1,
+        "milliseconds": 8.0284
+      },
+      "arguments": {
+        "calls": 1,
+        "milliseconds": 0.2395
+      },
+      "messages": {
+        "calls": 190,
+        "milliseconds": 0.2943
+      },
+      "expansions": {
+        "calls": 4,
+        "milliseconds": 0.7357
+      },
+      "semantic": {
+        "calls": 1,
+        "milliseconds": 0.0257
+      },
+      "seo": {
+        "calls": 1,
+        "milliseconds": 0.0452
+      },
+      "json": {
+        "calls": 1,
+        "milliseconds": 0.106
+      },
+      "render": {
+        "calls": 1,
+        "milliseconds": 2.755
+      }
+    },
+    "page": "Test vide",
+    "mode": "reference"
+  },
+  {
+    "event": "profile",
+    "total_ms": 5.5096,
+    "render_other_ms": 0.6941,
+    "stages": {
+      "setup": {
+        "calls": 1,
+        "milliseconds": 3.3379
+      },
+      "arguments": {
+        "calls": 1,
+        "milliseconds": 0.2386
+      },
+      "messages": {
+        "calls": 190,
+        "milliseconds": 0.2834
+      },
+      "expansions": {
+        "calls": 4,
+        "milliseconds": 0.7418
+      },
+      "semantic": {
+        "calls": 1,
+        "milliseconds": 0.0076
+      },
+      "seo": {
+        "calls": 1,
+        "milliseconds": 0.0461
+      },
+      "json": {
+        "calls": 1,
+        "milliseconds": 0.0968
+      },
+      "render": {
+        "calls": 1,
+        "milliseconds": 2.1084
+      }
+    },
+    "page": "Test vide",
+    "mode": "optimized"
+  },
+  {
+    "event": "profile",
+    "total_ms": 35.5102,
+    "render_other_ms": 3.0032,
+    "stages": {
+      "setup": {
+        "calls": 1,
+        "milliseconds": 3.0264
+      },
+      "arguments": {
+        "calls": 1,
+        "milliseconds": 26.5712
+      },
+      "messages": {
+        "calls": 347,
+        "milliseconds": 0.5108
+      },
+      "expansions": {
+        "calls": 17,
+        "milliseconds": 1.6962
+      },
+      "semantic": {
+        "calls": 1,
+        "milliseconds": 0.0296
+      },
+      "seo": {
+        "calls": 1,
+        "milliseconds": 0.0633
+      },
+      "json": {
+        "calls": 1,
+        "milliseconds": 0.3864
+      },
+      "render": {
+        "calls": 1,
+        "milliseconds": 32.2607
+      }
+    },
+    "page": "Dieu existe-t-il ?",
+    "mode": "reference"
+  },
+  {
+    "event": "profile",
+    "total_ms": 39.3592,
+    "render_other_ms": 2.5049,
+    "stages": {
+      "setup": {
+        "calls": 1,
+        "milliseconds": 2.9754
+      },
+      "arguments": {
+        "calls": 1,
+        "milliseconds": 31.062
+      },
+      "messages": {
+        "calls": 347,
+        "milliseconds": 0.4429
+      },
+      "expansions": {
+        "calls": 17,
+        "milliseconds": 1.7099
+      },
+      "semantic": {
+        "calls": 1,
+        "milliseconds": 0.028
+      },
+      "seo": {
+        "calls": 1,
+        "milliseconds": 0.0463
+      },
+      "json": {
+        "calls": 1,
+        "milliseconds": 0.3803
+      },
+      "render": {
+        "calls": 1,
+        "milliseconds": 36.1744
+      }
+    },
+    "page": "Dieu existe-t-il ?",
+    "mode": "optimized"
+  },
+  {
+    "event": "profile",
+    "total_ms": 22.3148,
+    "render_other_ms": 2.0869,
+    "stages": {
+      "setup": {
+        "calls": 1,
+        "milliseconds": 3.3638
+      },
+      "arguments": {
+        "calls": 1,
+        "milliseconds": 14.2247
+      },
+      "messages": {
+        "calls": 247,
+        "milliseconds": 0.38
+      },
+      "expansions": {
+        "calls": 15,
+        "milliseconds": 1.487
+      },
+      "semantic": {
+        "calls": 1,
+        "milliseconds": 0.0243
+      },
+      "seo": {
+        "calls": 1,
+        "milliseconds": 0.0796
+      },
+      "json": {
+        "calls": 1,
+        "milliseconds": 0.4547
+      },
+      "render": {
+        "calls": 1,
+        "milliseconds": 18.7371
+      }
+    },
+    "page": "Faut-il accepter l'immigration ?",
+    "mode": "reference"
+  },
+  {
+    "event": "profile",
+    "total_ms": 22.1597,
+    "render_other_ms": 2.0009,
+    "stages": {
+      "setup": {
+        "calls": 1,
+        "milliseconds": 3.011
+      },
+      "arguments": {
+        "calls": 1,
+        "milliseconds": 14.5755
+      },
+      "messages": {
+        "calls": 247,
+        "milliseconds": 0.4456
+      },
+      "expansions": {
+        "calls": 15,
+        "milliseconds": 1.4106
+      },
+      "semantic": {
+        "calls": 1,
+        "milliseconds": 0.0215
+      },
+      "seo": {
+        "calls": 1,
+        "milliseconds": 0.046
+      },
+      "json": {
+        "calls": 1,
+        "milliseconds": 0.4672
+      },
+      "render": {
+        "calls": 1,
+        "milliseconds": 18.9674
+      }
+    },
+    "page": "Faut-il accepter l'immigration ?",
+    "mode": "optimized"
+  },
+  {
+    "event": "profile",
+    "total_ms": 41.9342,
+    "render_other_ms": 2.4071,
+    "stages": {
+      "setup": {
+        "calls": 1,
+        "milliseconds": 4.1452
+      },
+      "arguments": {
+        "calls": 1,
+        "milliseconds": 32.6908
+      },
+      "messages": {
+        "calls": 249,
+        "milliseconds": 0.4428
+      },
+      "expansions": {
+        "calls": 14,
+        "milliseconds": 1.5842
+      },
+      "semantic": {
+        "calls": 1,
+        "milliseconds": 0.017
+      },
+      "seo": {
+        "calls": 1,
+        "milliseconds": 0.0746
+      },
+      "json": {
+        "calls": 1,
+        "milliseconds": 0.3994
+      },
+      "render": {
+        "calls": 1,
+        "milliseconds": 37.6161
+      }
+    },
+    "page": "Un revenu de base doit-il être instauré ?",
+    "mode": "reference"
+  },
+  {
+    "event": "profile",
+    "total_ms": 38.1718,
+    "render_other_ms": 1.817,
+    "stages": {
+      "setup": {
+        "calls": 1,
+        "milliseconds": 4.3123
+      },
+      "arguments": {
+        "calls": 1,
+        "milliseconds": 29.6794
+      },
+      "messages": {
+        "calls": 249,
+        "milliseconds": 0.4015
+      },
+      "expansions": {
+        "calls": 14,
+        "milliseconds": 1.3781
+      },
+      "semantic": {
+        "calls": 1,
+        "milliseconds": 0.0176
+      },
+      "seo": {
+        "calls": 1,
+        "milliseconds": 0.0489
+      },
+      "json": {
+        "calls": 1,
+        "milliseconds": 0.386
+      },
+      "render": {
+        "calls": 1,
+        "milliseconds": 33.7286
+      }
+    },
+    "page": "Un revenu de base doit-il être instauré ?",
+    "mode": "optimized"
+  },
+  {
+    "event": "profile",
+    "total_ms": 8.6685,
+    "render_other_ms": 0.9074,
+    "stages": {
+      "setup": {
+        "calls": 1,
+        "milliseconds": 2.6894
+      },
+      "arguments": {
+        "calls": 1,
+        "milliseconds": 3.4034
+      },
+      "messages": {
+        "calls": 210,
+        "milliseconds": 0.2874
+      },
+      "expansions": {
+        "calls": 8,
+        "milliseconds": 0.9934
+      },
+      "semantic": {
+        "calls": 1,
+        "milliseconds": 0.0097
+      },
+      "seo": {
+        "calls": 1,
+        "milliseconds": 0.0549
+      },
+      "json": {
+        "calls": 1,
+        "milliseconds": 0.2523
+      },
+      "render": {
+        "calls": 1,
+        "milliseconds": 5.9087
+      }
+    },
+    "page": "Pour ou contre l'IA générative ?",
+    "mode": "reference"
+  },
+  {
+    "event": "profile",
+    "total_ms": 9.4137,
+    "render_other_ms": 1.2533,
+    "stages": {
+      "setup": {
+        "calls": 1,
+        "milliseconds": 2.8643
+      },
+      "arguments": {
+        "calls": 1,
+        "milliseconds": 3.3485
+      },
+      "messages": {
+        "calls": 210,
+        "milliseconds": 0.3441
+      },
+      "expansions": {
+        "calls": 8,
+        "milliseconds": 1.1718
+      },
+      "semantic": {
+        "calls": 1,
+        "milliseconds": 0.0112
+      },
+      "seo": {
+        "calls": 1,
+        "milliseconds": 0.0637
+      },
+      "json": {
+        "calls": 1,
+        "milliseconds": 0.2699
+      },
+      "render": {
+        "calls": 1,
+        "milliseconds": 6.4624
+      }
+    },
+    "page": "Pour ou contre l'IA générative ?",
+    "mode": "optimized"
+  },
+  {
+    "event": "profile",
+    "total_ms": 16.1707,
+    "render_other_ms": 1.2319,
+    "stages": {
+      "setup": {
+        "calls": 1,
+        "milliseconds": 3.2589
+      },
+      "arguments": {
+        "calls": 1,
+        "milliseconds": 9.6966
+      },
+      "messages": {
+        "calls": 211,
+        "milliseconds": 0.3147
+      },
+      "expansions": {
+        "calls": 11,
+        "milliseconds": 1.1293
+      },
+      "semantic": {
+        "calls": 1,
+        "milliseconds": 0.0112
+      },
+      "seo": {
+        "calls": 1,
+        "milliseconds": 0.0485
+      },
+      "json": {
+        "calls": 1,
+        "milliseconds": 0.398
+      },
+      "render": {
+        "calls": 1,
+        "milliseconds": 12.8303
+      }
+    },
+    "page": "Ecosia est-il un moteur de recherche écologique ?",
+    "mode": "reference"
+  },
+  {
+    "event": "profile",
+    "total_ms": 15.4841,
+    "render_other_ms": 1.1778,
+    "stages": {
+      "setup": {
+        "calls": 1,
+        "milliseconds": 3.1682
+      },
+      "arguments": {
+        "calls": 1,
+        "milliseconds": 9.0659
+      },
+      "messages": {
+        "calls": 211,
+        "milliseconds": 0.3132
+      },
+      "expansions": {
+        "calls": 11,
+        "milliseconds": 1.1671
+      },
+      "semantic": {
+        "calls": 1,
+        "milliseconds": 0.0113
+      },
+      "seo": {
+        "calls": 1,
+        "milliseconds": 0.0562
+      },
+      "json": {
+        "calls": 1,
+        "milliseconds": 0.4036
+      },
+      "render": {
+        "calls": 1,
+        "milliseconds": 12.195
+      }
+    },
+    "page": "Ecosia est-il un moteur de recherche écologique ?",
+    "mode": "optimized"
+  }
+]

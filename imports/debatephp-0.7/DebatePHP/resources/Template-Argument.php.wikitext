@@ -1,0 +1,22 @@
+<includeonly>{{#argument:render
+  | initialization = {{{initialisation|}}}
+  | established-name = {{{nom-consacré|}}}
+  | title-warnings = {{{avertissements-titre|}}}
+  | argument-warnings = {{{avertissements-argument|}}}
+  | summary-warnings = {{{avertissements-résumé|}}}
+  | summary = {{{résumé|}}}
+  | quotes = {{{citations|}}}
+  | reference-warnings = {{{avertissements-références|}}}
+  | bibliography = {{{références-bibliographiques|}}}
+  | webliography = {{{références-sitographiques|}}}
+  | videography = {{{références-vidéographiques|}}}
+  | justification-warnings = {{{avertissements-justifications|}}}
+  | justifications = {{{justifications|}}}
+  | objection-warnings = {{{avertissements-objections|}}}
+  | objections = {{{objections|}}}
+  | dedicated-debate = {{{débat-dédié|}}}
+  | sections = {{{rubriques|}}}
+  | keywords = {{{mots-clés|}}}
+  | interlanguage = {{{interlangue|}}}
+  | creation-date = {{{date-création|}}}
+}}</includeonly>

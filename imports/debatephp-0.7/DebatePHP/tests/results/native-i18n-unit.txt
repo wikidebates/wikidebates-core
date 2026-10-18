@@ -1,0 +1,10 @@
+Version: 0.2.0
+Native PHP table: passed in reference and optimized modes
+Lua literal reader not loaded: passed
+FR/EN and source/logic synchronization guards: passed
+Lua 5.1 vs native PHP translations: 1255 queries x 2 strategies = 2510 passed
+31 cases x 2 PHP variants x 2 Lua engines x 2 instrumentation paths = 248 passed
+22 PHP files: syntax passed
+Offline PHP translation compilation: reproducible
+Benchmarks: 25 repetitions per variant/page, each engine measured separately
+SMW persistence/save timings: not validated in this isolated environment
