@@ -76,7 +76,12 @@ final class Lua {
 	}
 	public static function pcall(callable $function, ...$args): array {
 		try { return [true, $function(...$args)]; }
-		catch (\Throwable $e) { return [false, $e->getMessage()]; }
+		catch (\Throwable $e) {
+			if ( $e instanceof \Wikimedia\Rdbms\DBError ) {
+				throw $e;
+			}
+			return [false, $e->getMessage()];
+		}
 	}
 	public static function byte(string $s, int $index = 1): ?int {
 		$char = self::sub($s, $index, $index); return $char === '' ? null : ord($char);
