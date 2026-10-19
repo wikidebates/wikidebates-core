@@ -3,10 +3,6 @@ namespace MediaWiki\Extension\DebatePHP;
 
 /** Read-only records, owned by one render. Parsing never executes wiki/variable effects. */
 final class DecodedReferences {
-	private const MAX_LISTS = 64;
-	private const MAX_BLOCKS = 512;
-	private const MAX_LIST_RECORDS = 2048;
-	private const MAX_STRING_BYTES = 1048576;
 	private const FORMATS = [
 		'bibliography' => ['authors', 'article', 'work', 'volume', 'number', 'location', 'page', 'publisher', 'place', 'date', 'link', 'warnings'],
 		'webliography' => ['page', 'site', 'link', 'authors', 'date', 'warnings'],
@@ -19,10 +15,6 @@ final class DecodedReferences {
 	private array $legacyBlocks = [];
 	private int $decodedBlocks = 0;
 	private int $reusedBlocks = 0;
-	private int $listCount = 0;
-	private int $blockCount = 0;
-	private int $listRecords = 0;
-	private int $stringBytes = 0;
 
 	public function parse(string $format, ?string $raw): Table {
 		$raw = trim($raw ?? '', " \t\r\n\v\f");
@@ -33,8 +25,7 @@ final class DecodedReferences {
 			foreach (explode($format === 'quotes' ? '⟭⟭⟭' : '⟭', $raw) as $block) {
 				$block = trim($block, " \t\r\n\v\f");
 				if ($block === '') { continue; }
-				$index = count($out) + 1;
-				$out[$index] = $this->legacyBlocks[$format][$block] ??= new Table($records[$index]);
+				$out[count($out) + 1] = $this->legacyBlocks[$format][$block] ??= new Table($this->blocks[$format][$block]);
 			}
 		}
 		return $this->legacyLists[$format][$raw] = new Table($out);
@@ -54,40 +45,15 @@ final class DecodedReferences {
 			foreach (explode($separator, $raw) as $block) {
 				$block = trim($block, " \t\r\n\v\f");
 				if ($block === '') { continue; }
-				if (isset($this->blocks[$format][$block])) {
-					$this->reusedBlocks++;
-					$record = $this->blocks[$format][$block];
-				}
+				if (isset($this->blocks[$format][$block])) { $this->reusedBlocks++; }
 				else {
-					$record = SerializedData::recordValues($block, $fieldSeparator, $fields);
+					$this->blocks[$format][$block] = SerializedData::recordValues($block, $fieldSeparator, $fields);
 					$this->decodedBlocks++;
-					// Fields are trimmed substrings: twice the source bounds key + values.
-					$bytes = 2 * strlen($block);
-					if ($this->blockCount < self::MAX_BLOCKS && $bytes <= self::MAX_STRING_BYTES - $this->stringBytes) {
-						$this->blocks[$format][$block] = $record;
-						$this->blockCount++;
-						$this->stringBytes += $bytes;
-					}
 				}
-				$out[count($out) + 1] = $record;
+				$out[count($out) + 1] = $this->blocks[$format][$block];
 			}
 		}
-		// Admission only: a large unique input cannot evict reusable small records.
-		// Charge the source and all decoded strings conservatively, including shared ones.
-		$bytes = 2 * strlen($raw);
-		if ($this->listCount < self::MAX_LISTS && count($out) <= self::MAX_LIST_RECORDS - $this->listRecords
-			&& $bytes <= self::MAX_STRING_BYTES - $this->stringBytes) {
-			$this->lists[$format][$raw] = $out;
-			$this->listCount++;
-			$this->listRecords += count($out);
-			$this->stringBytes += $bytes;
-		}
-		return $out;
-	}
-
-	/** Native retained payload only; PHP array overhead and legacy identity tables are separate. */
-	public function cacheStatistics(): array {
-		return ['lists' => $this->listCount, 'blocks' => $this->blockCount, 'list_records' => $this->listRecords, 'string_bytes' => $this->stringBytes];
+		return $this->lists[$format][$raw] = $out;
 	}
 
 	/** Test/benchmark observations; contains no reference content. */

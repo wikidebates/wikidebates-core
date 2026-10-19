@@ -51,23 +51,36 @@ $decoder = new DecodedReferences;
 for ($i = 0; $i < 1100; $i++) {
 	$raw = 'Author ' . $i . '⟬Article ' . $i . '⟭';
 	$equal(Table::unwrap(SerializedData::records($raw, '⟭', '⟬', ['authors', 'article', 'work', 'volume', 'number', 'location', 'page', 'publisher', 'place', 'date', 'link', 'warnings'])), $decoder->values('bibliography', $raw), 'Cache pressure cannot alter records');
-	$s = $decoder->cacheStatistics();
-	$equal(true, $s['lists'] <= 64 && $s['blocks'] <= 512 && $s['list_records'] <= 2048 && $s['string_bytes'] <= 1048576, 'All native cache budgets respected');
+	$statistics = $decoder->statistics();
+	$decoder->values('bibliography', $raw);
+	$equal($statistics, $decoder->statistics(), 'Every list is reused without a second decode after 1100 distinct inputs');
 }
-$raw = 'After cap⟬Article⟭';
+$raw = 'After many inputs⟬Article⟭';
 $a = $decoder->parse('bibliography', $raw);
 $b = $decoder->parse('bibliography', 'Other⟬Book⟭' . $raw);
-$equal(true, $a[1] === $b[2], 'Legacy block identities survive native admission refusal');
+$equal(true, $a[1] === $b[2], 'Legacy block identities survive many native lists');
 $a[1]['authors'] = 'Legacy mutation';
 $equal('Legacy mutation', $decoder->parse('bibliography', $raw)[1]['authors'], 'Legacy list identity survives pressure');
-$equal('After cap', $decoder->values('bibliography', $raw)[1]['authors'], 'Legacy mutation cannot poison native values');
+$equal('After many inputs', $decoder->values('bibliography', $raw)[1]['authors'], 'Legacy mutation cannot poison native values');
 $large = new DecodedReferences;
 $raw = str_repeat('a', 600000) . '⟬Article⟭';
 $large->values('bibliography', $raw);
-$equal(['lists' => 0, 'blocks' => 0, 'list_records' => 0, 'string_bytes' => 0], $large->cacheStatistics(), 'Oversized records are decoded without retention');
+$statistics = $large->statistics();
+$large->values('bibliography', $raw);
+$equal($statistics, $large->statistics(), 'Large records are reused without decoding again');
 $repeated = new DecodedReferences;
 $equal(3000, count($repeated->values('videography', str_repeat('A⟬B⟭', 3000))), 'Oversized list retains all output records');
-$equal(0, $repeated->cacheStatistics()['lists'], 'List record budget prevents retaining oversized slot arrays');
+$statistics = $repeated->statistics();
+$repeated->values('videography', str_repeat('A⟬B⟭', 3000));
+$equal($statistics, $repeated->statistics(), 'Large repeated lists remain cached');
+$distinct = new DecodedReferences;
+$raw = implode('⟭', array_map(static fn($i) => 'Video ' . $i . '⟬https://example.test/' . $i, range(1, 4000))) . '⟭';
+$first = $distinct->values('videography', $raw);
+$equal(4000, count($first), 'All distinct records in a large list are retained');
+$statistics = $distinct->statistics();
+$first[1]['title'] = 'Caller mutation';
+$equal('Video 1', $distinct->values('videography', $raw)[1]['title'], 'Large native lists remain isolated from caller mutations');
+$equal($statistics, $distinct->statistics(), 'A second large-list consumer performs no additional block decode');
 
 mt_srand(809);
 $parts = ['', '0', 'é', ' [[Page|label]] ', '\0', '⟬', '⟭', '⟬⟬⟬', '⟭⟭⟭', "\t\n", "\xc2\xa0"];
@@ -94,4 +107,4 @@ for ($i = 0; $i < 800; $i++) {
 		$equal($legacyTitle($text), $normalize->invoke($r, $text), 'Native title decoding against frozen compatibility algorithm');
 	}
 }
-echo "$checks measured-candidate assertions: map identity/bytes, title decoding, native cache budgets and experimental record views\n";
+echo "$checks measured-candidate assertions: map identity/bytes, title decoding, reference-cache reuse and experimental record views\n";

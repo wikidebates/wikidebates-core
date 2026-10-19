@@ -32,7 +32,7 @@
 		"resources/WD-I18N.reference.lua": "7975891b1cd0c797f7e97df1fcbbc735e3626164cb42e587be58d0b16e4f691a"
 	},
 	"local_adaptations": {
-		"description": "The sha256 map above records the original 0.8 import. Local adaptations include the shared MediaWiki i18n catalogues and PR #3 SQL error propagation, semantic profiling, per-render decoded references and verified native accumulators. Lua oracle snapshots remain unchanged; see docs/native-php-optimizations.md. The six-point follow-up adds snapshot sequence iteration, a native FIFO, per-render pure CSV preprocessing, normalized-record consumers and lexical closure captures; see docs/native-php-followup.md. The five-path follow-up adds byte-identical native query keys, shared native HTML fragments, pure JSON conversion without unconditional sorting, native record views with lazy legacy envelopes and a byte-bounded adaptive CSV cache with numeric-only profiling; see docs/native-php-further-optimizations.md. Native read/JSON paths, certified empty parent-query fallbacks and read-only CSV/HTML follow-up: see docs/native-php-read-optimizations.md. Measured local argument/HTML passes, native card-title normalization and bounded native reference admission: see docs/native-php-measured-optimizations.md.",
+		"description": "The sha256 map above records the original 0.8 import. Local adaptations include the shared MediaWiki i18n catalogues and PR #3 SQL error propagation, semantic profiling, per-render decoded references and verified native accumulators. Lua oracle snapshots remain unchanged; see docs/native-php-optimizations.md. The six-point follow-up adds snapshot sequence iteration, a native FIFO, per-render pure CSV preprocessing, normalized-record consumers and lexical closure captures; see docs/native-php-followup.md. The five-path follow-up adds byte-identical native query keys, shared native HTML fragments, pure JSON conversion without unconditional sorting, native record views with lazy legacy envelopes and a byte-bounded adaptive CSV cache with numeric-only profiling; see docs/native-php-further-optimizations.md. Native read/JSON paths, certified empty parent-query fallbacks and read-only CSV/HTML follow-up: see docs/native-php-read-optimizations.md. Measured local argument/HTML passes and native card-title normalization: see docs/native-php-measured-optimizations.md. The evaluated reference-cache cap was withdrawn; the original per-render shared cache is restored, see docs/native-php-reference-cache.md.",
 		"sha256": {
 			"src/I18n.php": "12aa6f46ef463e8aa215e98dd41be20751d54fe4dd519f358bd3a4c28f0b1427",
 			"src/MessageCatalog.php": "270f5d9758308416cf2dd0576ec03ecf119185666a0534412c50d4c03aecfe0d",
@@ -46,7 +46,7 @@
 			"src/MediaWikiContext.php": "d92d5fd4b27ed647b302b1d567e57ed8c55cda2ef531f62fb485260a1ea2c21a",
 			"src/Telemetry.php": "15e3a399b7e555739cc91eaba605ea7a23a0475e5f61e9d218ce2af587e1d962",
 			"src/DatabaseFailure.php": "9a8cd669ba0f9da2604c819b66e495518ffc76ac574f6954ec09a7497db04f3f",
-			"src/DecodedReferences.php": "107cbca60d338e238382a999d539e547c97ca105aea6399181fc7282e5dffcd5",
+			"src/DecodedReferences.php": "a2a5814a72afe24778dc548875d0eb7ceba09078cea8b81b8c65b465eba06506",
 			"src/SemanticProfilingContext.php": "875f5808c3830f33ecd594fb2b996857076812314fd531a55045867ebd287abf",
 			"tools/simplifyNative.py": "4202aca9ee4c239e1c14acf7997aab1cc1025c9f2acbbda6cb48fbe7b60cd2f3",
 			"tools/nativeOptimizations.py": "ef12578bbcb4eb952c193cc57c969c1026f5ee36321d69591fa3013d214d880e",

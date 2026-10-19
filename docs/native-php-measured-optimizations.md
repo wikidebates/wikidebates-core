@@ -3,6 +3,8 @@
 Référence : `aca0e6de7f20e17ed650590ca7a20803740b388e`.
 Cette phase mesure six pistes ; les gains des phases précédentes ne lui sont pas attribués.
 
+**État actuel : le plafond du cache des références a été retiré après cette campagne.** Les tableaux ci-dessous conservent les mesures de `05d5483`, où le plafond était encore actif. Les trois autres optimisations sont conservées. Voir la [décision et la validation du retrait](native-php-reference-cache.md).
+
 ## Décisions
 
 | Piste | Décision | Motif |
@@ -11,7 +13,7 @@ Cette phase mesure six pistes ; les gains des phases précédentes ne lui sont p
 | Vues natives d’arguments et d’introductions | Différée | Les prototypes isolés décodent plus vite, mais les consommateurs actuels exposent des `Table` partagées et des méthodes protégées surchargeables. Le retour aux objets est mesuré séparément : son surcoût annule le bénéfice du prototype. Aucune nouvelle API de records n’est activée sur les pages. |
 | Fragments HTML locaux | Retenue | Accumulateurs natifs dans les sous-sections d’introduction, les éléments des listes d’arguments et les enveloppes de bibliographie/webliographie/vidéographie. Catégories, objets partagés et appels avec effets restent en place. |
 | Normalisation des titres de cartes | Retenue | Opérations textuelles PHP, mêmes expressions régulières et même ordre de décodage des entités. Cache limité à 200 titres de 1 024 octets au maximum, remis à zéro à chaque rendu ; les titres simples ne sont pas mis en cache. Les appels MediaWiki qui enregistrent les dépendances restent exécutés. |
-| Mémoire des références décodées | Retenue avec compromis | Admission native plafonnée à 64 listes, 512 blocs, 2 048 cases de listes et 1 Mio de charge conservatrice de chaînes. Au-delà, les données sont toujours décodées et rendues. Aucun élément n’est tronqué. Les anciens objets partagés conservent leur identité et ne sont pas évincés. |
+| Mémoire des références décodées | Retirée après évaluation | Le plafond expérimental limitait la rétention, mais imposait du redécodage aux grandes listes relues. Le cache partagé existant est rétabli ; les mesures du compromis sont conservées ci-dessous. |
 | Requêtes SMW des parents non vides | Écartée dans cette phase | Une limite globale sur une union ne reproduit pas deux limites par branche. Un contre-exemple est testé avec le véritable magasin SMW. Le formatage des valeurs et les replis historiques restent inchangés. Aucun gain supplémentaire de requêtes n’est revendiqué. |
 
 Les deux modes reçoivent ces calculs purs. `reference` reste la valeur par défaut. Hooks, traductions, paramètres et chargement unique de Wikidebates sont conservés. Aucune dépendance supplémentaire.
@@ -39,11 +41,11 @@ Les deux modes reçoivent ces calculs purs. `reference` reste la valeur par déf
 
 Les sondes utilisent **les sources exactes de la référence**, chargées sous un autre namespace, et vérifient les sorties avant de chronométrer. Les deux côtés utilisent les interfaces natives déjà présentes dans `aca0e6d`. Les prototypes de records sont explicitement séparés du code de production. Chaque sonde comporte 31 échantillons mélangés, dix opérations par échantillon et des médianes temps mural/CPU. L’échauffement du cache des titres est volontaire pour la sonde répétée ; la sonde de titres uniques recrée un moteur à chaque opération. Les rendus simulés ne constituent pas une mesure MediaWiki.
 
-La sonde de **4 000 listes de référence uniques** passe de 4736360 à 465464 octets de pic supplémentaire, soit **90,17 % de moins**. Le coût de la petite sonde et celui des grandes listes relues restent visibles dans le tableau ; ce plafond est retenu comme protection de mémoire, sans prétendre accélérer chaque entrée.
+La sonde de **4 000 listes de référence uniques** passe de 4736360 à 465464 octets de pic supplémentaire, soit **90,17 % de moins**. Le coût de la petite sonde et celui des grandes listes relues restent visibles dans le tableau ; ce compromis a finalement conduit au retrait du plafond, sans modifier ces mesures historiques.
 
-Le plafond est retenu pour borner la rétention, avec un compromis explicite : la sonde d’une liste de **4 000 références relue deux fois** est sensiblement plus lente, car elle dépasse le budget de cases et doit être redécodée. Ce scénario figure dans les résultats et ne doit pas être présenté comme une accélération.
+Pendant cette campagne, le plafond bornait la rétention, avec un compromis explicite : la sonde d’une liste de **4 000 références relue deux fois** est sensiblement plus lente, car elle dépasse le budget de cases et doit être redécodée. Ce scénario figure dans les résultats et ne doit pas être présenté comme une accélération.
 
-Le plafond des chaînes n’est pas une limite de mémoire PHP totale : les tableaux PHP, les objets de compatibilité, les arguments en cours et le résultat rendu occupent aussi de la mémoire. Les limites d’entrées et de cases bornent également les tableaux retenus par le cache natif. Les listes trop grandes doivent être redécodées à la lecture suivante ; le tableau ci-dessus chiffre ce compromis. Le cache historique des objets `Table`, utilisé par des appels de compatibilité, conserve ses identités et reste sans plafond d’éviction. Le chemin natif intégré bénéficie du plafond ; une page elle-même très volumineuse peut encore consommer beaucoup de mémoire.
+Le plafond des chaînes n’est pas une limite de mémoire PHP totale : les tableaux PHP, les objets de compatibilité, les arguments en cours et le résultat rendu occupent aussi de la mémoire. Les limites d’entrées et de cases bornent également les tableaux retenus par le cache natif. Les listes trop grandes doivent être redécodées à la lecture suivante ; le tableau ci-dessus chiffre ce compromis. Le cache historique des objets `Table`, utilisé par des appels de compatibilité, conserve ses identités et reste sans plafond d’éviction. Le plafond expérimental a depuis été retiré du chemin natif intégré ; une page volumineuse peut consommer davantage de mémoire. Le cache reste propre à un rendu.
 
 ## Rendus avec les véritables extensions
 

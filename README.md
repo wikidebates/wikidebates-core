@@ -108,8 +108,8 @@ La [suite sur les lectures natives](docs/native-php-read-optimizations.md)
 réduit les replis SMW prouvés inutiles et les allocations HTML, CSV et JSON-LD,
 avec les comparaisons fonctionnelles et les mesures par scénario.
 La [sélection mesurée des optimisations restantes](docs/native-php-measured-optimizations.md)
-présente les parcours fusionnés, les titres natifs, le plafond des références et
-les pistes différées, avec les compromis de temps et de mémoire.
+présente les parcours fusionnés, les titres natifs et les essais de cache,
+avec les compromis de temps et de mémoire. Le [plafond des références a été retiré](docs/native-php-reference-cache.md) ; le cache existant est conservé.
 
 Les oracles hors ligne nécessitent Python, `lupa` et `luaparser` :
 
