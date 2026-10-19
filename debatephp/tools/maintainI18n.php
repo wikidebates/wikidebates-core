@@ -17,7 +17,7 @@ class MaintainDebateI18n extends Maintenance {
 	public function __construct() {
 		parent::__construct();
 		$this->addOption('wiki-root', 'MediaWiki root', true, true);
-		$this->addOption('rebuild', 'Replace local PHP table after successful comparisons');
+		$this->addOption('rebuild', 'Update local JSON catalogues (or a separate legacy PHP candidate) after successful comparisons');
 		$this->addOption('source', 'Optional candidate raw data file instead of the wiki data page', false, true);
 		$this->addOption('output', 'Candidate PHP output; when set, bundled files are not updated', false, true);
 	}
@@ -114,12 +114,15 @@ class MaintainDebateI18n extends Maintenance {
 		if ($this->hasOption('rebuild')) {
 			$target = $this->getOption('output', $root . '/resources/I18nData.php');
 			if (!$this->hasOption('output')) {
+				require_once dirname($root) . '/tools/I18nCatalogImporter.php';
+				\MediaWiki\Extension\DebatePHP\Maintenance\I18nCatalogImporter::write(dirname($root), $candidate['compiled']);
 				I18nCompiler::writeAtomically($root . '/resources/WD-I18N-Data.snapshot.lua', $source);
+			} else {
+				I18nCompiler::writeAtomically($target, $candidate['php']);
 			}
-			I18nCompiler::writeAtomically($target, $candidate['php']);
 			$this->output($this->hasOption('output')
 				? "Candidate PHP table written after validation; bundled files and wiki pages not modified.\n"
-				: "PHP table and test snapshot rebuilt after validation. Follow the site's OPcache reload and page-cache invalidation procedure.\n");
+				: "JSON catalogues and test snapshot rebuilt after validation; compatibility entry point retained. Review changes and invalidate localisation/page caches when publishing.\n");
 		} else {
 			$installed = require $root . '/resources/I18nData.php';
 			if ($installed !== $candidate['compiled']) { throw new RuntimeException('PHP table is out of sync; run again with --rebuild.'); }

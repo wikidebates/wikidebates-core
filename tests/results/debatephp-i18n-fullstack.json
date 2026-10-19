@@ -1,0 +1,554 @@
+{
+	"tested_at_utc": "2026-10-19T07:25:33+00:00",
+	"php": "8.2.32",
+	"sqlite": "3.46.1",
+	"mediawiki": "1.43.11",
+	"extensions": {
+		"Scribunto": null,
+		"ParserFunctions": "1.6.1",
+		"Cite": null,
+		"SemanticMediaWiki": "6.0.1",
+		"SemanticScribunto": "2.3.3",
+		"Variables": "2.6.0-beta",
+		"VariablesLua": "1.7.0",
+		"PageForms": "5.8.1",
+		"ShortDescription": "4.0.2",
+		"WikiSEO": "2.7.0",
+		"Wikidebates": "1.0.0"
+	},
+	"smw": "6.0.1",
+	"semantic_scribunto": "2.3.3",
+	"baseline_deferred_write": {
+		"pending": 3,
+		"before": [],
+		"after": [
+			[
+				2,
+				"first"
+			]
+		]
+	},
+	"writes": [
+		{
+			"mode": "lua",
+			"variant": "initial",
+			"pending": 3,
+			"pending_types": [
+				"MediaWiki\\Deferred\\AtomicSectionUpdate",
+				"MediaWiki\\Deferred\\UserEditCountUpdate",
+				"MediaWiki\\Deferred\\MWCallableUpdate"
+			],
+			"jobs": []
+		},
+		{
+			"mode": "lua",
+			"variant": "updated",
+			"pending": 3,
+			"pending_types": [
+				"MediaWiki\\Deferred\\AtomicSectionUpdate",
+				"MediaWiki\\Deferred\\UserEditCountUpdate",
+				"MediaWiki\\Deferred\\MWCallableUpdate"
+			],
+			"jobs": []
+		},
+		{
+			"mode": "lua",
+			"variant": "removed",
+			"pending": 3,
+			"pending_types": [
+				"MediaWiki\\Deferred\\AtomicSectionUpdate",
+				"MediaWiki\\Deferred\\UserEditCountUpdate",
+				"MediaWiki\\Deferred\\MWCallableUpdate"
+			],
+			"jobs": []
+		},
+		{
+			"mode": "reference",
+			"variant": "initial",
+			"pending": 3,
+			"pending_types": [
+				"MediaWiki\\Deferred\\AtomicSectionUpdate",
+				"MediaWiki\\Deferred\\UserEditCountUpdate",
+				"MediaWiki\\Deferred\\MWCallableUpdate"
+			],
+			"jobs": []
+		},
+		{
+			"mode": "reference",
+			"variant": "updated",
+			"pending": 3,
+			"pending_types": [
+				"MediaWiki\\Deferred\\AtomicSectionUpdate",
+				"MediaWiki\\Deferred\\UserEditCountUpdate",
+				"MediaWiki\\Deferred\\MWCallableUpdate"
+			],
+			"jobs": []
+		},
+		{
+			"mode": "reference",
+			"variant": "removed",
+			"pending": 3,
+			"pending_types": [
+				"MediaWiki\\Deferred\\AtomicSectionUpdate",
+				"MediaWiki\\Deferred\\UserEditCountUpdate",
+				"MediaWiki\\Deferred\\MWCallableUpdate"
+			],
+			"jobs": []
+		},
+		{
+			"mode": "optimized",
+			"variant": "initial",
+			"pending": 3,
+			"pending_types": [
+				"MediaWiki\\Deferred\\AtomicSectionUpdate",
+				"MediaWiki\\Deferred\\UserEditCountUpdate",
+				"MediaWiki\\Deferred\\MWCallableUpdate"
+			],
+			"jobs": []
+		},
+		{
+			"mode": "optimized",
+			"variant": "updated",
+			"pending": 4,
+			"pending_types": [
+				"MediaWiki\\Deferred\\AtomicSectionUpdate",
+				"MediaWiki\\Deferred\\MWCallableUpdate",
+				"MediaWiki\\Deferred\\UserEditCountUpdate",
+				"MediaWiki\\Deferred\\MWCallableUpdate"
+			],
+			"jobs": []
+		},
+		{
+			"mode": "optimized",
+			"variant": "removed",
+			"pending": 3,
+			"pending_types": [
+				"MediaWiki\\Deferred\\AtomicSectionUpdate",
+				"MediaWiki\\Deferred\\UserEditCountUpdate",
+				"MediaWiki\\Deferred\\MWCallableUpdate"
+			],
+			"jobs": []
+		}
+	],
+	"semantic_persistence": {
+		"lua": {
+			"initial": {
+				"properties": {
+					"WD_FS_Date": [
+						[
+							6,
+							"1/2026/1/1"
+						]
+					],
+					"WD_FS_Number": [
+						[
+							1,
+							"42"
+						]
+					],
+					"WD_FS_Page": [
+						[
+							9,
+							"WD_FS_target#0##"
+						]
+					],
+					"WD_FS_Text": [
+						[
+							2,
+							"0"
+						],
+						[
+							2,
+							"A|B=C & é"
+						],
+						[
+							2,
+							"first"
+						]
+					]
+				},
+				"subobjects": []
+			},
+			"updated": {
+				"properties": {
+					"WD_FS_Date": [
+						[
+							6,
+							"1/2026/2/2"
+						]
+					],
+					"WD_FS_Number": [
+						[
+							1,
+							"0"
+						]
+					],
+					"WD_FS_Page": [
+						[
+							9,
+							"WD_FS_replacement#0##"
+						]
+					],
+					"WD_FS_Text": [
+						[
+							2,
+							"updated"
+						]
+					]
+				},
+				"subobjects": []
+			},
+			"removed": {
+				"properties": [],
+				"subobjects": []
+			}
+		},
+		"reference": {
+			"initial": {
+				"properties": {
+					"WD_FS_Date": [
+						[
+							6,
+							"1/2026/1/1"
+						]
+					],
+					"WD_FS_Number": [
+						[
+							1,
+							"42"
+						]
+					],
+					"WD_FS_Page": [
+						[
+							9,
+							"WD_FS_target#0##"
+						]
+					],
+					"WD_FS_Text": [
+						[
+							2,
+							"0"
+						],
+						[
+							2,
+							"A|B=C & é"
+						],
+						[
+							2,
+							"first"
+						]
+					]
+				},
+				"subobjects": []
+			},
+			"updated": {
+				"properties": {
+					"WD_FS_Date": [
+						[
+							6,
+							"1/2026/2/2"
+						]
+					],
+					"WD_FS_Number": [
+						[
+							1,
+							"0"
+						]
+					],
+					"WD_FS_Page": [
+						[
+							9,
+							"WD_FS_replacement#0##"
+						]
+					],
+					"WD_FS_Text": [
+						[
+							2,
+							"updated"
+						]
+					]
+				},
+				"subobjects": []
+			},
+			"removed": {
+				"properties": [],
+				"subobjects": []
+			}
+		},
+		"optimized": {
+			"initial": {
+				"properties": {
+					"WD_FS_Date": [
+						[
+							6,
+							"1/2026/1/1"
+						]
+					],
+					"WD_FS_Number": [
+						[
+							1,
+							"42"
+						]
+					],
+					"WD_FS_Page": [
+						[
+							9,
+							"WD_FS_target#0##"
+						]
+					],
+					"WD_FS_Text": [
+						[
+							2,
+							"0"
+						],
+						[
+							2,
+							"A|B=C & é"
+						],
+						[
+							2,
+							"first"
+						]
+					]
+				},
+				"subobjects": []
+			},
+			"updated": {
+				"properties": {
+					"WD_FS_Date": [
+						[
+							6,
+							"1/2026/2/2"
+						]
+					],
+					"WD_FS_Number": [
+						[
+							1,
+							"0"
+						]
+					],
+					"WD_FS_Page": [
+						[
+							9,
+							"WD_FS_replacement#0##"
+						]
+					],
+					"WD_FS_Text": [
+						[
+							2,
+							"updated"
+						]
+					]
+				},
+				"subobjects": []
+			},
+			"removed": {
+				"properties": [],
+				"subobjects": []
+			}
+		}
+	},
+	"query": [
+		{
+			"number": 0,
+			"text": "updated",
+			"page": "[[:WD FS query target|WD FS query target]]",
+			"target": "[[:WD FS replacement|WD FS replacement]]"
+		}
+	],
+	"semantic_update_jobs": {
+		"smw.update": 1
+	},
+	"variables": {
+		"lua_to_php": [
+			"Lua → PHP",
+			"0"
+		],
+		"php_to_lua": "Lua → PHP/0PHP → Lua",
+		"fresh_parser": "MISSING"
+	},
+	"skipped_argument_cases": [
+		{
+			"name": "extensions-absent",
+			"reason": "Extension absence is covered by tests/mediawiki.php; this run requires the real extensions"
+		},
+		{
+			"name": "quotes-no-variables",
+			"reason": "Extension absence is covered by tests/mediawiki.php; this run requires the real extensions"
+		},
+		{
+			"name": "title-[[Titre|libellé]]",
+			"reason": "Invalid MediaWiki title; covered by the standalone boundary tests"
+		}
+	],
+	"persisted_render_variants": 18,
+	"template_edit": {
+		"lua": {
+			"before": [
+				116,
+				166
+			],
+			"after": [
+				116,
+				167
+			]
+		},
+		"reference": {
+			"before": [
+				116,
+				166
+			],
+			"after": [
+				116,
+				167
+			]
+		},
+		"optimized": {
+			"before": [
+				116,
+				166
+			],
+			"after": [
+				116,
+				167
+			]
+		}
+	},
+	"parse_timings_ms": {
+		"debate": {
+			"reference": [
+				60.332913,
+				96.424371,
+				99.377638,
+				124.669597,
+				62.246687,
+				92.148846,
+				69.769124,
+				68.229211,
+				66.365397
+			],
+			"optimized": [
+				90.821505,
+				104.075584,
+				109.773876,
+				78.844301,
+				94.724939,
+				121.745779,
+				106.980385,
+				108.090297,
+				105.999168
+			],
+			"lua": [
+				284.139519,
+				284.03274,
+				271.646824,
+				262.218806,
+				303.099261,
+				279.508338,
+				301.180914,
+				336.886115,
+				324.915234
+			]
+		},
+		"argument": {
+			"optimized": [
+				66.792003,
+				23.41426,
+				22.005746,
+				24.814101,
+				24.176064,
+				21.019102,
+				21.423024,
+				23.781687,
+				23.92895
+			],
+			"lua": [
+				79.405262,
+				78.565469,
+				132.532203,
+				78.916902,
+				74.682938,
+				118.389508,
+				68.943803,
+				70.193957,
+				72.254318
+			],
+			"reference": [
+				24.075061,
+				22.009543,
+				21.588645,
+				31.042797,
+				22.685056,
+				29.204001,
+				21.35403,
+				23.861048,
+				24.324208
+			]
+		}
+	},
+	"queues_empty": true,
+	"render_cases": 134,
+	"automatic_parent_link": {
+		"child_inserted": true,
+		"semantic_value": [
+			[
+				9,
+				"WD_FS_auto_child#0##"
+			]
+		]
+	},
+	"recent_contributions": {
+		"semantic_child_found": true,
+		"related_argument_found": true
+	},
+	"render_comparison": {
+		"cases": 134,
+		"comparisons": 268,
+		"passed": true,
+		"failures": [],
+		"jsonld_encoding_corrections": 116,
+		"comparison": "Visible output and metadata unchanged except removal of obsolete Lua source dependencies; JSON nodes checked against Lua after reproducing its old escaping on the new raw values"
+	},
+	"timing_summary_ms": {
+		"debate": {
+			"reference": {
+				"samples": 9,
+				"median": 69.769124,
+				"min": 60.332913,
+				"max": 124.669597
+			},
+			"optimized": {
+				"samples": 9,
+				"median": 105.999168,
+				"min": 78.844301,
+				"max": 121.745779
+			},
+			"lua": {
+				"samples": 9,
+				"median": 284.139519,
+				"min": 262.218806,
+				"max": 336.886115
+			}
+		},
+		"argument": {
+			"optimized": {
+				"samples": 9,
+				"median": 23.781687,
+				"min": 21.019102,
+				"max": 66.792003
+			},
+			"lua": {
+				"samples": 9,
+				"median": 78.565469,
+				"min": 68.943803,
+				"max": 132.532203
+			},
+			"reference": {
+				"samples": 9,
+				"median": 23.861048,
+				"min": 21.35403,
+				"max": 31.042797
+			}
+		}
+	}
+}

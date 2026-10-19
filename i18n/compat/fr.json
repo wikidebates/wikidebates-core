@@ -1,0 +1,37 @@
+{
+	"@metadata": {
+		"authors": [
+			"Wikidébats"
+		]
+	},
+	"wk-reading-form-name": "Nouvel_argument",
+	"wk-menu-about-url": "/wiki/Wikid%C3%A9bats:%C3%80_propos",
+	"wk-menu-contact-url": "/wiki/Sp%C3%A9cial:Contact",
+	"wk-menu-random-category": "Débats",
+	"wk-menu-all-debates-page": "Portail:Débats",
+	"wk-menu-contributions-url": "/wiki/Portail:Contributions",
+	"wk-menu-bistro-url": "/wiki/Wikid%C3%A9bats:Bistro",
+	"wk-tpl-more-content": "Contenu supplémentaire",
+	"wk-tpl-hover-map": "Survol de carte des arguments",
+	"wk-tpl-hover-wikipedia": "Survol de lien Wikipédia",
+	"wk-tpl-latest-changes": "Dernières contributions",
+	"wk-param-argument": "argument",
+	"wk-param-type": "type",
+	"wk-param-level": "niveau",
+	"wk-param-root": "racine",
+	"wk-param-path": "chemin",
+	"wk-param-warnings": "avertissements",
+	"wk-param-page": "page",
+	"wk-param-display-title": "titre-affiché",
+	"wk-form-user-page": "Page d'utilisateur",
+	"wk-form-summary": "Résumé",
+	"wk-form-citations": "Citations",
+	"wk-form-references": "Références",
+	"wikidebates-recent-changes-parent-property": "Débat parent",
+	"wikidebates-recent-changes-breadcrumb-property": "Fil d'Ariane",
+	"wk-summary-reorg-debates": "Réorganisation des débats",
+	"wk-summary-rename-debate": "Renommage du débat : « $1 »",
+	"wk-summary-delete-debate": "Suppression du débat : « $1 »",
+	"wk-summary-add-debate": "Ajout du débat : « $1 »",
+	"wk-summary-debate-detail-add": "Ajout du débat détaillé : $1"
+}

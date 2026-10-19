@@ -38,7 +38,7 @@ function wikidebatesTestConfig($settings): void {
 		'MainCacheType' => CACHE_NONE,
 		'MessageCacheType' => CACHE_NONE,
 		'ParserCacheType' => CACHE_NONE,
-		'UseDatabaseMessages' => false,
+		'UseDatabaseMessages' => defined('WD_I18N_TEST'),
 		'JobRunRate' => 0,
 		'ShowExceptionDetails' => true
 	]);

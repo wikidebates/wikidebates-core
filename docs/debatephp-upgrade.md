@@ -11,8 +11,11 @@ déploiement ou fusion dans `main` n’a été effectué.
 - Première intégration : `3431a8b`, sur l’import 0.6 `1ee0cfe`.
 - Imports 0.7/0.8 : `9303932`, fusionné dans la branche existante de la PR,
   `codex/integrate-debatephp-060`, sans conflit ni perte du travail antérieur.
-- Les 18 fichiers PHP de `debatephp/src/` sont identiques aux sources 0.8
-  récupérées. Les outils/tests ont été adaptés au dépôt et à son indentation.
+- Lors de l’intégration 0.8 initiale, les 18 fichiers PHP de `debatephp/src/`
+  étaient identiques à l’import. L’adaptateur i18n a ensuite été harmonisé avec
+  les messages MediaWiki ; les moteurs de rendu restent inchangés. Voir
+  [le bilan i18n](i18n-harmonization.md) et les adaptations locales consignées
+  dans `UPSTREAM.json`.
 - Les ressources et traductions 0.6, 0.7 et 0.8 sont identiques octet pour octet.
   Le fichier `qqq.json` ajouté en première intégration est conservé.
 - Les empreintes réellement intégrées sont consignées dans
@@ -48,6 +51,11 @@ Les transclusions réellement utilisées conservent leurs dépendances.
 Modifier les anciens modules ne change donc plus le rendu PHP ; les traductions
 installées doivent être mises à jour comme du code. Ce changement d’autorité
 et d’invalidation est intentionnel.
+
+L’harmonisation ultérieure utilise les JSON MediaWiki comme source des textes,
+avec un adaptateur conservant l’API DebatePHP. Les noms techniques du wiki sont
+séparés des libellés ; le tableau PHP historique devient un point d’entrée de
+compatibilité. Les snapshots Lua restent réservés aux tests.
 
 Le profilage distingue maintenant les prétraitements exécutés, leurs succès
 de cache, les succès de cache natifs et les champs littéraux. Les tentatives

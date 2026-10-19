@@ -111,9 +111,21 @@ sémantiques et outils de test ne sont jamais chargés par le manifeste.
 
 ## Traductions, outils et provenance
 
-Les traductions installées dans `debatephp/resources/I18nData.php` font autorité.
-Modifier les anciennes pages Lua n’affecte plus le rendu PHP. Les snapshots Lua
-sont conservés pour les tests et les outils hors ligne.
+Les textes affichés sont centralisés dans `i18n/en.json`, `i18n/fr.json` et
+documentés dans `i18n/qqq.json`. PHP et JavaScript utilisent les messages
+MediaWiki. Les identifiants du wiki sont séparés dans
+`resources/wiki-names.json` et restent indépendants de la langue du visiteur.
+`debatephp/resources/I18nData.php` conserve l’ancien format pour les outils et
+tests ; les snapshots Lua restent des oracles hors ligne.
+
+Voir [l’organisation et le bilan de migration i18n](docs/i18n-harmonization.md).
+
+```sh
+php tools/buildI18n.php --check
+python3 tests/checkI18n.py
+node tests/i18n.js
+MW_INSTALL_PATH=/path/to/mediawiki-1.43 php tests/mediawikiI18n.php
+```
 
 L’interface de compilation de la première intégration est conservée :
 
@@ -122,6 +134,7 @@ php tools/compileI18n.php debatephp/resources/WD-I18N-Data.snapshot.lua debateph
 ```
 
 Le compilateur amont avec remplacement atomique reste sous `debatephp/tools/`.
+S’il vise le point d’entrée actif, il met à jour les JSON sans l’écraser.
 Les générateurs des moteurs, fixtures et références utiles remplacent les
 dossiers provisoires `imports/`.
 

@@ -68,10 +68,11 @@ $telemetry = new Telemetry(false, true, [], static function(): void { throw new 
 $telemetry->problem('render', 'test');
 
 foreach (['en', 'fr'] as $language) {
-	$messagesFile = json_decode(file_get_contents(__DIR__ . '/../debatephp/i18n/' . $language . '.json'), true, 512, JSON_THROW_ON_ERROR);
+	$messagesFile = json_decode(file_get_contents(__DIR__ . '/../i18n/' . $language . '.json'), true, 512, JSON_THROW_ON_ERROR);
 	check(isset($messagesFile['htmltags-notagname'], $messagesFile['htmltags-unsupportedtag']), 'HTML Tags translations loaded');
 }
 echo "OK: $messages translation comparisons, offline snapshot checks, Lua semantics, escaping and telemetry\n";
+(static function(): void { require __DIR__ . '/i18n.php'; })();
 
 foreach (['argument_adapter.php', 'i18n_bundle.php', 'telemetry.php', 'cache_fifo.php'] as $test) {
 	$command = [PHP_BINARY];

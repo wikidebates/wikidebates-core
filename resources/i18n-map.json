@@ -1,0 +1,2086 @@
+{
+	"provenance": {
+		"sha256": "df53de1531c58f2fa581c32a773a55c211638360d71ad894198234752bb61b85",
+		"logic_sha256": "7975891b1cd0c797f7e97df1fcbbc735e3626164cb42e587be58d0b16e4f691a"
+	},
+	"entries": {
+		"Common": {
+			"labels": {
+				"edit_label": {
+					"message": "wikidebates-common-labels-edit-label"
+				},
+				"site_title_text": {
+					"message": "wikidebates-common-labels-site-title-text"
+				},
+				"arg_pro_label": {
+					"message": "wikidebates-common-labels-arg-pro-label"
+				},
+				"arg_con_label": {
+					"message": "wikidebates-common-labels-arg-con-label"
+				},
+				"justification_label": {
+					"message": "wikidebates-common-labels-justification-label"
+				},
+				"objection_label": {
+					"message": "wikidebates-common-labels-objection-label"
+				},
+				"arguments_label": {
+					"message": "wikidebates-common-labels-arguments-label"
+				},
+				"justifications_label": {
+					"message": "wikidebates-common-labels-justifications-label"
+				},
+				"objections_label": {
+					"message": "wikidebates-common-labels-objections-label"
+				},
+				"none_label": {
+					"message": "wikidebates-common-labels-none-label"
+				},
+				"debates_label": {
+					"message": "wikidebates-common-labels-debates-label"
+				},
+				"argument_map_label": {
+					"message": "wikidebates-common-labels-argument-map-label"
+				},
+				"rename_page_label": {
+					"message": "wikidebates-common-labels-rename-page-label"
+				}
+			},
+			"props": {
+				"keyword": {
+					"wiki": "Common.props.keyword"
+				},
+				"work_name": {
+					"wiki": "Common.props.work_name"
+				},
+				"publishing_house": {
+					"wiki": "Common.props.publishing_house"
+				},
+				"place_of_publication": {
+					"wiki": "Common.props.place_of_publication"
+				},
+				"author": {
+					"wiki": "Common.props.author"
+				},
+				"article_name": {
+					"wiki": "Common.props.article_name"
+				},
+				"website_name": {
+					"wiki": "Common.props.website_name"
+				}
+			},
+			"forms": {
+				"search_by_keywords_title": {
+					"wiki": "Common.forms.search_by_keywords_title"
+				}
+			},
+			"params": {
+				"keywords_field": {
+					"wiki": "Common.params.keywords_field"
+				},
+				"type_field": {
+					"wiki": "Common.params.type_field"
+				}
+			},
+			"values": {
+				"type_arguments_value": {
+					"wiki": "Common.values.type_arguments_value",
+					"legacy_alias": "@Common.labels.arguments_label"
+				}
+			},
+			"text": {
+				"keywords_label_text": {
+					"message": "wikidebates-common-text-keywords-label-text"
+				},
+				"rename_link_label": {
+					"message": "wikidebates-common-text-rename-link-label"
+				},
+				"list_conjunction_text": {
+					"message": "wikidebates-common-text-list-conjunction-text"
+				}
+			}
+		},
+		"Debate": {
+			"forms": {
+				"intro_edit_title": {
+					"wiki": "Debate.forms.intro_edit_title"
+				},
+				"wiki_seealso_edit_title": {
+					"wiki": "Debate.forms.wiki_seealso_edit_title"
+				},
+				"args_pro_edit_title": {
+					"wiki": "Debate.forms.args_pro_edit_title"
+				},
+				"args_con_edit_title": {
+					"wiki": "Debate.forms.args_con_edit_title"
+				},
+				"new_arg_title": {
+					"wiki": "Debate.forms.new_arg_title"
+				},
+				"new_arg_pro_type_label": {
+					"wiki": "Debate.forms.new_arg_pro_type_label",
+					"legacy_alias": "@Common.labels.arg_pro_label"
+				},
+				"new_arg_con_type_label": {
+					"wiki": "Debate.forms.new_arg_con_type_label",
+					"legacy_alias": "@Common.labels.arg_con_label"
+				},
+				"self_eval_home_title": {
+					"wiki": "Debate.forms.self_eval_home_title"
+				},
+				"keywords_edit_title": {
+					"wiki": "Debate.forms.keywords_edit_title"
+				},
+				"related_edit_title": {
+					"wiki": "Debate.forms.related_edit_title"
+				},
+				"topic_edit_title": {
+					"wiki": "Debate.forms.topic_edit_title",
+					"legacy_alias": "@Debate.props.debate_topic"
+				},
+				"sections_edit_title": {
+					"wiki": "Debate.forms.sections_edit_title"
+				},
+				"interlanguage_edit_title": {
+					"wiki": "Debate.forms.interlanguage_edit_title"
+				},
+				"banners_edit_title": {
+					"wiki": "Debate.forms.banners_edit_title"
+				},
+				"biblio_pro_title": {
+					"wiki": "Debate.forms.biblio_pro_title"
+				},
+				"biblio_con_title": {
+					"wiki": "Debate.forms.biblio_con_title"
+				},
+				"biblio_neutral_title": {
+					"wiki": "Debate.forms.biblio_neutral_title"
+				},
+				"webliography_pro_title": {
+					"wiki": "Debate.forms.webliography_pro_title"
+				},
+				"webliography_con_title": {
+					"wiki": "Debate.forms.webliography_con_title"
+				},
+				"webliography_neutral_title": {
+					"wiki": "Debate.forms.webliography_neutral_title"
+				},
+				"videography_pro_title": {
+					"wiki": "Debate.forms.videography_pro_title"
+				},
+				"videography_con_title": {
+					"wiki": "Debate.forms.videography_con_title"
+				},
+				"videography_neutral_title": {
+					"wiki": "Debate.forms.videography_neutral_title"
+				},
+				"search_by_keywords_title": {
+					"wiki": "Debate.forms.search_by_keywords_title",
+					"legacy_alias": "@Common.forms.search_by_keywords_title"
+				}
+			},
+			"params": {
+				"keywords_field": {
+					"wiki": "Debate.params.keywords_field",
+					"legacy_alias": "@Common.params.keywords_field"
+				},
+				"search_type_field": {
+					"wiki": "Debate.params.search_type_field",
+					"legacy_alias": "@Common.params.type_field"
+				},
+				"search_type_value": {
+					"wiki": "Debate.params.search_type_value",
+					"legacy_alias": "@Debate.categories.debates"
+				},
+				"color_field": {
+					"wiki": "Debate.params.color_field"
+				},
+				"icon_field": {
+					"wiki": "Debate.params.icon_field"
+				},
+				"title_field": {
+					"wiki": "Debate.params.title_field"
+				},
+				"text_field": {
+					"wiki": "Debate.params.text_field"
+				},
+				"content_field": {
+					"wiki": "Debate.params.content_field"
+				},
+				"page_field": {
+					"wiki": "Debate.params.page_field"
+				},
+				"authors_field": {
+					"wiki": "Debate.params.authors_field"
+				},
+				"article_field": {
+					"wiki": "Debate.params.article_field"
+				},
+				"work_field": {
+					"wiki": "Debate.params.work_field"
+				},
+				"volume_field": {
+					"wiki": "Debate.params.volume_field"
+				},
+				"number_field": {
+					"wiki": "Debate.params.number_field"
+				},
+				"location_field": {
+					"wiki": "Debate.params.location_field"
+				},
+				"publisher_field": {
+					"wiki": "Debate.params.publisher_field"
+				},
+				"place_field": {
+					"wiki": "Debate.params.place_field"
+				},
+				"date_field": {
+					"wiki": "Debate.params.date_field"
+				},
+				"link_field": {
+					"wiki": "Debate.params.link_field"
+				},
+				"warnings_field": {
+					"wiki": "Debate.params.warnings_field"
+				},
+				"site_field": {
+					"wiki": "Debate.params.site_field"
+				}
+			},
+			"progress": {
+				"draft": {
+					"message": "wikidebates-debate-progress-draft"
+				},
+				"building": {
+					"message": "wikidebates-debate-progress-building"
+				},
+				"constructed": {
+					"message": "wikidebates-debate-progress-constructed"
+				}
+			},
+			"categories": {
+				"debates": {
+					"wiki": "Debate.categories.debates",
+					"legacy_alias": "@Common.labels.debates_label"
+				},
+				"progress_missing": {
+					"wiki": "Debate.categories.progress_missing"
+				},
+				"constructed": {
+					"wiki": "Debate.categories.constructed"
+				},
+				"intro_missing": {
+					"wiki": "Debate.categories.intro_missing"
+				},
+				"wikipedia_missing": {
+					"wiki": "Debate.categories.wikipedia_missing"
+				},
+				"pro_missing": {
+					"wiki": "Debate.categories.pro_missing"
+				},
+				"con_missing": {
+					"wiki": "Debate.categories.con_missing"
+				},
+				"keywords_missing": {
+					"wiki": "Debate.categories.keywords_missing"
+				},
+				"related_missing": {
+					"wiki": "Debate.categories.related_missing"
+				},
+				"sections_missing": {
+					"wiki": "Debate.categories.sections_missing"
+				},
+				"topic_missing": {
+					"wiki": "Debate.categories.topic_missing"
+				},
+				"topic_complete_missing": {
+					"wiki": "Debate.categories.topic_complete_missing"
+				},
+				"refs_to_review": {
+					"wiki": "Debate.categories.refs_to_review"
+				},
+				"displayed_titles_to_review": {
+					"wiki": "Debate.categories.displayed_titles_to_review"
+				},
+				"creation_date_missing": {
+					"wiki": "Debate.categories.creation_date_missing"
+				}
+			},
+			"text": {
+				"warnings_title": {
+					"message": "wikidebates-debate-text-warnings-title"
+				},
+				"debate_banners_edit_tt": {
+					"message": "wikidebates-debate-text-debate-banners-edit-tt"
+				},
+				"main_banner_color": {
+					"wiki": "Debate.text.main_banner_color"
+				},
+				"main_banner_title": {
+					"message": "wikidebates-debate-text-main-banner-title"
+				},
+				"learn_more_label": {
+					"message": "wikidebates-debate-text-learn-more-label"
+				},
+				"founding_principles_link": {
+					"message": "wikidebates-debate-text-founding-principles-link"
+				},
+				"understand_debate_title": {
+					"message": "wikidebates-debate-text-understand-debate-title",
+					"legacy_alias": "@Debate.forms.intro_edit_title"
+				},
+				"edit_label": {
+					"message": "wikidebates-common-labels-edit-label",
+					"legacy_alias": "@Common.labels.edit_label"
+				},
+				"site_title_text": {
+					"message": "wikidebates-common-labels-site-title-text",
+					"legacy_alias": "@Common.labels.site_title_text"
+				},
+				"intro_edit_tt": {
+					"message": "wikidebates-debate-text-intro-edit-tt"
+				},
+				"none_intro_msg": {
+					"message": "wikidebates-debate-text-none-intro-msg"
+				},
+				"wikipedia_seealso_msg": {
+					"message": "wikidebates-debate-text-wikipedia-seealso-msg"
+				},
+				"none_wikipedia_msg": {
+					"message": "wikidebates-debate-text-none-wikipedia-msg"
+				},
+				"wikipedia_edit_tt": {
+					"message": "wikidebates-debate-text-wikipedia-edit-tt"
+				},
+				"args_pro_title": {
+					"message": "wikidebates-debate-text-args-pro-title"
+				},
+				"args_con_title": {
+					"message": "wikidebates-debate-text-args-con-title"
+				},
+				"args_pro_edit_tt": {
+					"message": "wikidebates-debate-text-args-pro-edit-tt"
+				},
+				"args_con_edit_tt": {
+					"message": "wikidebates-debate-text-args-con-edit-tt"
+				},
+				"faq_q_pro": {
+					"message": "wikidebates-debate-text-faq-q-pro"
+				},
+				"faq_q_con": {
+					"message": "wikidebates-debate-text-faq-q-con"
+				},
+				"faq_q": {
+					"message": "wikidebates-debate-text-faq-q"
+				},
+				"none_pro_args_msg": {
+					"message": "wikidebates-debate-text-none-pro-args-msg"
+				},
+				"none_con_args_msg": {
+					"message": "wikidebates-debate-text-none-con-args-msg"
+				},
+				"args_add_label": {
+					"message": "wikidebates-debate-text-args-add-label"
+				},
+				"arg_add_tt": {
+					"message": "wikidebates-debate-text-arg-add-tt"
+				},
+				"side_pro_word": {
+					"message": "wikidebates-debate-text-side-pro-word"
+				},
+				"side_con_word": {
+					"message": "wikidebates-debate-text-side-con-word"
+				},
+				"further_reading_title": {
+					"message": "wikidebates-debate-text-further-reading-title"
+				},
+				"bibliography_title": {
+					"message": "wikidebates-debate-text-bibliography-title"
+				},
+				"webliography_title": {
+					"message": "wikidebates-debate-text-webliography-title"
+				},
+				"videography_title": {
+					"message": "wikidebates-debate-text-videography-title"
+				},
+				"side_pro_title": {
+					"message": "wikidebates-debate-text-side-pro-title"
+				},
+				"side_con_title": {
+					"message": "wikidebates-debate-text-side-con-title"
+				},
+				"side_neutral_title": {
+					"message": "wikidebates-debate-text-side-neutral-title"
+				},
+				"section_edit_tt": {
+					"message": "wikidebates-debate-text-section-edit-tt"
+				},
+				"none_references_msg": {
+					"message": "wikidebates-debate-text-none-references-msg"
+				},
+				"keywords_label_text": {
+					"message": "wikidebates-common-text-keywords-label-text",
+					"legacy_alias": "@Common.text.keywords_label_text"
+				},
+				"none_label": {
+					"message": "wikidebates-common-labels-none-label",
+					"legacy_alias": "@Common.labels.none_label"
+				},
+				"search_by_keyword_tt": {
+					"message": "wikidebates-debate-text-search-by-keyword-tt"
+				},
+				"keywords_edit_tt": {
+					"message": "wikidebates-debate-text-keywords-edit-tt"
+				},
+				"related_edit_tt": {
+					"message": "wikidebates-debate-text-related-edit-tt"
+				},
+				"none_related_msg": {
+					"message": "wikidebates-debate-text-none-related-msg"
+				},
+				"self_eval_title": {
+					"message": "wikidebates-debate-text-self-eval-title"
+				},
+				"self_eval_blurb": {
+					"message": "wikidebates-debate-text-self-eval-blurb"
+				},
+				"self_eval_start_label": {
+					"message": "wikidebates-debate-text-self-eval-start-label"
+				},
+				"self_eval_start_tt": {
+					"message": "wikidebates-debate-text-self-eval-start-tt"
+				},
+				"latest_changes_title": {
+					"message": "wikidebates-debate-text-latest-changes-title"
+				},
+				"latest_changes_show_label": {
+					"message": "wikidebates-debate-text-latest-changes-show-label"
+				},
+				"latest_changes_show_tt": {
+					"message": "wikidebates-debate-text-latest-changes-show-tt"
+				},
+				"feedback_title": {
+					"message": "wikidebates-debate-text-feedback-title"
+				},
+				"shortdesc_plain": {
+					"message": "wikidebates-debate-text-shortdesc-plain"
+				},
+				"shortdesc_topic": {
+					"message": "wikidebates-debate-text-shortdesc-topic"
+				},
+				"topic_edit_tt": {
+					"message": "wikidebates-debate-text-topic-edit-tt"
+				},
+				"sections_edit_tt": {
+					"message": "wikidebates-debate-text-sections-edit-tt"
+				},
+				"interlanguage_edit_tt": {
+					"message": "wikidebates-debate-text-interlanguage-edit-tt"
+				},
+				"arg_map_pro_label": {
+					"message": "wikidebates-debate-text-arg-map-pro-label"
+				},
+				"arg_map_con_label": {
+					"message": "wikidebates-debate-text-arg-map-con-label"
+				},
+				"none_pro_args_msg_short": {
+					"message": "wikidebates-debate-text-none-pro-args-msg-short"
+				},
+				"none_con_args_msg_short": {
+					"message": "wikidebates-debate-text-none-con-args-msg-short"
+				},
+				"rename_link_label": {
+					"message": "wikidebates-common-text-rename-link-label",
+					"legacy_alias": "@Common.text.rename_link_label"
+				},
+				"rename_special_page_text": {
+					"message": "wikidebates-debate-text-rename-special-page-text"
+				},
+				"self_eval_ns_label": {
+					"message": "wikidebates-debate-text-self-eval-ns-label"
+				},
+				"self_eval_debate_field": {
+					"message": "wikidebates-debate-text-self-eval-debate-field"
+				},
+				"unknown_author": {
+					"message": "wikidebates-debate-text-unknown-author"
+				},
+				"default_subsection_title": {
+					"message": "wikidebates-debate-text-default-subsection-title"
+				},
+				"intro_empty_msg": {
+					"message": "wikidebates-debate-text-intro-empty-msg"
+				},
+				"intro_empty_link_label": {
+					"message": "wikidebates-debate-text-intro-empty-link-label"
+				},
+				"intro_empty_category": {
+					"wiki": "Debate.text.intro_empty_category"
+				}
+			},
+			"urls": {
+				"wikipedia": {
+					"wiki": "Debate.urls.wikipedia"
+				},
+				"home": {
+					"wiki": "Debate.urls.home"
+				},
+				"home_label": {
+					"wiki": "Debate.urls.home_label"
+				},
+				"wiki_base": {
+					"wiki": "Debate.urls.wiki_base"
+				},
+				"discussion_prefix": {
+					"wiki": "Debate.urls.discussion_prefix"
+				},
+				"category_prefix": {
+					"wiki": "Debate.urls.category_prefix"
+				},
+				"portal_prefix": {
+					"wiki": "Debate.urls.portal_prefix"
+				},
+				"property_prefix": {
+					"wiki": "Debate.urls.property_prefix"
+				},
+				"debates_label": {
+					"wiki": "Debate.urls.debates_label"
+				},
+				"sections_label": {
+					"wiki": "Debate.urls.sections_label"
+				},
+				"pro_label": {
+					"wiki": "Debate.urls.pro_label"
+				},
+				"con_label": {
+					"wiki": "Debate.urls.con_label"
+				}
+			},
+			"seo": {
+				"title_separator": {
+					"message": "wikidebates-debate-seo-title-separator"
+				},
+				"description": {
+					"message": "wikidebates-debate-seo-description"
+				},
+				"image": {
+					"message": "wikidebates-debate-seo-image"
+				},
+				"image_alt": {
+					"message": "wikidebates-debate-seo-image-alt"
+				},
+				"section": {
+					"message": "wikidebates-debate-seo-section"
+				},
+				"site_name": {
+					"message": "wikidebates-debate-seo-site-name"
+				},
+				"twitter_site": {
+					"message": "wikidebates-debate-seo-twitter-site"
+				},
+				"locale": {
+					"message": "wikidebates-debate-seo-locale"
+				},
+				"author": {
+					"message": "wikidebates-debate-seo-author"
+				}
+			},
+			"props": {
+				"debate_name": {
+					"wiki": "Debate.props.debate_name"
+				},
+				"debate_number": {
+					"wiki": "Debate.props.debate_number"
+				},
+				"parent_debate": {
+					"wiki": "Debate.props.parent_debate"
+				},
+				"breadcrumb": {
+					"wiki": "Debate.props.breadcrumb"
+				},
+				"keyword": {
+					"wiki": "Debate.props.keyword",
+					"legacy_alias": "@Common.props.keyword"
+				},
+				"arg_map": {
+					"wiki": "Debate.props.arg_map",
+					"legacy_alias": "@Common.labels.argument_map_label"
+				},
+				"debate_topic": {
+					"wiki": "Debate.props.debate_topic"
+				},
+				"pro_list": {
+					"wiki": "Debate.props.pro_list"
+				},
+				"con_list": {
+					"wiki": "Debate.props.con_list"
+				},
+				"arg_pro": {
+					"wiki": "Debate.props.arg_pro",
+					"legacy_alias": "@Common.labels.arg_pro_label"
+				},
+				"arg_con": {
+					"wiki": "Debate.props.arg_con",
+					"legacy_alias": "@Common.labels.arg_con_label"
+				},
+				"article_name": {
+					"wiki": "Debate.props.article_name",
+					"legacy_alias": "@Common.props.article_name"
+				},
+				"work_name": {
+					"wiki": "Debate.props.work_name",
+					"legacy_alias": "@Common.props.work_name"
+				},
+				"publishing_house": {
+					"wiki": "Debate.props.publishing_house",
+					"legacy_alias": "@Common.props.publishing_house"
+				},
+				"place_of_publication": {
+					"wiki": "Debate.props.place_of_publication",
+					"legacy_alias": "@Common.props.place_of_publication"
+				},
+				"author": {
+					"wiki": "Debate.props.author",
+					"legacy_alias": "@Common.props.author"
+				},
+				"author_pro": {
+					"wiki": "Debate.props.author_pro"
+				},
+				"author_con": {
+					"wiki": "Debate.props.author_con"
+				},
+				"website_name": {
+					"wiki": "Debate.props.website_name",
+					"legacy_alias": "@Common.props.website_name"
+				}
+			},
+			"banners": {
+				"progress_under_construction_label": {
+					"message": "wikidebates-debate-progress-building",
+					"legacy_alias": "@Debate.progress.building"
+				},
+				"progress_under_construction_color": {
+					"wiki": "Debate.banners.progress_under_construction_color"
+				},
+				"progress_under_construction_icon": {
+					"wiki": "Debate.banners.progress_under_construction_icon"
+				},
+				"progress_under_construction_title": {
+					"message": "wikidebates-debate-banners-progress-under-construction-title"
+				},
+				"progress_under_construction_text": {
+					"message": "wikidebates-debate-banners-progress-under-construction-text"
+				},
+				"progress_under_construction_category": {
+					"wiki": "Debate.banners.progress_under_construction_category"
+				},
+				"progress_draft_label": {
+					"message": "wikidebates-debate-banners-progress-draft-label"
+				},
+				"progress_draft_color": {
+					"wiki": "Debate.banners.progress_draft_color"
+				},
+				"progress_draft_icon": {
+					"wiki": "Debate.banners.progress_draft_icon"
+				},
+				"progress_draft_title": {
+					"message": "wikidebates-debate-banners-progress-draft-title"
+				},
+				"progress_draft_text": {
+					"message": "wikidebates-debate-banners-progress-draft-text"
+				},
+				"progress_draft_category": {
+					"wiki": "Debate.banners.progress_draft_category"
+				},
+				"title_non_standard_label": {
+					"message": "wikidebates-debate-banners-title-non-standard-label"
+				},
+				"title_non_standard_color": {
+					"wiki": "Debate.banners.title_non_standard_color"
+				},
+				"title_non_standard_icon": {
+					"wiki": "Debate.banners.title_non_standard_icon"
+				},
+				"title_non_standard_title": {
+					"message": "wikidebates-debate-banners-title-non-standard-title"
+				},
+				"title_non_standard_text": {
+					"message": "wikidebates-debate-banners-title-non-standard-text"
+				},
+				"title_non_standard_category": {
+					"wiki": "Debate.banners.title_non_standard_category"
+				},
+				"title_to_explain_label": {
+					"message": "wikidebates-debate-banners-title-to-explain-label"
+				},
+				"title_to_explain_color": {
+					"wiki": "Debate.banners.title_to_explain_color"
+				},
+				"title_to_explain_icon": {
+					"wiki": "Debate.banners.title_to_explain_icon"
+				},
+				"title_to_explain_title": {
+					"message": "wikidebates-debate-banners-title-to-explain-title"
+				},
+				"title_to_explain_text": {
+					"message": "wikidebates-debate-banners-title-to-explain-text"
+				},
+				"title_to_explain_category": {
+					"wiki": "Debate.banners.title_to_explain_category"
+				},
+				"title_to_simplify_label": {
+					"message": "wikidebates-debate-banners-title-to-simplify-label"
+				},
+				"title_to_simplify_color": {
+					"wiki": "Debate.banners.title_to_simplify_color"
+				},
+				"title_to_simplify_icon": {
+					"wiki": "Debate.banners.title_to_simplify_icon"
+				},
+				"title_to_simplify_title": {
+					"message": "wikidebates-debate-banners-title-to-simplify-title"
+				},
+				"title_to_simplify_text": {
+					"message": "wikidebates-debate-banners-title-to-simplify-text"
+				},
+				"title_to_simplify_category": {
+					"wiki": "Debate.banners.title_to_simplify_category"
+				},
+				"debate_unbalanced_label": {
+					"message": "wikidebates-debate-banners-debate-unbalanced-label"
+				},
+				"debate_unbalanced_color": {
+					"wiki": "Debate.banners.debate_unbalanced_color"
+				},
+				"debate_unbalanced_icon": {
+					"wiki": "Debate.banners.debate_unbalanced_icon"
+				},
+				"debate_unbalanced_title": {
+					"message": "wikidebates-debate-banners-debate-unbalanced-title"
+				},
+				"debate_unbalanced_text": {
+					"message": "wikidebates-debate-banners-debate-unbalanced-text"
+				},
+				"debate_unbalanced_category": {
+					"wiki": "Debate.banners.debate_unbalanced_category"
+				},
+				"debate_redundant_label": {
+					"message": "wikidebates-debate-banners-debate-redundant-label"
+				},
+				"debate_redundant_color": {
+					"wiki": "Debate.banners.debate_redundant_color"
+				},
+				"debate_redundant_icon": {
+					"wiki": "Debate.banners.debate_redundant_icon"
+				},
+				"debate_redundant_title": {
+					"message": "wikidebates-debate-banners-debate-redundant-title"
+				},
+				"debate_redundant_text": {
+					"message": "wikidebates-debate-banners-debate-redundant-text"
+				},
+				"debate_redundant_category": {
+					"wiki": "Debate.banners.debate_redundant_category"
+				},
+				"debate_fanciful_label": {
+					"message": "wikidebates-debate-banners-debate-fanciful-label"
+				},
+				"debate_fanciful_color": {
+					"wiki": "Debate.banners.debate_fanciful_color"
+				},
+				"debate_fanciful_icon": {
+					"wiki": "Debate.banners.debate_fanciful_icon"
+				},
+				"debate_fanciful_title": {
+					"message": "wikidebates-debate-banners-debate-fanciful-title"
+				},
+				"debate_fanciful_text": {
+					"message": "wikidebates-debate-banners-debate-fanciful-text"
+				},
+				"debate_fanciful_category": {
+					"wiki": "Debate.banners.debate_fanciful_category"
+				},
+				"debate_sensitive_label": {
+					"message": "wikidebates-debate-banners-debate-sensitive-label"
+				},
+				"debate_sensitive_color": {
+					"wiki": "Debate.banners.debate_sensitive_color"
+				},
+				"debate_sensitive_icon": {
+					"wiki": "Debate.banners.debate_sensitive_icon"
+				},
+				"debate_sensitive_title": {
+					"message": "wikidebates-debate-banners-debate-sensitive-title"
+				},
+				"debate_sensitive_text": {
+					"message": "wikidebates-debate-banners-debate-sensitive-text"
+				},
+				"debate_sensitive_category": {
+					"wiki": "Debate.banners.debate_sensitive_category"
+				},
+				"outline_to_improve_label": {
+					"message": "wikidebates-debate-banners-outline-to-improve-label"
+				},
+				"outline_to_improve_color": {
+					"wiki": "Debate.banners.outline_to_improve_color"
+				},
+				"outline_to_improve_icon": {
+					"wiki": "Debate.banners.outline_to_improve_icon"
+				},
+				"outline_to_improve_title": {
+					"message": "wikidebates-debate-banners-outline-to-improve-title"
+				},
+				"outline_to_improve_text": {
+					"message": "wikidebates-debate-banners-outline-to-improve-text"
+				},
+				"outline_to_improve_category": {
+					"wiki": "Debate.banners.outline_to_improve_category"
+				},
+				"debate_generated_by_ai_label": {
+					"message": "wikidebates-debate-banners-debate-generated-by-ai-label"
+				},
+				"debate_generated_by_ai_color": {
+					"wiki": "Debate.banners.debate_generated_by_ai_color"
+				},
+				"debate_generated_by_ai_icon": {
+					"wiki": "Debate.banners.debate_generated_by_ai_icon"
+				},
+				"debate_generated_by_ai_title": {
+					"message": "wikidebates-debate-banners-debate-generated-by-ai-title"
+				},
+				"debate_generated_by_ai_text": {
+					"message": "wikidebates-debate-banners-debate-generated-by-ai-text"
+				},
+				"debate_generated_by_ai_category": {
+					"wiki": "Debate.banners.debate_generated_by_ai_category"
+				}
+			},
+			"subsections": {
+				"intro_subbanner_too_long_label": {
+					"message": "wikidebates-debate-subsections-intro-subbanner-too-long-label"
+				},
+				"intro_subbanner_to_develop_label": {
+					"message": "wikidebates-debate-subsections-intro-subbanner-to-develop-label"
+				},
+				"intro_subbanner_unclear_label": {
+					"message": "wikidebates-debate-subsections-intro-subbanner-unclear-label"
+				},
+				"intro_subbanner_biased_label": {
+					"message": "wikidebates-debate-subsections-intro-subbanner-biased-label"
+				},
+				"intro_subbanner_refs_missing_label": {
+					"message": "wikidebates-debate-subsections-intro-subbanner-refs-missing-label"
+				},
+				"intro_subbanner_style_to_review_label": {
+					"message": "wikidebates-debate-subsections-intro-subbanner-style-to-review-label"
+				},
+				"intro_subbanner_unclear_title": {
+					"message": "wikidebates-debate-subsections-intro-subbanner-unclear-title"
+				},
+				"intro_subbanner_unclear_text": {
+					"message": "wikidebates-debate-subsections-intro-subbanner-unclear-text"
+				},
+				"intro_subbanner_unclear_category": {
+					"wiki": "Debate.subsections.intro_subbanner_unclear_category"
+				},
+				"intro_subbanner_biased_title": {
+					"message": "wikidebates-debate-subsections-intro-subbanner-biased-title"
+				},
+				"intro_subbanner_biased_text": {
+					"message": "wikidebates-debate-subsections-intro-subbanner-biased-text"
+				},
+				"intro_subbanner_biased_category": {
+					"wiki": "Debate.subsections.intro_subbanner_biased_category"
+				},
+				"intro_subbanner_to_develop_title": {
+					"message": "wikidebates-debate-subsections-intro-subbanner-to-develop-title"
+				},
+				"intro_subbanner_to_develop_text": {
+					"message": "wikidebates-debate-subsections-intro-subbanner-to-develop-text"
+				},
+				"intro_subbanner_to_develop_category": {
+					"wiki": "Debate.subsections.intro_subbanner_to_develop_category"
+				},
+				"intro_subbanner_too_long_title": {
+					"message": "wikidebates-debate-subsections-intro-subbanner-too-long-title"
+				},
+				"intro_subbanner_too_long_text": {
+					"message": "wikidebates-debate-subsections-intro-subbanner-too-long-text"
+				},
+				"intro_subbanner_too_long_category": {
+					"wiki": "Debate.subsections.intro_subbanner_too_long_category"
+				},
+				"intro_subbanner_refs_missing_title": {
+					"message": "wikidebates-debate-subsections-intro-subbanner-refs-missing-title"
+				},
+				"intro_subbanner_refs_missing_text": {
+					"message": "wikidebates-debate-subsections-intro-subbanner-refs-missing-text"
+				},
+				"intro_subbanner_refs_missing_category": {
+					"wiki": "Debate.subsections.intro_subbanner_refs_missing_category"
+				},
+				"intro_subbanner_style_to_review_title": {
+					"message": "wikidebates-debate-subsections-intro-subbanner-style-to-review-title"
+				},
+				"intro_subbanner_style_to_review_text": {
+					"message": "wikidebates-debate-subsections-intro-subbanner-style-to-review-text"
+				},
+				"intro_subbanner_style_to_review_category": {
+					"wiki": "Debate.subsections.intro_subbanner_style_to_review_category"
+				},
+				"dead_link_label": {
+					"message": "wikidebates-debate-subsections-dead-link-label"
+				},
+				"dead_link_title": {
+					"message": "wikidebates-debate-subsections-dead-link-label",
+					"legacy_alias": "@Debate.subsections.dead_link_label"
+				},
+				"dead_link_text": {
+					"message": "wikidebates-debate-subsections-dead-link-text"
+				},
+				"dead_link_category": {
+					"wiki": "Debate.subsections.dead_link_category"
+				},
+				"reference_quality_insufficient_label": {
+					"message": "wikidebates-debate-subsections-reference-quality-insufficient-label"
+				},
+				"reference_quality_insufficient_title": {
+					"message": "wikidebates-debate-subsections-reference-quality-insufficient-label",
+					"legacy_alias": "@Debate.subsections.reference_quality_insufficient_label"
+				},
+				"reference_quality_insufficient_text": {
+					"message": "wikidebates-debate-subsections-reference-quality-insufficient-text"
+				},
+				"reference_quality_insufficient_category": {
+					"wiki": "Debate.subsections.reference_quality_insufficient_category"
+				},
+				"reference_incomplete_label": {
+					"message": "wikidebates-debate-subsections-reference-incomplete-label"
+				},
+				"reference_incomplete_title": {
+					"message": "wikidebates-debate-subsections-reference-incomplete-label",
+					"legacy_alias": "@Debate.subsections.reference_incomplete_label"
+				},
+				"reference_incomplete_text": {
+					"message": "wikidebates-debate-subsections-reference-incomplete-text"
+				},
+				"reference_incomplete_category": {
+					"wiki": "Debate.subsections.reference_incomplete_category"
+				},
+				"displayed_title_too_long_label": {
+					"message": "wikidebates-debate-subsections-displayed-title-too-long-label"
+				},
+				"displayed_title_too_long_title": {
+					"message": "wikidebates-debate-subsections-displayed-title-too-long-title"
+				},
+				"displayed_title_too_long_text": {
+					"message": "wikidebates-debate-subsections-displayed-title-too-long-text"
+				},
+				"displayed_title_unclear_label": {
+					"message": "wikidebates-debate-subsections-displayed-title-unclear-label"
+				},
+				"displayed_title_unclear_title": {
+					"message": "wikidebates-debate-subsections-displayed-title-unclear-title"
+				},
+				"displayed_title_unclear_text": {
+					"message": "wikidebates-debate-subsections-displayed-title-unclear-text"
+				},
+				"displayed_title_disadvantageous_label": {
+					"message": "wikidebates-debate-subsections-displayed-title-disadvantageous-label"
+				},
+				"displayed_title_disadvantageous_title": {
+					"message": "wikidebates-debate-subsections-displayed-title-disadvantageous-title"
+				},
+				"displayed_title_disadvantageous_text": {
+					"message": "wikidebates-debate-subsections-displayed-title-disadvantageous-text"
+				}
+			}
+		},
+		"Argument": {
+			"files": {
+				"reorganize_banner_icon": {
+					"wiki": "Argument.files.reorganize_banner_icon"
+				},
+				"title_review_icon": {
+					"wiki": "Argument.files.title_review_icon"
+				},
+				"title_review_color": {
+					"wiki": "Argument.files.title_review_color"
+				}
+			},
+			"forms": {
+				"arg_pro": {
+					"wiki": "Argument.forms.arg_pro",
+					"legacy_alias": "@Common.labels.arg_pro_label"
+				},
+				"arg_con": {
+					"wiki": "Argument.forms.arg_con",
+					"legacy_alias": "@Common.labels.arg_con_label"
+				},
+				"justifications": {
+					"wiki": "Argument.forms.justifications",
+					"legacy_alias": "@Common.labels.justifications_label"
+				},
+				"objections": {
+					"wiki": "Argument.forms.objections",
+					"legacy_alias": "@Common.labels.objections_label"
+				},
+				"edit_args_pro": {
+					"wiki": "Argument.forms.edit_args_pro",
+					"legacy_alias": "@Debate.forms.args_pro_edit_title"
+				},
+				"edit_args_con": {
+					"wiki": "Argument.forms.edit_args_con",
+					"legacy_alias": "@Debate.forms.args_con_edit_title"
+				},
+				"keywords_edit_title": {
+					"wiki": "Argument.forms.keywords_edit_title"
+				},
+				"banners_edit_title": {
+					"wiki": "Argument.forms.banners_edit_title"
+				},
+				"summary_edit_title": {
+					"wiki": "Argument.forms.summary_edit_title"
+				},
+				"quotes_edit_title": {
+					"wiki": "Argument.forms.quotes_edit_title"
+				},
+				"references_edit_title": {
+					"wiki": "Argument.forms.references_edit_title"
+				},
+				"sections_edit_title": {
+					"wiki": "Argument.forms.sections_edit_title"
+				},
+				"interlanguage_edit_title": {
+					"wiki": "Argument.forms.interlanguage_edit_title"
+				},
+				"detailed_debate_edit_title": {
+					"wiki": "Argument.forms.detailed_debate_edit_title"
+				},
+				"search_by_keywords_title": {
+					"wiki": "Argument.forms.search_by_keywords_title",
+					"legacy_alias": "@Common.forms.search_by_keywords_title"
+				},
+				"justifications_form": {
+					"wiki": "Argument.forms.justifications_form",
+					"legacy_alias": "@Common.labels.justifications_label"
+				},
+				"objections_form": {
+					"wiki": "Argument.forms.objections_form",
+					"legacy_alias": "@Common.labels.objections_label"
+				},
+				"new_arg_title": {
+					"wiki": "Argument.forms.new_arg_title",
+					"legacy_alias": "@Debate.forms.new_arg_title"
+				}
+			},
+			"categories": {
+				"arguments": {
+					"wiki": "Argument.categories.arguments",
+					"legacy_alias": "@Common.labels.arguments_label"
+				},
+				"keywords_missing": {
+					"wiki": "Argument.categories.keywords_missing"
+				},
+				"summary_missing": {
+					"wiki": "Argument.categories.summary_missing"
+				},
+				"quotes_missing": {
+					"wiki": "Argument.categories.quotes_missing"
+				},
+				"references_missing": {
+					"wiki": "Argument.categories.references_missing"
+				},
+				"justifications_missing": {
+					"wiki": "Argument.categories.justifications_missing"
+				},
+				"objections_missing": {
+					"wiki": "Argument.categories.objections_missing"
+				},
+				"content_missing": {
+					"wiki": "Argument.categories.content_missing"
+				},
+				"sections_missing": {
+					"wiki": "Argument.categories.sections_missing"
+				},
+				"authors_missing": {
+					"wiki": "Argument.categories.authors_missing"
+				},
+				"creation_date_missing": {
+					"wiki": "Argument.categories.creation_date_missing",
+					"legacy_alias": "@Debate.categories.creation_date_missing"
+				},
+				"title_very_short": {
+					"wiki": "Argument.categories.title_very_short"
+				},
+				"title_ends_with_dot": {
+					"wiki": "Argument.categories.title_ends_with_dot"
+				},
+				"has_detailed_debate": {
+					"wiki": "Argument.categories.has_detailed_debate"
+				},
+				"has_alt_name": {
+					"wiki": "Argument.categories.has_alt_name"
+				},
+				"uninitialized": {
+					"wiki": "Argument.categories.uninitialized"
+				},
+				"displayed_titles_to_review": {
+					"wiki": "Argument.categories.displayed_titles_to_review",
+					"legacy_alias": "@Debate.categories.displayed_titles_to_review"
+				},
+				"breadcrumb_too_long": {
+					"wiki": "Argument.categories.breadcrumb_too_long"
+				},
+				"content_to_transfer": {
+					"wiki": "Argument.categories.content_to_transfer"
+				}
+			},
+			"params": {
+				"keywords_field": {
+					"wiki": "Argument.params.keywords_field",
+					"legacy_alias": "@Common.params.keywords_field"
+				},
+				"search_type_field": {
+					"wiki": "Argument.params.search_type_field",
+					"legacy_alias": "@Common.params.type_field"
+				},
+				"search_type_value": {
+					"wiki": "Argument.params.search_type_value",
+					"legacy_alias": "@Common.values.type_arguments_value"
+				},
+				"page": {
+					"wiki": "Argument.params.page"
+				},
+				"displayed_title": {
+					"wiki": "Argument.params.displayed_title"
+				},
+				"justification_type_label": {
+					"wiki": "Argument.params.justification_type_label",
+					"legacy_alias": "@Common.labels.justification_label"
+				},
+				"objection_type_label": {
+					"wiki": "Argument.params.objection_type_label",
+					"legacy_alias": "@Common.labels.objection_label"
+				}
+			},
+			"text": {
+				"edit_label": {
+					"message": "wikidebates-common-labels-edit-label",
+					"legacy_alias": "@Common.labels.edit_label"
+				},
+				"none_label": {
+					"message": "wikidebates-common-labels-none-label",
+					"legacy_alias": "@Common.labels.none_label"
+				},
+				"keywords_label_text": {
+					"message": "wikidebates-common-text-keywords-label-text",
+					"legacy_alias": "@Common.text.keywords_label_text"
+				},
+				"keywords_edit_tt": {
+					"message": "wikidebates-argument-text-keywords-edit-tt"
+				},
+				"warnings_title": {
+					"message": "wikidebates-debate-text-warnings-title",
+					"legacy_alias": "@Debate.text.warnings_title"
+				},
+				"argument_banners_edit_tt": {
+					"message": "wikidebates-argument-text-argument-banners-edit-tt"
+				},
+				"summary_title": {
+					"message": "wikidebates-argument-text-summary-title"
+				},
+				"summary_edit_tt": {
+					"message": "wikidebates-argument-text-summary-edit-tt"
+				},
+				"none_summary_msg": {
+					"message": "wikidebates-argument-text-none-summary-msg"
+				},
+				"quotes_title": {
+					"message": "wikidebates-argument-text-quotes-title"
+				},
+				"quotes_edit_tt": {
+					"message": "wikidebates-argument-text-quotes-edit-tt"
+				},
+				"none_quotes_msg": {
+					"message": "wikidebates-argument-text-none-quotes-msg"
+				},
+				"references_title": {
+					"message": "wikidebates-argument-text-references-title"
+				},
+				"references_edit_tt": {
+					"message": "wikidebates-argument-text-references-edit-tt"
+				},
+				"none_references_msg": {
+					"message": "wikidebates-debate-text-none-references-msg",
+					"legacy_alias": "@Debate.text.none_references_msg"
+				},
+				"justifications_title": {
+					"message": "wikidebates-common-labels-justifications-label",
+					"legacy_alias": "@Common.labels.justifications_label"
+				},
+				"objections_title": {
+					"message": "wikidebates-common-labels-objections-label",
+					"legacy_alias": "@Common.labels.objections_label"
+				},
+				"justifications_edit_tt": {
+					"message": "wikidebates-argument-text-justifications-edit-tt"
+				},
+				"objections_edit_tt": {
+					"message": "wikidebates-argument-text-objections-edit-tt"
+				},
+				"justification_add_label": {
+					"message": "wikidebates-argument-text-justification-add-label"
+				},
+				"objection_add_label": {
+					"message": "wikidebates-argument-text-objection-add-label"
+				},
+				"justification_add_tt": {
+					"message": "wikidebates-argument-text-justification-add-tt"
+				},
+				"objection_add_tt": {
+					"message": "wikidebates-argument-text-objection-add-tt"
+				},
+				"none_justifications_msg": {
+					"message": "wikidebates-argument-text-none-justifications-msg"
+				},
+				"none_objections_msg": {
+					"message": "wikidebates-argument-text-none-objections-msg"
+				},
+				"none_content_msg": {
+					"message": "wikidebates-argument-text-none-content-msg"
+				},
+				"none_justifications_short_msg": {
+					"message": "wikidebates-argument-text-none-justifications-short-msg"
+				},
+				"none_objections_short_msg": {
+					"message": "wikidebates-argument-text-none-objections-short-msg"
+				},
+				"reorganize_link_label": {
+					"message": "wikidebates-argument-text-reorganize-link-label"
+				},
+				"detailed_debate_title": {
+					"message": "wikidebates-argument-text-detailed-debate-title"
+				},
+				"detailed_debate_edit_tt": {
+					"message": "wikidebates-argument-text-detailed-debate-edit-tt"
+				},
+				"detailed_debate_label_text": {
+					"message": "wikidebates-argument-text-detailed-debate-label-text"
+				},
+				"arg_is_debate_msg": {
+					"message": "wikidebates-argument-text-arg-is-debate-msg"
+				},
+				"title_too_short_msg": {
+					"message": "wikidebates-argument-text-title-too-short-msg"
+				},
+				"title_ends_with_dot_msg": {
+					"message": "wikidebates-argument-text-title-ends-with-dot-msg"
+				},
+				"rename_page_label": {
+					"message": "wikidebates-common-labels-rename-page-label",
+					"legacy_alias": "@Common.labels.rename_page_label"
+				},
+				"if_needed_msg": {
+					"message": "wikidebates-argument-text-if-needed-msg"
+				},
+				"breadcrumb_root_label": {
+					"message": "wikidebates-common-labels-arguments-label",
+					"legacy_alias": "@Common.labels.arguments_label"
+				},
+				"rename_link_label": {
+					"message": "wikidebates-common-text-rename-link-label",
+					"legacy_alias": "@Common.text.rename_link_label"
+				},
+				"sections_edit_tt": {
+					"message": "wikidebates-argument-text-sections-edit-tt"
+				},
+				"interlanguage_edit_tt": {
+					"message": "wikidebates-argument-text-interlanguage-edit-tt"
+				},
+				"seo_description": {
+					"message": "wikidebates-argument-text-seo-description"
+				},
+				"arg_new_title_field_base": {
+					"message": "wikidebates-argument-text-arg-new-title-field-base",
+					"legacy_alias": "@Debate.forms.new_arg_title"
+				},
+				"parent_used_in_debate_1": {
+					"message": "wikidebates-argument-text-parent-used-in-debate-1"
+				},
+				"parent_used_in_debate_n": {
+					"message": "wikidebates-argument-text-parent-used-in-debate-n"
+				},
+				"parent_is_pro_in_1": {
+					"message": "wikidebates-argument-text-parent-is-pro-in-1"
+				},
+				"parent_is_pro_in_n": {
+					"message": "wikidebates-argument-text-parent-is-pro-in-n"
+				},
+				"parent_is_con_in_1": {
+					"message": "wikidebates-argument-text-parent-is-con-in-1"
+				},
+				"parent_is_con_in_n": {
+					"message": "wikidebates-argument-text-parent-is-con-in-n"
+				},
+				"parent_is_justification_of": {
+					"message": "wikidebates-argument-text-parent-is-justification-of"
+				},
+				"parent_is_objection_to": {
+					"message": "wikidebates-argument-text-parent-is-objection-to"
+				},
+				"search_by_keyword_tt": {
+					"message": "wikidebates-debate-text-search-by-keyword-tt",
+					"legacy_alias": "@Debate.text.search_by_keyword_tt"
+				},
+				"parent_debates_title_1": {
+					"message": "wikidebates-argument-text-parent-debates-title-1"
+				},
+				"parent_debates_title_n": {
+					"message": "wikidebates-argument-text-parent-debates-title-n"
+				},
+				"list_conjunction_text": {
+					"message": "wikidebates-common-text-list-conjunction-text",
+					"legacy_alias": "@Common.text.list_conjunction_text"
+				},
+				"init_warning_title": {
+					"message": "wikidebates-argument-text-init-warning-title"
+				},
+				"init_warning_intro": {
+					"message": "wikidebates-argument-text-init-warning-intro"
+				},
+				"init_yes_finish_label": {
+					"message": "wikidebates-argument-text-init-yes-finish-label"
+				},
+				"init_yes_tt": {
+					"message": "wikidebates-argument-text-init-yes-tt"
+				},
+				"init_ok_text": {
+					"message": "wikidebates-argument-text-init-ok-text"
+				},
+				"init_summary_pro": {
+					"message": "wikidebates-argument-text-init-summary-pro"
+				},
+				"init_summary_con": {
+					"message": "wikidebates-argument-text-init-summary-con"
+				},
+				"init_summary_justif": {
+					"message": "wikidebates-argument-text-init-summary-justif"
+				},
+				"init_summary_obj": {
+					"message": "wikidebates-argument-text-init-summary-obj"
+				},
+				"unknown_author": {
+					"message": "wikidebates-debate-text-unknown-author",
+					"legacy_alias": "@Debate.text.unknown_author"
+				},
+				"volume_label": {
+					"message": "wikidebates-argument-text-volume-label"
+				},
+				"issue_label": {
+					"message": "wikidebates-argument-text-issue-label"
+				}
+			},
+			"urls": {
+				"home": {
+					"wiki": "Argument.urls.home",
+					"legacy_alias": "@Debate.urls.home"
+				},
+				"home_label": {
+					"wiki": "Argument.urls.home_label",
+					"legacy_alias": "@Debate.urls.home_label"
+				},
+				"wiki_base": {
+					"wiki": "Argument.urls.wiki_base",
+					"legacy_alias": "@Debate.urls.wiki_base"
+				},
+				"discussion_prefix": {
+					"wiki": "Argument.urls.discussion_prefix",
+					"legacy_alias": "@Debate.urls.discussion_prefix"
+				},
+				"category_prefix": {
+					"wiki": "Argument.urls.category_prefix",
+					"legacy_alias": "@Debate.urls.category_prefix"
+				},
+				"portal_prefix": {
+					"wiki": "Argument.urls.portal_prefix",
+					"legacy_alias": "@Debate.urls.portal_prefix"
+				},
+				"property_prefix": {
+					"wiki": "Argument.urls.property_prefix",
+					"legacy_alias": "@Debate.urls.property_prefix"
+				},
+				"sections_label": {
+					"wiki": "Argument.urls.sections_label",
+					"legacy_alias": "@Debate.urls.sections_label"
+				},
+				"arguments_label": {
+					"wiki": "Argument.urls.arguments_label"
+				},
+				"justification_label": {
+					"wiki": "Argument.urls.justification_label"
+				},
+				"objection_label": {
+					"wiki": "Argument.urls.objection_label"
+				}
+			},
+			"props": {
+				"arg_number": {
+					"wiki": "Argument.props.arg_number"
+				},
+				"debate_number": {
+					"wiki": "Argument.props.debate_number"
+				},
+				"justif_list": {
+					"wiki": "Argument.props.justif_list"
+				},
+				"obj_list": {
+					"wiki": "Argument.props.obj_list"
+				},
+				"detailed_debate": {
+					"wiki": "Argument.props.detailed_debate"
+				},
+				"argument_map": {
+					"wiki": "Argument.props.argument_map",
+					"legacy_alias": "@Common.labels.argument_map_label"
+				},
+				"keyword": {
+					"wiki": "Argument.props.keyword",
+					"legacy_alias": "@Common.props.keyword"
+				},
+				"arg_page_name": {
+					"wiki": "Argument.props.arg_page_name"
+				},
+				"section": {
+					"wiki": "Argument.props.section"
+				},
+				"arg_pro": {
+					"wiki": "Argument.props.arg_pro",
+					"legacy_alias": "@Common.labels.arg_pro_label"
+				},
+				"arg_con": {
+					"wiki": "Argument.props.arg_con",
+					"legacy_alias": "@Common.labels.arg_con_label"
+				},
+				"justif": {
+					"wiki": "Argument.props.justif",
+					"legacy_alias": "@Common.labels.justification_label"
+				},
+				"obj": {
+					"wiki": "Argument.props.obj",
+					"legacy_alias": "@Common.labels.objection_label"
+				},
+				"breadcrumb": {
+					"wiki": "Argument.props.breadcrumb"
+				},
+				"debate_name": {
+					"wiki": "Argument.props.debate_name"
+				},
+				"parent_debate": {
+					"wiki": "Argument.props.parent_debate",
+					"legacy_alias": "@Debate.props.parent_debate"
+				},
+				"parent_argument": {
+					"wiki": "Argument.props.parent_argument"
+				},
+				"article_name": {
+					"wiki": "Argument.props.article_name",
+					"legacy_alias": "@Common.props.article_name"
+				},
+				"work_name": {
+					"wiki": "Argument.props.work_name",
+					"legacy_alias": "@Common.props.work_name"
+				},
+				"publishing_house": {
+					"wiki": "Argument.props.publishing_house",
+					"legacy_alias": "@Common.props.publishing_house"
+				},
+				"place_of_publication": {
+					"wiki": "Argument.props.place_of_publication",
+					"legacy_alias": "@Common.props.place_of_publication"
+				},
+				"author": {
+					"wiki": "Argument.props.author",
+					"legacy_alias": "@Common.props.author"
+				},
+				"website_name": {
+					"wiki": "Argument.props.website_name",
+					"legacy_alias": "@Common.props.website_name"
+				}
+			},
+			"seo": {
+				"title_separator": {
+					"message": "wikidebates-debate-seo-title-separator",
+					"legacy_alias": "@Debate.seo.title_separator"
+				},
+				"image": {
+					"message": "wikidebates-debate-seo-image",
+					"legacy_alias": "@Debate.seo.image"
+				},
+				"image_alt": {
+					"message": "wikidebates-debate-seo-image-alt",
+					"legacy_alias": "@Debate.seo.image_alt"
+				},
+				"site_name": {
+					"message": "wikidebates-debate-seo-site-name",
+					"legacy_alias": "@Debate.seo.site_name"
+				},
+				"twitter_site": {
+					"message": "wikidebates-debate-seo-twitter-site",
+					"legacy_alias": "@Debate.seo.twitter_site"
+				},
+				"locale": {
+					"message": "wikidebates-debate-seo-locale",
+					"legacy_alias": "@Debate.seo.locale"
+				},
+				"author": {
+					"message": "wikidebates-debate-seo-author",
+					"legacy_alias": "@Debate.seo.author"
+				},
+				"section": {
+					"message": "wikidebates-common-labels-arguments-label",
+					"legacy_alias": "@Common.labels.arguments_label"
+				},
+				"space": {
+					"message": "wikidebates-argument-seo-space"
+				},
+				"shortdesc_plain": {
+					"message": "wikidebates-argument-seo-shortdesc-plain"
+				},
+				"description": {
+					"message": "wikidebates-argument-seo-description"
+				},
+				"breadcrumb_home_label": {
+					"message": "wikidebates-argument-seo-breadcrumb-home-label",
+					"legacy_alias": "@Debate.seo.breadcrumb_home_label"
+				},
+				"breadcrumb_arguments_label": {
+					"message": "wikidebates-common-labels-arguments-label",
+					"legacy_alias": "@Common.labels.arguments_label"
+				}
+			},
+			"banners": {
+				"argument_orphan_label": {
+					"message": "wikidebates-argument-banners-argument-orphan-label"
+				},
+				"argument_orphan_color": {
+					"wiki": "Argument.banners.argument_orphan_color"
+				},
+				"argument_orphan_icon": {
+					"wiki": "Argument.banners.argument_orphan_icon"
+				},
+				"argument_orphan_title": {
+					"message": "wikidebates-argument-banners-argument-orphan-title"
+				},
+				"argument_orphan_text": {
+					"message": "wikidebates-argument-banners-argument-orphan-text"
+				},
+				"argument_orphan_category": {
+					"wiki": "Argument.banners.argument_orphan_category"
+				},
+				"title_incomplete_label": {
+					"message": "wikidebates-argument-banners-title-incomplete-label"
+				},
+				"title_incomplete_color": {
+					"wiki": "Argument.banners.title_incomplete_color",
+					"legacy_alias": "@Argument.files.title_review_color"
+				},
+				"title_incomplete_icon": {
+					"wiki": "Argument.banners.title_incomplete_icon",
+					"legacy_alias": "@Argument.files.title_review_icon"
+				},
+				"title_incomplete_title": {
+					"message": "wikidebates-argument-banners-title-incomplete-title"
+				},
+				"title_incomplete_text": {
+					"message": "wikidebates-argument-banners-title-incomplete-text"
+				},
+				"title_incomplete_category": {
+					"wiki": "Argument.banners.title_incomplete_category"
+				},
+				"title_disadvantageous_label": {
+					"message": "wikidebates-argument-banners-title-disadvantageous-label"
+				},
+				"title_disadvantageous_color": {
+					"wiki": "Argument.banners.title_disadvantageous_color",
+					"legacy_alias": "@Argument.files.title_review_color"
+				},
+				"title_disadvantageous_icon": {
+					"wiki": "Argument.banners.title_disadvantageous_icon",
+					"legacy_alias": "@Argument.files.title_review_icon"
+				},
+				"title_disadvantageous_title": {
+					"message": "wikidebates-argument-banners-title-disadvantageous-title"
+				},
+				"title_disadvantageous_text": {
+					"message": "wikidebates-argument-banners-title-disadvantageous-text"
+				},
+				"title_disadvantageous_category": {
+					"wiki": "Argument.banners.title_disadvantageous_category"
+				},
+				"title_unclear_label": {
+					"message": "wikidebates-argument-banners-title-unclear-label"
+				},
+				"title_unclear_color": {
+					"wiki": "Argument.banners.title_unclear_color",
+					"legacy_alias": "@Argument.files.title_review_color"
+				},
+				"title_unclear_icon": {
+					"wiki": "Argument.banners.title_unclear_icon",
+					"legacy_alias": "@Argument.files.title_review_icon"
+				},
+				"title_unclear_title": {
+					"message": "wikidebates-argument-banners-title-unclear-title"
+				},
+				"title_unclear_text": {
+					"message": "wikidebates-argument-banners-title-unclear-text"
+				},
+				"title_unclear_category": {
+					"wiki": "Argument.banners.title_unclear_category"
+				},
+				"title_too_long_label": {
+					"message": "wikidebates-argument-banners-title-too-long-label"
+				},
+				"title_too_long_color": {
+					"wiki": "Argument.banners.title_too_long_color",
+					"legacy_alias": "@Argument.files.title_review_color"
+				},
+				"title_too_long_icon": {
+					"wiki": "Argument.banners.title_too_long_icon",
+					"legacy_alias": "@Argument.files.title_review_icon"
+				},
+				"title_too_long_title": {
+					"message": "wikidebates-argument-banners-title-too-long-title"
+				},
+				"title_too_long_text": {
+					"message": "wikidebates-argument-banners-title-too-long-text"
+				},
+				"title_too_long_category": {
+					"wiki": "Argument.banners.title_too_long_category"
+				},
+				"argument_sensitive_label": {
+					"message": "wikidebates-argument-banners-argument-sensitive-label"
+				},
+				"argument_sensitive_color": {
+					"wiki": "Argument.banners.argument_sensitive_color"
+				},
+				"argument_sensitive_icon": {
+					"wiki": "Argument.banners.argument_sensitive_icon",
+					"legacy_alias": "@Debate.banners.debate_sensitive_icon"
+				},
+				"argument_sensitive_title": {
+					"message": "wikidebates-argument-banners-argument-sensitive-title"
+				},
+				"argument_sensitive_text": {
+					"message": "wikidebates-argument-banners-argument-sensitive-text"
+				},
+				"argument_sensitive_category": {
+					"wiki": "Argument.banners.argument_sensitive_category"
+				},
+				"argument_fanciful_label": {
+					"message": "wikidebates-argument-banners-argument-fanciful-label"
+				},
+				"argument_fanciful_color": {
+					"wiki": "Argument.banners.argument_fanciful_color"
+				},
+				"argument_fanciful_icon": {
+					"wiki": "Argument.banners.argument_fanciful_icon"
+				},
+				"argument_fanciful_title": {
+					"message": "wikidebates-argument-banners-argument-fanciful-title"
+				},
+				"argument_fanciful_text": {
+					"message": "wikidebates-argument-banners-argument-fanciful-text"
+				},
+				"argument_fanciful_category": {
+					"wiki": "Argument.banners.argument_fanciful_category"
+				},
+				"argument_potentially_illegal_label": {
+					"message": "wikidebates-argument-banners-argument-potentially-illegal-label"
+				},
+				"argument_potentially_illegal_color": {
+					"wiki": "Argument.banners.argument_potentially_illegal_color"
+				},
+				"argument_potentially_illegal_icon": {
+					"wiki": "Argument.banners.argument_potentially_illegal_icon"
+				},
+				"argument_potentially_illegal_title": {
+					"message": "wikidebates-argument-banners-argument-potentially-illegal-title"
+				},
+				"argument_potentially_illegal_text": {
+					"message": "wikidebates-argument-banners-argument-potentially-illegal-text"
+				},
+				"argument_potentially_illegal_category": {
+					"wiki": "Argument.banners.argument_potentially_illegal_category"
+				},
+				"argument_generated_by_ai_label": {
+					"message": "wikidebates-argument-banners-argument-generated-by-ai-label"
+				},
+				"argument_generated_by_ai_color": {
+					"wiki": "Argument.banners.argument_generated_by_ai_color"
+				},
+				"argument_generated_by_ai_icon": {
+					"wiki": "Argument.banners.argument_generated_by_ai_icon"
+				},
+				"argument_generated_by_ai_title": {
+					"message": "wikidebates-argument-banners-argument-generated-by-ai-title"
+				},
+				"argument_generated_by_ai_text": {
+					"message": "wikidebates-argument-banners-argument-generated-by-ai-text"
+				},
+				"argument_generated_by_ai_category": {
+					"wiki": "Argument.banners.argument_generated_by_ai_category"
+				}
+			},
+			"subsection_banners": {
+				"summary_disadvantageous_label": {
+					"message": "wikidebates-argument-subsection-banners-summary-disadvantageous-label"
+				},
+				"summary_disadvantageous_title": {
+					"message": "wikidebates-argument-subsection-banners-summary-disadvantageous-title"
+				},
+				"summary_disadvantageous_text": {
+					"message": "wikidebates-argument-subsection-banners-summary-disadvantageous-text"
+				},
+				"summary_disadvantageous_category": {
+					"wiki": "Argument.subsection_banners.summary_disadvantageous_category"
+				},
+				"summary_to_be_written_label": {
+					"message": "wikidebates-argument-subsection-banners-summary-to-be-written-label"
+				},
+				"summary_to_be_written_image": {
+					"wiki": "Argument.subsection_banners.summary_to_be_written_image",
+					"legacy_alias": "@Debate.banners.debate_sensitive_icon"
+				},
+				"summary_to_be_written_title": {
+					"message": "wikidebates-argument-subsection-banners-summary-to-be-written-title"
+				},
+				"summary_to_be_written_text": {
+					"message": "wikidebates-argument-subsection-banners-summary-to-be-written-text"
+				},
+				"summary_to_be_written_category": {
+					"wiki": "Argument.subsection_banners.summary_to_be_written_category"
+				},
+				"summary_unclear_label": {
+					"message": "wikidebates-argument-subsection-banners-summary-unclear-label"
+				},
+				"summary_unclear_title": {
+					"message": "wikidebates-argument-subsection-banners-summary-unclear-title"
+				},
+				"summary_unclear_text": {
+					"message": "wikidebates-argument-subsection-banners-summary-unclear-text"
+				},
+				"summary_unclear_category": {
+					"wiki": "Argument.subsection_banners.summary_unclear_category"
+				},
+				"summary_too_long_label": {
+					"message": "wikidebates-argument-subsection-banners-summary-too-long-label"
+				},
+				"summary_too_long_title": {
+					"message": "wikidebates-argument-subsection-banners-summary-too-long-title"
+				},
+				"summary_too_long_text": {
+					"message": "wikidebates-argument-subsection-banners-summary-too-long-text"
+				},
+				"summary_too_long_category": {
+					"wiki": "Argument.subsection_banners.summary_too_long_category"
+				},
+				"summary_to_separate_label": {
+					"message": "wikidebates-argument-subsection-banners-summary-to-separate-label"
+				},
+				"summary_to_separate_title": {
+					"message": "wikidebates-argument-subsection-banners-summary-to-separate-title"
+				},
+				"summary_to_separate_text": {
+					"message": "wikidebates-argument-subsection-banners-summary-to-separate-text"
+				},
+				"summary_to_separate_category": {
+					"wiki": "Argument.subsection_banners.summary_to_separate_category"
+				},
+				"summary_style_to_review_label": {
+					"message": "wikidebates-argument-subsection-banners-summary-style-to-review-label"
+				},
+				"summary_style_to_review_title": {
+					"message": "wikidebates-argument-subsection-banners-summary-style-to-review-title"
+				},
+				"summary_style_to_review_text": {
+					"message": "wikidebates-argument-subsection-banners-summary-style-to-review-text"
+				},
+				"summary_style_to_review_category": {
+					"wiki": "Argument.subsection_banners.summary_style_to_review_category"
+				},
+				"summary_to_separate_alias": {
+					"message": "wikidebates-argument-subsection-banners-summary-to-separate-alias"
+				},
+				"summary_disadvantageous_alias": {
+					"message": "wikidebates-argument-subsection-banners-summary-disadvantageous-alias"
+				},
+				"summary_style_to_review_alias": {
+					"message": "wikidebates-argument-subsection-banners-summary-style-to-review-alias"
+				},
+				"summary_to_be_written_alias": {
+					"message": "wikidebates-argument-subsection-banners-summary-to-be-written-alias"
+				},
+				"summary_too_long_alias": {
+					"message": "wikidebates-argument-subsection-banners-summary-too-long-alias"
+				},
+				"summary_unclear_alias": {
+					"message": "wikidebates-argument-subsection-banners-summary-unclear-alias"
+				},
+				"justifications_to_reorganize_alias": {
+					"message": "wikidebates-argument-subsection-banners-justifications-to-reorganize-alias"
+				},
+				"objections_to_reorganize_alias": {
+					"message": "wikidebates-argument-subsection-banners-objections-to-reorganize-alias"
+				},
+				"justifications_to_reorganize_label": {
+					"message": "wikidebates-argument-subsection-banners-justifications-to-reorganize-label"
+				},
+				"justifications_to_reorganize_title": {
+					"message": "wikidebates-argument-subsection-banners-justifications-to-reorganize-title"
+				},
+				"justifications_to_reorganize_text": {
+					"message": "wikidebates-argument-subsection-banners-justifications-to-reorganize-text"
+				},
+				"justifications_to_reorganize_category": {
+					"wiki": "Argument.subsection_banners.justifications_to_reorganize_category"
+				},
+				"objections_to_reorganize_label": {
+					"message": "wikidebates-argument-subsection-banners-objections-to-reorganize-label"
+				},
+				"objections_to_reorganize_title": {
+					"message": "wikidebates-argument-subsection-banners-objections-to-reorganize-title"
+				},
+				"objections_to_reorganize_text": {
+					"message": "wikidebates-argument-subsection-banners-objections-to-reorganize-text"
+				},
+				"objections_to_reorganize_category": {
+					"wiki": "Argument.subsection_banners.objections_to_reorganize_category"
+				},
+				"quote_too_short_label": {
+					"message": "wikidebates-argument-subsection-banners-quote-too-short-label"
+				},
+				"quote_too_short_title": {
+					"message": "wikidebates-argument-subsection-banners-quote-too-short-title"
+				},
+				"quote_too_short_text": {
+					"message": "wikidebates-argument-subsection-banners-quote-too-short-text"
+				},
+				"quote_too_short_category": {
+					"wiki": "Argument.subsection_banners.quote_too_short_category"
+				},
+				"quote_too_long_label": {
+					"message": "wikidebates-argument-subsection-banners-quote-too-long-label"
+				},
+				"quote_too_long_title": {
+					"message": "wikidebates-argument-subsection-banners-quote-too-long-title"
+				},
+				"quote_too_long_text": {
+					"message": "wikidebates-argument-subsection-banners-quote-too-long-text"
+				},
+				"quote_too_long_category": {
+					"wiki": "Argument.subsection_banners.quote_too_long_category"
+				},
+				"quote_ref_incomplete_label": {
+					"message": "wikidebates-argument-subsection-banners-quote-ref-incomplete-label"
+				},
+				"quote_ref_incomplete_title": {
+					"message": "wikidebates-argument-subsection-banners-quote-ref-incomplete-title"
+				},
+				"quote_ref_incomplete_text": {
+					"message": "wikidebates-argument-subsection-banners-quote-ref-incomplete-text"
+				},
+				"quote_ref_incomplete_category": {
+					"wiki": "Argument.subsection_banners.quote_ref_incomplete_category"
+				},
+				"quote_translated_label": {
+					"message": "wikidebates-argument-subsection-banners-quote-translated-label"
+				},
+				"quote_translated_title": {
+					"message": "wikidebates-argument-subsection-banners-quote-translated-title"
+				},
+				"quote_translated_text": {
+					"message": "wikidebates-argument-subsection-banners-quote-translated-text"
+				},
+				"quote_translated_category": {
+					"wiki": "Argument.subsection_banners.quote_translated_category"
+				},
+				"dead_link_label": {
+					"message": "wikidebates-debate-subsections-dead-link-label",
+					"legacy_alias": "@Debate.subsections.dead_link_label"
+				},
+				"dead_link_title": {
+					"message": "wikidebates-debate-subsections-dead-link-label",
+					"legacy_alias": "@Debate.subsections.dead_link_label"
+				},
+				"dead_link_text": {
+					"message": "wikidebates-debate-subsections-dead-link-text",
+					"legacy_alias": "@Debate.subsections.dead_link_text"
+				},
+				"dead_link_category": {
+					"wiki": "Argument.subsection_banners.dead_link_category",
+					"legacy_alias": "@Debate.subsections.dead_link_category"
+				},
+				"reference_quality_insufficient_label": {
+					"message": "wikidebates-debate-subsections-reference-quality-insufficient-label",
+					"legacy_alias": "@Debate.subsections.reference_quality_insufficient_label"
+				},
+				"reference_quality_insufficient_title": {
+					"message": "wikidebates-debate-subsections-reference-quality-insufficient-label",
+					"legacy_alias": "@Debate.subsections.reference_quality_insufficient_label"
+				},
+				"reference_quality_insufficient_text": {
+					"message": "wikidebates-debate-subsections-reference-quality-insufficient-text",
+					"legacy_alias": "@Debate.subsections.reference_quality_insufficient_text"
+				},
+				"reference_quality_insufficient_category": {
+					"wiki": "Argument.subsection_banners.reference_quality_insufficient_category",
+					"legacy_alias": "@Debate.subsections.reference_quality_insufficient_category"
+				},
+				"reference_incomplete_label": {
+					"message": "wikidebates-debate-subsections-reference-incomplete-label",
+					"legacy_alias": "@Debate.subsections.reference_incomplete_label"
+				},
+				"reference_incomplete_title": {
+					"message": "wikidebates-debate-subsections-reference-incomplete-label",
+					"legacy_alias": "@Debate.subsections.reference_incomplete_label"
+				},
+				"reference_incomplete_text": {
+					"message": "wikidebates-debate-subsections-reference-incomplete-text",
+					"legacy_alias": "@Debate.subsections.reference_incomplete_text"
+				},
+				"reference_incomplete_category": {
+					"wiki": "Argument.subsection_banners.reference_incomplete_category",
+					"legacy_alias": "@Debate.subsections.reference_incomplete_category"
+				},
+				"references_too_many_label": {
+					"message": "wikidebates-argument-subsection-banners-references-too-many-label"
+				},
+				"references_too_many_title": {
+					"message": "wikidebates-argument-subsection-banners-references-too-many-label",
+					"legacy_alias": "@Argument.subsection_banners.references_too_many_label"
+				},
+				"references_too_many_text": {
+					"message": "wikidebates-argument-subsection-banners-references-too-many-text"
+				},
+				"references_too_many_category": {
+					"wiki": "Argument.subsection_banners.references_too_many_category"
+				},
+				"references_many_incomplete_label": {
+					"message": "wikidebates-argument-subsection-banners-references-many-incomplete-label"
+				},
+				"references_many_incomplete_title": {
+					"message": "wikidebates-argument-subsection-banners-references-many-incomplete-label",
+					"legacy_alias": "@Argument.subsection_banners.references_many_incomplete_label"
+				},
+				"references_many_incomplete_text": {
+					"message": "wikidebates-argument-subsection-banners-references-many-incomplete-text"
+				},
+				"references_many_incomplete_category": {
+					"wiki": "Argument.subsection_banners.references_many_incomplete_category"
+				},
+				"displayed_title_too_long_label": {
+					"message": "wikidebates-debate-subsections-displayed-title-too-long-label",
+					"legacy_alias": "@Debate.subsections.displayed_title_too_long_label"
+				},
+				"displayed_title_too_long_title": {
+					"message": "wikidebates-debate-subsections-displayed-title-too-long-title",
+					"legacy_alias": "@Debate.subsections.displayed_title_too_long_title"
+				},
+				"displayed_title_too_long_text": {
+					"message": "wikidebates-debate-subsections-displayed-title-too-long-text",
+					"legacy_alias": "@Debate.subsections.displayed_title_too_long_text"
+				},
+				"displayed_title_unclear_label": {
+					"message": "wikidebates-debate-subsections-displayed-title-unclear-label",
+					"legacy_alias": "@Debate.subsections.displayed_title_unclear_label"
+				},
+				"displayed_title_unclear_title": {
+					"message": "wikidebates-debate-subsections-displayed-title-unclear-title",
+					"legacy_alias": "@Debate.subsections.displayed_title_unclear_title"
+				},
+				"displayed_title_unclear_text": {
+					"message": "wikidebates-debate-subsections-displayed-title-unclear-text",
+					"legacy_alias": "@Debate.subsections.displayed_title_unclear_text"
+				},
+				"displayed_title_disadvantageous_label": {
+					"message": "wikidebates-debate-subsections-displayed-title-disadvantageous-label",
+					"legacy_alias": "@Debate.subsections.displayed_title_disadvantageous_label"
+				},
+				"displayed_title_disadvantageous_title": {
+					"message": "wikidebates-debate-subsections-displayed-title-disadvantageous-title",
+					"legacy_alias": "@Debate.subsections.displayed_title_disadvantageous_title"
+				},
+				"displayed_title_disadvantageous_text": {
+					"message": "wikidebates-debate-subsections-displayed-title-disadvantageous-text",
+					"legacy_alias": "@Debate.subsections.displayed_title_disadvantageous_text"
+				}
+			}
+		},
+		"ArgumentMap": {
+			"props": {
+				"arg_map": {
+					"wiki": "ArgumentMap.props.arg_map",
+					"legacy_alias": "@Common.labels.argument_map_label"
+				},
+				"pro_list": {
+					"wiki": "ArgumentMap.props.pro_list",
+					"legacy_alias": "@Debate.props.pro_list"
+				},
+				"con_list": {
+					"wiki": "ArgumentMap.props.con_list",
+					"legacy_alias": "@Debate.props.con_list"
+				},
+				"justifs_list": {
+					"wiki": "ArgumentMap.props.justifs_list",
+					"legacy_alias": "@Argument.props.justif_list"
+				},
+				"objs_list": {
+					"wiki": "ArgumentMap.props.objs_list",
+					"legacy_alias": "@Argument.props.obj_list"
+				}
+			},
+			"text": {
+				"arg_map_pro_label": {
+					"message": "wikidebates-debate-text-arg-map-pro-label",
+					"legacy_alias": "@Debate.text.arg_map_pro_label"
+				},
+				"arg_map_con_label": {
+					"message": "wikidebates-debate-text-arg-map-con-label",
+					"legacy_alias": "@Debate.text.arg_map_con_label"
+				},
+				"justifs_label": {
+					"message": "wikidebates-common-labels-justifications-label",
+					"legacy_alias": "@Common.labels.justifications_label"
+				},
+				"objs_label": {
+					"message": "wikidebates-common-labels-objections-label",
+					"legacy_alias": "@Common.labels.objections_label"
+				},
+				"none_pro_args_msg_short": {
+					"message": "wikidebates-debate-text-none-pro-args-msg-short",
+					"legacy_alias": "@Debate.text.none_pro_args_msg_short"
+				},
+				"none_con_args_msg_short": {
+					"message": "wikidebates-debate-text-none-con-args-msg-short",
+					"legacy_alias": "@Debate.text.none_con_args_msg_short"
+				},
+				"none_justifications_msg": {
+					"message": "wikidebates-argument-text-none-justifications-msg",
+					"legacy_alias": "@Argument.text.none_justifications_msg"
+				},
+				"none_objections_msg": {
+					"message": "wikidebates-argument-text-none-objections-msg",
+					"legacy_alias": "@Argument.text.none_objections_msg"
+				}
+			}
+		}
+	},
+	"browser_aliases": {
+		"wk-summary-reorg-debates": "wk-summary-reorg-debats",
+		"wk-summary-rename-debate": "wk-summary-rename-debat",
+		"wk-summary-delete-debate": "wk-summary-delete-debat",
+		"wk-summary-add-debate": "wk-summary-add-debat",
+		"wk-summary-debate-detail-add": "wk-summary-debat-detail-add"
+	}
+}

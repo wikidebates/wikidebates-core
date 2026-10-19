@@ -85,8 +85,8 @@
 		close.id = UI_IDS.closeId;
 		close.className = 'wk-reading-close';
 		close.type = 'button';
-		close.setAttribute( 'aria-label', wkMsgD( 'wk-reading-close', 'Fermer' ) );
-		close.setAttribute( 'title', wkMsgD( 'wk-reading-close', 'Fermer' ) );
+		close.setAttribute( 'aria-label', wkMsgD( 'wk-reading-close' ) );
+		close.setAttribute( 'title', wkMsgD( 'wk-reading-close' ) );
 		close.innerHTML =
 			'<svg viewBox="6 6 12 12" aria-hidden="true" focusable="false">' +
 				'<path d="M6 6 L18 18 M18 6 L6 18" />' +
@@ -314,7 +314,7 @@
 				id: UI_IDS.navBtnId,
 				className: 'wk-reading-navbtn',
 				src: '/w/images/fr/4/4d/Bouton-fil-Ariane.svg',
-				alt: wkMsgD( 'wk-breadcrumb-aria-label', 'Sommaire' ),
+				alt: wkMsgD( 'wk-breadcrumb-aria-label' ),
 				container: ui.root
 			} );
 		}
@@ -1765,7 +1765,7 @@
 
 					if ( wkReadingCopyText( abs ) ) {
 						try {
-							if ( W.mw && typeof W.mw.notify === 'function' ) W.mw.notify( wkMsgD( 'wk-link-copied', 'Lien copié' ) );
+							if ( W.mw && typeof W.mw.notify === 'function' ) W.mw.notify( wkMsgD( 'wk-link-copied' ) );
 						} catch ( e2 ) {}
 					}
 				} );

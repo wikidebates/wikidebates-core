@@ -18,7 +18,7 @@ class RequireEmailPreAuthenticationProvider extends AbstractPreAuthenticationPro
 		}
 
 		if ( trim( (string)$email ) === '' ) {
-			return StatusValue::newFatal( 'Email address is required.' );
+			return StatusValue::newFatal( 'wikidebates-email-required' );
 		}
 
 		return StatusValue::newGood();

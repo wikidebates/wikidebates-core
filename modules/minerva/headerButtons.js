@@ -16,18 +16,7 @@
 
 			if ( !caEdit || !pageName ) return false;
 
-			var lang = ( mw.config.get( 'wgContentLanguage' ) || mw.config.get( 'wgUserLanguage' ) || 'fr' )
-				.toLowerCase()
-				.split( '-' )[ 0 ];
-			var userLang = ( mw.config.get( 'wgUserLanguage' ) || lang )
-				.toLowerCase()
-				.split( '-' )[ 0 ];
-			var fallbackFormName = lang === 'en' ? 'User page' : "Page d'utilisateur";
-			var formName = fallbackFormName;
-
-			if ( userLang === lang && typeof WK.wkMsgD === 'function' ) {
-				formName = WK.wkMsgD( 'wk-form-user-page', fallbackFormName );
-			}
+			var formName = WK.wkForm( 'wk-form-user-page' );
 
 			caEdit.href = mw.util.getUrl( 'Special:FormEdit/' + formName + '/' + pageName );
 			return true;
@@ -110,9 +99,10 @@
 						li.innerHTML =
 							'<a class="toggle-list-item__anchor mw-ui-icon mw-ui-icon-before mw-ui-icon-wikimedia-language-base20" href="' + href + '">' +
 								'<span class="toggle-list-item__icon">' +
-									'<span class="toggle-list-item__label">Interlangue</span>' +
+									'<span class="toggle-list-item__label"></span>' +
 								'</span>' +
 							'</a>';
+						li.querySelector( '.toggle-list-item__label' ).textContent = WK.wkMsg( 'wk-interlanguage-label' );
 						ul.appendChild( li );
 					}
 				}

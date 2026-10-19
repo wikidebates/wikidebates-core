@@ -30,5 +30,15 @@
 		"resources/Template-Debat.php.wikitext": "63066e127bc3907f37a3685300fade1c2f05b7b7b2387b4188ce26c79add9115",
 		"resources/WD-I18N-Data.snapshot.lua": "df53de1531c58f2fa581c32a773a55c211638360d71ad894198234752bb61b85",
 		"resources/WD-I18N.reference.lua": "7975891b1cd0c797f7e97df1fcbbc735e3626164cb42e587be58d0b16e4f691a"
+	},
+	"local_adaptations": {
+		"description": "The sha256 map above records the original 0.8 import. These local changes bridge its translation API to the shared MediaWiki JSON catalogues; rendering engines and Lua test snapshots are unchanged.",
+		"sha256": {
+			"src/I18n.php": "12aa6f46ef463e8aa215e98dd41be20751d54fe4dd519f358bd3a4c28f0b1427",
+			"src/MessageCatalog.php": "270f5d9758308416cf2dd0576ec03ecf119185666a0534412c50d4c03aecfe0d",
+			"resources/I18nData.php": "a79728f32cb5836317ab4a91678238ffcf1f97c5455a89bae24d3afdc213ee25",
+			"tools/compileI18n.php": "fca59eeae04073abe66f150b290640ab2aaed7461876605b9143f0dba5a7f37c",
+			"tools/maintainI18n.php": "623f042cb13efa8597e7aa7acf174af3dc9802e9c868ee3f2bba9e7227f13936"
+		}
 	}
 }

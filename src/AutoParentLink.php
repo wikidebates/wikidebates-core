@@ -386,29 +386,14 @@ class AutoParentLink {
 	}
 
 	private static function buildEditSummary( string $type, string $title, array $config ): string {
-		$isFr = ( $config['debateTemplate'] === 'Débat' );
-
-		if ( $type === 'Argument pour' || $type === 'Pro argument' ) {
-			return $isFr
-				? sprintf( '/* Arguments « pour » */ Ajout de l’argument : « %s »', $title )
-				: sprintf( '/* Pro arguments */ Added argument: “%s”', $title );
-		}
-
-		if ( $type === 'Argument contre' || $type === 'Con argument' ) {
-			return $isFr
-				? sprintf( '/* Arguments « contre » */ Ajout de l’argument : « %s »', $title )
-				: sprintf( '/* Con arguments */ Added argument: “%s”', $title );
-		}
-
-		if ( $type === 'Justification' ) {
-			return $isFr
-				? sprintf( '/* Justifications */ Ajout de l’argument : « %s »', $title )
-				: sprintf( '/* Justifications */ Added argument: “%s”', $title );
-		}
-
-		return $isFr
-			? sprintf( '/* Objections */ Ajout de l’objection : « %s »', $title )
-			: sprintf( '/* Objections */ Added objection: “%s”', $title );
+		$key = match ( $type ) {
+			'Argument pour', 'Pro argument' => 'pro',
+			'Argument contre', 'Con argument' => 'con',
+			'Justification' => 'justification',
+			default => 'objection'
+		};
+		$language = $config['debateTemplate'] === 'Débat' ? 'fr' : 'en';
+		return wfMessage( 'wikidebates-autoparent-' . $key, $title )->inLanguage( $language )->plain();
 	}
 
 	private static function parseInitialisation( string $value, array $config ): ?array {

@@ -1,0 +1,37 @@
+{
+	"@metadata": {
+		"authors": [
+			"Wikidébats"
+		]
+	},
+	"wk-reading-form-name": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wk-menu-about-url": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wk-menu-contact-url": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wk-menu-random-category": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wk-menu-all-debates-page": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wk-menu-contributions-url": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wk-menu-bistro-url": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wk-tpl-more-content": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wk-tpl-hover-map": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wk-tpl-hover-wikipedia": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wk-tpl-latest-changes": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wk-param-argument": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wk-param-type": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wk-param-level": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wk-param-root": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wk-param-path": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wk-param-warnings": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wk-param-page": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wk-param-display-title": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wk-form-user-page": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wk-form-summary": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wk-form-citations": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wk-form-references": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wikidebates-recent-changes-parent-property": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wikidebates-recent-changes-breadcrumb-property": "Generated compatibility default from resources/wiki-names.json. Technical wiki identifier; always selected in the content language, independently of the user interface language. Existing MediaWiki namespace overrides remain supported.",
+	"wk-summary-reorg-debates": "Generated compatibility alias of wk-summary-reorg-debats. Translate that canonical message instead.",
+	"wk-summary-rename-debate": "Generated compatibility alias of wk-summary-rename-debat. Translate that canonical message instead.",
+	"wk-summary-delete-debate": "Generated compatibility alias of wk-summary-delete-debat. Translate that canonical message instead.",
+	"wk-summary-add-debate": "Generated compatibility alias of wk-summary-add-debat. Translate that canonical message instead.",
+	"wk-summary-debate-detail-add": "Generated compatibility alias of wk-summary-debat-detail-add. Translate that canonical message instead."
+}

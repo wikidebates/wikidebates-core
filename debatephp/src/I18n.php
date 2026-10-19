@@ -8,11 +8,13 @@ final class I18n {
 	private array $aliases = [];
 	private array $messages = [];
 	private bool $memoize;
+	private bool $catalog = false;
 	public function __construct(array $data, bool $memoize = false) { $this->data = $data; $this->memoize = $memoize; }
-	/** The installed PHP table is the runtime source of truth in both modes. */
+	/** Standard JSON messages with the historical formatter and invocation-local cache. */
 	public static function bundled(bool $memoize = false): self {
-		$compiled = require __DIR__ . '/../resources/I18nData.php';
-		return new self($compiled['data'], $memoize);
+		$instance = new self([], $memoize);
+		$instance->catalog = true;
+		return $instance;
 	}
 	public static function normalize(string $code): string {
 		$code = Lua::trim($code); preg_match('/^[a-zA-Z]+/', $code, $m); return strtolower($m[0] ?? $code);
@@ -39,13 +41,17 @@ final class I18n {
 		$cacheKey = $domain . "\0" . $lang . "\0" . $key;
 		if ($this->memoize && isset($this->messages[$cacheKey])) { $text = $this->messages[$cacheKey]; }
 		else {
-			$dom = $this->domains[$domain] ??= $this->path($this->data, $domain) ?? false;
-			$entry = is_array($dom) ? ($dom[$key] ?? null) : null;
-			$entry = $this->resolve($entry ?? ($this->data['Common'][$key] ?? null));
-			$text = is_string($entry) ? $entry : (is_array($entry) ? ($entry[$lang] ?? $entry['en'] ?? $entry['fr'] ?? null) : null);
-			$text ??= $key;
+			if ($this->catalog) { $text = MessageCatalog::template($domain, $lang, $key, $key); }
+			else {
+				$dom = $this->domains[$domain] ??= $this->path($this->data, $domain) ?? false;
+				$entry = is_array($dom) ? ($dom[$key] ?? null) : null;
+				$entry = $this->resolve($entry ?? ($this->data['Common'][$key] ?? null));
+				$text = is_string($entry) ? $entry : (is_array($entry) ? ($entry[$lang] ?? $entry['en'] ?? $entry['fr'] ?? null) : null);
+				$text ??= $key;
+			}
 			if ($this->memoize) { $this->messages[$cacheKey] = $text; }
 		}
+		if ($this->catalog) { return $args ? MessageCatalog::substitute($text, $args) : MessageCatalog::legacyTemplate($text); }
 		return $args ? Lua::format($text, ...$args) : $text;
 	}
 }

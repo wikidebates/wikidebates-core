@@ -11,6 +11,9 @@ Les différences 0.6/0.7/0.8 et les mesures historiques restent documentées dan
 bilan avec un véritable magasin sémantique et une exécution LuaStandalone.
 Les résultats structurés sont dans
 [tests/results/debatephp-fullstack.json](../tests/results/debatephp-fullstack.json).
+La validation a ensuite été répétée après l’[harmonisation i18n](i18n-harmonization.md),
+avec les nouveaux résultats séparés dans
+[debatephp-i18n-fullstack.json](../tests/results/debatephp-i18n-fullstack.json).
 
 ## Environnement réellement exécuté
 
