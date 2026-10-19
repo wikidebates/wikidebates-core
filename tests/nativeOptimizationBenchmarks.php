@@ -16,7 +16,7 @@ $scenarios['cards'] = ['title' => 'WD FS related argument',
 	'text' => '{{#argument:render|lang=en|summary=Summary|dedicated-debate=WD FS parent debate en|creation-date=2026-01-01}}'];
 $benchmark = ['repeats' => $repeats, 'samples_ms' => [], 'profiles' => [], 'profile_samples_ms' => []];
 $withoutDurations = static function(array $value) use (&$withoutDurations): array {
-	unset($value['milliseconds'], $value['total_ms'], $value['render_other_ms'], $value['max_ms']);
+	unset($value['milliseconds'], $value['total_ms'], $value['render_other_ms'], $value['max_ms'], $value['preparation']);
 	foreach ($value as $key => $item) { if (is_array($item)) { $value[$key] = $withoutDurations($item); } }
 	return $value;
 };
@@ -55,6 +55,13 @@ foreach ($benchmark['profiles'] as $modes) {
 	foreach (['reference', 'optimized'] as $mode) {
 		foreach ($modes[$mode] as $event) {
 			foreach ($event['semantic'] as $origin => $phases) { $origins[$origin] = true; }
+			check(isset($event['preparation']), 'Real renderer emits CSV observations when profiling is enabled');
+			if (isset($event['preparation'])) {
+				$p = $event['preparation'];
+				check($p['calls'] === $p['hits'] + $p['misses'] + $p['bypassed'] + $p['failures'], 'CSV profile accounts for every call');
+				check($p['entries'] <= 256 && $p['admission_entries'] <= 256 && $p['peak_payload_bytes'] <= 131072, 'Real CSV cache respects both limits');
+				foreach ($p as $value) { check(is_int($value) && $value >= 0, 'CSV profile contains only nonnegative integers'); }
+			}
 			check(!str_contains(json_encode($event), 'https://example.test'), 'Semantic profile omits content URLs');
 		}
 	}

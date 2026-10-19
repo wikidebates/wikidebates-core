@@ -4,12 +4,15 @@ namespace MediaWiki\Extension\DebatePHP;
 /** Literal separators used by the wiki templates. No parser or regular expression. */
 final class SerializedData {
 	public static function csv(?string $text, ?string $separator = null): Table {
+		return new Table(self::csvValues($text, $separator));
+	}
+	public static function csvValues(?string $text, ?string $separator = null): array {
 		$out = [];
 		foreach (explode($separator ?? ',', $text ?? '') as $part) {
 			$part = Lua::trim($part);
 			if ($part !== '') { $out[count($out) + 1] = $part; }
 		}
-		return new Table($out);
+		return $out;
 	}
 	public static function split(?string $text, ?string $separator, $maxSplits = null): Table {
 		$text ??= ''; $separator ??= '';
@@ -33,9 +36,12 @@ final class SerializedData {
 		return new Table($out);
 	}
 	public static function record(string $block, string $fieldSeparator, array $fields): Table {
+		return new Table(self::recordValues($block, $fieldSeparator, $fields));
+	}
+	public static function recordValues(string $block, string $fieldSeparator, array $fields): array {
 		$parts = explode($fieldSeparator, $block); $record = [];
 		foreach ($fields as $index => $name) { $record[$name] = trim($parts[$index] ?? '', " \t\r\n\v\f"); }
-		return new Table($record);
+		return $record;
 	}
 	public static function records(?string $text, string $separator, string $fieldSeparator, array $fields, bool $requireItemSeparator = false): Table {
 		$text = Lua::trim($text ?? ''); $out = [];

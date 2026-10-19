@@ -26,6 +26,7 @@ foreach ($formats as $format => $fields) {
 		$expected = $format === 'quotes' ? SerializedData::quotes($text) : SerializedData::records($text, '⟭', '⟬', $fields);
 		$actual = $decoder->parse($format, $text);
 		same(Table::unwrap($expected), Table::unwrap($actual), 'Decoded record equivalence: ' . $format);
+		same(Table::unwrap($expected), $decoder->values($format, $text), 'Native record equivalence: ' . $format);
 		$statistics = $decoder->statistics();
 		same($actual, $decoder->parse($format, $text), 'Same read-only records are reused');
 		same($statistics, $decoder->statistics(), 'No second decode for HTML/JSON-LD consumer');

@@ -108,6 +108,15 @@ foreach (file($observationLog, FILE_IGNORE_NEW_LINES) as $line) {
 	$profileEvents[] = $event;
 }
 same(2 * $count, count($profileEvents), 'Each observed invocation emits one profile');
+$csvHits = 0; $csvBypassed = 0;
+foreach ($profileEvents as $event) {
+	check(isset($event['preparation']), 'Real hooks expose pure preprocessing observations');
+	$p = $event['preparation'];
+	same($p['calls'], $p['hits'] + $p['misses'] + $p['bypassed'] + $p['failures'], 'CSV observations account for all calls');
+	check($p['entries'] <= 256 && $p['peak_payload_bytes'] <= 131072, 'Real parser respects CSV retention bounds');
+	$csvHits += $p['hits']; $csvBypassed += $p['bypassed'];
+}
+check($csvHits > 0 && $csvBypassed > 0, 'Real keyword/section reuse and empty-field bypass are observed');
 
 // Exercise Page Forms through a genuine child frame, with literal delimiters in values.
 if (\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('PageForms')) {

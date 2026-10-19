@@ -8,7 +8,7 @@ use MediaWiki\Parser\PPFrame;
 use MediaWiki\Title\Title;
 
 /** MediaWiki 1.43 legacy parser boundary. No recursive parse/reset of the current Parser. */
-final class MediaWikiContext implements ArgumentContext, SemanticProfilingContext {
+final class MediaWikiContext implements ArgumentContext, SemanticProfilingContext, PreparationProfilingContext {
 	private Parser $parser;
 	private PPFrame $caller;
 	private PPFrame $module;
@@ -187,6 +187,7 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 		} finally { $this->telemetry?->finish('json', $started); }
 	}
 	public function uriEncode(string $text, string $mode = 'QUERY'): string { return TextEscaper::uriEncode($text, $mode); }
+	public function profilePreparation(array $statistics): void { $this->telemetry?->preparation($statistics); }
 	private function url(string $page, ?Table $query, string $method): ?string {
 		$t = Title::newFromText($page) ?? Title::newFromURL(urldecode($page));
 		if (!$t) { return null; }

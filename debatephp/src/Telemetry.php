@@ -13,6 +13,13 @@ final class Telemetry {
 	private array $preprocessing = [];
 	private array $semantic = [];
 	private array $semanticCacheHits = [];
+	private array $preparation = [];
+	public function preparation(array $statistics): void {
+		if (!$this->profiling) { return; }
+		foreach (['calls', 'hits', 'misses', 'bypassed', 'admitted', 'evicted', 'failures', 'entries', 'admission_entries', 'payload_bytes', 'peak_payload_bytes'] as $key) {
+			$this->preparation[$key] = isset($statistics[$key]) && is_int($statistics[$key]) ? max(0, $statistics[$key]) : 0;
+		}
+	}
 	public function __construct(bool $profiling, bool $diagnostics, array $context = [], ?callable $sink = null) {
 		$this->profiling = $profiling; $this->diagnostics = $diagnostics;
 		$this->context = $context; $this->sink = $sink === null ? null : \Closure::fromCallable($sink);
@@ -92,10 +99,12 @@ final class Telemetry {
 					'milliseconds' => round($entry['nanoseconds'] / 1e6, 4), 'max_ms' => round($entry['max_nanoseconds'] / 1e6, 4)];
 			}
 		}
-		$this->emit(['event' => 'profile', 'total_ms' => round((hrtime(true) - $this->started) / 1e6, 4),
+		$event = ['event' => 'profile', 'total_ms' => round((hrtime(true) - $this->started) / 1e6, 4),
 			'render_other_ms' => round($other / 1e6, 4), 'stages' => $stages,
 			'counters' => $this->counters, 'preprocessing' => $preprocessing,
-			'semantic' => $semantic, 'semantic_cache_hits' => $this->semanticCacheHits]);
+			'semantic' => $semantic, 'semantic_cache_hits' => $this->semanticCacheHits];
+		if ($this->preparation) { $event['preparation'] = $this->preparation; }
+		$this->emit($event);
 	}
 	private function emit(array $event): void {
 		try {

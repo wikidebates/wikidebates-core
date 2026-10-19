@@ -102,6 +102,19 @@ class ArgumentReferenceRenderer {
 		return NativeText::attribute($s);
 	}
 
+	protected function nativeReferenceValues(string $format, ?string $raw): array {
+		return ($this->decodedReferences ??= new DecodedReferences)->values($format, $raw);
+	}
+
+	protected function wkBuildSingleNodeFromNativeItems(array $items, callable $builder): Table {
+		foreach ($items as $item) {
+			$node = $builder($item);
+			if (Lua::truth($node)) { return new Table([1 => $node]); }
+			break; // Argument uses the first item; Debate scans to the first valid node.
+		}
+		return new Table;
+	}
+
 	protected function splitCSV($s = null, $sep = null) {
 		return ($this->renderData ??= new RenderData)->csv($s, $sep);
 	}
@@ -399,7 +412,7 @@ class ArgumentReferenceRenderer {
 		return ($this->decodedReferences ??= new DecodedReferences)->parse('videography', $raw);
 	}
 
-	protected function renderReferenceItemBanners($itemWarnings = null, $pv = null, $lang = null, $cats = null, $out = null) {
+	protected function renderReferenceItemBanners($itemWarnings = null, $pv = null, $lang = null, $cats = null, &$out = null) {
 		$warnsRef = Lua::trim(Lua::str((Lua::truth($v60 = $itemWarnings) ? $v60 : '')));
 		if (($warnsRef === '')) {
 			return null;
@@ -408,19 +421,21 @@ class ArgumentReferenceRenderer {
 		foreach (($this->splitCSV($warnsRef, ','))->sequence() as $_ => $x) {
 			$key = $this->resolveKeyFromLookup($x, $lookup, $this->REFERENCE_WARNING_BANNER_KEYS);
 			if (($key !== '')) {
-				Lua::insert($out, $this->renderSubsectionBanner($pv, $lang, $key, null, $cats));
+				$fragment = $this->renderSubsectionBanner($pv, $lang, $key, null, $cats);
+				if ($out instanceof Table) { Lua::insert($out, $fragment); }
+				elseif ($fragment !== null) { $out[] = $fragment; }
 			}
 		}
 	}
 
 	protected function wkRenderOneBiblioLi($item = null, $pv = null, $lang = null, $cats = null, $PF = null, $smwPending = null, $args = null) {
-		$item = $item->values;
-		$out = new Table([]);
+		$item = $item instanceof Table ? $item->values : $item;
+		$out = [];
 		$authors = $item['authors'];
 		if (($authors === '')) {
 			$authors = $PF['unknown_author'];
 		}
-		$out[(Lua::len($out) + 1)] = $authors;
+		$out[] = $authors;
 		{
 			$k = (Lua::truth($v62 = (Lua::truth($v63 = $smwPending) ? $this->smwPropRef($PF, 'authors') : $v63)) ? $v62 : '');
 			if (($k !== '')) {
@@ -444,44 +459,44 @@ class ArgumentReferenceRenderer {
 		}
 		if (($article !== '')) {
 			if (($link !== '')) {
-				$out[(Lua::len($out) + 1)] = (', « [' . $link . ' ' . $article . '] »');
+				$out[] = (', « [' . $link . ' ' . $article . '] »');
 			}
 			else {
-				$out[(Lua::len($out) + 1)] = (', « ' . $article . ' »');
+				$out[] = (', « ' . $article . ' »');
 			}
 		}
 		if (($work !== '')) {
 			if (($article !== '')) {
-				$out[(Lua::len($out) + 1)] = (', \'\'' . $work . '\'\'');
+				$out[] = (', \'\'' . $work . '\'\'');
 			}
 			else {
 				if (($link !== '')) {
-					$out[(Lua::len($out) + 1)] = (', \'\'[' . $link . ' ' . $work . ']\'\'');
+					$out[] = (', \'\'[' . $link . ' ' . $work . ']\'\'');
 				}
 				else {
-					$out[(Lua::len($out) + 1)] = (', \'\'' . $work . '\'\'');
+					$out[] = (', \'\'' . $work . '\'\'');
 				}
 			}
 		}
 		$volume = $item['volume'];
 		if (($volume !== '')) {
-			$out[(Lua::len($out) + 1)] = (', ' . $PF['volume_label'] . '&#160;' . $volume);
+			$out[] = (', ' . $PF['volume_label'] . '&#160;' . $volume);
 		}
 		$number = $item['number'];
 		if (($number !== '')) {
-			$out[(Lua::len($out) + 1)] = (', ' . $PF['issue_label'] . '&#160;' . $number);
+			$out[] = (', ' . $PF['issue_label'] . '&#160;' . $number);
 		}
 		$location = $item['location'];
 		if (($location !== '')) {
-			$out[(Lua::len($out) + 1)] = (', ' . $location);
+			$out[] = (', ' . $location);
 		}
 		$page = $item['page'];
 		if (($page !== '')) {
-			$out[(Lua::len($out) + 1)] = (', p.' . $page);
+			$out[] = (', p.' . $page);
 		}
 		$publisher = $item['publisher'];
 		if (($publisher !== '')) {
-			$out[(Lua::len($out) + 1)] = (', ' . $publisher);
+			$out[] = (', ' . $publisher);
 			{
 				$kp = (Lua::truth($v72 = (Lua::truth($v73 = $smwPending) ? $this->smwPropRef($PF, 'publishing_house') : $v73)) ? $v72 : '');
 				if (($kp !== '')) {
@@ -491,7 +506,7 @@ class ArgumentReferenceRenderer {
 		}
 		$place = $item['place'];
 		if (($place !== '')) {
-			$out[(Lua::len($out) + 1)] = (', ' . $place);
+			$out[] = (', ' . $place);
 			{
 				$kp = (Lua::truth($v75 = (Lua::truth($v76 = $smwPending) ? $this->smwPropRef($PF, 'place_of_publication') : $v76)) ? $v75 : '');
 				if (($kp !== '')) {
@@ -501,15 +516,15 @@ class ArgumentReferenceRenderer {
 		}
 		$date = $item['date'];
 		if (($date !== '')) {
-			$out[(Lua::len($out) + 1)] = (', ' . $date);
+			$out[] = (', ' . $date);
 		}
 		$this->renderReferenceItemBanners($item['warnings'], $pv, $lang, $cats, $out);
-		return ('<li>' . Lua::concat($out) . '</li>');
+		return ('<li>' . implode('', $out) . '</li>');
 	}
 
 	protected function wkRenderOneWeblioLi($item = null, $pv = null, $lang = null, $cats = null, $PF = null, $smwPending = null, $args = null) {
-		$item = $item->values;
-		$out = new Table([]);
+		$item = $item instanceof Table ? $item->values : $item;
+		$out = [];
 		$page = $item['page'];
 		$site = $item['site'];
 		$link = $item['link'];
@@ -522,7 +537,7 @@ class ArgumentReferenceRenderer {
 			}
 		}
 		if (($authors !== '')) {
-			$out[(Lua::len($out) + 1)] = $authors;
+			$out[] = $authors;
 		}
 		{
 			$label = '';
@@ -535,25 +550,25 @@ class ArgumentReferenceRenderer {
 				}
 			}
 			if ((($link !== '') && ($label !== ''))) {
-				$out[(Lua::len($out) + 1)] = ((Lua::truth($v85 = (Lua::truth($v86 = ($authors !== '')) ? ', ' : $v86)) ? $v85 : '') . '[' . $link . ' ' . $label . ']');
+				$out[] = ((Lua::truth($v85 = (Lua::truth($v86 = ($authors !== '')) ? ', ' : $v86)) ? $v85 : '') . '[' . $link . ' ' . $label . ']');
 			}
 			else {
-				$out[(Lua::len($out) + 1)] = ((Lua::truth($v87 = (Lua::truth($v88 = ($authors !== '')) ? ', ' : $v88)) ? $v87 : '') . (Lua::truth($v89 = (Lua::truth($v90 = ($page !== '')) ? $page : $v90)) ? $v89 : $site));
+				$out[] = ((Lua::truth($v87 = (Lua::truth($v88 = ($authors !== '')) ? ', ' : $v88)) ? $v87 : '') . (Lua::truth($v89 = (Lua::truth($v90 = ($page !== '')) ? $page : $v90)) ? $v89 : $site));
 			}
 		}
 		if ((($site !== '') && ($page !== ''))) {
-			$out[(Lua::len($out) + 1)] = (', \'\'' . $site . '\'\'');
+			$out[] = (', \'\'' . $site . '\'\'');
 		}
 		if (($date !== '')) {
-			$out[(Lua::len($out) + 1)] = (', ' . $date);
+			$out[] = (', ' . $date);
 		}
 		$this->renderReferenceItemBanners($item['warnings'], $pv, $lang, $cats, $out);
-		return ('<li>' . Lua::concat($out) . '</li>');
+		return ('<li>' . implode('', $out) . '</li>');
 	}
 
 	protected function wkRenderOneVideoLi($item = null, $pv = null, $lang = null, $cats = null, $PF = null, $smwPending = null, $args = null) {
-		$item = $item->values;
-		$out = new Table([]);
+		$item = $item instanceof Table ? $item->values : $item;
+		$out = [];
 		$title = $item['title'];
 		$link = $item['link'];
 		$authors = $item['authors'];
@@ -564,29 +579,29 @@ class ArgumentReferenceRenderer {
 			}
 		}
 		if (($authors !== '')) {
-			$out[(Lua::len($out) + 1)] = $authors;
+			$out[] = $authors;
 		}
 		if ((($link !== '') && ($title !== ''))) {
-			$out[(Lua::len($out) + 1)] = ((Lua::truth($v96 = (Lua::truth($v97 = ($authors !== '')) ? ', ' : $v97)) ? $v96 : '') . '[' . $link . ' ' . $title . ']');
+			$out[] = ((Lua::truth($v96 = (Lua::truth($v97 = ($authors !== '')) ? ', ' : $v97)) ? $v96 : '') . '[' . $link . ' ' . $title . ']');
 		}
 		else {
 			if (($title !== '')) {
-				$out[(Lua::len($out) + 1)] = ((Lua::truth($v98 = (Lua::truth($v99 = ($authors !== '')) ? ', ' : $v99)) ? $v98 : '') . $title);
+				$out[] = ((Lua::truth($v98 = (Lua::truth($v99 = ($authors !== '')) ? ', ' : $v99)) ? $v98 : '') . $title);
 			}
 		}
 		$this->renderReferenceItemBanners($item['warnings'], $pv, $lang, $cats, $out);
-		return ('<li>' . Lua::concat($out) . '</li>');
+		return ('<li>' . implode('', $out) . '</li>');
 	}
 
 	protected function wkRenderReferencesFromRaw($rawB = null, $rawW = null, $rawV = null, $pv = null, $lang = null, $cats = null, $PF = null, $smwPending = null, $args = null) {
 		[$b, $w, $v] = [[], [], []];
-		foreach (($this->wkParseBiblioMarkers($rawB))->sequence() as $_ => $it) {
+		foreach ($this->nativeReferenceValues('bibliography', $rawB) as $_ => $it) {
 			$b[] = $this->wkRenderOneBiblioLi($it, $pv, $lang, $cats, $PF, $smwPending, $args);
 		}
-		foreach (($this->wkParseWeblioMarkers($rawW))->sequence() as $_ => $it) {
+		foreach ($this->nativeReferenceValues('webliography', $rawW) as $_ => $it) {
 			$w[] = $this->wkRenderOneWeblioLi($it, $pv, $lang, $cats, $PF, $smwPending, $args);
 		}
-		foreach (($this->wkParseVideoMarkers($rawV))->sequence() as $_ => $it) {
+		foreach ($this->nativeReferenceValues('videography', $rawV) as $_ => $it) {
 			$v[] = $this->wkRenderOneVideoLi($it, $pv, $lang, $cats, $PF, $smwPending, $args);
 		}
 		if ((((count($b) === 0) && (count($w) === 0)) && (count($v) === 0))) {
@@ -599,30 +614,7 @@ class ArgumentReferenceRenderer {
 
 
 	protected function smwKeyFromArray($q = null) {
-		if ((Lua::type($q) !== 'table')) {
-			$s = Lua::str((Lua::truth($v101 = $q) ? $v101 : ''));
-			return (Lua::str(Lua::len($s)) . ':' . $s);
-		}
-		$idx = new Table([]);
-		$n = 0;
-		foreach (Lua::pairs($q) as $k => $_value) {
-			if ((Lua::type($k) === 'number')) {
-				$n = ($n + 1);
-				$idx[$n] = $k;
-			}
-		}
-		if (($n === 0)) {
-			return '';
-		}
-		Lua::sort($idx);
-		$parts = new Table([]);
-		$stop13 = $n;
-		for ($i = 1; $i <= $stop13; $i++) {
-			$v = Lua::str((Lua::truth($v102 = $q[$idx[$i]]) ? $v102 : ''));
-			$parts[$i] = (Lua::str(Lua::len($v)) . ':' . $v);
-		}
-		return Lua::concat($parts, '
-');
+		return CacheKey::semantic($q);
 	}
 
 	protected function getPageCreation($pv = null, $args = null) {
@@ -1735,7 +1727,7 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function wkRenderOneQuoteHtml($item = null, $idx = null, $pv = null, $lang = null, $cats = null, $PF = null) {
-		$item = $item->values;
+		$item = $item instanceof Table ? $item->values : $item;
 		$quote = Lua::str((Lua::truth($v241 = $item['quote']) ? $v241 : ''));
 		$authors = $item['authors'];
 		$article = $item['article'];
@@ -1773,7 +1765,7 @@ class ArgumentReferenceRenderer {
 		$warnHtml = '';
 		if (($warnings !== '')) {
 			$lookup = $this->buildSummaryLabelLookup($lang, $this->QUOTE_WARNING_BANNER_KEYS);
-			$b = new Table([]);
+			$b = [];
 			foreach (Lua::split($warnings, ',', true) as $x) {
 				$x = Lua::trim($x);
 				if (($x !== '')) {
@@ -1781,70 +1773,70 @@ class ArgumentReferenceRenderer {
 					if (($key !== '')) {
 						$h = $this->renderSubsectionBanner($pv, $lang, $key, null, $cats);
 						if (($h !== '')) {
-							$b[(Lua::len($b) + 1)] = $h;
+							$b[] = $h;
 						}
 					}
 				}
 			}
-			if ((Lua::len($b) > 0)) {
-				$warnHtml = ('<div>' . Lua::concat($b, '') . '</div>');
+			if ((count($b) > 0)) {
+				$warnHtml = ('<div>' . implode('', $b) . '</div>');
 			}
 		}
 		$bq = ('<blockquote data-wk-cite="' . Lua::str($idx) . '">' . $warnHtml . '« ' . $quote . ' »' . '</blockquote>');
-		$ref = new Table([]);
-		Lua::insert($ref, ('<div class="reference-citation" data-wk-cite="' . Lua::str($idx) . '">'));
+		$ref = [];
+		$ref[] = ('<div class="reference-citation" data-wk-cite="' . Lua::str($idx) . '">');
 		if (($authors !== '')) {
-			Lua::insert($ref, $authors);
+			$ref[] = $authors;
 		}
 		else {
-			Lua::insert($ref, $PF['unknown_author']);
+			$ref[] = $PF['unknown_author'];
 			Lua::insert($cats, ('[[Category:' . $PF['cat_no_authors'] . ']]'));
 		}
 		if (($article !== '')) {
 			if (($link !== '')) {
-				Lua::insert($ref, (', « [' . $link . ' ' . $article . '] »'));
+				$ref[] = (', « [' . $link . ' ' . $article . '] »');
 			}
 			else {
-				Lua::insert($ref, (', « ' . $article . ' »'));
+				$ref[] = (', « ' . $article . ' »');
 			}
 		}
 		if (($work !== '')) {
 			if (($article !== '')) {
-				Lua::insert($ref, (', \'\'' . $work . '\'\''));
+				$ref[] = (', \'\'' . $work . '\'\'');
 			}
 			else {
 				if (($link !== '')) {
-					Lua::insert($ref, (', \'\'[' . $link . ' ' . $work . ']\'\''));
+					$ref[] = (', \'\'[' . $link . ' ' . $work . ']\'\'');
 				}
 				else {
-					Lua::insert($ref, (', \'\'' . $work . '\'\''));
+					$ref[] = (', \'\'' . $work . '\'\'');
 				}
 			}
 		}
 		if (($volume !== '')) {
-			Lua::insert($ref, (', ' . $PF['volume_label'] . '&#160;' . $volume));
+			$ref[] = (', ' . $PF['volume_label'] . '&#160;' . $volume);
 		}
 		if (($number !== '')) {
-			Lua::insert($ref, (', ' . $PF['issue_label'] . '&#160;' . $number));
+			$ref[] = (', ' . $PF['issue_label'] . '&#160;' . $number);
 		}
 		if (($page !== '')) {
-			Lua::insert($ref, (', p.' . $page));
+			$ref[] = (', p.' . $page);
 		}
 		if (($location !== '')) {
-			Lua::insert($ref, (', ' . $location));
+			$ref[] = (', ' . $location);
 		}
 		if (($publisher !== '')) {
-			Lua::insert($ref, (', ' . $publisher));
+			$ref[] = (', ' . $publisher);
 		}
 		if (($place !== '')) {
-			Lua::insert($ref, (', ' . $place));
+			$ref[] = (', ' . $place);
 		}
 		if (($date !== '')) {
-			Lua::insert($ref, (', ' . $date));
+			$ref[] = (', ' . $date);
 		}
-		Lua::insert($ref, '</div>');
+		$ref[] = '</div>';
 		$html = ($bq . '
-' . Lua::concat($ref) . '
+' . implode('', $ref) . '
 ');
 		if ((($idx >= 1) && ($idx <= 4))) {
 			$this->vset(('WD_QUOTE_' . Lua::str($idx)), $html);
@@ -1853,12 +1845,12 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function wkRenderQuotesFromSerialized($raw = null, $pv = null, $lang = null, $cats = null, $PF = null) {
-		$items = $this->wkParseQuoteMarkers($raw);
-		if ((Lua::len($items) === 0)) {
+		$items = $this->nativeReferenceValues('quotes', $raw);
+		if ((count($items) === 0)) {
 			return '';
 		}
 		$out = [];
-		foreach ($items->values as $i => $it) {
+		foreach ($items as $i => $it) {
 			$out[] = $this->wkRenderOneQuoteHtml($it, $i, $pv, $lang, $cats, $PF);
 		}
 		return implode('', $out);
@@ -2304,9 +2296,8 @@ class ArgumentReferenceRenderer {
 		if (($raw === '')) {
 			return new Table([]);
 		}
-		$items = $this->wkParseQuoteMarkers($raw);
-		return $this->wkBuildSingleNodeFromFirstItem($items, function($item = null) {
-		$item = $item->values;
+		$items = $this->nativeReferenceValues('quotes', $raw);
+		return $this->wkBuildSingleNodeFromNativeItems($items, function($item = null) {
 		$authors = $item['authors'];
 		$article = $item['article'];
 		$work = $item['work'];
@@ -2370,9 +2361,8 @@ class ArgumentReferenceRenderer {
 		if (($raw === '')) {
 			return new Table([]);
 		}
-		$items = $this->wkParseBiblioMarkers($raw);
-		return $this->wkBuildSingleNodeFromFirstItem($items, function($item = null) {
-		$item = $item->values;
+		$items = $this->nativeReferenceValues('bibliography', $raw);
+		return $this->wkBuildSingleNodeFromNativeItems($items, function($item = null) {
 		$authors = $item['authors'];
 		$article = $item['article'];
 		$work = $item['work'];
@@ -2436,9 +2426,8 @@ class ArgumentReferenceRenderer {
 		if (($raw === '')) {
 			return new Table([]);
 		}
-		$items = $this->wkParseWeblioMarkers($raw);
-		return $this->wkBuildSingleNodeFromFirstItem($items, function($item = null) {
-		$item = $item->values;
+		$items = $this->nativeReferenceValues('webliography', $raw);
+		return $this->wkBuildSingleNodeFromNativeItems($items, function($item = null) {
 		$page = $item['page'];
 		$site = $item['site'];
 		$link = $item['link'];
@@ -2462,9 +2451,8 @@ class ArgumentReferenceRenderer {
 		if (($raw === '')) {
 			return new Table([]);
 		}
-		$items = $this->wkParseVideoMarkers($raw);
-		return $this->wkBuildSingleNodeFromFirstItem($items, function($item = null) {
-		$item = $item->values;
+		$items = $this->nativeReferenceValues('videography', $raw);
+		return $this->wkBuildSingleNodeFromNativeItems($items, function($item = null) {
 		$title = $item['title'];
 		$link = $item['link'];
 		$authors = $item['authors'];
@@ -2612,6 +2600,8 @@ class ArgumentReferenceRenderer {
 		if ((Lua::type($args['objections']) !== 'string')) {
 			$args['objections'] = null;
 		}
+		$this->renderData = new RenderData;
+		$this->renderData->expectReuse([$args['keywords'], $args['sections']]);
 		$lang = $this->detectLang($args);
 		$pv = $this->computePageVars();
 		$pv['lang'] = $lang;
@@ -2900,6 +2890,9 @@ class ArgumentReferenceRenderer {
 			$pieces[] = ('<span id="bouton-modifier-interlangue" style="display: none;"' . ' data-wk-tooltip="' . $this->escapeAttr($PF['edit_interlanguage_tooltip']) . '">' . $this->addDataEditLink($PF['form_edit_interlanguage'], $pv['rawTitle'], $PF['edit'], $PF['edit_interlanguage_tooltip']) . '</span>');
 		}
 		$pieces[] = $this->renderArgumentSchemaJSONLD($args, $pv, $lang, $cache, $PF, $maps);
+		if ($this->context instanceof PreparationProfilingContext) {
+			$this->context->profilePreparation($this->renderData->statistics());
+		}
 		return implode('', $pieces);
 	}
 

@@ -101,6 +101,9 @@ dans [son rapport dédié](docs/native-php-optimizations.md), avec les comparais
 avant/après sous PHP 8.3 et les variantes SQLite/MariaDB isolées.
 La [suite en six points](docs/native-php-followup.md) détaille les parcours
 sans copie, le FIFO natif, la préparation commune et la réduction des captures.
+Les [cinq optimisations complémentaires](docs/native-php-further-optimizations.md)
+traitent les clés SMW, les fragments HTML, le JSON-LD, les records natifs et le
+budget du cache CSV, avec leurs mesures et compromis.
 
 Les oracles hors ligne nécessitent Python, `lupa` et `luaparser` :
 
