@@ -4,12 +4,12 @@ namespace MediaWiki\Extension\DebatePHP;
 /** Literal separators used by the wiki templates. No parser or regular expression. */
 final class SerializedData {
 	public static function csv(?string $text, ?string $separator = null): Table {
-		$out = new Table;
+		$out = [];
 		foreach (explode($separator ?? ',', $text ?? '') as $part) {
 			$part = Lua::trim($part);
-			if ($part !== '') { Lua::insert($out, $part); }
+			if ($part !== '') { $out[count($out) + 1] = $part; }
 		}
-		return $out;
+		return new Table($out);
 	}
 	public static function split(?string $text, ?string $separator, $maxSplits = null): Table {
 		$text ??= ''; $separator ??= '';
@@ -19,30 +19,33 @@ final class SerializedData {
 		return new Table(array_combine(range(1, count($parts)), $parts));
 	}
 	public static function argumentItems(?string $text, bool $requireItemSeparator): Table {
-		$text = Lua::trim($text ?? ''); $out = new Table;
+		$text = Lua::trim($text ?? ''); $out = [];
 		if ($text === '' || ($requireItemSeparator ? !str_contains($text, '⟭')
-			: (!str_contains($text, '⟭') && !str_contains($text, '⟬')))) { return $out; }
+			: (!str_contains($text, '⟭') && !str_contains($text, '⟬')))) { return new Table; }
 		foreach (explode('⟭', $text) as $block) {
 			$block = Lua::trim($block); if ($block === '') { continue; }
 			$fields = explode('⟬', $block, 3);
 			$page = Lua::trim($fields[0]); if ($page === '') { continue; }
 			$title = Lua::trim($fields[1] ?? '');
-			Lua::insert($out, new Table(['page' => $page, 'title' => $title === '' ? $page : $title,
-				'warnings' => Lua::trim($fields[2] ?? '')]));
+			$out[count($out) + 1] = new Table(['page' => $page, 'title' => $title === '' ? $page : $title,
+				'warnings' => Lua::trim($fields[2] ?? '')]);
 		}
-		return $out;
+		return new Table($out);
+	}
+	public static function record(string $block, string $fieldSeparator, array $fields): Table {
+		$parts = explode($fieldSeparator, $block); $record = [];
+		foreach ($fields as $index => $name) { $record[$name] = trim($parts[$index] ?? '', " \t\r\n\v\f"); }
+		return new Table($record);
 	}
 	public static function records(?string $text, string $separator, string $fieldSeparator, array $fields, bool $requireItemSeparator = false): Table {
-		$text = Lua::trim($text ?? ''); $out = new Table;
+		$text = Lua::trim($text ?? ''); $out = [];
 		if ($text === '' || ($requireItemSeparator ? !str_contains($text, $separator)
-			: (!str_contains($text, $separator) && !str_contains($text, $fieldSeparator)))) { return $out; }
+			: (!str_contains($text, $separator) && !str_contains($text, $fieldSeparator)))) { return new Table; }
 		foreach (explode($separator, $text) as $block) {
 			$block = Lua::trim($block); if ($block === '') { continue; }
-			$parts = explode($fieldSeparator, $block); $record = [];
-			foreach ($fields as $index => $name) { $record[$name] = Lua::trim($parts[$index] ?? ''); }
-			Lua::insert($out, new Table($record));
+			$out[count($out) + 1] = self::record($block, $fieldSeparator, $fields);
 		}
-		return $out;
+		return new Table($out);
 	}
 	public static function quotes(?string $text): Table {
 		// Quotes require a field marker, whereas the other record formats also accept

@@ -6,6 +6,7 @@ namespace MediaWiki\Extension\DebatePHP;
  * Generated mechanically, then checked against the reference source.
  */
 class ArgumentReferenceRenderer {
+	private ?DecodedReferences $decodedReferences = null;
 	protected ArgumentContext $context;
 	protected $ITEM_SEP;
 	protected $FIELD_SEP;
@@ -392,15 +393,15 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function wkParseBiblioMarkers($raw = null) {
-		return SerializedData::records($raw, '⟭', '⟬', ['authors', 'article', 'work', 'volume', 'number', 'location', 'page', 'publisher', 'place', 'date', 'link', 'warnings']);
+		return ($this->decodedReferences ??= new DecodedReferences)->parse('bibliography', $raw);
 	}
 
 	protected function wkParseWeblioMarkers($raw = null) {
-		return SerializedData::records($raw, '⟭', '⟬', ['page', 'site', 'link', 'authors', 'date', 'warnings']);
+		return ($this->decodedReferences ??= new DecodedReferences)->parse('webliography', $raw);
 	}
 
 	protected function wkParseVideoMarkers($raw = null) {
-		return SerializedData::records($raw, '⟭', '⟬', ['title', 'link', 'authors', 'warnings']);
+		return ($this->decodedReferences ??= new DecodedReferences)->parse('videography', $raw);
 	}
 
 	protected function renderReferenceItemBanners($itemWarnings = null, $pv = null, $lang = null, $cats = null, $out = null) {
@@ -1756,7 +1757,7 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function wkParseQuoteMarkers($raw = null) {
-		return SerializedData::quotes($raw);
+		return ($this->decodedReferences ??= new DecodedReferences)->parse('quotes', $raw);
 	}
 
 	protected function wkRenderOneQuoteHtml($item = null, $idx = null, $pv = null, $lang = null, $cats = null, $PF = null) {
@@ -2586,6 +2587,7 @@ class ArgumentReferenceRenderer {
 	}
 
 	public function render($frame = null) {
+		$this->decodedReferences = null;
 		$this->vset('WD_QUOTES_AUTHORS', '');
 		$this->vset('WD_QUOTES_ARTICLES', '');
 		$this->vset('WD_QUOTES_WORKS', '');

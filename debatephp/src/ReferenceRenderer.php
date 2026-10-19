@@ -6,6 +6,7 @@ namespace MediaWiki\Extension\DebatePHP;
  * Generated mechanically, then checked against the reference source.
  */
 class ReferenceRenderer {
+	private ?DecodedReferences $decodedReferences = null;
 	protected Context $context;
 	protected $ITEM_SEP;
 	protected $FIELD_SEP;
@@ -881,7 +882,7 @@ class ReferenceRenderer {
 	}
 
 	protected function wkParseBiblioMarkers($raw = null) {
-		return SerializedData::records($raw, '⟭', '⟬', ['authors', 'article', 'work', 'volume', 'number', 'location', 'page', 'publisher', 'place', 'date', 'link', 'warnings']);
+		return ($this->decodedReferences ??= new DecodedReferences)->parse('bibliography', $raw);
 	}
 
 	protected function wkRenderOneBiblioLi($pv = null, $item = null, $lang = null, $categories = null, $smwPending = null) {
@@ -965,7 +966,7 @@ class ReferenceRenderer {
 	}
 
 	protected function wkParseWeblioMarkers($raw = null) {
-		return SerializedData::records($raw, '⟭', '⟬', ['page', 'site', 'link', 'authors', 'date', 'warnings']);
+		return ($this->decodedReferences ??= new DecodedReferences)->parse('webliography', $raw);
 	}
 
 	protected function wkRenderOneWeblioLi($pv = null, $item = null, $lang = null, $categories = null, $smwPending = null, $side = null) {
@@ -1040,7 +1041,7 @@ class ReferenceRenderer {
 	}
 
 	protected function wkParseVideoMarkers($raw = null) {
-		return SerializedData::records($raw, '⟭', '⟬', ['title', 'link', 'authors', 'warnings']);
+		return ($this->decodedReferences ??= new DecodedReferences)->parse('videography', $raw);
 	}
 
 	protected function wkRenderOneVideoLi($pv = null, $item = null, $lang = null, $categories = null, $smwPending = null) {
@@ -1748,6 +1749,7 @@ class ReferenceRenderer {
 	}
 
 	public function render($frame = null) {
+		$this->decodedReferences = null;
 		foreach (Lua::pairs($this->SEO_CACHE) as $k => $_value) {
 			$this->SEO_CACHE[$k] = null;
 		}
