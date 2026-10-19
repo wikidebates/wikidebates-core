@@ -38,13 +38,9 @@ class ArgumentReferenceRenderer {
 		$this->SUMMARY_WARNING_BANNER_KEYS = new Table([1 => 'summary_disadvantageous', 2 => 'summary_to_be_written', 3 => 'summary_unclear', 4 => 'summary_too_long', 5 => 'summary_to_separate', 6 => 'summary_style_to_review']);
 		$this->SUMMARY_WARNING_ALIASES = null;
 		$this->DISPLAYED_TITLE_WARNING_BANNER_KEYS = new Table([1 => 'displayed_title_too_long', 2 => 'displayed_title_unclear', 3 => 'displayed_title_disadvantageous']);
-		$this->SMW_ASK_CACHE = $this->cacheMake(250);
-		$this->SMW_TITLES_CACHE = $this->cacheMake(250);
 		$this->URLENC_CACHE = $this->cacheMake(2000);
-		$this->CARD_CACHE = $this->cacheMake(600);
 		$this->TITLE_WARNING_BANNER_KEYS = new Table([1 => 'title_incomplete', 2 => 'title_disadvantageous', 3 => 'title_unclear', 4 => 'title_too_long']);
 		$this->ARGUMENT_WARNING_BANNER_KEYS = new Table([1 => 'argument_sensitive', 2 => 'argument_fanciful', 3 => 'argument_potentially_illegal', 4 => 'argument_generated_by_ai']);
-		$this->SEO_CACHE = $this->cacheMake(60);
 	}
 
 	protected function anchorId($s = null) {
