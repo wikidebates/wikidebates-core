@@ -870,15 +870,14 @@ class ReferenceRenderer {
 		if ((Lua::len($items) === 0)) {
 			return '';
 		}
-		$lis = new Table([]);
+		$lis = [];
 		foreach (Lua::ipairs($items) as $_ => $item) {
 			$li = $renderOneFn($item);
 			if ((Lua::truth($li) && ($li !== ''))) {
-				$lis[(Lua::len($lis) + 1)] = $li;
+				$lis[] = $li;
 			}
 		}
-		return Lua::concat($lis, '
-');
+		return implode("\n", $lis);
 	}
 
 	protected function wkParseBiblioMarkers($raw = null) {
@@ -1756,7 +1755,7 @@ class ReferenceRenderer {
 		$args = $this->getArgs($frame);
 		$lang = $this->detectLang($args);
 		$pv = $this->computePageVars();
-		[$pieces, $cats] = [new Table([]), new Table([])];
+		[$pieces, $cats] = [[], new Table([])];
 		$smwPending = new Table([]);
 		$refRaw = new Table(['bibliography' => new Table([]), 'webliography' => new Table([]), 'videography' => new Table([])]);
 		$this->smwQueueAddFromCSV($smwPending, $this->smwProp($lang, 'keyword'), $args['keywords']);
@@ -1769,25 +1768,25 @@ class ReferenceRenderer {
 			Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'topic_missing') . ']]'));
 		}
 		if ((Lua::truth($args['expanded-topic']) && (Lua::trim($args['expanded-topic']) !== ''))) {
-			Lua::insert($pieces, $this->context->shortDescription(Lua::format($this->L($lang, 'text', 'shortdesc_topic'), $args['expanded-topic'])));
+			$pieces[] = $this->context->shortDescription(Lua::format($this->L($lang, 'text', 'shortdesc_topic'), $args['expanded-topic']));
 		}
 		else {
 			Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'topic_complete_missing') . ']]'));
-			Lua::insert($pieces, $this->context->shortDescription($this->L($lang, 'text', 'shortdesc_plain')));
+			$pieces[] = $this->context->shortDescription($this->L($lang, 'text', 'shortdesc_plain'));
 		}
 		if ((!(Lua::truth($args['creation-date'])) || (Lua::trim($args['creation-date']) === ''))) {
 			Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'creation_date_missing') . ']]'));
 		}
-		Lua::insert($pieces, $this->renderArgumentMapTop($lang, $maps));
-		Lua::insert($pieces, $this->renderKeywords($args, $pv, $cats, $lang));
+		$pieces[] = $this->renderArgumentMapTop($lang, $maps);
+		$pieces[] = $this->renderKeywords($args, $pv, $cats, $lang);
 		$btnForm = $this->addDataLink($this->L($lang, 'forms', 'banners_edit_title'), $pv['rawTitle'], $this->L($lang, 'text', 'edit_label'), $this->L($lang, 'text', 'debate_banners_edit_tt'));
-		Lua::insert($pieces, ('<h2 class="section-modifiable wk-icon-before wk-icon-flag">' . $this->L($lang, 'text', 'warnings_title') . $btnForm . '</h2>'));
-		Lua::insert($pieces, $this->renderMainBanner($this->context, $pv, $lang));
-		Lua::insert($pieces, $this->renderWarningBanners($args, $pv, $cats, $lang));
-		Lua::insert($pieces, $this->renderIntroduction($args, $pv, $lang, $cats));
-		Lua::insert($pieces, $this->renderWikipediaLinks($args, $pv, $lang));
-		Lua::insert($pieces, $this->renderArgsList($args, $pv, $lang, 'pro', $maps, $cats));
-		Lua::insert($pieces, $this->renderArgsList($args, $pv, $lang, 'con', $maps, $cats));
+		$pieces[] = ('<h2 class="section-modifiable wk-icon-before wk-icon-flag">' . $this->L($lang, 'text', 'warnings_title') . $btnForm . '</h2>');
+		$pieces[] = $this->renderMainBanner($this->context, $pv, $lang);
+		$pieces[] = $this->renderWarningBanners($args, $pv, $cats, $lang);
+		$pieces[] = $this->renderIntroduction($args, $pv, $lang, $cats);
+		$pieces[] = $this->renderWikipediaLinks($args, $pv, $lang);
+		$pieces[] = $this->renderArgsList($args, $pv, $lang, 'pro', $maps, $cats);
+		$pieces[] = $this->renderArgsList($args, $pv, $lang, 'con', $maps, $cats);
 		if (!(Lua::truth($this->isProgress($lang, $args['progress'], 'draft')))) {
 			$target = ($this->L($lang, 'text', 'self_eval_ns_label') . ':' . $pv['rawTitle'] . ' (ID)');
 			$ns = $this->L($lang, 'text', 'self_eval_ns_label');
@@ -1796,25 +1795,25 @@ class ReferenceRenderer {
 			Lua::insert($box, ('<h2 class="navigation-not-searchable noprint wk-icon-before wk-icon-selfeval">' . $this->L($lang, 'text', 'self_eval_title') . '</h2>'));
 			$startBtn = $this->wkAddDataGetButton($this->L($lang, 'forms', 'self_eval_home_title'), $target, $this->L($lang, 'text', 'self_eval_start_label'), $this->L($lang, 'text', 'self_eval_start_tt'), new Table([($ns . '[' . $f_debat . ']') => $pv['rawTitle']]));
 			Lua::insert($box, ('<div class="boite-info navigation-not-searchable noprint">' . $this->L($lang, 'text', 'self_eval_blurb') . $startBtn . '</div>'));
-			Lua::insert($pieces, Lua::concat($box));
+			$pieces[] = Lua::concat($box);
 		}
-		Lua::insert($pieces, $this->renderReferences($args, $pv, $lang, $cats, $smwPending, $refRaw));
-		Lua::insert($pieces, $this->renderConnexes($args, $pv, $cats, $lang));
-		Lua::insert($pieces, ('<h2 class="latest-changes-button navigation-not-searchable noprint wk-icon-before wk-icon-refresh">' . $this->L($lang, 'text', 'latest_changes_title') . '</h2>' . '<div class="latest-changes navigation-not-searchable noprint">' . '<div class="latest-changes-button wk-btn mw-ui-button"' . ' title="' . $this->L($lang, 'text', 'latest_changes_show_tt') . '"' . ' data-page="' . $this->context->nowiki($pv['rawTitle']) . '">' . $this->L($lang, 'text', 'latest_changes_show_label') . '</div>' . '<div class="latest-changes-wrapper"></div>' . '</div>'));
-		Lua::insert($pieces, $this->renderRubriques($args, $cats, $lang));
+		$pieces[] = $this->renderReferences($args, $pv, $lang, $cats, $smwPending, $refRaw);
+		$pieces[] = $this->renderConnexes($args, $pv, $cats, $lang);
+		$pieces[] = ('<h2 class="latest-changes-button navigation-not-searchable noprint wk-icon-before wk-icon-refresh">' . $this->L($lang, 'text', 'latest_changes_title') . '</h2>' . '<div class="latest-changes navigation-not-searchable noprint">' . '<div class="latest-changes-button wk-btn mw-ui-button"' . ' title="' . $this->L($lang, 'text', 'latest_changes_show_tt') . '"' . ' data-page="' . $this->context->nowiki($pv['rawTitle']) . '">' . $this->L($lang, 'text', 'latest_changes_show_label') . '</div>' . '<div class="latest-changes-wrapper"></div>' . '</div>');
+		$pieces[] = $this->renderRubriques($args, $cats, $lang);
 		$this->setSemanticData($args, $pv, $lang, $maps, $smwPending);
 		$this->renderFullSEO($args, $pv, $lang);
-		Lua::insert($pieces, Lua::concat($cats));
+		$pieces[] = Lua::concat($cats);
 		$renameLink = Lua::format($this->L($lang, 'text', 'rename_special_page_text'), $pv['encoded']);
-		Lua::insert($pieces, ('<span id="bouton-renommer" class="bouton-modifier navigation-not-searchable noprint" style="display: none;">[[' . $renameLink . '|' . $this->L($lang, 'text', 'rename_link_label') . ']]</span>'));
-		Lua::insert($pieces, ('<span id="bouton-modifier-sujet" style="display: none;">' . $this->addDataLink($this->L($lang, 'forms', 'topic_edit_title'), $pv['rawTitle'], $this->L($lang, 'text', 'edit_label'), $this->L($lang, 'text', 'topic_edit_tt')) . '</span>'));
-		Lua::insert($pieces, ('<span id="bouton-modifier-categories" style="display: none;">' . $this->addDataLink($this->L($lang, 'forms', 'sections_edit_title'), $pv['rawTitle'], $this->L($lang, 'text', 'edit_label'), $this->L($lang, 'text', 'sections_edit_tt')) . '</span>'));
+		$pieces[] = ('<span id="bouton-renommer" class="bouton-modifier navigation-not-searchable noprint" style="display: none;">[[' . $renameLink . '|' . $this->L($lang, 'text', 'rename_link_label') . ']]</span>');
+		$pieces[] = ('<span id="bouton-modifier-sujet" style="display: none;">' . $this->addDataLink($this->L($lang, 'forms', 'topic_edit_title'), $pv['rawTitle'], $this->L($lang, 'text', 'edit_label'), $this->L($lang, 'text', 'topic_edit_tt')) . '</span>');
+		$pieces[] = ('<span id="bouton-modifier-categories" style="display: none;">' . $this->addDataLink($this->L($lang, 'forms', 'sections_edit_title'), $pv['rawTitle'], $this->L($lang, 'text', 'edit_label'), $this->L($lang, 'text', 'sections_edit_tt')) . '</span>');
 		if ((Lua::truth($args['interlanguage']) && (Lua::trim(Lua::str((Lua::truth($v251 = $args['interlanguage']) ? $v251 : ''))) !== ''))) {
-			Lua::insert($pieces, $args['interlanguage']);
-			Lua::insert($pieces, ('<span id="bouton-modifier-interlangue" class="bouton-modifier navigation-not-searchable noprint" style="display: none;"' . ' data-wk-tooltip="' . $this->escapeAttr($this->L($lang, 'text', 'interlanguage_edit_tt')) . '">' . $this->addDataLink($this->L($lang, 'forms', 'interlanguage_edit_title'), $pv['rawTitle'], $this->L($lang, 'text', 'edit_label')) . '</span>'));
+			$pieces[] = $args['interlanguage'];
+			$pieces[] = ('<span id="bouton-modifier-interlangue" class="bouton-modifier navigation-not-searchable noprint" style="display: none;"' . ' data-wk-tooltip="' . $this->escapeAttr($this->L($lang, 'text', 'interlanguage_edit_tt')) . '">' . $this->addDataLink($this->L($lang, 'forms', 'interlanguage_edit_title'), $pv['rawTitle'], $this->L($lang, 'text', 'edit_label')) . '</span>');
 		}
-		Lua::insert($pieces, $this->renderDebateSchemaJSONLD($pv, $lang, $args, $maps, $refRaw));
-		return Lua::concat($pieces, '');
+		$pieces[] = $this->renderDebateSchemaJSONLD($pv, $lang, $args, $maps, $refRaw);
+		return implode('', $pieces);
 	}
 
 	protected function getArgs($frame = null) { return $this->context->arguments(); }

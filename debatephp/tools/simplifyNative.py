@@ -66,4 +66,5 @@ def simplify(path: Path, argument: bool):
 		source, count = re.subn(r'->expandField\((\$\w+)\)', lambda m: f"->expandField({m[1]}, '{next(reasons)}')", source)
 		assert count == 13, count
 	assert '\tpublic function render(' in source, 'Native simplification removed the entry point'
-	path.write_text(source)
+	from nativeOptimizations import optimize
+	path.write_text(optimize(source, argument))

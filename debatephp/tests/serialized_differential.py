@@ -22,7 +22,7 @@ require=function() return {} end
 ''')
 	names = ['splitCSV', 'wkParseBiblioMarkers', 'wkParseWeblioMarkers', 'wkParseVideoMarkers',
 	'anchorId', 'normalizeTooltipText', 'escapeAttr', 'wkSplit2']
-	names += ['splitByLiteral', 'wkExtractItemsFromSerializedData', 'wkParseQuoteMarkers', 'wkEncodePathSegment'] if module == 'Argument' else ['wkExtractArgumentItemsFromData', 'wkParseIntroSubsections']
+	names += ['splitByLiteral', 'wkExtractItemsFromSerializedData', 'wkParseQuoteMarkers', 'wkEncodePathSegment', 'breadcrumbLenByteSafe'] if module == 'Argument' else ['wkExtractArgumentItemsFromData', 'wkParseIntroSubsections']
 	source = (root / 'resources' / f'Module-{module}.reference.lua').read_text()
 	source = re.sub(r'return p\s*$', 'return {' + ','.join(f'{name}={name}' for name in names) + '}', source)
 	methods = lua.execute(source)
