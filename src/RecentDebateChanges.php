@@ -3,6 +3,7 @@
 namespace MediaWiki\Extension\Wikidebates;
 
 use MediaWiki\MediaWikiServices;
+use MediaWiki\Extension\DebatePHP\DatabaseFailure;
 use Parser;
 use PPFrame;
 use Title;
@@ -93,6 +94,7 @@ class RecentDebateChanges {
 			return implode( "\n", $out );
 
 		} catch ( \Throwable $e ) {
+			DatabaseFailure::rethrow( $e );
 			return '<pre style="color:red;">'
 				. htmlspecialchars( get_class( $e ) . ': ' . $e->getMessage() )
 				. '</pre>';

@@ -77,9 +77,7 @@ final class Lua {
 	public static function pcall(callable $function, ...$args): array {
 		try { return [true, $function(...$args)]; }
 		catch (\Throwable $e) {
-			if ( $e instanceof \Wikimedia\Rdbms\DBError ) {
-				throw $e;
-			}
+			DatabaseFailure::rethrow($e);
 			return [false, $e->getMessage()];
 		}
 	}

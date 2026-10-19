@@ -221,9 +221,7 @@ final class MediaWikiContext implements ArgumentContext {
 			$error = is_array($result) ? ($result[0] ?? '') : $result;
 			if (is_string($error) && trim($error) !== '') { $this->telemetry?->problem('semantic', 'returned-error'); }
 		} catch (\Throwable $e) {
-			if ( $e instanceof \Wikimedia\Rdbms\DBError ) {
-				throw $e;
-			}
+			DatabaseFailure::rethrow($e);
 			$this->telemetry?->problem('semantic', 'exception', $e);
 		}
 		finally { $this->telemetry?->finish('semantic', $started); }
@@ -236,9 +234,7 @@ final class MediaWikiContext implements ArgumentContext {
 			MediaWikiServices::getInstance()->getHookContainer()->run('WikiSEOLuaPreAddPageProps', [&$validated]);
 			foreach ($validated as $key => $v) { $this->parser->getOutput()->setPageProperty($key, $v); }
 		} catch (\Throwable $e) {
-			if ( $e instanceof \Wikimedia\Rdbms\DBError ) {
-				throw $e;
-			}
+			DatabaseFailure::rethrow($e);
 			$this->telemetry?->problem('seo', 'exception', $e);
 		}
 		finally { $this->telemetry?->finish('seo', $started); }
@@ -259,9 +255,7 @@ final class MediaWikiContext implements ArgumentContext {
 			};
 			return $toTable($values);
 		} catch (\Throwable $e) {
-			if ( $e instanceof \Wikimedia\Rdbms\DBError ) {
-				throw $e;
-			}
+			DatabaseFailure::rethrow($e);
 			$this->telemetry?->problem('semantic-query', 'exception', $e);
 			return null;
 		}
@@ -281,9 +275,7 @@ final class MediaWikiContext implements ArgumentContext {
 			} else { \ExtVariables::pf_vardefine($this->parser, $name, $value); }
 		}
 		catch (\Throwable $e) {
-			if ( $e instanceof \Wikimedia\Rdbms\DBError ) {
-				throw $e;
-			}
+			DatabaseFailure::rethrow($e);
 			$this->telemetry?->problem('variables', 'exception', $e);
 		}
 	}
@@ -291,9 +283,7 @@ final class MediaWikiContext implements ArgumentContext {
 		if (!class_exists(\ExtVariables::class) || !\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('VariablesLua')) { return null; }
 		try { return \ExtVariables::pfObj_var($this->parser, $this->parser->getPreprocessor()->newFrame(), [$name]); }
 		catch (\Throwable $e) {
-			if ( $e instanceof \Wikimedia\Rdbms\DBError ) {
-				throw $e;
-			}
+			DatabaseFailure::rethrow($e);
 			$this->telemetry?->problem('variables', 'exception', $e);
 			return null;
 		}
