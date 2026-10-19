@@ -1,0 +1,37 @@
+{
+	"@metadata": {
+		"authors": [
+			"Wikidébats"
+		]
+	},
+	"wk-reading-form-name": "New_argument",
+	"wk-menu-about-url": "/wiki/Wikidebates:About",
+	"wk-menu-contact-url": "/wiki/Special:Contact",
+	"wk-menu-random-category": "Debates",
+	"wk-menu-all-debates-page": "Portal:Debates",
+	"wk-menu-contributions-url": "/wiki/Portal:Contributions",
+	"wk-menu-bistro-url": "/wiki/Wikidebates:Village_pump",
+	"wk-tpl-more-content": "Additional content",
+	"wk-tpl-hover-map": "Argument map hover",
+	"wk-tpl-hover-wikipedia": "Wikipedia link hover",
+	"wk-tpl-latest-changes": "Recent contributions",
+	"wk-param-argument": "argument",
+	"wk-param-type": "type",
+	"wk-param-level": "level",
+	"wk-param-root": "root",
+	"wk-param-path": "path",
+	"wk-param-warnings": "warnings",
+	"wk-param-page": "page",
+	"wk-param-display-title": "display-title",
+	"wk-form-user-page": "User page",
+	"wk-form-summary": "Summary",
+	"wk-form-citations": "Quotes",
+	"wk-form-references": "References",
+	"wikidebates-recent-changes-parent-property": "Parent debate",
+	"wikidebates-recent-changes-breadcrumb-property": "Breadcrumb",
+	"wk-summary-reorg-debates": "Reorganization of debates",
+	"wk-summary-rename-debate": "Renaming debate: “$1”",
+	"wk-summary-delete-debate": "Deleting debate: “$1”",
+	"wk-summary-add-debate": "Adding debate: “$1”",
+	"wk-summary-debate-detail-add": "Adding detailed debate: $1"
+}

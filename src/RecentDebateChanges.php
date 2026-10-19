@@ -152,8 +152,11 @@ class RecentDebateChanges {
 			return self::makeError( 'wikidebates-recent-changes-error-no-debate-id' );
 		}
 
-		$parentPropertyLabel = self::msg( 'wikidebates-recent-changes-parent-property' );
-		$breadcrumbPropertyLabel = self::msg( 'wikidebates-recent-changes-breadcrumb-property' );
+		$names = \MediaWiki\Extension\DebatePHP\MessageCatalog::siteNames(
+			MediaWikiServices::getInstance()->getContentLanguage()->getCode()
+		);
+		$parentPropertyLabel = $names['wikidebates-recent-changes-parent-property'];
+		$breadcrumbPropertyLabel = $names['wikidebates-recent-changes-breadcrumb-property'];
 
 		$parentPropertyIds = self::findPropertyIds(
 			$dbr,

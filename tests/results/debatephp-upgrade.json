@@ -1,0 +1,71 @@
+{
+	"cases": 121,
+	"skipped_cases": [
+		{
+			"name": "title-[[Titre|libellé]]",
+			"reason": "Invalid MediaWiki title; retained in the mocked boundary corpus"
+		}
+	],
+	"comparisons": 726,
+	"failures": [],
+	"timings": {
+		"0.6": {
+			"reference": {
+				"samples": 847,
+				"median_ms": 8.300402,
+				"p95_ms": 19.149663,
+				"total_ms": 8257.094428000004
+			},
+			"optimized": {
+				"samples": 847,
+				"median_ms": 8.066581,
+				"p95_ms": 19.970078,
+				"total_ms": 8341.222684999992
+			}
+		},
+		"0.7": {
+			"optimized": {
+				"samples": 847,
+				"median_ms": 7.601324,
+				"p95_ms": 19.070361,
+				"total_ms": 7874.210994000004
+			},
+			"reference": {
+				"samples": 847,
+				"median_ms": 7.594916,
+				"p95_ms": 20.242465,
+				"total_ms": 7883.668916999998
+			}
+		},
+		"0.8": {
+			"optimized": {
+				"samples": 847,
+				"median_ms": 7.551611,
+				"p95_ms": 18.931947,
+				"total_ms": 7758.382923000002
+			},
+			"reference": {
+				"samples": 847,
+				"median_ms": 7.426803,
+				"p95_ms": 19.478071,
+				"total_ms": 7772.733359999998
+			}
+		}
+	},
+	"normalized": [
+		"JSON object key order/whitespace",
+		"only the four intentionally removed Lua source dependencies"
+	],
+	"passed": true,
+	"environment": {
+		"mediawiki": "1.43.11",
+		"php": "8.2.32",
+		"repeats": 7,
+		"extensions": "Scribunto,PageForms,ShortDescription,WikiSEO,Variables"
+	},
+	"strict_json_type_validation": {
+		"comparisons": 726,
+		"passed": true,
+		"preserves_empty_object_vs_array": true
+	}
+}

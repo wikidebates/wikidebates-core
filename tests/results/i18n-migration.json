@@ -1,0 +1,93 @@
+{
+	"tested_at_utc": "2026-10-19T07:30:52.894316+00:00",
+	"mediawiki": "1.43.11",
+	"php": "8.2.32",
+	"canonical_messages": 390,
+	"legacy_entries": 623,
+	"technical_rendering_values": 277,
+	"technical_site_values_per_language": 25,
+	"static_checks": {
+		"browser_references": 91,
+		"key_and_parameter_parity": true,
+		"unique_json_keys": true,
+		"documented_messages": true,
+		"legacy_message_aliases": 5,
+		"generated_files_current": true
+	},
+	"standalone": {
+		"translation_comparisons": 2492,
+		"lua_translation_comparisons": 2510,
+		"json_import_round_trip": true,
+		"atomic_import_preserves_permissions": true,
+		"historical_compiler_preserves_compatibility_entry": true,
+		"substitution_handles_parameter_order_literals_and_unused_arguments": true
+	},
+	"browser": {
+		"engine": "Node.js vm with MediaWiki API boundary double",
+		"ui_content_language_combinations": 12,
+		"content_names_isolated": true,
+		"aliases_and_late_configuration": true
+	},
+	"real_mediawiki": [
+		{
+			"mediawiki": "1.43.11",
+			"php": "8.2.32",
+			"content_language": "en",
+			"resource_loader_languages": 6,
+			"legacy_aliases": 5,
+			"mediawiki_namespace_overrides": true,
+			"semantic_names_isolated": true,
+			"parameter_reordering": true,
+			"parent_summaries": true,
+			"email_message": true
+		},
+		{
+			"mediawiki": "1.43.11",
+			"php": "8.2.32",
+			"content_language": "fr",
+			"resource_loader_languages": 6,
+			"legacy_aliases": 5,
+			"mediawiki_namespace_overrides": true,
+			"semantic_names_isolated": true,
+			"parameter_reordering": true,
+			"parent_summaries": true,
+			"email_message": true
+		}
+	],
+	"real_parser": {
+		"single_extension_load": true,
+		"without_scribunto_optional_extensions": true,
+		"fixtures_in_both_modes_per_configuration": 13,
+		"native_operation_cases_per_configuration": 14
+	},
+	"known_legacy_unresolved_alias": {
+		"Argument.seo.breadcrumb_home_label": "@Debate.seo.breadcrumb_home_label"
+	},
+	"limitations": [
+		"No production connection or data",
+		"No end-to-end browser navigation or form submission",
+		"MariaDB, shared caches, distributed invalidation, concurrency and site-scale volume untested",
+		"Full Scribunto maintenance command not rerun; its import writer and the historical compiler CLI were tested on isolated copies"
+	],
+	"fullstack": {
+		"cases": 134,
+		"comparisons": 268,
+		"passed": true,
+		"failures": [],
+		"jsonld_encoding_corrections": 116,
+		"comparison": "Visible output and metadata unchanged except removal of obsolete Lua source dependencies; JSON nodes checked against Lua after reproducing its old escaping on the new raw values",
+		"result_file": "tests/results/debatephp-i18n-fullstack.json",
+		"persisted_render_variants": 18
+	},
+	"historical_versions": {
+		"cases": 121,
+		"comparisons": 726,
+		"passed": true,
+		"skipped_cases": [
+			{
+				"name": "title-[[Titre|libellé]]",
+				"reason": "Invalid MediaWiki title; retained in the mocked boundary corpus"
+			}
+		]
+	}
+}

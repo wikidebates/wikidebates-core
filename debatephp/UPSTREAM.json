@@ -1,0 +1,44 @@
+{
+	"version": "0.8.0",
+	"source_commit": "930393272f6c06d2c1a8b6776edb638190590e2c",
+	"source_path": "imports/debatephp-0.8/DebatePHP/",
+	"historical_source_commit_060": "1ee0cfeeb5aa437bc4169abb70bcf28e7b0fc016",
+	"upstream_sha256_manifest": "Stale: 24 mismatches among 150 entries in the supplied 0.8 archive; NativeText.php and other new files are absent. The hashes below were measured from the Git sources actually integrated.",
+	"sha256": {
+		"src/ArgumentContext.php": "63aef353d19c33cf7e3c3b25c8a65ae398981bdf586d56cf36ee2e04c1a8916b",
+		"src/ArgumentReferenceRenderer.php": "103440f34855824d892e5e1c373e224bf70fd2ed45910095e335680512ef20b7",
+		"src/ArgumentRenderer.php": "b5c06ae42223a75a31d7592559ff9b7de27b9e746860000f3101a38e5577ccfd",
+		"src/Context.php": "9e2d922a48281710c135534b63f617b0da9e5076f00773453180b8780972f942",
+		"src/Hooks.php": "de4240377e053569da66cd8dcdd186a7b68b04c372cb98c53bac8c63b8f3336b",
+		"src/HtmlBuilder.php": "abadefa2adb98c627b2f96b6f0a92c4673c5c1669f287cac1f2e01f36a0478f5",
+		"src/I18n.php": "58835ba22e79550f93b17c63dc44b9a4c334af540346bf5b9861adf0d4aeb2c2",
+		"src/LiteralData.php": "02a7676da9cb2d32fa61a773eff121504c0f123bd587274e9faf3c818c7f463f",
+		"src/Lua.php": "ff406b75b6c709b05173b35938f9d1fad10892b7db1ffc0015e48e92562c6498",
+		"src/MediaWikiContext.php": "affa3c04b7f34f753893e0c97d60a42d09a53218b05be325c7bbaa2a86b25c75",
+		"src/NativeTags.php": "d4ae39327d381a5a3f7062c5448f3872cd7c3f992c046d2ed35bfff7491d8c89",
+		"src/NativeText.php": "1019736ee0a84f075f2036348c3ea5d0d75463a9d047304ea1b7a9b99b4ce478",
+		"src/ReferenceRenderer.php": "5a551121ef3ac95faea8aed275b4b307d0ef1086b40aa5e925d4f5c6acbeea5d",
+		"src/Renderer.php": "190caedc231233a2eed7ac27e8667e3fe4143d54420ffcda0fcf6d875d1214e6",
+		"src/SerializedData.php": "3b3d06651dec4ca6319f7f6e5b2857a6830ddd8b43b3505b2bd7dd771858a62e",
+		"src/Table.php": "3559c257dacd531c72c914fdf7be50475850b5e400d1c6f10af1bdfeec0c51ea",
+		"src/Telemetry.php": "370e635b9cc3d9b41864654c44ebe996901b54e4285614f908b53425fb945bfc",
+		"src/TextEscaper.php": "8b28f814791e3c14211d1d053e0372a8f04885864cd9990b0f68815af0f36a25",
+		"resources/I18nData.php": "60ff046dfe70de2564f793b0b951fc0bc733114aa3a0e21dea8898e03aaf46c7",
+		"resources/Module-Argument.reference.lua": "7410990a3a9c646253cc182dc0ea91f0eb7a4f61baf638ba02b442ef652090c7",
+		"resources/Module-Debate.reference.lua": "e76dbf21aa9d6465b552ec1ba59f0763ea7a6722d1784c51272b91793e5ffa0c",
+		"resources/Template-Argument.php.wikitext": "6d49697aa264d10c498b21a31a0b536c869e4d862fb60340ce7140ee7601c69e",
+		"resources/Template-Debat.php.wikitext": "63066e127bc3907f37a3685300fade1c2f05b7b7b2387b4188ce26c79add9115",
+		"resources/WD-I18N-Data.snapshot.lua": "df53de1531c58f2fa581c32a773a55c211638360d71ad894198234752bb61b85",
+		"resources/WD-I18N.reference.lua": "7975891b1cd0c797f7e97df1fcbbc735e3626164cb42e587be58d0b16e4f691a"
+	},
+	"local_adaptations": {
+		"description": "The sha256 map above records the original 0.8 import. These local changes bridge its translation API to the shared MediaWiki JSON catalogues; rendering engines and Lua test snapshots are unchanged.",
+		"sha256": {
+			"src/I18n.php": "12aa6f46ef463e8aa215e98dd41be20751d54fe4dd519f358bd3a4c28f0b1427",
+			"src/MessageCatalog.php": "270f5d9758308416cf2dd0576ec03ecf119185666a0534412c50d4c03aecfe0d",
+			"resources/I18nData.php": "a79728f32cb5836317ab4a91678238ffcf1f97c5455a89bae24d3afdc213ee25",
+			"tools/compileI18n.php": "fca59eeae04073abe66f150b290640ab2aaed7461876605b9143f0dba5a7f37c",
+			"tools/maintainI18n.php": "623f042cb13efa8597e7aa7acf174af3dc9802e9c868ee3f2bba9e7227f13936"
+		}
+	}
+}

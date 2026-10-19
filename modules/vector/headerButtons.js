@@ -58,7 +58,7 @@
 					var newLink = D.createElement( 'a' );
 					newLink.id = NEW_ID;
 					newLink.href = sourceLink.href;
-					newLink.textContent = ( sourceLink.textContent || '' ).trim() || 'Modifier';
+					newLink.textContent = ( sourceLink.textContent || '' ).trim() || WK.wkMsg( 'wk-edit' );
 					newLink.className = ( ( sourceLink.getAttribute( 'class' ) || '' ).trim() +
 						' interlanguage-edit-link wk-icon-before wk-icon-edit' ).trim();
 					newLink.setAttribute( 'rel', 'nofollow' );

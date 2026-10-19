@@ -1,0 +1,1033 @@
+{
+	"rendering": {
+		"Common.props.keyword": {
+			"fr": "Mot-clé",
+			"en": "Keyword"
+		},
+		"Common.props.work_name": {
+			"fr": "Nom d'ouvrage",
+			"en": "Work name"
+		},
+		"Common.props.publishing_house": {
+			"fr": "Maison d'édition",
+			"en": "Publishing house"
+		},
+		"Common.props.place_of_publication": {
+			"fr": "Lieu d'édition",
+			"en": "Place of publication"
+		},
+		"Common.props.author": {
+			"fr": "Auteur",
+			"en": "Author"
+		},
+		"Common.props.article_name": {
+			"fr": "Nom d'article",
+			"en": "Article name"
+		},
+		"Common.props.website_name": {
+			"fr": "Nom de site Internet",
+			"en": "Website name"
+		},
+		"Common.forms.search_by_keywords_title": {
+			"fr": "Recherche par mots-clés",
+			"en": "Search by keywords"
+		},
+		"Common.params.keywords_field": {
+			"fr": "mots-clés",
+			"en": "keywords"
+		},
+		"Common.params.type_field": {
+			"fr": "type",
+			"en": "type"
+		},
+		"Common.values.type_arguments_value": {
+			"fr": "Arguments",
+			"en": "Arguments"
+		},
+		"Debate.forms.intro_edit_title": {
+			"fr": "Pour comprendre le débat",
+			"en": "To understand the debate"
+		},
+		"Debate.forms.wiki_seealso_edit_title": {
+			"fr": "Voir aussi sur Wikipédia",
+			"en": "See also on Wikipedia"
+		},
+		"Debate.forms.args_pro_edit_title": {
+			"fr": "Arguments pour",
+			"en": "Pro arguments"
+		},
+		"Debate.forms.args_con_edit_title": {
+			"fr": "Arguments contre",
+			"en": "Con arguments"
+		},
+		"Debate.forms.new_arg_title": {
+			"fr": "Nouveau titre d'argument",
+			"en": "New argument title"
+		},
+		"Debate.forms.new_arg_pro_type_label": {
+			"fr": "Argument pour",
+			"en": "Pro argument"
+		},
+		"Debate.forms.new_arg_con_type_label": {
+			"fr": "Argument contre",
+			"en": "Con argument"
+		},
+		"Debate.forms.self_eval_home_title": {
+			"fr": "Autoévaluation (accueil)",
+			"en": "Self-evaluation (home)"
+		},
+		"Debate.forms.keywords_edit_title": {
+			"fr": "Mots-clés de débat",
+			"en": "Debate keywords"
+		},
+		"Debate.forms.related_edit_title": {
+			"fr": "Débats connexes",
+			"en": "Related debates"
+		},
+		"Debate.forms.topic_edit_title": {
+			"fr": "Sujet de débat",
+			"en": "Debate topic"
+		},
+		"Debate.forms.sections_edit_title": {
+			"fr": "Rubriques de débat",
+			"en": "Debate sections"
+		},
+		"Debate.forms.interlanguage_edit_title": {
+			"fr": "Interlangue de débat",
+			"en": "Debate interlanguage"
+		},
+		"Debate.forms.banners_edit_title": {
+			"fr": "Bandeaux de débat",
+			"en": "Debate banners"
+		},
+		"Debate.forms.biblio_pro_title": {
+			"fr": "Bibliographie pour",
+			"en": "Pro bibliography"
+		},
+		"Debate.forms.biblio_con_title": {
+			"fr": "Bibliographie contre",
+			"en": "Con bibliography"
+		},
+		"Debate.forms.biblio_neutral_title": {
+			"fr": "Bibliographie ni pour ni contre",
+			"en": "Bibliography"
+		},
+		"Debate.forms.webliography_pro_title": {
+			"fr": "Sitographie pour",
+			"en": "Pro webliography"
+		},
+		"Debate.forms.webliography_con_title": {
+			"fr": "Sitographie contre",
+			"en": "Con webliography"
+		},
+		"Debate.forms.webliography_neutral_title": {
+			"fr": "Sitographie ni pour ni contre",
+			"en": "Webliography"
+		},
+		"Debate.forms.videography_pro_title": {
+			"fr": "Vidéographie pour",
+			"en": "Pro videography"
+		},
+		"Debate.forms.videography_con_title": {
+			"fr": "Vidéographie contre",
+			"en": "Con videography"
+		},
+		"Debate.forms.videography_neutral_title": {
+			"fr": "Vidéographie ni pour ni contre",
+			"en": "Videography"
+		},
+		"Debate.forms.search_by_keywords_title": {
+			"fr": "Recherche par mots-clés",
+			"en": "Search by keywords"
+		},
+		"Debate.params.keywords_field": {
+			"fr": "mots-clés",
+			"en": "keywords"
+		},
+		"Debate.params.search_type_field": {
+			"fr": "type",
+			"en": "type"
+		},
+		"Debate.params.search_type_value": {
+			"fr": "Débats",
+			"en": "Debates"
+		},
+		"Debate.params.color_field": {
+			"fr": "couleur",
+			"en": "color"
+		},
+		"Debate.params.icon_field": {
+			"fr": "icône",
+			"en": "icon"
+		},
+		"Debate.params.title_field": {
+			"fr": "titre",
+			"en": "title"
+		},
+		"Debate.params.text_field": {
+			"fr": "texte",
+			"en": "text"
+		},
+		"Debate.params.content_field": {
+			"fr": "contenu",
+			"en": "content"
+		},
+		"Debate.params.page_field": {
+			"fr": "page",
+			"en": "page"
+		},
+		"Debate.params.authors_field": {
+			"fr": "auteurs",
+			"en": "authors"
+		},
+		"Debate.params.article_field": {
+			"fr": "article",
+			"en": "article"
+		},
+		"Debate.params.work_field": {
+			"fr": "ouvrage",
+			"en": "work"
+		},
+		"Debate.params.volume_field": {
+			"fr": "volume",
+			"en": "volume"
+		},
+		"Debate.params.number_field": {
+			"fr": "numero",
+			"en": "number"
+		},
+		"Debate.params.location_field": {
+			"fr": "localisation",
+			"en": "location"
+		},
+		"Debate.params.publisher_field": {
+			"fr": "edition",
+			"en": "publisher"
+		},
+		"Debate.params.place_field": {
+			"fr": "lieu",
+			"en": "place"
+		},
+		"Debate.params.date_field": {
+			"fr": "date",
+			"en": "date"
+		},
+		"Debate.params.link_field": {
+			"fr": "lien",
+			"en": "link"
+		},
+		"Debate.params.warnings_field": {
+			"fr": "avertissements",
+			"en": "warnings"
+		},
+		"Debate.params.site_field": {
+			"fr": "site",
+			"en": "site"
+		},
+		"Debate.categories.debates": {
+			"fr": "Débats",
+			"en": "Debates"
+		},
+		"Debate.categories.progress_missing": {
+			"fr": "Débats sans niveau d'avancement",
+			"en": "Debates without progress level"
+		},
+		"Debate.categories.constructed": {
+			"fr": "Débats construits",
+			"en": "Constructed debates"
+		},
+		"Debate.categories.intro_missing": {
+			"fr": "Débats sans introduction",
+			"en": "Debates without introduction"
+		},
+		"Debate.categories.wikipedia_missing": {
+			"fr": "Débats sans article Wikipédia",
+			"en": "Debates without Wikipedia link"
+		},
+		"Debate.categories.pro_missing": {
+			"fr": "Débats sans argument pour",
+			"en": "Debates without pro argument"
+		},
+		"Debate.categories.con_missing": {
+			"fr": "Débats sans argument contre",
+			"en": "Debates without con argument"
+		},
+		"Debate.categories.keywords_missing": {
+			"fr": "Débats sans mot-clé",
+			"en": "Debates without keywords"
+		},
+		"Debate.categories.related_missing": {
+			"fr": "Débats sans débat connexe",
+			"en": "Debates without related debate"
+		},
+		"Debate.categories.sections_missing": {
+			"fr": "Débats sans rubrique",
+			"en": "Debates without section"
+		},
+		"Debate.categories.topic_missing": {
+			"fr": "Débats sans sujet",
+			"en": "Debates without topic"
+		},
+		"Debate.categories.topic_complete_missing": {
+			"fr": "Débats sans sujet développé",
+			"en": "Debates without expanded topic"
+		},
+		"Debate.categories.refs_to_review": {
+			"fr": "Références à revoir",
+			"en": "References to review"
+		},
+		"Debate.categories.displayed_titles_to_review": {
+			"fr": "Titres d'arguments affichés à revoir",
+			"en": "Argument displayed titles to review"
+		},
+		"Debate.categories.creation_date_missing": {
+			"fr": "Articles sans date de création",
+			"en": "Articles without creation date"
+		},
+		"Debate.text.main_banner_color": "vert",
+		"Debate.text.intro_empty_category": {
+			"fr": "Introductions de débats vides",
+			"en": "Empty debate introductions"
+		},
+		"Debate.urls.wikipedia": {
+			"fr": "https://fr.wikipedia.org/wiki/",
+			"en": "https://en.wikipedia.org/wiki/"
+		},
+		"Debate.urls.home": {
+			"fr": "https://fr.wikidebates.org/",
+			"en": "https://en.wikidebates.org/"
+		},
+		"Debate.urls.home_label": {
+			"fr": "Accueil",
+			"en": "Main Page"
+		},
+		"Debate.urls.wiki_base": {
+			"fr": "https://fr.wikidebates.org/wiki/",
+			"en": "https://en.wikidebates.org/wiki/"
+		},
+		"Debate.urls.discussion_prefix": {
+			"fr": "Discussion:",
+			"en": "Talk:"
+		},
+		"Debate.urls.category_prefix": {
+			"fr": "Catégorie:",
+			"en": "Category:"
+		},
+		"Debate.urls.portal_prefix": {
+			"fr": "Portail:",
+			"en": "Portal:"
+		},
+		"Debate.urls.property_prefix": {
+			"fr": "Attribut:",
+			"en": "Property:"
+		},
+		"Debate.urls.debates_label": {
+			"fr": "Débats",
+			"en": "Debates"
+		},
+		"Debate.urls.sections_label": {
+			"fr": "Rubriques",
+			"en": "Sections"
+		},
+		"Debate.urls.pro_label": {
+			"fr": "Argument_pour",
+			"en": "Pro_argument"
+		},
+		"Debate.urls.con_label": {
+			"fr": "Argument_contre",
+			"en": "Con_argument"
+		},
+		"Debate.props.debate_name": {
+			"fr": "Nom de débat",
+			"en": "Debate name"
+		},
+		"Debate.props.debate_number": {
+			"fr": "Numéro de débat",
+			"en": "Debate number"
+		},
+		"Debate.props.parent_debate": {
+			"fr": "Débat parent",
+			"en": "Parent debate"
+		},
+		"Debate.props.breadcrumb": {
+			"fr": "Fil d'Ariane",
+			"en": "Breadcrumb"
+		},
+		"Debate.props.keyword": {
+			"fr": "Mot-clé",
+			"en": "Keyword"
+		},
+		"Debate.props.arg_map": {
+			"fr": "Carte des arguments",
+			"en": "Argument map"
+		},
+		"Debate.props.debate_topic": {
+			"fr": "Sujet de débat",
+			"en": "Debate topic"
+		},
+		"Debate.props.pro_list": {
+			"fr": "Liste des arguments pour",
+			"en": "Pro list"
+		},
+		"Debate.props.con_list": {
+			"fr": "Liste des arguments contre",
+			"en": "Con list"
+		},
+		"Debate.props.arg_pro": {
+			"fr": "Argument pour",
+			"en": "Pro argument"
+		},
+		"Debate.props.arg_con": {
+			"fr": "Argument contre",
+			"en": "Con argument"
+		},
+		"Debate.props.article_name": {
+			"fr": "Nom d'article",
+			"en": "Article name"
+		},
+		"Debate.props.work_name": {
+			"fr": "Nom d'ouvrage",
+			"en": "Work name"
+		},
+		"Debate.props.publishing_house": {
+			"fr": "Maison d'édition",
+			"en": "Publishing house"
+		},
+		"Debate.props.place_of_publication": {
+			"fr": "Lieu d'édition",
+			"en": "Place of publication"
+		},
+		"Debate.props.author": {
+			"fr": "Auteur",
+			"en": "Author"
+		},
+		"Debate.props.author_pro": {
+			"fr": "Auteur pour",
+			"en": "Pro author"
+		},
+		"Debate.props.author_con": {
+			"fr": "Auteur contre",
+			"en": "Con author"
+		},
+		"Debate.props.website_name": {
+			"fr": "Nom de site Internet",
+			"en": "Website name"
+		},
+		"Debate.banners.progress_under_construction_color": "bleu",
+		"Debate.banners.progress_under_construction_icon": "wk-icon-construction",
+		"Debate.banners.progress_under_construction_category": {
+			"fr": "Débats en construction",
+			"en": "Debates under construction"
+		},
+		"Debate.banners.progress_draft_color": "bleu",
+		"Debate.banners.progress_draft_icon": "wk-icon-draft",
+		"Debate.banners.progress_draft_category": {
+			"fr": "Ébauches de débats",
+			"en": "Debate drafts"
+		},
+		"Debate.banners.title_non_standard_color": "orange",
+		"Debate.banners.title_non_standard_icon": "wk-icon-title",
+		"Debate.banners.title_non_standard_category": {
+			"fr": "Titres de débats non standard",
+			"en": "Non-standard debate titles"
+		},
+		"Debate.banners.title_to_explain_color": "orange",
+		"Debate.banners.title_to_explain_icon": "wk-icon-title",
+		"Debate.banners.title_to_explain_category": {
+			"fr": "Titres de débats à expliciter",
+			"en": "Debate titles to be explained"
+		},
+		"Debate.banners.title_to_simplify_color": "orange",
+		"Debate.banners.title_to_simplify_icon": "wk-icon-title",
+		"Debate.banners.title_to_simplify_category": {
+			"fr": "Titres de débats à simplifier",
+			"en": "Debate titles to simplify"
+		},
+		"Debate.banners.debate_unbalanced_color": "orange",
+		"Debate.banners.debate_unbalanced_icon": "wk-icon-unbalanced",
+		"Debate.banners.debate_unbalanced_category": {
+			"fr": "Débats déséquilibrés",
+			"en": "Unbalanced debates"
+		},
+		"Debate.banners.debate_redundant_color": "orange",
+		"Debate.banners.debate_redundant_icon": "wk-icon-redundant",
+		"Debate.banners.debate_redundant_category": {
+			"fr": "Débats redondants",
+			"en": "Redundant debates"
+		},
+		"Debate.banners.debate_fanciful_color": "orange",
+		"Debate.banners.debate_fanciful_icon": "wk-icon-saugrenu",
+		"Debate.banners.debate_fanciful_category": {
+			"fr": "Débats saugrenus",
+			"en": "Fanciful debates"
+		},
+		"Debate.banners.debate_sensitive_color": "orange",
+		"Debate.banners.debate_sensitive_icon": "wk-icon-sensible",
+		"Debate.banners.debate_sensitive_category": {
+			"fr": "Débats sensibles",
+			"en": "Sensitive debates"
+		},
+		"Debate.banners.outline_to_improve_color": "orange",
+		"Debate.banners.outline_to_improve_icon": "wk-icon-confusion",
+		"Debate.banners.outline_to_improve_category": {
+			"fr": "Plans de débats à améliorer",
+			"en": "Debate plans to improve"
+		},
+		"Debate.banners.debate_generated_by_ai_color": "orange",
+		"Debate.banners.debate_generated_by_ai_icon": "wk-icon-ia",
+		"Debate.banners.debate_generated_by_ai_category": {
+			"fr": "Débats générés par IA",
+			"en": "Debates generated by AI"
+		},
+		"Debate.subsections.intro_subbanner_unclear_category": {
+			"fr": "Introductions de débats peu claires",
+			"en": "Unclear debate introductions"
+		},
+		"Debate.subsections.intro_subbanner_biased_category": {
+			"fr": "Introductions de débats partisanes",
+			"en": "Biased debate introductions"
+		},
+		"Debate.subsections.intro_subbanner_to_develop_category": {
+			"fr": "Introductions de débats à développer",
+			"en": "Debate introductions to expand"
+		},
+		"Debate.subsections.intro_subbanner_too_long_category": {
+			"fr": "Introductions de débats trop longues",
+			"en": "Overlong debate introductions"
+		},
+		"Debate.subsections.intro_subbanner_refs_missing_category": {
+			"fr": "Introductions de débats manquant de références",
+			"en": "Debate introductions lacking references"
+		},
+		"Debate.subsections.intro_subbanner_style_to_review_category": {
+			"fr": "Introductions de débats dont le style est à revoir",
+			"en": "Debate introductions needing style work"
+		},
+		"Debate.subsections.dead_link_category": {
+			"fr": "Liens morts",
+			"en": "Dead links"
+		},
+		"Debate.subsections.reference_quality_insufficient_category": {
+			"fr": "Références de qualité insuffisante",
+			"en": "Insufficient-quality references"
+		},
+		"Debate.subsections.reference_incomplete_category": {
+			"fr": "Références incomplètes",
+			"en": "Incomplete references"
+		},
+		"Argument.files.reorganize_banner_icon": "wk-icon-confusion",
+		"Argument.files.title_review_icon": "wk-icon-title",
+		"Argument.files.title_review_color": "orange",
+		"Argument.forms.arg_pro": {
+			"fr": "Argument pour",
+			"en": "Pro argument"
+		},
+		"Argument.forms.arg_con": {
+			"fr": "Argument contre",
+			"en": "Con argument"
+		},
+		"Argument.forms.justifications": {
+			"fr": "Justifications",
+			"en": "Justifications"
+		},
+		"Argument.forms.objections": {
+			"fr": "Objections",
+			"en": "Objections"
+		},
+		"Argument.forms.edit_args_pro": {
+			"fr": "Arguments pour",
+			"en": "Pro arguments"
+		},
+		"Argument.forms.edit_args_con": {
+			"fr": "Arguments contre",
+			"en": "Con arguments"
+		},
+		"Argument.forms.keywords_edit_title": {
+			"fr": "Mots-clés d'argument",
+			"en": "Argument keywords"
+		},
+		"Argument.forms.banners_edit_title": {
+			"fr": "Bandeaux d'argument",
+			"en": "Argument banners"
+		},
+		"Argument.forms.summary_edit_title": {
+			"fr": "Résumé",
+			"en": "Summary"
+		},
+		"Argument.forms.quotes_edit_title": {
+			"fr": "Citations",
+			"en": "Quotes"
+		},
+		"Argument.forms.references_edit_title": {
+			"fr": "Références",
+			"en": "References"
+		},
+		"Argument.forms.sections_edit_title": {
+			"fr": "Rubriques d'argument",
+			"en": "Argument sections"
+		},
+		"Argument.forms.interlanguage_edit_title": {
+			"fr": "Interlangue d'argument",
+			"en": "Argument interlanguage"
+		},
+		"Argument.forms.detailed_debate_edit_title": {
+			"fr": "Débat dédié",
+			"en": "Dedicated debate"
+		},
+		"Argument.forms.search_by_keywords_title": {
+			"fr": "Recherche par mots-clés",
+			"en": "Search by keywords"
+		},
+		"Argument.forms.justifications_form": {
+			"fr": "Justifications",
+			"en": "Justifications"
+		},
+		"Argument.forms.objections_form": {
+			"fr": "Objections",
+			"en": "Objections"
+		},
+		"Argument.forms.new_arg_title": {
+			"fr": "Nouveau titre d'argument",
+			"en": "New argument title"
+		},
+		"Argument.categories.arguments": {
+			"fr": "Arguments",
+			"en": "Arguments"
+		},
+		"Argument.categories.keywords_missing": {
+			"fr": "Arguments sans mot-clé",
+			"en": "Arguments without keyword"
+		},
+		"Argument.categories.summary_missing": {
+			"fr": "Arguments sans résumé",
+			"en": "Arguments without summary"
+		},
+		"Argument.categories.quotes_missing": {
+			"fr": "Arguments sans citation",
+			"en": "Arguments without quote"
+		},
+		"Argument.categories.references_missing": {
+			"fr": "Arguments sans référence",
+			"en": "Arguments without references"
+		},
+		"Argument.categories.justifications_missing": {
+			"fr": "Arguments sans justification",
+			"en": "Arguments without justification"
+		},
+		"Argument.categories.objections_missing": {
+			"fr": "Arguments sans objection",
+			"en": "Arguments without objection"
+		},
+		"Argument.categories.content_missing": {
+			"fr": "Arguments sans contenu",
+			"en": "Arguments without content"
+		},
+		"Argument.categories.sections_missing": {
+			"fr": "Arguments sans rubrique",
+			"en": "Arguments without section"
+		},
+		"Argument.categories.authors_missing": {
+			"fr": "Citations sans auteur",
+			"en": "Quotes without author"
+		},
+		"Argument.categories.creation_date_missing": {
+			"fr": "Articles sans date de création",
+			"en": "Articles without creation date"
+		},
+		"Argument.categories.title_very_short": {
+			"fr": "Titres d'arguments très courts",
+			"en": "Very short argument titles"
+		},
+		"Argument.categories.title_ends_with_dot": {
+			"fr": "Titres d'arguments terminant par un point",
+			"en": "Argument titles ending with a dot"
+		},
+		"Argument.categories.has_detailed_debate": {
+			"fr": "Arguments faisant l'objet d'un débat dédié",
+			"en": "Arguments with a dedicated debate"
+		},
+		"Argument.categories.has_alt_name": {
+			"fr": "Arguments portant un nom consacré",
+			"en": "Arguments with an established name"
+		},
+		"Argument.categories.uninitialized": {
+			"fr": "Arguments sans paramètre d'initialisation",
+			"en": "Arguments without an initialization parameter"
+		},
+		"Argument.categories.displayed_titles_to_review": {
+			"fr": "Titres d'arguments affichés à revoir",
+			"en": "Argument displayed titles to review"
+		},
+		"Argument.categories.breadcrumb_too_long": {
+			"fr": "Fils d'Ariane longs",
+			"en": "Long breadcrumbs"
+		},
+		"Argument.categories.content_to_transfer": {
+			"fr": "Contenu d'argument à transférer",
+			"en": "Argument content to transfer"
+		},
+		"Argument.params.keywords_field": {
+			"fr": "mots-clés",
+			"en": "keywords"
+		},
+		"Argument.params.search_type_field": {
+			"fr": "type",
+			"en": "type"
+		},
+		"Argument.params.search_type_value": {
+			"fr": "Arguments",
+			"en": "Arguments"
+		},
+		"Argument.params.page": {
+			"fr": "page",
+			"en": "page"
+		},
+		"Argument.params.displayed_title": {
+			"fr": "titre-affiché",
+			"en": "displayed-title"
+		},
+		"Argument.params.justification_type_label": {
+			"fr": "Justification",
+			"en": "Justification"
+		},
+		"Argument.params.objection_type_label": {
+			"fr": "Objection",
+			"en": "Objection"
+		},
+		"Argument.urls.home": {
+			"fr": "https://fr.wikidebates.org/",
+			"en": "https://en.wikidebates.org/"
+		},
+		"Argument.urls.home_label": {
+			"fr": "Accueil",
+			"en": "Main Page"
+		},
+		"Argument.urls.wiki_base": {
+			"fr": "https://fr.wikidebates.org/wiki/",
+			"en": "https://en.wikidebates.org/wiki/"
+		},
+		"Argument.urls.discussion_prefix": {
+			"fr": "Discussion:",
+			"en": "Talk:"
+		},
+		"Argument.urls.category_prefix": {
+			"fr": "Catégorie:",
+			"en": "Category:"
+		},
+		"Argument.urls.portal_prefix": {
+			"fr": "Portail:",
+			"en": "Portal:"
+		},
+		"Argument.urls.property_prefix": {
+			"fr": "Attribut:",
+			"en": "Property:"
+		},
+		"Argument.urls.sections_label": {
+			"fr": "Rubriques",
+			"en": "Sections"
+		},
+		"Argument.urls.arguments_label": {
+			"fr": "Arguments",
+			"en": "Arguments"
+		},
+		"Argument.urls.justification_label": {
+			"fr": "Justification",
+			"en": "Justification"
+		},
+		"Argument.urls.objection_label": {
+			"fr": "Objection",
+			"en": "Objection"
+		},
+		"Argument.props.arg_number": {
+			"fr": "Numéro d'argument",
+			"en": "Argument number"
+		},
+		"Argument.props.debate_number": {
+			"fr": "Numéro de débat",
+			"en": "Debate number"
+		},
+		"Argument.props.justif_list": {
+			"fr": "Liste des justifications",
+			"en": "Justification list"
+		},
+		"Argument.props.obj_list": {
+			"fr": "Liste des objections",
+			"en": "Objection list"
+		},
+		"Argument.props.detailed_debate": {
+			"fr": "Débat dédié",
+			"en": "Dedicated debate"
+		},
+		"Argument.props.argument_map": {
+			"fr": "Carte des arguments",
+			"en": "Argument map"
+		},
+		"Argument.props.keyword": {
+			"fr": "Mot-clé",
+			"en": "Keyword"
+		},
+		"Argument.props.arg_page_name": {
+			"fr": "Nom de page d'argument",
+			"en": "Argument page name"
+		},
+		"Argument.props.section": {
+			"fr": "Rubrique",
+			"en": "Section"
+		},
+		"Argument.props.arg_pro": {
+			"fr": "Argument pour",
+			"en": "Pro argument"
+		},
+		"Argument.props.arg_con": {
+			"fr": "Argument contre",
+			"en": "Con argument"
+		},
+		"Argument.props.justif": {
+			"fr": "Justification",
+			"en": "Justification"
+		},
+		"Argument.props.obj": {
+			"fr": "Objection",
+			"en": "Objection"
+		},
+		"Argument.props.breadcrumb": {
+			"fr": "Fil d'Ariane",
+			"en": "Breadcrumb"
+		},
+		"Argument.props.debate_name": {
+			"fr": "Nom de débat",
+			"en": "Debate name"
+		},
+		"Argument.props.parent_debate": {
+			"fr": "Débat parent",
+			"en": "Parent debate"
+		},
+		"Argument.props.parent_argument": {
+			"fr": "Argument parent",
+			"en": "Parent argument"
+		},
+		"Argument.props.article_name": {
+			"fr": "Nom d'article",
+			"en": "Article name"
+		},
+		"Argument.props.work_name": {
+			"fr": "Nom d'ouvrage",
+			"en": "Work name"
+		},
+		"Argument.props.publishing_house": {
+			"fr": "Maison d'édition",
+			"en": "Publishing house"
+		},
+		"Argument.props.place_of_publication": {
+			"fr": "Lieu d'édition",
+			"en": "Place of publication"
+		},
+		"Argument.props.author": {
+			"fr": "Auteur",
+			"en": "Author"
+		},
+		"Argument.props.website_name": {
+			"fr": "Nom de site Internet",
+			"en": "Website name"
+		},
+		"Argument.banners.argument_orphan_color": "orange",
+		"Argument.banners.argument_orphan_icon": "wk-icon-orphan",
+		"Argument.banners.argument_orphan_category": {
+			"fr": "Arguments orphelins",
+			"en": "Orphan arguments"
+		},
+		"Argument.banners.title_incomplete_color": "orange",
+		"Argument.banners.title_incomplete_icon": "wk-icon-title",
+		"Argument.banners.title_incomplete_category": {
+			"fr": "Titres d'arguments incomplets",
+			"en": "Incomplete argument titles"
+		},
+		"Argument.banners.title_disadvantageous_color": "orange",
+		"Argument.banners.title_disadvantageous_icon": "wk-icon-title",
+		"Argument.banners.title_disadvantageous_category": {
+			"fr": "Titres d'arguments désavantageux",
+			"en": "Disadvantageous argument titles"
+		},
+		"Argument.banners.title_unclear_color": "orange",
+		"Argument.banners.title_unclear_icon": "wk-icon-title",
+		"Argument.banners.title_unclear_category": {
+			"fr": "Titres d'arguments peu clairs",
+			"en": "Unclear argument titles"
+		},
+		"Argument.banners.title_too_long_color": "orange",
+		"Argument.banners.title_too_long_icon": "wk-icon-title",
+		"Argument.banners.title_too_long_category": {
+			"fr": "Titres d'arguments trop longs",
+			"en": "Overly long argument titles"
+		},
+		"Argument.banners.argument_sensitive_color": "orange",
+		"Argument.banners.argument_sensitive_icon": "wk-icon-sensible",
+		"Argument.banners.argument_sensitive_category": {
+			"fr": "Arguments sensibles",
+			"en": "Sensitive arguments"
+		},
+		"Argument.banners.argument_fanciful_color": "orange",
+		"Argument.banners.argument_fanciful_icon": "wk-icon-saugrenu",
+		"Argument.banners.argument_fanciful_category": {
+			"fr": "Arguments saugrenus",
+			"en": "Fanciful arguments"
+		},
+		"Argument.banners.argument_potentially_illegal_color": "rouge",
+		"Argument.banners.argument_potentially_illegal_icon": "wk-icon-illegal",
+		"Argument.banners.argument_potentially_illegal_category": {
+			"fr": "Arguments potentiellement illégaux",
+			"en": "Potentially illegal arguments"
+		},
+		"Argument.banners.argument_generated_by_ai_color": "orange",
+		"Argument.banners.argument_generated_by_ai_icon": "wk-icon-ia",
+		"Argument.banners.argument_generated_by_ai_category": {
+			"fr": "Arguments générés par IA",
+			"en": "Arguments generated by AI"
+		},
+		"Argument.subsection_banners.summary_disadvantageous_category": {
+			"fr": "Résumés d'arguments désavantageux",
+			"en": "Disadvantageous argument summaries"
+		},
+		"Argument.subsection_banners.summary_to_be_written_image": "wk-icon-sensible",
+		"Argument.subsection_banners.summary_to_be_written_category": {
+			"fr": "Résumés d'arguments à rédiger",
+			"en": "Argument summaries to be written"
+		},
+		"Argument.subsection_banners.summary_unclear_category": {
+			"fr": "Résumés d'arguments peu clairs",
+			"en": "Unclear argument summaries"
+		},
+		"Argument.subsection_banners.summary_too_long_category": {
+			"fr": "Résumés d'arguments trop longs",
+			"en": "Overlong argument summaries"
+		},
+		"Argument.subsection_banners.summary_to_separate_category": {
+			"fr": "Résumés d'arguments à séparer",
+			"en": "Argument summaries to separate"
+		},
+		"Argument.subsection_banners.summary_style_to_review_category": {
+			"fr": "Résumés d'arguments dont le style est à revoir",
+			"en": "Argument summaries with style to review"
+		},
+		"Argument.subsection_banners.justifications_to_reorganize_category": {
+			"fr": "Justifications à réorganiser",
+			"en": "Justifications to reorganize"
+		},
+		"Argument.subsection_banners.objections_to_reorganize_category": {
+			"fr": "Objections à réorganiser",
+			"en": "Objections to reorganize"
+		},
+		"Argument.subsection_banners.quote_too_short_category": {
+			"fr": "Citations trop courtes",
+			"en": "Too short quotes"
+		},
+		"Argument.subsection_banners.quote_too_long_category": {
+			"fr": "Citations trop longues",
+			"en": "Too long quotes"
+		},
+		"Argument.subsection_banners.quote_ref_incomplete_category": {
+			"fr": "Références de citations incomplètes",
+			"en": "Incomplete quote references"
+		},
+		"Argument.subsection_banners.quote_translated_category": {
+			"fr": "Citations traduites par IA",
+			"en": "AI-translated quotes"
+		},
+		"Argument.subsection_banners.dead_link_category": {
+			"fr": "Liens morts",
+			"en": "Dead links"
+		},
+		"Argument.subsection_banners.reference_quality_insufficient_category": {
+			"fr": "Références de qualité insuffisante",
+			"en": "Insufficient-quality references"
+		},
+		"Argument.subsection_banners.reference_incomplete_category": {
+			"fr": "Références incomplètes",
+			"en": "Incomplete references"
+		},
+		"Argument.subsection_banners.references_too_many_category": {
+			"fr": "Trop de références",
+			"en": "Too many references"
+		},
+		"Argument.subsection_banners.references_many_incomplete_category": {
+			"fr": "Nombreuses références incomplètes",
+			"en": "Many incomplete references"
+		},
+		"ArgumentMap.props.arg_map": {
+			"fr": "Carte des arguments",
+			"en": "Argument map"
+		},
+		"ArgumentMap.props.pro_list": {
+			"fr": "Liste des arguments pour",
+			"en": "Pro list"
+		},
+		"ArgumentMap.props.con_list": {
+			"fr": "Liste des arguments contre",
+			"en": "Con list"
+		},
+		"ArgumentMap.props.justifs_list": {
+			"fr": "Liste des justifications",
+			"en": "Justification list"
+		},
+		"ArgumentMap.props.objs_list": {
+			"fr": "Liste des objections",
+			"en": "Objection list"
+		}
+	},
+	"site": {
+		"en": {
+			"wk-reading-form-name": "New_argument",
+			"wk-menu-about-url": "/wiki/Wikidebates:About",
+			"wk-menu-contact-url": "/wiki/Special:Contact",
+			"wk-menu-random-category": "Debates",
+			"wk-menu-all-debates-page": "Portal:Debates",
+			"wk-menu-contributions-url": "/wiki/Portal:Contributions",
+			"wk-menu-bistro-url": "/wiki/Wikidebates:Village_pump",
+			"wk-tpl-more-content": "Additional content",
+			"wk-tpl-hover-map": "Argument map hover",
+			"wk-tpl-hover-wikipedia": "Wikipedia link hover",
+			"wk-tpl-latest-changes": "Recent contributions",
+			"wk-param-argument": "argument",
+			"wk-param-type": "type",
+			"wk-param-level": "level",
+			"wk-param-root": "root",
+			"wk-param-path": "path",
+			"wk-param-warnings": "warnings",
+			"wk-param-page": "page",
+			"wk-param-display-title": "display-title",
+			"wk-form-user-page": "User page",
+			"wk-form-summary": "Summary",
+			"wk-form-citations": "Quotes",
+			"wk-form-references": "References",
+			"wikidebates-recent-changes-parent-property": "Parent debate",
+			"wikidebates-recent-changes-breadcrumb-property": "Breadcrumb"
+		},
+		"fr": {
+			"wk-reading-form-name": "Nouvel_argument",
+			"wk-menu-about-url": "/wiki/Wikid%C3%A9bats:%C3%80_propos",
+			"wk-menu-contact-url": "/wiki/Sp%C3%A9cial:Contact",
+			"wk-menu-random-category": "Débats",
+			"wk-menu-all-debates-page": "Portail:Débats",
+			"wk-menu-contributions-url": "/wiki/Portail:Contributions",
+			"wk-menu-bistro-url": "/wiki/Wikid%C3%A9bats:Bistro",
+			"wk-tpl-more-content": "Contenu supplémentaire",
+			"wk-tpl-hover-map": "Survol de carte des arguments",
+			"wk-tpl-hover-wikipedia": "Survol de lien Wikipédia",
+			"wk-tpl-latest-changes": "Dernières contributions",
+			"wk-param-argument": "argument",
+			"wk-param-type": "type",
+			"wk-param-level": "niveau",
+			"wk-param-root": "racine",
+			"wk-param-path": "chemin",
+			"wk-param-warnings": "avertissements",
+			"wk-param-page": "page",
+			"wk-param-display-title": "titre-affiché",
+			"wk-form-user-page": "Page d'utilisateur",
+			"wk-form-summary": "Résumé",
+			"wk-form-citations": "Citations",
+			"wk-form-references": "Références",
+			"wikidebates-recent-changes-parent-property": "Débat parent",
+			"wikidebates-recent-changes-breadcrumb-property": "Fil d'Ariane"
+		}
+	}
+}

@@ -3,6 +3,8 @@
 namespace MediaWiki\Extension\Wikidebates;
 
 use MediaWiki\Auth\AuthManager;
+use MediaWiki\Extension\DebatePHP\MessageCatalog;
+use MediaWiki\MediaWikiServices;
 use OutputPage;
 use Parser;
 use Skin;
@@ -10,6 +12,9 @@ use Skin;
 class Hooks {
 
 	public static function onBeforePageDisplay( OutputPage $out, Skin $skin ): void {
+		$out->addJsConfigVars( 'wgWikidebatesWikiNames', MessageCatalog::siteNames(
+			MediaWikiServices::getInstance()->getContentLanguage()->getCode()
+		) );
 		$skinName = $skin->getSkinName();
 
 		if ( in_array( $skinName, [ 'minerva', 'minervaneue', 'minervaNeue' ], true ) ) {
@@ -25,6 +30,7 @@ class Hooks {
 
 	public static function onParserFirstCallInit( Parser $parser ): void {
 		RecentDebateChanges::register( $parser );
+		\MediaWiki\Extension\DebatePHP\Hooks::onParserFirstCallInit( $parser );
 	}
 
 	public static function onPageSaveComplete(

@@ -6,10 +6,17 @@
 	],
 	"url": "https://example.invalid/",
 	"descriptionmsg": "wikidebates-desc",
-	"license-name": "MIT",
+	"license-name": "GPL-3.0-or-later",
 	"type": "other",
+	"requires": {
+		"MediaWiki": ">= 1.43.0 < 1.44.0",
+		"platform": {
+			"php": ">= 8.1.0"
+		}
+	},
 	"AutoloadNamespaces": {
-		"MediaWiki\\Extension\\Wikidebates\\": "src/"
+		"MediaWiki\\Extension\\Wikidebates\\": "src/",
+		"MediaWiki\\Extension\\DebatePHP\\": "debatephp/src/"
 	},
 	"Hooks": {
 		"BeforePageDisplay": "MediaWiki\\Extension\\Wikidebates\\Hooks::onBeforePageDisplay",
@@ -37,7 +44,102 @@
 			"dependencies": [
 				"jquery",
 				"mediawiki.util"
-			]
+			],
+			"messages": [
+				"wk-breadcrumb-aria-label",
+				"wk-copy-argument-link",
+				"wk-edit",
+				"wk-edit-argument-title",
+				"wk-edit-display-title",
+				"wk-interlanguage-label",
+				"wk-link-copied",
+				"wk-menu-about",
+				"wk-menu-all-debates",
+				"wk-menu-bistro",
+				"wk-menu-contact",
+				"wk-menu-contributions-portal",
+				"wk-menu-random-debate",
+				"wk-reading-close",
+				"wk-reading-missing-create",
+				"wk-reading-missing-text",
+				"wk-reading-more-actions",
+				"wk-reading-siblings-aria-label",
+				"wk-reading-siblings-label",
+				"wk-rename-page",
+				"wk-summary-add-argument-existing",
+				"wk-summary-add-citation",
+				"wk-summary-add-debat",
+				"wk-summary-add-debate",
+				"wk-summary-add-generic",
+				"wk-summary-add-interlang",
+				"wk-summary-add-reference",
+				"wk-summary-add-section",
+				"wk-summary-add-wikipedia-article",
+				"wk-summary-debat-detail-add",
+				"wk-summary-debate-detail-add",
+				"wk-summary-dedicated-debate-add",
+				"wk-summary-dedicated-debate-delete",
+				"wk-summary-dedicated-debate-modify",
+				"wk-summary-delete-argument",
+				"wk-summary-delete-article",
+				"wk-summary-delete-citation",
+				"wk-summary-delete-citation-generic",
+				"wk-summary-delete-debat",
+				"wk-summary-delete-debate",
+				"wk-summary-delete-generic",
+				"wk-summary-delete-interlang",
+				"wk-summary-delete-objection",
+				"wk-summary-delete-reference",
+				"wk-summary-delete-reference-generic",
+				"wk-summary-delete-section",
+				"wk-summary-delete-section-untitled",
+				"wk-summary-developed-subject-add",
+				"wk-summary-developed-subject-delete",
+				"wk-summary-developed-subject-modify",
+				"wk-summary-established-name-add",
+				"wk-summary-established-name-delete",
+				"wk-summary-established-name-modify",
+				"wk-summary-interlanguage-page-add",
+				"wk-summary-interlanguage-page-delete",
+				"wk-summary-interlanguage-page-modify",
+				"wk-summary-keyword-remove",
+				"wk-summary-progress-change",
+				"wk-summary-quoted-value",
+				"wk-summary-rename-argument",
+				"wk-summary-rename-article",
+				"wk-summary-rename-debat",
+				"wk-summary-rename-debate",
+				"wk-summary-rename-objection",
+				"wk-summary-rename-section",
+				"wk-summary-reorg-arguments",
+				"wk-summary-reorg-articles",
+				"wk-summary-reorg-citations",
+				"wk-summary-reorg-debates",
+				"wk-summary-reorg-debats",
+				"wk-summary-reorg-interlang",
+				"wk-summary-reorg-references",
+				"wk-summary-reorg-sections",
+				"wk-summary-rubrique-add",
+				"wk-summary-rubrique-remove",
+				"wk-summary-section-debate-subject",
+				"wk-summary-section-dedicated-debate",
+				"wk-summary-section-developed-subject",
+				"wk-summary-section-established-name",
+				"wk-summary-section-general-sections",
+				"wk-summary-section-interlanguage-link",
+				"wk-summary-section-keywords",
+				"wk-summary-section-warning-banners",
+				"wk-summary-subject-add",
+				"wk-summary-subject-delete",
+				"wk-summary-subject-full-add",
+				"wk-summary-subject-full-mod",
+				"wk-summary-subject-main-change",
+				"wk-summary-subject-mod",
+				"wk-summary-warning-add",
+				"wk-summary-warning-remove",
+				"wk-view-detailed-page"
+			],
+			"class": "MediaWiki\\Extension\\Wikidebates\\I18nModule"
 		},
 		"ext.wikidebates.common.parse": {
 			"scripts": [
@@ -98,20 +200,11 @@
 		"ext.wikidebates.reading.styles.vector": {
 			"styles": [
 				"reading/vector-2022.css"
-			],
-			"skins": [
-				"vector",
-				"vector-2022"
 			]
 		},
 		"ext.wikidebates.reading.styles.minerva": {
 			"styles": [
 				"reading/minerva.css"
-			],
-			"skins": [
-				"minerva",
-				"minervaneue",
-				"minervaNeue"
 			]
 		},
 		"ext.wikidebates.reading.ui.vector": {
@@ -123,10 +216,6 @@
 				"ext.wikidebates.reading.core",
 				"ext.wikidebates.reading.styles.base",
 				"ext.wikidebates.reading.styles.vector"
-			],
-			"skins": [
-				"vector",
-				"vector-2022"
 			]
 		},
 		"ext.wikidebates.reading.ui.minerva": {
@@ -138,11 +227,6 @@
 				"ext.wikidebates.reading.core",
 				"ext.wikidebates.reading.styles.base",
 				"ext.wikidebates.reading.styles.minerva"
-			],
-			"skins": [
-				"minerva",
-				"minervaneue",
-				"minervaNeue"
 			]
 		},
 		"ext.wikidebates.boot.vector": {
@@ -154,10 +238,6 @@
 				"ext.wikidebates.common.core",
 				"ext.wikidebates.common.i18n",
 				"ext.wikidebates.features.scan"
-			],
-			"skins": [
-				"vector",
-				"vector-2022"
 			]
 		},
 		"ext.wikidebates.boot.minerva": {
@@ -169,23 +249,103 @@
 				"ext.wikidebates.common.core",
 				"ext.wikidebates.common.i18n",
 				"ext.wikidebates.features.scan"
-			],
-			"skins": [
-				"minerva",
-				"minervaneue",
-				"minervaNeue"
 			]
 		},
 		"ext.wikidebates.i18n.fr": {
-			"scripts": [
-				"i18n/fr.js"
-			],
-			"skins": [
-				"vector",
-				"vector-2022",
-				"minerva",
-				"minervaneue",
-				"minervaNeue"
+			"class": "MediaWiki\\Extension\\Wikidebates\\I18nModule",
+			"messages": [
+				"wk-breadcrumb-aria-label",
+				"wk-copy-argument-link",
+				"wk-edit",
+				"wk-edit-argument-title",
+				"wk-edit-display-title",
+				"wk-interlanguage-label",
+				"wk-link-copied",
+				"wk-menu-about",
+				"wk-menu-all-debates",
+				"wk-menu-bistro",
+				"wk-menu-contact",
+				"wk-menu-contributions-portal",
+				"wk-menu-random-debate",
+				"wk-reading-close",
+				"wk-reading-missing-create",
+				"wk-reading-missing-text",
+				"wk-reading-more-actions",
+				"wk-reading-siblings-aria-label",
+				"wk-reading-siblings-label",
+				"wk-rename-page",
+				"wk-summary-add-argument-existing",
+				"wk-summary-add-citation",
+				"wk-summary-add-debat",
+				"wk-summary-add-debate",
+				"wk-summary-add-generic",
+				"wk-summary-add-interlang",
+				"wk-summary-add-reference",
+				"wk-summary-add-section",
+				"wk-summary-add-wikipedia-article",
+				"wk-summary-debat-detail-add",
+				"wk-summary-debate-detail-add",
+				"wk-summary-dedicated-debate-add",
+				"wk-summary-dedicated-debate-delete",
+				"wk-summary-dedicated-debate-modify",
+				"wk-summary-delete-argument",
+				"wk-summary-delete-article",
+				"wk-summary-delete-citation",
+				"wk-summary-delete-citation-generic",
+				"wk-summary-delete-debat",
+				"wk-summary-delete-debate",
+				"wk-summary-delete-generic",
+				"wk-summary-delete-interlang",
+				"wk-summary-delete-objection",
+				"wk-summary-delete-reference",
+				"wk-summary-delete-reference-generic",
+				"wk-summary-delete-section",
+				"wk-summary-delete-section-untitled",
+				"wk-summary-developed-subject-add",
+				"wk-summary-developed-subject-delete",
+				"wk-summary-developed-subject-modify",
+				"wk-summary-established-name-add",
+				"wk-summary-established-name-delete",
+				"wk-summary-established-name-modify",
+				"wk-summary-interlanguage-page-add",
+				"wk-summary-interlanguage-page-delete",
+				"wk-summary-interlanguage-page-modify",
+				"wk-summary-keyword-remove",
+				"wk-summary-progress-change",
+				"wk-summary-quoted-value",
+				"wk-summary-rename-argument",
+				"wk-summary-rename-article",
+				"wk-summary-rename-debat",
+				"wk-summary-rename-debate",
+				"wk-summary-rename-objection",
+				"wk-summary-rename-section",
+				"wk-summary-reorg-arguments",
+				"wk-summary-reorg-articles",
+				"wk-summary-reorg-citations",
+				"wk-summary-reorg-debates",
+				"wk-summary-reorg-debats",
+				"wk-summary-reorg-interlang",
+				"wk-summary-reorg-references",
+				"wk-summary-reorg-sections",
+				"wk-summary-rubrique-add",
+				"wk-summary-rubrique-remove",
+				"wk-summary-section-debate-subject",
+				"wk-summary-section-dedicated-debate",
+				"wk-summary-section-developed-subject",
+				"wk-summary-section-established-name",
+				"wk-summary-section-general-sections",
+				"wk-summary-section-interlanguage-link",
+				"wk-summary-section-keywords",
+				"wk-summary-section-warning-banners",
+				"wk-summary-subject-add",
+				"wk-summary-subject-delete",
+				"wk-summary-subject-full-add",
+				"wk-summary-subject-full-mod",
+				"wk-summary-subject-main-change",
+				"wk-summary-subject-mod",
+				"wk-summary-warning-add",
+				"wk-summary-warning-remove",
+				"wk-view-detailed-page"
 			]
 		},
 		"ext.wikidebates.features.frCollapsible": {
@@ -257,10 +417,6 @@
 				"jquery",
 				"ext.wikidebates.common.core",
 				"ext.wikidebates.common.i18n"
-			],
-			"skins": [
-				"vector",
-				"vector-2022"
 			]
 		},
 		"ext.wikidebates.vector.ns0.idleTooltips": {
@@ -271,10 +427,6 @@
 				"jquery",
 				"ext.wikidebates.common.core",
 				"ext.wikidebates.common.i18n"
-			],
-			"skins": [
-				"vector",
-				"vector-2022"
 			]
 		},
 		"ext.wikidebates.vector.headerButtons": {
@@ -285,10 +437,6 @@
 				"jquery",
 				"ext.wikidebates.common.core",
 				"ext.wikidebates.common.i18n"
-			],
-			"skins": [
-				"vector",
-				"vector-2022"
 			]
 		},
 		"ext.wikidebates.minerva.headerButtons": {
@@ -299,33 +447,133 @@
 				"jquery",
 				"ext.wikidebates.common.core",
 				"ext.wikidebates.common.i18n"
-			],
-			"skins": [
-				"minerva",
-				"minervaneue",
-				"minervaNeue"
 			]
 		},
 		"ext.wikidebates.i18n.en": {
-			"scripts": [
-				"i18n/en.js"
-			],
-			"skins": [
-				"vector",
-				"vector-2022",
-				"minerva",
-				"minervaneue",
-				"minervaNeue"
+			"class": "MediaWiki\\Extension\\Wikidebates\\I18nModule",
+			"messages": [
+				"wk-breadcrumb-aria-label",
+				"wk-copy-argument-link",
+				"wk-edit",
+				"wk-edit-argument-title",
+				"wk-edit-display-title",
+				"wk-interlanguage-label",
+				"wk-link-copied",
+				"wk-menu-about",
+				"wk-menu-all-debates",
+				"wk-menu-bistro",
+				"wk-menu-contact",
+				"wk-menu-contributions-portal",
+				"wk-menu-random-debate",
+				"wk-reading-close",
+				"wk-reading-missing-create",
+				"wk-reading-missing-text",
+				"wk-reading-more-actions",
+				"wk-reading-siblings-aria-label",
+				"wk-reading-siblings-label",
+				"wk-rename-page",
+				"wk-summary-add-argument-existing",
+				"wk-summary-add-citation",
+				"wk-summary-add-debat",
+				"wk-summary-add-debate",
+				"wk-summary-add-generic",
+				"wk-summary-add-interlang",
+				"wk-summary-add-reference",
+				"wk-summary-add-section",
+				"wk-summary-add-wikipedia-article",
+				"wk-summary-debat-detail-add",
+				"wk-summary-debate-detail-add",
+				"wk-summary-dedicated-debate-add",
+				"wk-summary-dedicated-debate-delete",
+				"wk-summary-dedicated-debate-modify",
+				"wk-summary-delete-argument",
+				"wk-summary-delete-article",
+				"wk-summary-delete-citation",
+				"wk-summary-delete-citation-generic",
+				"wk-summary-delete-debat",
+				"wk-summary-delete-debate",
+				"wk-summary-delete-generic",
+				"wk-summary-delete-interlang",
+				"wk-summary-delete-objection",
+				"wk-summary-delete-reference",
+				"wk-summary-delete-reference-generic",
+				"wk-summary-delete-section",
+				"wk-summary-delete-section-untitled",
+				"wk-summary-developed-subject-add",
+				"wk-summary-developed-subject-delete",
+				"wk-summary-developed-subject-modify",
+				"wk-summary-established-name-add",
+				"wk-summary-established-name-delete",
+				"wk-summary-established-name-modify",
+				"wk-summary-interlanguage-page-add",
+				"wk-summary-interlanguage-page-delete",
+				"wk-summary-interlanguage-page-modify",
+				"wk-summary-keyword-remove",
+				"wk-summary-progress-change",
+				"wk-summary-quoted-value",
+				"wk-summary-rename-argument",
+				"wk-summary-rename-article",
+				"wk-summary-rename-debat",
+				"wk-summary-rename-debate",
+				"wk-summary-rename-objection",
+				"wk-summary-rename-section",
+				"wk-summary-reorg-arguments",
+				"wk-summary-reorg-articles",
+				"wk-summary-reorg-citations",
+				"wk-summary-reorg-debates",
+				"wk-summary-reorg-debats",
+				"wk-summary-reorg-interlang",
+				"wk-summary-reorg-references",
+				"wk-summary-reorg-sections",
+				"wk-summary-rubrique-add",
+				"wk-summary-rubrique-remove",
+				"wk-summary-section-debate-subject",
+				"wk-summary-section-dedicated-debate",
+				"wk-summary-section-developed-subject",
+				"wk-summary-section-established-name",
+				"wk-summary-section-general-sections",
+				"wk-summary-section-interlanguage-link",
+				"wk-summary-section-keywords",
+				"wk-summary-section-warning-banners",
+				"wk-summary-subject-add",
+				"wk-summary-subject-delete",
+				"wk-summary-subject-full-add",
+				"wk-summary-subject-full-mod",
+				"wk-summary-subject-main-change",
+				"wk-summary-subject-mod",
+				"wk-summary-warning-add",
+				"wk-summary-warning-remove",
+				"wk-view-detailed-page"
 			]
 		}
 	},
 	"ExtensionMessagesFiles": {
-		"WikidebatesMagic": "i18n/magic.php"
+		"WikidebatesMagic": "i18n/magic.php",
+		"DebatePHPMagic": "debatephp/DebatePHP.i18n.magic.php"
 	},
 	"MessagesDirs": {
 		"Wikidebates": [
-			"i18n"
+			"i18n",
+			"i18n/compat"
 		]
+	},
+	"config": {
+		"DebatePHPMode": {
+			"value": "reference",
+			"description": "DebatePHP 0.8.0 renderer: reference or optimized; reference is the default."
+		},
+		"DebatePHPProfiling": {
+			"value": false,
+			"description": "Log per-invocation timings and actual preprocessing counts by reason to the DebatePHP debug channel."
+		},
+		"DebatePHPDiagnostics": {
+			"value": false,
+			"description": "Log renderer integration diagnostics to the DebatePHP debug channel."
+		},
+		"DebatePHPHTMLAttributes": {
+			"value": null,
+			"description": "Optional HTML Tags attribute policy; null uses wgHTMLTagsAttributes or the bundled policy."
+		}
 	},
 	"manifest_version": 2,
 	"AuthManagerAutoConfig": {
