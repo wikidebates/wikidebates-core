@@ -139,6 +139,9 @@ class RecentDebateChanges {
 		if ( !$title ) {
 			return self::makeError( 'wikidebates-recent-changes-error-invalid-title' );
 		}
+		if ( !\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded( 'SemanticMediaWiki' ) ) {
+			return self::makeError( 'wikidebates-recent-changes-error-no-debate-id' );
+		}
 
 		$dbr = MediaWikiServices::getInstance()
 			->getDBLoadBalancerFactory()

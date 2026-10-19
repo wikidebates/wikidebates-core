@@ -131,6 +131,9 @@ if (\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('PageForm
 // The original parser function remains active alongside the two new functions.
 $original = $parse('{{#recentdebatechanges:}}', 'reference');
 check(!str_contains($original[0], '{{#recentdebatechanges:'), 'Existing parser function remains registered');
+if (!\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('SemanticMediaWiki')) {
+	check(!str_contains($original[0], 'DBQueryError') && !str_contains($original[0], 'SELECT'), 'Missing SMW is handled before any semantic SQL query');
+}
 $config = $services->getMainConfig();
 same(false, $config->get('DebatePHPProfiling'), 'Profiling defaults to off');
 same(false, $config->get('DebatePHPDiagnostics'), 'Diagnostics default to off');
