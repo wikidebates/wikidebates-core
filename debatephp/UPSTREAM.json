@@ -32,13 +32,24 @@
 		"resources/WD-I18N.reference.lua": "7975891b1cd0c797f7e97df1fcbbc735e3626164cb42e587be58d0b16e4f691a"
 	},
 	"local_adaptations": {
-		"description": "The sha256 map above records the original 0.8 import. These local changes bridge its translation API to the shared MediaWiki JSON catalogues; rendering engines and Lua test snapshots are unchanged.",
+		"description": "The sha256 map above records the original 0.8 import. Local adaptations include the shared MediaWiki i18n catalogues and PR #3 SQL error propagation, semantic profiling, per-render decoded references and verified native accumulators. Lua oracle snapshots remain unchanged; see docs/native-php-optimizations.md.",
 		"sha256": {
 			"src/I18n.php": "12aa6f46ef463e8aa215e98dd41be20751d54fe4dd519f358bd3a4c28f0b1427",
 			"src/MessageCatalog.php": "270f5d9758308416cf2dd0576ec03ecf119185666a0534412c50d4c03aecfe0d",
 			"resources/I18nData.php": "a79728f32cb5836317ab4a91678238ffcf1f97c5455a89bae24d3afdc213ee25",
 			"tools/compileI18n.php": "fca59eeae04073abe66f150b290640ab2aaed7461876605b9143f0dba5a7f37c",
-			"tools/maintainI18n.php": "623f042cb13efa8597e7aa7acf174af3dc9802e9c868ee3f2bba9e7227f13936"
+			"tools/maintainI18n.php": "623f042cb13efa8597e7aa7acf174af3dc9802e9c868ee3f2bba9e7227f13936",
+			"src/ArgumentReferenceRenderer.php": "73a99dfbeacdfdd88988b3156a727b0e4ae3a7cf696f8462c8103850977ad8ed",
+			"src/ReferenceRenderer.php": "62ac88b4b688f5c4c7554419c8e11fa3ab19f904eb7621cad2de3dd27db284bd",
+			"src/SerializedData.php": "aed91ef9e2f8059d208e2f24ead176dc1cd57f271fa27e582a822378f710992f",
+			"src/Lua.php": "18a990db401e8b7b7597edfffc472703552fd85232d0829a6536da07b4269a6d",
+			"src/MediaWikiContext.php": "fd68e9decf5cdccdedbadb680f719a66157b7799e1790e41d1707c52b52f8cf9",
+			"src/Telemetry.php": "6c75811b9c8a25e76fe7e91e497208eac049489c009a8ea09fabc95813e6d995",
+			"src/DatabaseFailure.php": "9a8cd669ba0f9da2604c819b66e495518ffc76ac574f6954ec09a7497db04f3f",
+			"src/DecodedReferences.php": "92377eb57b2b3ff609a72f5f42965e316946361bdbe9b2d65e6e2c2101fc921a",
+			"src/SemanticProfilingContext.php": "875f5808c3830f33ecd594fb2b996857076812314fd531a55045867ebd287abf",
+			"tools/simplifyNative.py": "4cc6ae77cf7e4c52630eab21fbdeaf36f23885e17cf2c5cfae3f3afd8acd6811",
+			"tools/nativeOptimizations.py": "ef12578bbcb4eb952c193cc57c969c1026f5ee36321d69591fa3013d214d880e"
 		}
 	}
 }

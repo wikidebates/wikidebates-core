@@ -1,10 +1,14 @@
 # Validation isolée de DebatePHP 0.8.0 avant fusion
 
+Ce rapport conserve les résultats historiques de la PR #1. Les validations
+PHP 8.3 et MariaDB ainsi que les optimisations ultérieures de la PR #3 sont
+documentées dans [le rapport d'optimisation native](native-php-optimizations.md).
+
 Les tests avec les véritables extensions Semantic MediaWiki, SemanticScribunto
 et VariablesLua réussissent sous MediaWiki 1.43.11. Ce résultat valide le banc
 décrit ici ; il ne certifie pas le fonctionnement de toutes les pages ni la
-capacité du serveur du site. La PR #1 reste ouverte, en brouillon, sans fusion
-ni déploiement. Le mode `reference` reste le défaut.
+capacité du serveur du site. Lors de cette validation, la PR #1 était ouverte,
+en brouillon, sans fusion ni déploiement. Le mode `reference` reste le défaut.
 
 Les différences 0.6/0.7/0.8 et les mesures historiques restent documentées dans
 [le bilan de migration](debatephp-upgrade.md). Le présent rapport complète ce

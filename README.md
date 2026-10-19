@@ -96,6 +96,10 @@ contrôles restant à effectuer figurent dans le
 L'autoload supplémentaire est optionnel si les dépendances SMW sont déjà
 fournies par le `vendor/` du laboratoire.
 
+La phase d'optimisation native et de fiabilisation SQL de la PR #3 est documentée
+dans [son rapport dédié](docs/native-php-optimizations.md), avec les comparaisons
+avant/après sous PHP 8.3 et les variantes SQLite/MariaDB isolées.
+
 Les oracles hors ligne nécessitent Python, `lupa` et `luaparser` :
 
 ```sh
