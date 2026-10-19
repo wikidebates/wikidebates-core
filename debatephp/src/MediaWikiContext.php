@@ -220,7 +220,12 @@ final class MediaWikiContext implements ArgumentContext {
 			if (is_array($result) && !($result['noparse'] ?? true)) { $this->parser->recursiveTagParseFully($result[0]); }
 			$error = is_array($result) ? ($result[0] ?? '') : $result;
 			if (is_string($error) && trim($error) !== '') { $this->telemetry?->problem('semantic', 'returned-error'); }
-		} catch (\Throwable $e) { $this->telemetry?->problem('semantic', 'exception', $e); }
+		} catch (\Throwable $e) {
+			if ( $e instanceof \Wikimedia\Rdbms\DBError ) {
+				throw $e;
+			}
+			$this->telemetry?->problem('semantic', 'exception', $e);
+		}
 		finally { $this->telemetry?->finish('semantic', $started); }
 	}
 	public function seoSet(Table $data): void {
@@ -230,7 +235,12 @@ final class MediaWikiContext implements ArgumentContext {
 			$validated = \MediaWiki\Extension\WikiSEO\Validator::validateParams(Table::unwrap($data));
 			MediaWikiServices::getInstance()->getHookContainer()->run('WikiSEOLuaPreAddPageProps', [&$validated]);
 			foreach ($validated as $key => $v) { $this->parser->getOutput()->setPageProperty($key, $v); }
-		} catch (\Throwable $e) { $this->telemetry?->problem('seo', 'exception', $e); }
+		} catch (\Throwable $e) {
+			if ( $e instanceof \Wikimedia\Rdbms\DBError ) {
+				throw $e;
+			}
+			$this->telemetry?->problem('seo', 'exception', $e);
+		}
 		finally { $this->telemetry?->finish('seo', $started); }
 	}	public function smwAvailable(): bool { return class_exists(\SMW\Scribunto\LibraryFactory::class); }
 	public function smwAsk(Table $query): ?Table {
@@ -248,7 +258,13 @@ final class MediaWikiContext implements ArgumentContext {
 				return new Table(array_map($toTable, $value));
 			};
 			return $toTable($values);
-		} catch (\Throwable $e) { $this->telemetry?->problem('semantic-query', 'exception', $e); return null; }
+		} catch (\Throwable $e) {
+			if ( $e instanceof \Wikimedia\Rdbms\DBError ) {
+				throw $e;
+			}
+			$this->telemetry?->problem('semantic-query', 'exception', $e);
+			return null;
+		}
 		finally { $this->telemetry?->finish('semantic-query', $started); }
 	}
 	public function titleInfo(string $text): ?Table {
@@ -264,12 +280,23 @@ final class MediaWikiContext implements ArgumentContext {
 				\ExtVariables::pfObj_vardefine($this->parser, $this->parser->getPreprocessor()->newFrame(), [$name, $value]);
 			} else { \ExtVariables::pf_vardefine($this->parser, $name, $value); }
 		}
-		catch (\Throwable $e) { $this->telemetry?->problem('variables', 'exception', $e); }
+		catch (\Throwable $e) {
+			if ( $e instanceof \Wikimedia\Rdbms\DBError ) {
+				throw $e;
+			}
+			$this->telemetry?->problem('variables', 'exception', $e);
+		}
 	}
 	public function variableGet(string $name): ?string {
 		if (!class_exists(\ExtVariables::class) || !\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('VariablesLua')) { return null; }
 		try { return \ExtVariables::pfObj_var($this->parser, $this->parser->getPreprocessor()->newFrame(), [$name]); }
-		catch (\Throwable $e) { $this->telemetry?->problem('variables', 'exception', $e); return null; }
+		catch (\Throwable $e) {
+			if ( $e instanceof \Wikimedia\Rdbms\DBError ) {
+				throw $e;
+			}
+			$this->telemetry?->problem('variables', 'exception', $e);
+			return null;
+		}
 	}
 
 	/** Structured magic-variable calls retain MW's timestamp hooks, numbering and cache deadlines. */
