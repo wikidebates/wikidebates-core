@@ -69,4 +69,5 @@ def simplify(path: Path, argument: bool):
 	from nativeOptimizations import optimize
 	from nativePhpPass import optimize as optimize_php
 	from nativeFurtherPass import optimize as optimize_further
-	path.write_text(optimize_further(optimize_php(optimize(source, argument), argument), argument))
+	from nativeReadPass import optimize as optimize_read
+	path.write_text(optimize_read(optimize_further(optimize_php(optimize(source, argument), argument), argument), argument))

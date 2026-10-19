@@ -8,7 +8,7 @@ use MediaWiki\Parser\PPFrame;
 use MediaWiki\Title\Title;
 
 /** MediaWiki 1.43 legacy parser boundary. No recursive parse/reset of the current Parser. */
-final class MediaWikiContext implements ArgumentContext, SemanticProfilingContext, PreparationProfilingContext {
+final class MediaWikiContext implements ArgumentContext, SemanticProfilingContext, PreparationProfilingContext, NativeSemanticContext, NativeJsonContext {
 	private Parser $parser;
 	private PPFrame $caller;
 	private PPFrame $module;
@@ -160,12 +160,24 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 		$started = $this->telemetry?->start();
 		try {
 			json_decode($json, false, 512, JSON_THROW_ON_ERROR);
-			// A raw script element must never contain an HTML closing-script sequence.
-			// JSON Unicode escapes preserve the exact string values, including wiki delimiters.
-			$safe = str_replace(['<', '>', '&'], ['\\u003C', '\\u003E', '\\u0026'], $json);
-			$html = \MediaWiki\Html\Html::rawElement('script', ['type' => 'application/ld+json', 'class' => 'navigation-not-searchable'], $safe);
-			return $this->parser->insertStripItem($html);
+			return $this->insertJson($json);
 		} finally { $this->telemetry?->finish('native_jsonld', $started); }
+	}
+	public function jsonLdData(array $data): string {
+		$started = $this->telemetry?->start();
+		try {
+			$json = FormatJson::encode(JsonData::value($data), false, FormatJson::ALL_OK);
+			if ($json === false) { throw new \RuntimeException('Unable to encode JSON-LD'); }
+		} finally { $this->telemetry?->finish('json', $started); }
+		$started = $this->telemetry?->start();
+		try { return $this->insertJson($json); }
+		finally { $this->telemetry?->finish('native_jsonld', $started); }
+	}
+	private function insertJson(string $json): string {
+		// Both entry points escape script closers; only the internally encoded path skips decoding.
+		$safe = str_replace(['<', '>', '&'], ['\\u003C', '\\u003E', '\\u0026'], $json);
+		$html = \MediaWiki\Html\Html::rawElement('script', ['type' => 'application/ld+json', 'class' => 'navigation-not-searchable'], $safe);
+		return $this->parser->insertStripItem($html);
 	}
 	/** Preserve second expansion only for actual template or extension-tag syntax. */
 	public function expandField(string $text, string $reason = 'field'): string {
@@ -258,7 +270,22 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 		$this->telemetry?->semanticCacheHit($origin, $layer);
 	}
 	public function smwAsk(Table $query): ?Table {
-		if (!$this->smwAvailable()) { $this->telemetry?->problem('semantic-query', 'service-unavailable'); return null; }
+		return $this->semanticQuery($query, false);
+	}
+	public function readSemantic(Table $query, string $origin): SemanticReadResult {
+		$previous = $this->semanticOrigin;
+		$this->semanticOrigin = $origin;
+		try { return $this->semanticQuery($query, true); }
+		finally { $this->semanticOrigin = $previous; }
+	}
+	public function skipEmptyParentFallback(string $origin): void {
+		$this->telemetry?->semanticFallbackSkipped($origin);
+	}
+	private function semanticQuery(Table $query, bool $native): Table|SemanticReadResult|null {
+		if (!$this->smwAvailable()) {
+			$this->telemetry?->problem('semantic-query', 'service-unavailable');
+			return $native ? new SemanticReadResult(null) : null;
+		}
 		$started = $this->telemetry?->start();
 		$failed = true;
 		try {
@@ -270,10 +297,16 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 				$queryFailed = !$result instanceof \SMW\Query\QueryResult;
 			} finally { $this->telemetry?->semanticFinish($this->semanticOrigin, 'query', $queryStarted, $queryFailed); }
 			// Same conversion and printout formatting as mw.smw.ask, without a Lua engine.
-			if (!$result instanceof \SMW\Query\QueryResult) { return null; }
+			if (!$result instanceof \SMW\Query\QueryResult) { return $native ? new SemanticReadResult(null) : null; }
 			$resultStarted = $this->telemetry?->start();
 			try {
 				$values = $factory->newLuaAskResultProcessor($result)->getProcessedResult();
+				if ($native) {
+					$converted = new SemanticReadResult(SemanticReadResult::values($values),
+						$values === null && EmptyParentQuery::certified($result, $query));
+					$failed = false;
+					return $converted;
+				}
 				$toTable = static function($value) use (&$toTable) {
 					if (!is_array($value)) { return $value; }
 					array_unshift($value, ''); unset($value[0]);
@@ -286,7 +319,7 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 		} catch (\Throwable $e) {
 			DatabaseFailure::rethrow($e);
 			$this->telemetry?->problem('semantic-query', 'exception', $e);
-			return null;
+			return $native ? new SemanticReadResult(null) : null;
 		}
 		finally {
 			$this->telemetry?->semanticFinish($this->semanticOrigin, 'read', $started, $failed);

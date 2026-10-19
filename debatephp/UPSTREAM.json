@@ -32,27 +32,27 @@
 		"resources/WD-I18N.reference.lua": "7975891b1cd0c797f7e97df1fcbbc735e3626164cb42e587be58d0b16e4f691a"
 	},
 	"local_adaptations": {
-		"description": "The sha256 map above records the original 0.8 import. Local adaptations include the shared MediaWiki i18n catalogues and PR #3 SQL error propagation, semantic profiling, per-render decoded references and verified native accumulators. Lua oracle snapshots remain unchanged; see docs/native-php-optimizations.md. The six-point follow-up adds snapshot sequence iteration, a native FIFO, per-render pure CSV preprocessing, normalized-record consumers and lexical closure captures; see docs/native-php-followup.md. The five-path follow-up adds byte-identical native query keys, shared native HTML fragments, pure JSON conversion without unconditional sorting, native record views with lazy legacy envelopes and a byte-bounded adaptive CSV cache with numeric-only profiling; see docs/native-php-further-optimizations.md.",
+		"description": "The sha256 map above records the original 0.8 import. Local adaptations include the shared MediaWiki i18n catalogues and PR #3 SQL error propagation, semantic profiling, per-render decoded references and verified native accumulators. Lua oracle snapshots remain unchanged; see docs/native-php-optimizations.md. The six-point follow-up adds snapshot sequence iteration, a native FIFO, per-render pure CSV preprocessing, normalized-record consumers and lexical closure captures; see docs/native-php-followup.md. The five-path follow-up adds byte-identical native query keys, shared native HTML fragments, pure JSON conversion without unconditional sorting, native record views with lazy legacy envelopes and a byte-bounded adaptive CSV cache with numeric-only profiling; see docs/native-php-further-optimizations.md. Native read/JSON paths, certified empty parent-query fallbacks and read-only CSV/HTML follow-up: see docs/native-php-read-optimizations.md.",
 		"sha256": {
 			"src/I18n.php": "12aa6f46ef463e8aa215e98dd41be20751d54fe4dd519f358bd3a4c28f0b1427",
 			"src/MessageCatalog.php": "270f5d9758308416cf2dd0576ec03ecf119185666a0534412c50d4c03aecfe0d",
 			"resources/I18nData.php": "a79728f32cb5836317ab4a91678238ffcf1f97c5455a89bae24d3afdc213ee25",
 			"tools/compileI18n.php": "fca59eeae04073abe66f150b290640ab2aaed7461876605b9143f0dba5a7f37c",
 			"tools/maintainI18n.php": "623f042cb13efa8597e7aa7acf174af3dc9802e9c868ee3f2bba9e7227f13936",
-			"src/ArgumentReferenceRenderer.php": "3ba23f68902d2550e59ee105aef5b5e8434722fa9b3eab86b26ce85a33438f8a",
-			"src/ReferenceRenderer.php": "c0b9ba10ceb7a245b6dc60af186e039abf76400807916c6a272a179eb4552ca2",
+			"src/ArgumentReferenceRenderer.php": "f582818e1c860a3d10bbbffb0e924e353e3cabcee3ba94d04a2204771f1289d3",
+			"src/ReferenceRenderer.php": "a1ecdb679957d4511938b711f64d08a2b3226a80c4acefc10ea1c9fb47e31037",
 			"src/SerializedData.php": "097b386d983156b03673c178e02c5bd5310286e909e49438a89cde4b9f4e9b2d",
 			"src/Lua.php": "18a990db401e8b7b7597edfffc472703552fd85232d0829a6536da07b4269a6d",
-			"src/MediaWikiContext.php": "98354553e5acd9465ceee0abe2e6ab73f05a37a3583f3bff915a5a264fd2a8ba",
-			"src/Telemetry.php": "0eb95eb90d18f9925fe0cb1a9953ff45ba1e072b156f4d982eb39751072d6150",
+			"src/MediaWikiContext.php": "d92d5fd4b27ed647b302b1d567e57ed8c55cda2ef531f62fb485260a1ea2c21a",
+			"src/Telemetry.php": "15e3a399b7e555739cc91eaba605ea7a23a0475e5f61e9d218ce2af587e1d962",
 			"src/DatabaseFailure.php": "9a8cd669ba0f9da2604c819b66e495518ffc76ac574f6954ec09a7497db04f3f",
 			"src/DecodedReferences.php": "a2a5814a72afe24778dc548875d0eb7ceba09078cea8b81b8c65b465eba06506",
 			"src/SemanticProfilingContext.php": "875f5808c3830f33ecd594fb2b996857076812314fd531a55045867ebd287abf",
-			"tools/simplifyNative.py": "7529c39d707155e2e0f85f7aac20d16a3788707acca701d048d8037ab64e50cb",
+			"tools/simplifyNative.py": "6aeab4c9bd34081e6ce0bc482f518dd3d2914e9178e6b38ecf0f9d733647a009",
 			"tools/nativeOptimizations.py": "ef12578bbcb4eb952c193cc57c969c1026f5ee36321d69591fa3013d214d880e",
 			"src/Table.php": "e632649315e7b5faf9d3fb4a18eb58f93901b4cd868f039cfaa1e8053bd49728",
 			"src/FifoCache.php": "6d13b5f58e155a4bb5aa609ec270198b6fc5324e950f7bd1e9786f3b6ebbf40f",
-			"src/RenderData.php": "92e463e55e014a07c99954a958b7ec96e6afb92e18deb487c0316b30c972dd5c",
+			"src/RenderData.php": "d77cad072c1de9b678d7482748fba865ac86d9b3a5e1acf8cbfbe79f1e442f3c",
 			"tools/buildArgument.py": "99aabcd18e21b08d72495b7087aa52fd73883c8a350cd3b4537d09cf28949d48",
 			"tools/buildReference.py": "bcf279a113fac85d0e39e22cfed76c73cd93863e9ee0df25ff5071870cc83606",
 			"tools/closureCaptures.py": "48335827c26b7f0ae36abfb6212ce3c4f20fe11cfcb1153aeba3334cf7a1200f",
@@ -60,7 +60,13 @@
 			"src/CacheKey.php": "4f49adfde9ab8f15dcea555b47a10397b5d1569e940929283e9b60fdd8816579",
 			"src/PreparationProfilingContext.php": "1d2c02fdced772bd8ad4f01db7eb187313fdfb11d13081810ed43a78fa321d88",
 			"src/TextEscaper.php": "fa4e9c665eec1a0741bdb5cf1a1e5d6e551611876f38ef10db257ce7e30480e1",
-			"tools/nativeFurtherPass.py": "19bccf38adbf6a0cf800becea102a8f3c44952e7bbfebe03235b63fc32e4a00e"
+			"tools/nativeFurtherPass.py": "19bccf38adbf6a0cf800becea102a8f3c44952e7bbfebe03235b63fc32e4a00e",
+			"src/SemanticReadResult.php": "be1fc52a009f6da7a67808830bf0978c4df9c7f89122b5a113634f1b9d042203",
+			"src/NativeJsonContext.php": "449ef67bd5a9d609e754b852f8026592d46a7cbdcd09cc09bacbfa321c5e422a",
+			"src/NativeSemanticContext.php": "d4b6e2648d4f478924c9ce7ae757cada7e64d9cf29ebbc36898b98eb9908a64e",
+			"src/JsonData.php": "953a963d80b3b26c56526055204d424e67436ee3e442af9fbc857234385251d7",
+			"src/EmptyParentQuery.php": "304e2fedda270023e4d4b9967538675e6cd619ff68476b203d54296d2da8d47e",
+			"tools/nativeReadPass.py": "d8703ac21d4701b231c41475536eae6992f07302d407508370b5c868770c9c69"
 		}
 	}
 }

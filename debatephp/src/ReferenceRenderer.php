@@ -8,6 +8,7 @@ namespace MediaWiki\Extension\DebatePHP;
 class ReferenceRenderer {
 	private ?DecodedReferences $decodedReferences = null;
 	private ?RenderData $renderData = null;
+	private bool $nativeJson = false;
 	protected Context $context;
 	protected $ITEM_SEP;
 	protected $FIELD_SEP;
@@ -78,6 +79,14 @@ class ReferenceRenderer {
 		return implode("\n", $out);
 	}
 
+	protected function csvValues(?string $text, ?string $separator = null): array {
+		return ($this->renderData ??= new RenderData)->csvValues($text, $separator);
+	}
+
+	protected function jsonNode(array $data): Table|array {
+		return $this->nativeJson ? $data : new Table($data);
+	}
+
 	protected function splitCSV($s = null, $sep = null) {
 		return ($this->renderData ??= new RenderData)->csv($s, $sep);
 	}
@@ -125,10 +134,10 @@ class ReferenceRenderer {
 
 	protected function buildSeoKeywords($args = null, $lang = null) {
 		$items = [];
-		foreach (($this->splitCSV($args['keywords'], ','))->sequence() as $_ => $k) {
+		foreach ($this->csvValues($args['keywords'], ',') as $_ => $k) {
 			$items[count($items) + 1] = $k;
 		}
-		foreach (($this->splitCSV($args['sections'], ','))->sequence() as $_ => $s) {
+		foreach ($this->csvValues($args['sections'], ',') as $_ => $s) {
 			$items[count($items) + 1] = $s;
 		}
 		return $this->seoJoinList(new Table($items));
@@ -482,7 +491,7 @@ class ReferenceRenderer {
 		}
 		$lookup = $this->getArgumentWarningLookup($lang);
 		$hasBanner = false;
-		foreach (($this->splitCSV($warnsArg, ','))->sequence() as $_ => $x) {
+		foreach ($this->csvValues($warnsArg, ',') as $_ => $x) {
 			$key = $this->resolveKeyFromLookup($x, $lookup, $this->ARGUMENT_WARNING_BANNER_KEYS);
 			if (($key !== '')) {
 				Lua::insert($out, $this->renderSubsectionBanner($pv, $lang, $key, null, null));
@@ -637,7 +646,7 @@ class ReferenceRenderer {
 		$progLookup = $this->buildBannerLabelLookup($lang, $this->PROGRESS_BANNER_KEYS);
 		$renderBannersFromList = function($list = null, $lookup = null) use (&$pv, &$cats, &$lang) {
 		$html = new Table([]);
-		foreach (($this->splitCSV($list, ','))->sequence() as $_ => $x) {
+		foreach ($this->csvValues($list, ',') as $_ => $x) {
 			$key = $this->resolveBannerKeyFromLookup($x, $lookup);
 			if (($key !== '')) {
 				Lua::insert($html, $this->renderBannerByKey($pv, $lang, $key, $cats));
@@ -879,7 +888,7 @@ class ReferenceRenderer {
 			return null;
 		}
 		$lookup = $this->buildSummaryLabelLookup($lang, $this->REFERENCE_WARNING_BANNER_KEYS);
-		foreach (($this->splitCSV($warnsRef, ','))->sequence() as $_ => $x) {
+		foreach ($this->csvValues($warnsRef, ',') as $_ => $x) {
 			$key = $this->resolveKeyFromLookup($x, $lookup, $this->REFERENCE_WARNING_BANNER_KEYS);
 			if (($key !== '')) {
 				$fragment = $this->renderSubsectionBanner($pv, $lang, $key, null, $cats);
@@ -1256,13 +1265,13 @@ class ReferenceRenderer {
 	protected function wkBuildWebsiteNode($lang = null) {
 		$homeUrl = $this->L($lang, 'urls', 'home');
 		$siteName = $this->L($lang, 'seo', 'site_name');
-		return new Table(['@type' => 'WebSite', '@id' => ($homeUrl . '#website'), 'url' => $homeUrl, 'name' => $siteName]);
+		return $this->jsonNode(['@type' => 'WebSite', '@id' => ($homeUrl . '#website'), 'url' => $homeUrl, 'name' => $siteName]);
 	}
 
 	protected function wkBuildOrganizationNode($lang = null) {
 		$homeUrl = $this->L($lang, 'urls', 'home');
 		$siteName = $this->L($lang, 'seo', 'site_name');
-		return new Table(['@type' => 'Organization', '@id' => ($homeUrl . '#organization'), 'name' => $siteName, 'url' => $homeUrl]);
+		return $this->jsonNode(['@type' => 'Organization', '@id' => ($homeUrl . '#organization'), 'name' => $siteName, 'url' => $homeUrl]);
 	}
 
 	protected function wkBuildBreadcrumbNode($pv = null, $lang = null) {
@@ -1270,7 +1279,7 @@ class ReferenceRenderer {
 		$homeUrl = $this->L($lang, 'urls', 'home');
 		$debatesLabel = $this->L($lang, 'urls', 'debates_label');
 		$debatesUrl = $this->wkBuildWikiUrl($lang, 'portal_prefix', 'debates_label');
-		return new Table(['@type' => 'BreadcrumbList', '@id' => ($pv['pageUrl'] . '#breadcrumb'), 'itemListElement' => new Table([1 => new Table(['@type' => 'ListItem', 'position' => 1, 'item' => new Table(['@id' => $homeUrl, 'name' => $homeLabel])]), 2 => new Table(['@type' => 'ListItem', 'position' => 2, 'item' => new Table(['@id' => $debatesUrl, 'name' => $debatesLabel])]), 3 => new Table(['@type' => 'ListItem', 'position' => 3, 'item' => new Table(['@id' => $pv['pageUrl'], 'name' => $pv['rawTitle']])])])]);
+		return $this->jsonNode(['@type' => 'BreadcrumbList', '@id' => ($pv['pageUrl'] . '#breadcrumb'), 'itemListElement' => new Table([1 => $this->jsonNode(['@type' => 'ListItem', 'position' => 1, 'item' => $this->jsonNode(['@id' => $homeUrl, 'name' => $homeLabel])]), 2 => $this->jsonNode(['@type' => 'ListItem', 'position' => 2, 'item' => $this->jsonNode(['@id' => $debatesUrl, 'name' => $debatesLabel])]), 3 => $this->jsonNode(['@type' => 'ListItem', 'position' => 3, 'item' => $this->jsonNode(['@id' => $pv['pageUrl'], 'name' => $pv['rawTitle']])])])]);
 	}
 
 	protected function wkSchemaPageLabel($it = null) {
@@ -1301,7 +1310,7 @@ class ReferenceRenderer {
 		else {
 			$additionalType = $this->wkBuildWikiUrl($lang, 'property_prefix', 'con_label');
 		}
-		return new Table(['@type' => 'Answer', '@id' => ($url . '#answer'), 'url' => $url, 'name' => $answerName, 'text' => $pageLabel, 'author' => new Table(['@id' => ($this->L($lang, 'urls', 'home') . '#organization')]), 'additionalType' => $additionalType, 'about' => new Table(['@type' => 'Claim', '@id' => ($url . '#claim')])]);
+		return $this->jsonNode(['@type' => 'Answer', '@id' => ($url . '#answer'), 'url' => $url, 'name' => $answerName, 'text' => $pageLabel, 'author' => $this->jsonNode(['@id' => ($this->L($lang, 'urls', 'home') . '#organization')]), 'additionalType' => $additionalType, 'about' => $this->jsonNode(['@type' => 'Claim', '@id' => ($url . '#claim')])]);
 	}
 
 	protected function wkBuildSuggestedAnswers($maps = null, $lang = null) {
@@ -1328,8 +1337,8 @@ class ReferenceRenderer {
 
 	protected function wkBuildIsPartOf($lang = null) {
 		$out = new Table([]);
-		$out[(Lua::len($out) + 1)] = new Table(['@id' => $this->wkBuildWikiUrl($lang, 'category_prefix', 'debates_label')]);
-		$out[(Lua::len($out) + 1)] = new Table(['@id' => ($this->L($lang, 'urls', 'home') . '#website')]);
+		$out[(Lua::len($out) + 1)] = $this->jsonNode(['@id' => $this->wkBuildWikiUrl($lang, 'category_prefix', 'debates_label')]);
+		$out[(Lua::len($out) + 1)] = $this->jsonNode(['@id' => ($this->L($lang, 'urls', 'home') . '#website')]);
 		return $out;
 	}
 
@@ -1349,7 +1358,7 @@ class ReferenceRenderer {
 				}
 				$url = $this->wkFullUrl($part);
 				if (($url !== '')) {
-					$out[(Lua::len($out) + 1)] = new Table(['@id' => ($url . '#qa')]);
+					$out[(Lua::len($out) + 1)] = $this->jsonNode(['@id' => ($url . '#qa')]);
 				}
 			}
 		}
@@ -1358,16 +1367,16 @@ class ReferenceRenderer {
 
 	protected function wkBuildKeywords($args = null, $lang = null) {
 		$out = [];
-		$sections = $this->splitCSV((Lua::truth($v207 = (Lua::truth($v208 = $args) ? $args['sections'] : $v208)) ? $v207 : ''), ',');
+		$sections = $this->csvValues((Lua::truth($v207 = (Lua::truth($v208 = $args) ? $args['sections'] : $v208)) ? $v207 : ''), ',');
 		$termSetId = $this->wkBuildWikiUrl($lang, 'category_prefix', 'sections_label');
-		$stop3 = Lua::len($sections);
+		$stop3 = count($sections);
 		for ($i = 1; $i <= $stop3; $i++) {
 			if (($i > 4)) {
 				break;
 			}
 			$section = Lua::trim(Lua::str((Lua::truth($v209 = $sections[$i]) ? $v209 : '')));
 			if (($section !== '')) {
-				$out[count($out) + 1] = new Table(['@type' => 'DefinedTerm', '@id' => $this->wkBuildWikiUrlFromText($lang, 'category_prefix', $section), 'name' => $section, 'inDefinedTermSet' => new Table(['@id' => $termSetId])]);
+				$out[count($out) + 1] = $this->jsonNode(['@type' => 'DefinedTerm', '@id' => $this->wkBuildWikiUrlFromText($lang, 'category_prefix', $section), 'name' => $section, 'inDefinedTermSet' => $this->jsonNode(['@id' => $termSetId])]);
 			}
 		}
 		return new Table($out);
@@ -1376,12 +1385,12 @@ class ReferenceRenderer {
 	protected function wkBuildAboutAndMentions($args = null) {
 		$about = [];
 		$mentions = [];
-		$keywords = $this->splitCSV((Lua::truth($v210 = (Lua::truth($v211 = $args) ? $args['keywords'] : $v211)) ? $v210 : ''), ',');
-		$stop3 = Lua::len($keywords);
+		$keywords = $this->csvValues((Lua::truth($v210 = (Lua::truth($v211 = $args) ? $args['keywords'] : $v211)) ? $v210 : ''), ',');
+		$stop3 = count($keywords);
 		for ($i = 1; $i <= $stop3; $i++) {
 			$kw = Lua::trim(Lua::str((Lua::truth($v212 = $keywords[$i]) ? $v212 : '')));
 			if (($kw !== '')) {
-				$node = new Table(['@type' => 'Thing', 'name' => $kw]);
+				$node = $this->jsonNode(['@type' => 'Thing', 'name' => $kw]);
 				if (($i <= 2)) {
 					$about[count($about) + 1] = $node;
 				}
@@ -1409,7 +1418,7 @@ class ReferenceRenderer {
 		foreach (Lua::split($authors, ',', true) as $a) {
 			$a = Lua::trim(Lua::str((Lua::truth($v215 = $a) ? $v215 : '')));
 			if (($a !== '')) {
-				$out[count($out) + 1] = new Table(['@type' => 'Person', 'name' => $a]);
+				$out[count($out) + 1] = $this->jsonNode(['@type' => 'Person', 'name' => $a]);
 			}
 		}
 		if ((count($out) === 0)) {
@@ -1451,7 +1460,7 @@ class ReferenceRenderer {
 		$link = $item['link'];
 		$node = null;
 		if (((($number !== '') && ($article !== '')) && ($work !== ''))) {
-			$node = new Table(['@type' => 'Article', 'name' => $article, 'isPartOf' => new Table(['@type' => 'Periodical', 'name' => $work])]);
+			$node = $this->jsonNode(['@type' => 'Article', 'name' => $article, 'isPartOf' => $this->jsonNode(['@type' => 'Periodical', 'name' => $work])]);
 			if (($volume !== '')) {
 				$node['volumeNumber'] = $volume;
 			}
@@ -1459,7 +1468,7 @@ class ReferenceRenderer {
 		}
 		else {
 			if ((($publisher !== '') && ($work !== ''))) {
-				$node = new Table(['@type' => 'Book', 'name' => $work]);
+				$node = $this->jsonNode(['@type' => 'Book', 'name' => $work]);
 				if (($article !== '')) {
 					$node['description'] = $article;
 				}
@@ -1472,9 +1481,9 @@ class ReferenceRenderer {
 			}
 			else {
 				if ((($link !== '') && ($article !== ''))) {
-					$node = new Table(['@type' => 'WebPage', 'name' => $article]);
+					$node = $this->jsonNode(['@type' => 'WebPage', 'name' => $article]);
 					if (($work !== '')) {
-						$node['isPartOf'] = new Table(['@type' => 'WebSite', 'name' => $work]);
+						$node['isPartOf'] = $this->jsonNode(['@type' => 'WebSite', 'name' => $work]);
 					}
 				}
 			}
@@ -1487,7 +1496,7 @@ class ReferenceRenderer {
 			$node['author'] = $authorValue;
 		}
 		if (($publisher !== '')) {
-			$node['publisher'] = new Table(['@type' => 'Organization', 'name' => $publisher]);
+			$node['publisher'] = $this->jsonNode(['@type' => 'Organization', 'name' => $publisher]);
 		}
 		if (($date !== '')) {
 			$node['datePublished'] = $date;
@@ -1513,9 +1522,9 @@ class ReferenceRenderer {
 		if ((($link === '') || ($page === ''))) {
 			return null;
 		}
-		$node = new Table(['@type' => 'WebPage', 'name' => $page, 'url' => $link]);
+		$node = $this->jsonNode(['@type' => 'WebPage', 'name' => $page, 'url' => $link]);
 		if (($site !== '')) {
-			$node['isPartOf'] = new Table(['@type' => 'WebSite', 'name' => $site]);
+			$node['isPartOf'] = $this->jsonNode(['@type' => 'WebSite', 'name' => $site]);
 		}
 		if (($date !== '')) {
 			$node['datePublished'] = $date;
@@ -1537,7 +1546,7 @@ class ReferenceRenderer {
 		if ((($title === '') || ($link === ''))) {
 			return null;
 		}
-		$node = new Table(['@type' => 'VideoObject', 'name' => $title, 'url' => $link]);
+		$node = $this->jsonNode(['@type' => 'VideoObject', 'name' => $title, 'url' => $link]);
 		$authorValue = $this->wkBuildQuoteAuthorValue($authors);
 		if (Lua::truth($authorValue)) {
 			$node['author'] = $authorValue;
@@ -1547,116 +1556,121 @@ class ReferenceRenderer {
 	}
 
 	protected function renderDebateSchemaJSONLD($pv = null, $lang = null, $args = null, $maps = null, $refRaw = null) {
-		$websiteNode = $this->wkBuildWebsiteNode($lang);
-		$breadcrumbNode = $this->wkBuildBreadcrumbNode($pv, $lang);
-		$organizationNode = $this->wkBuildOrganizationNode($lang);
-		[$about, $mentions] = $this->wkBuildAboutAndMentions($args);
-		$keywords = $this->wkBuildKeywords($args, $lang);
-		$suggestedAnswer = $this->wkBuildSuggestedAnswers($maps, $lang);
-		$isPartOf = $this->wkBuildIsPartOf($lang);
-		$isRelatedTo = $this->wkBuildIsRelatedTo($args);
-		$pageCreation = $this->getPageCreation($pv, $args);
-		$questionText = null;
-		if ((Lua::truth($args['expanded-topic']) && (Lua::trim($args['expanded-topic']) !== ''))) {
-			$questionText = Lua::format($this->L($lang, 'text', 'faq_q'), Lua::trim($args['expanded-topic']));
-		}
-		else {
-			$questionText = $pv['rawTitle'];
-		}
-		$refRaw = (Lua::truth($v235 = $refRaw) ? $v235 : new Table([]));
-		$refRaw['bibliography'] = (Lua::truth($v236 = $refRaw['bibliography']) ? $v236 : new Table([]));
-		$refRaw['webliography'] = (Lua::truth($v237 = $refRaw['webliography']) ? $v237 : new Table([]));
-		$refRaw['videography'] = (Lua::truth($v238 = $refRaw['videography']) ? $v238 : new Table([]));
-		$bibliographyRaw = '';
-		if (($refRaw['bibliography']['pro'] !== '')) {
-			$bibliographyRaw = $refRaw['bibliography']['pro'];
-		}
-		if (($refRaw['bibliography']['con'] !== '')) {
-			if (($bibliographyRaw !== '')) {
-				$bibliographyRaw = ($bibliographyRaw . $this->ITEM_SEP);
+		$previousNativeJson = $this->nativeJson;
+		$this->nativeJson = $this->context instanceof NativeJsonContext;
+		try {
+			$websiteNode = $this->wkBuildWebsiteNode($lang);
+			$breadcrumbNode = $this->wkBuildBreadcrumbNode($pv, $lang);
+			$organizationNode = $this->wkBuildOrganizationNode($lang);
+			[$about, $mentions] = $this->wkBuildAboutAndMentions($args);
+			$keywords = $this->wkBuildKeywords($args, $lang);
+			$suggestedAnswer = $this->wkBuildSuggestedAnswers($maps, $lang);
+			$isPartOf = $this->wkBuildIsPartOf($lang);
+			$isRelatedTo = $this->wkBuildIsRelatedTo($args);
+			$pageCreation = $this->getPageCreation($pv, $args);
+			$questionText = null;
+			if ((Lua::truth($args['expanded-topic']) && (Lua::trim($args['expanded-topic']) !== ''))) {
+				$questionText = Lua::format($this->L($lang, 'text', 'faq_q'), Lua::trim($args['expanded-topic']));
 			}
-			$bibliographyRaw = ($bibliographyRaw . $refRaw['bibliography']['con']);
-		}
-		if (($refRaw['bibliography']['neutral'] !== '')) {
-			if (($bibliographyRaw !== '')) {
-				$bibliographyRaw = ($bibliographyRaw . $this->ITEM_SEP);
+			else {
+				$questionText = $pv['rawTitle'];
 			}
-			$bibliographyRaw = ($bibliographyRaw . $refRaw['bibliography']['neutral']);
-		}
-		$webliographyRaw = '';
-		if (($refRaw['webliography']['pro'] !== '')) {
-			$webliographyRaw = $refRaw['webliography']['pro'];
-		}
-		if (($refRaw['webliography']['con'] !== '')) {
-			if (($webliographyRaw !== '')) {
-				$webliographyRaw = ($webliographyRaw . $this->ITEM_SEP);
+			$refRaw = (Lua::truth($v235 = $refRaw) ? $v235 : new Table([]));
+			$refRaw['bibliography'] = (Lua::truth($v236 = $refRaw['bibliography']) ? $v236 : new Table([]));
+			$refRaw['webliography'] = (Lua::truth($v237 = $refRaw['webliography']) ? $v237 : new Table([]));
+			$refRaw['videography'] = (Lua::truth($v238 = $refRaw['videography']) ? $v238 : new Table([]));
+			$bibliographyRaw = '';
+			if (($refRaw['bibliography']['pro'] !== '')) {
+				$bibliographyRaw = $refRaw['bibliography']['pro'];
 			}
-			$webliographyRaw = ($webliographyRaw . $refRaw['webliography']['con']);
-		}
-		if (($refRaw['webliography']['neutral'] !== '')) {
-			if (($webliographyRaw !== '')) {
-				$webliographyRaw = ($webliographyRaw . $this->ITEM_SEP);
+			if (($refRaw['bibliography']['con'] !== '')) {
+				if (($bibliographyRaw !== '')) {
+					$bibliographyRaw = ($bibliographyRaw . $this->ITEM_SEP);
+				}
+				$bibliographyRaw = ($bibliographyRaw . $refRaw['bibliography']['con']);
 			}
-			$webliographyRaw = ($webliographyRaw . $refRaw['webliography']['neutral']);
-		}
-		$videographyRaw = '';
-		if (($refRaw['videography']['pro'] !== '')) {
-			$videographyRaw = $refRaw['videography']['pro'];
-		}
-		if (($refRaw['videography']['con'] !== '')) {
-			if (($videographyRaw !== '')) {
-				$videographyRaw = ($videographyRaw . $this->ITEM_SEP);
+			if (($refRaw['bibliography']['neutral'] !== '')) {
+				if (($bibliographyRaw !== '')) {
+					$bibliographyRaw = ($bibliographyRaw . $this->ITEM_SEP);
+				}
+				$bibliographyRaw = ($bibliographyRaw . $refRaw['bibliography']['neutral']);
 			}
-			$videographyRaw = ($videographyRaw . $refRaw['videography']['con']);
-		}
-		if (($refRaw['videography']['neutral'] !== '')) {
-			if (($videographyRaw !== '')) {
-				$videographyRaw = ($videographyRaw . $this->ITEM_SEP);
+			$webliographyRaw = '';
+			if (($refRaw['webliography']['pro'] !== '')) {
+				$webliographyRaw = $refRaw['webliography']['pro'];
 			}
-			$videographyRaw = ($videographyRaw . $refRaw['videography']['neutral']);
-		}
-		$citations = new Table([]);
-		$b = $this->wkBuildClaimCitationsFromBibliography($bibliographyRaw);
-		if (Lua::truth($b[1])) {
-			$citations[(Lua::len($citations) + 1)] = $b[1];
-		}
-		$w = $this->wkBuildClaimCitationsFromWebliography($webliographyRaw);
-		if (Lua::truth($w[1])) {
-			$citations[(Lua::len($citations) + 1)] = $w[1];
-		}
-		$subjectOf = $this->wkBuildClaimCitationsFromVideography($videographyRaw);
-		$qaNode = new Table(['@type' => 'QAPage', '@id' => ($pv['pageUrl'] . '#qa'), 'url' => $pv['pageUrl'], 'name' => $pv['rawTitle'], 'inLanguage' => $lang, 'educationalUse' => new Table([1 => 'debate', 2 => 'critical thinking']), 'learningResourceType' => 'debate', 'audience' => new Table(['@type' => 'EducationalAudience', 'educationalLevel' => new Table([1 => 'general public', 2 => 'secondary education'])]), 'isPartOf' => $isPartOf, 'breadcrumb' => new Table(['@id' => ($pv['pageUrl'] . '#breadcrumb')]), 'discussionUrl' => $this->wkBuildDiscussionUrl($pv, $lang), 'publisher' => new Table(['@id' => ($this->L($lang, 'urls', 'home') . '#organization')]), 'mainEntity' => new Table(['@type' => 'Question', '@id' => ($pv['pageUrl'] . '#question'), 'name' => $pv['rawTitle'], 'text' => $questionText, 'answerCount' => Lua::len($suggestedAnswer), 'suggestedAnswer' => $suggestedAnswer])]);
-		if ((Lua::truth($pageCreation) && ($pageCreation !== ''))) {
-			$qaNode['mainEntity']['datePublished'] = $pageCreation;
-		}
-		if ((Lua::len($isRelatedTo) > 0)) {
-			$qaNode['isRelatedTo'] = $isRelatedTo;
-		}
-		if ((Lua::len($keywords) > 0)) {
-			$qaNode['keywords'] = $keywords;
-		}
-		if ((Lua::len($about) > 0)) {
-			$qaNode['about'] = $about;
-		}
-		if ((Lua::len($mentions) > 0)) {
-			$qaNode['mentions'] = $mentions;
-		}
-		if ((Lua::len($citations) > 0)) {
-			$qaNode['citation'] = $citations;
-		}
-		if (Lua::truth($subjectOf[1])) {
-			$qaNode['subjectOf'] = $subjectOf[1];
-		}
-		$data = new Table(['@context' => 'https://schema.org', '@graph' => new Table([1 => $websiteNode, 2 => $organizationNode, 3 => $breadcrumbNode, 4 => $qaNode])]);
-		$json = $this->context->jsonEncode($data);
-		return $this->context->jsonLd($json);
+			if (($refRaw['webliography']['con'] !== '')) {
+				if (($webliographyRaw !== '')) {
+					$webliographyRaw = ($webliographyRaw . $this->ITEM_SEP);
+				}
+				$webliographyRaw = ($webliographyRaw . $refRaw['webliography']['con']);
+			}
+			if (($refRaw['webliography']['neutral'] !== '')) {
+				if (($webliographyRaw !== '')) {
+					$webliographyRaw = ($webliographyRaw . $this->ITEM_SEP);
+				}
+				$webliographyRaw = ($webliographyRaw . $refRaw['webliography']['neutral']);
+			}
+			$videographyRaw = '';
+			if (($refRaw['videography']['pro'] !== '')) {
+				$videographyRaw = $refRaw['videography']['pro'];
+			}
+			if (($refRaw['videography']['con'] !== '')) {
+				if (($videographyRaw !== '')) {
+					$videographyRaw = ($videographyRaw . $this->ITEM_SEP);
+				}
+				$videographyRaw = ($videographyRaw . $refRaw['videography']['con']);
+			}
+			if (($refRaw['videography']['neutral'] !== '')) {
+				if (($videographyRaw !== '')) {
+					$videographyRaw = ($videographyRaw . $this->ITEM_SEP);
+				}
+				$videographyRaw = ($videographyRaw . $refRaw['videography']['neutral']);
+			}
+			$citations = new Table([]);
+			$b = $this->wkBuildClaimCitationsFromBibliography($bibliographyRaw);
+			if (Lua::truth($b[1])) {
+				$citations[(Lua::len($citations) + 1)] = $b[1];
+			}
+			$w = $this->wkBuildClaimCitationsFromWebliography($webliographyRaw);
+			if (Lua::truth($w[1])) {
+				$citations[(Lua::len($citations) + 1)] = $w[1];
+			}
+			$subjectOf = $this->wkBuildClaimCitationsFromVideography($videographyRaw);
+			$qaNode = (['@type' => 'QAPage', '@id' => ($pv['pageUrl'] . '#qa'), 'url' => $pv['pageUrl'], 'name' => $pv['rawTitle'], 'inLanguage' => $lang, 'educationalUse' => ([1 => 'debate', 2 => 'critical thinking']), 'learningResourceType' => 'debate', 'audience' => (['@type' => 'EducationalAudience', 'educationalLevel' => ([1 => 'general public', 2 => 'secondary education'])]), 'isPartOf' => $isPartOf, 'breadcrumb' => (['@id' => ($pv['pageUrl'] . '#breadcrumb')]), 'discussionUrl' => $this->wkBuildDiscussionUrl($pv, $lang), 'publisher' => (['@id' => ($this->L($lang, 'urls', 'home') . '#organization')]), 'mainEntity' => (['@type' => 'Question', '@id' => ($pv['pageUrl'] . '#question'), 'name' => $pv['rawTitle'], 'text' => $questionText, 'answerCount' => Lua::len($suggestedAnswer), 'suggestedAnswer' => $suggestedAnswer])]);
+			if ((Lua::truth($pageCreation) && ($pageCreation !== ''))) {
+				$qaNode['mainEntity']['datePublished'] = $pageCreation;
+			}
+			if ((Lua::len($isRelatedTo) > 0)) {
+				$qaNode['isRelatedTo'] = $isRelatedTo;
+			}
+			if ((Lua::len($keywords) > 0)) {
+				$qaNode['keywords'] = $keywords;
+			}
+			if ((Lua::len($about) > 0)) {
+				$qaNode['about'] = $about;
+			}
+			if ((Lua::len($mentions) > 0)) {
+				$qaNode['mentions'] = $mentions;
+			}
+			if ((Lua::len($citations) > 0)) {
+				$qaNode['citation'] = $citations;
+			}
+			if (Lua::truth($subjectOf[1])) {
+				$qaNode['subjectOf'] = $subjectOf[1];
+			}
+			$data = (['@context' => 'https://schema.org', '@graph' => ([1 => $websiteNode, 2 => $organizationNode, 3 => $breadcrumbNode, 4 => $qaNode])]);
+			if ($this->context instanceof NativeJsonContext) { return $this->context->jsonLdData($data); }
+			$json = $this->context->jsonEncode(Table::wrap($data));
+			return $this->context->jsonLd($json);
+		} finally { $this->nativeJson = $previousNativeJson; }
 	}
 
 	protected function renderKeywords($args = null, $pv = null, $cats = null, $lang = null) {
-		$out = new Table([]);
-		Lua::insert($out, ('<div style="font-size: 95%; margin-top: 1em;">' . $this->L($lang, 'text', 'keywords_label_text')));
+		$out = [];
+		$out[count($out) + 1] = ('<div style="font-size: 95%; margin-top: 1em;">' . $this->L($lang, 'text', 'keywords_label_text'));
 		if ((Lua::truth($args['keywords']) && (Lua::trim($args['keywords']) !== ''))) {
-			$rendered = new Table([]);
+			$rendered = [];
 			$formName = $this->L($lang, 'forms', 'search_by_keywords_title');
 			$fieldLabel = $formName;
 			$fieldName = $this->L($lang, 'params', 'keywords_field');
@@ -1664,7 +1678,7 @@ class ReferenceRenderer {
 			$typeField = $this->L($lang, 'params', 'search_type_field');
 			$typeValue = $this->L($lang, 'params', 'search_type_value');
 			$extra = new Table([($fieldLabel . '[' . $typeField . ']') => $typeValue]);
-			foreach (($this->splitCSV($args['keywords'], ','))->sequence() as $_ => $k) {
+			foreach ($this->csvValues($args['keywords'], ',') as $_ => $k) {
 				$k = Lua::trim(Lua::str((Lua::truth($v239 = $k) ? $v239 : '')));
 				if (($k !== '')) {
 					$chip = $this->runQueryLink($formName, $fieldLabel, $fieldName, $k, $k, $tt, $extra);
@@ -1672,31 +1686,31 @@ class ReferenceRenderer {
 						$chip = $k;
 					}
 					if (($chip !== '')) {
-						Lua::insert($rendered, $chip);
+						$rendered[count($rendered) + 1] = $chip;
 					}
 				}
 			}
-			if ((Lua::len($rendered) > 0)) {
-				Lua::insert($out, Lua::concat($rendered, ', '));
+			if ((count($rendered) > 0)) {
+				$out[count($out) + 1] = implode(', ', $rendered);
 			}
 			else {
-				Lua::insert($out, ('<strong>' . $this->L($lang, 'text', 'none_label') . '</strong>'));
+				$out[count($out) + 1] = ('<strong>' . $this->L($lang, 'text', 'none_label') . '</strong>');
 				Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'keywords_missing') . ']]'));
 			}
 		}
 		else {
-			Lua::insert($out, ('<strong>' . $this->L($lang, 'text', 'none_label') . '</strong>'));
+			$out[count($out) + 1] = ('<strong>' . $this->L($lang, 'text', 'none_label') . '</strong>');
 			Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'keywords_missing') . ']]'));
 		}
-		Lua::insert($out, ($this->addDataLink($this->L($lang, 'forms', 'keywords_edit_title'), $pv['rawTitle'], $this->L($lang, 'text', 'edit_label'), $this->L($lang, 'text', 'keywords_edit_tt')) . '<span style="display: none;">.</span></div>'));
-		return Lua::concat($out);
+		$out[count($out) + 1] = ($this->addDataLink($this->L($lang, 'forms', 'keywords_edit_title'), $pv['rawTitle'], $this->L($lang, 'text', 'edit_label'), $this->L($lang, 'text', 'keywords_edit_tt')) . '<span style="display: none;">.</span></div>');
+		return implode('', $out);
 	}
 
 	protected function renderConnexes($args = null, $pv = null, $cats = null, $lang = null) {
 		$h2 = ('<h2 class="section-modifiable wk-icon-before wk-icon-parent">' . $this->L($lang, 'forms', 'related_edit_title') . $this->addDataLink($this->L($lang, 'forms', 'related_edit_title'), $pv['rawTitle'], $this->L($lang, 'text', 'edit_label'), $this->L($lang, 'text', 'related_edit_tt')) . '</h2>');
 		$raw = $args['related-debates'];
 		if ((Lua::truth($raw) && (Lua::trim($raw) !== ''))) {
-			$items = new Table([]);
+			$items = [];
 			$n = 0;
 			foreach (Lua::split($raw, $this->ITEM_SEP, true) as $part) {
 				$part = Lua::trim(Lua::str((Lua::truth($v240 = $part) ? $v240 : '')));
@@ -1706,7 +1720,7 @@ class ReferenceRenderer {
 				}
 			}
 			if (($n > 0)) {
-				return ($h2 . '<ul class="hover-top searchaux">' . Lua::concat($items) . '</ul>');
+				return ($h2 . '<ul class="hover-top searchaux">' . implode('', $items) . '</ul>');
 			}
 		}
 		Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'related_missing') . ']]'));
@@ -1715,11 +1729,11 @@ class ReferenceRenderer {
 
 	protected function renderRubriques($args = null, $cats = null, $lang = null) {
 		if ((Lua::truth($args['sections']) && (Lua::trim($args['sections']) !== ''))) {
-			$out = new Table([]);
-			foreach (($this->splitCSV($args['sections'], ','))->sequence() as $_ => $r) {
-				Lua::insert($out, ('[[Category:' . $r . ']]'));
+			$out = [];
+			foreach ($this->csvValues($args['sections'], ',') as $_ => $r) {
+				$out[count($out) + 1] = ('[[Category:' . $r . ']]');
 			}
-			return Lua::concat($out);
+			return implode('', $out);
 		}
 		return ('[[Category:' . $this->L($lang, 'categories', 'sections_missing') . ']]');
 	}

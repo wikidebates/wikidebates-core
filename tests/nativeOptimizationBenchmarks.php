@@ -32,8 +32,22 @@ foreach ($scenarios as $name => $case) {
 		same($plain, $profiled, 'Profiling cannot change rendered output or properties: ' . $name . '/' . $mode);
 	}
 	foreach (['reference', 'optimized'] as $mode) {
-		same($withoutDurations($benchmark['profiles'][$name]['before-' . $mode]), $withoutDurations($benchmark['profiles'][$name][$mode]),
-			'Native optimization preserves semantic query/write counts, cache hits, messages and preprocessing effects: ' . $name . '/' . $mode);
+		$beforeProfile = $withoutDurations($benchmark['profiles'][$name]['before-' . $mode]);
+		$afterProfile = $withoutDurations($benchmark['profiles'][$name][$mode]);
+		foreach ($afterProfile as $i => &$event) {
+			foreach ($event['semantic_fallbacks_skipped'] ?? [] as $origin => $skipped) {
+				check(in_array($origin, ['debate-parents', 'argument-parents'], true) && $skipped === 2, 'Only a proven empty parent union can skip its two fallbacks');
+				foreach (['read', 'query', 'result'] as $phase) {
+					same($event['semantic'][$origin][$phase]['calls'] + $skipped, $beforeProfile[$i]['semantic'][$origin][$phase]['calls'], 'Exact certified semantic call reduction');
+					$event['semantic'][$origin][$phase]['calls'] += $skipped;
+				}
+				$event['stages']['semantic-query']['calls'] += $skipped;
+			}
+			unset($event['semantic_fallbacks_skipped']);
+		}
+		unset($event);
+		same($beforeProfile, $afterProfile,
+			'Only certified empty fallbacks change query counts; writes, failures, cache hits, messages and preprocessing stay exact: ' . $name . '/' . $mode);
 		$benchmark['effect_profile_comparisons']++;
 	}
 	for ($repeat = 0; $repeat < $repeats; $repeat++) {

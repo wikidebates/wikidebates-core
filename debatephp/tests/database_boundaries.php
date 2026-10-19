@@ -79,8 +79,11 @@ namespace {
 	$queryCache = $rendererReflection->getMethod('cacheMake')->invoke($renderer, 250);
 	$rendererReflection->getProperty('SMW_ASK_CACHE')->setValue($renderer, $queryCache);
 	$ask = $rendererReflection->getMethod('smwAskSafe');
+	$read = $rendererReflection->getMethod('readSemantic');
 	$operations = [
 		'query' => static fn() => $context->smwAsk(new Table([1 => '[[SECRET]]'])),
+		'native read' => static fn() => $context->readSemantic(new Table([1 => '[[SECRET]]']), 'cards'),
+		'cached native read' => static fn() => $read->invoke($renderer, new Table([1 => '[[SECRET]]']), 'cards'),
 		'set' => static fn() => $context->smwSet(new Table(['SECRET' => 'VALUE'])),
 		'seo' => static fn() => $context->seoSet(new Table),
 		'variable write' => static fn() => $context->variableSet('SECRET', 'VALUE'),
@@ -106,11 +109,16 @@ namespace {
 	}
 	$key = $rendererReflection->getMethod('smwKeyFromArray')->invoke($renderer, new Table([1 => '[[SECRET]]']));
 	same(null, $queryCache->get($key), 'SQL exceptions are not memoized as empty query results');
+	same(null, $rendererReflection->getProperty('nativeSemanticCache')->getValue($renderer)->get($key), 'SQL exceptions cannot poison the native result cache');
 	$GLOBALS['boundaryFailure'] = new RuntimeException('Recoverable');
 	foreach ($operations as $name => $operation) {
 		$value = $operation();
 		if ($name === 'pcall') { same([false, 'Recoverable'], $value, 'pcall fallback'); }
 		elseif ($name === 'recent changes') { check(str_contains($value, 'Recoverable'), 'Existing non SQL fallback'); }
+		elseif ($name === 'native read' || $name === 'cached native read') {
+			same(null, $value->rows, 'Recoverable native read retains null rows');
+			same(false, $value->completeEmpty, 'An exception never certifies empty parents');
+		}
 		else { same(null, $value, 'Non SQL fallback at ' . $name); }
 		$count++;
 	}

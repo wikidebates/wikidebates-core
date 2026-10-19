@@ -2,7 +2,7 @@
 require __DIR__ . '/bootstrap.php';
 use MediaWiki\Extension\DebatePHP\{ArgumentContext,ArgumentRenderer,ArgumentReferenceRenderer,Table,I18n,TextEscaper};
 
-final class ArgumentTestContext implements ArgumentContext {
+class ArgumentTestContext implements ArgumentContext {
 	public array $effects = ['preprocess' => [], 'ask' => [], 'set' => [], 'seo' => [], 'variables' => []];
 	private I18n $i18n;
 	public function __construct(private array $case) { $this->i18n = new I18n((require __DIR__ . '/../resources/I18nData.php')['data'], true); }

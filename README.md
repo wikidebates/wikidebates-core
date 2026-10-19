@@ -104,6 +104,9 @@ sans copie, le FIFO natif, la préparation commune et la réduction des captures
 Les [cinq optimisations complémentaires](docs/native-php-further-optimizations.md)
 traitent les clés SMW, les fragments HTML, le JSON-LD, les records natifs et le
 budget du cache CSV, avec leurs mesures et compromis.
+La [suite sur les lectures natives](docs/native-php-read-optimizations.md)
+réduit les replis SMW prouvés inutiles et les allocations HTML, CSV et JSON-LD,
+avec les comparaisons fonctionnelles et les mesures par scénario.
 
 Les oracles hors ligne nécessitent Python, `lupa` et `luaparser` :
 

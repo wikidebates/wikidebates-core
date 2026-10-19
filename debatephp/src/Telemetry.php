@@ -14,6 +14,12 @@ final class Telemetry {
 	private array $semantic = [];
 	private array $semanticCacheHits = [];
 	private array $preparation = [];
+	private array $semanticFallbacksSkipped = [];
+	public function semanticFallbackSkipped(string $origin): void {
+		if (!$this->profiling) { return; }
+		$origin = $this->semanticOrigin($origin);
+		$this->semanticFallbacksSkipped[$origin] = ($this->semanticFallbacksSkipped[$origin] ?? 0) + 2;
+	}
 	public function preparation(array $statistics): void {
 		if (!$this->profiling) { return; }
 		foreach (['calls', 'hits', 'misses', 'bypassed', 'admitted', 'evicted', 'failures', 'entries', 'admission_entries', 'payload_bytes', 'peak_payload_bytes'] as $key) {
@@ -104,6 +110,7 @@ final class Telemetry {
 			'counters' => $this->counters, 'preprocessing' => $preprocessing,
 			'semantic' => $semantic, 'semantic_cache_hits' => $this->semanticCacheHits];
 		if ($this->preparation) { $event['preparation'] = $this->preparation; }
+		if ($this->semanticFallbacksSkipped) { $event['semantic_fallbacks_skipped'] = $this->semanticFallbacksSkipped; }
 		$this->emit($event);
 	}
 	private function emit(array $event): void {

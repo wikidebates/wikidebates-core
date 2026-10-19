@@ -123,6 +123,7 @@ foreach (['reference', 'optimized'] as $mode) {
 }
 $report['query'] = $luaQuery;
 require __DIR__ . '/fullstackDirectApiStudy.php';
+require __DIR__ . '/fullstackNativeReads.php';
 
 // Reparse through SMW's actual queued update job, not only LinksUpdate's callbacks.
 $beforeJob = fsStored('WD FS query target');
