@@ -7,6 +7,7 @@ namespace MediaWiki\Extension\DebatePHP;
  */
 class ArgumentReferenceRenderer {
 	private ?DecodedReferences $decodedReferences = null;
+	private ?RenderData $renderData = null;
 	protected ArgumentContext $context;
 	protected $ITEM_SEP;
 	protected $FIELD_SEP;
@@ -49,21 +50,15 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function cacheMake($max = null) {
-		return new Table(['data' => new Table, 'order' => new Table, 'max' => $max === null || $max === false ? 200 : $max]);
+		return new FifoCache($max);
 	}
 
 	protected function cacheGet($C = null, $k = null) {
-		return $C['data'][$k];
+		return $C->get($k);
 	}
 
 	protected function cachePut($C = null, $k = null, $v = null) {
-		if ($C['data'][$k] !== null) { $C['data'][$k] = $v; return; }
-		$C['data'][$k] = $v;
-		Lua::insert($C['order'], $k);
-		if (count($C['order']) > $C['max']) {
-			$old = Lua::remove($C['order'], 1);
-			if ($old !== null) { $C['data'][$old] = null; }
-		}
+		$C->put($k, $v);
 	}
 
 	protected function normalizeTooltipText($s = null) {
@@ -108,7 +103,7 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function splitCSV($s = null, $sep = null) {
-		return SerializedData::csv($s, $sep);
+		return ($this->renderData ??= new RenderData)->csv($s, $sep);
 	}
 
 	protected function splitByLiteral($s = null, $sep = null, $maxParts = null) {
@@ -277,7 +272,7 @@ class ArgumentReferenceRenderer {
 				$pending[$key] = $cur;
 			}
 			if ((Lua::type($val) === 'table')) {
-				foreach (Lua::ipairs($val) as $_ => $x) {
+				foreach (($val)->sequence() as $_ => $x) {
 					if (($x !== null)) {
 						$cur[(Lua::len($cur) + 1)] = $x;
 					}
@@ -296,12 +291,12 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function buildSummaryAliases($lang = null) {
-		$a = new Table([]);
-		foreach (Lua::ipairs($this->SUMMARY_WARNING_BANNER_KEYS) as $_ => $key) {
+		$a = [];
+		foreach (($this->SUMMARY_WARNING_BANNER_KEYS)->sequence() as $_ => $key) {
 			$alias = $this->subMsg($lang, ($key . '_alias'));
 			$alias = Lua::trim(Lua::str((Lua::truth($v41 = $alias) ? $v41 : '')));
 			if (($alias !== '')) {
-				foreach (Lua::ipairs($this->splitCSV($alias, ',')) as $_ => $one) {
+				foreach (($this->splitCSV($alias, ','))->sequence() as $_ => $one) {
 					$one = Lua::trim(Lua::str((Lua::truth($v42 = $one) ? $v42 : '')));
 					if (($one !== '')) {
 						$a[$one] = $key;
@@ -309,18 +304,18 @@ class ArgumentReferenceRenderer {
 				}
 			}
 		}
-		return $a;
+		return new Table($a);
 	}
 
 	protected function buildSummaryLabelLookup($lang = null, $keys = null) {
-		$lookup = new Table([]);
-		foreach (Lua::ipairs((Lua::truth($v43 = $keys) ? $v43 : new Table([]))) as $_ => $key) {
+		$lookup = [];
+		foreach (((Lua::truth($v43 = $keys) ? $v43 : new Table([])))->sequence() as $_ => $key) {
 			$lab = Lua::trim($this->subMsg($lang, ($key . '_label')));
 			if (($lab !== '')) {
 				$lookup[$lab] = $key;
 			}
 		}
-		return $lookup;
+		return new Table($lookup);
 	}
 
 	protected function resolveKeyFromLookup($raw = null, $lookup = null, $allowedKeys = null, $aliases = null) {
@@ -336,7 +331,7 @@ class ArgumentReferenceRenderer {
 			return $aliases[$raw];
 		}
 		if (Lua::truth($allowedKeys)) {
-			foreach (Lua::ipairs($allowedKeys) as $_ => $kk) {
+			foreach (($allowedKeys)->sequence() as $_ => $kk) {
 				if (($raw === $kk)) {
 					return $kk;
 				}
@@ -410,7 +405,7 @@ class ArgumentReferenceRenderer {
 			return null;
 		}
 		$lookup = $this->buildSummaryLabelLookup($lang, $this->REFERENCE_WARNING_BANNER_KEYS);
-		foreach (Lua::ipairs($this->splitCSV($warnsRef, ',')) as $_ => $x) {
+		foreach (($this->splitCSV($warnsRef, ','))->sequence() as $_ => $x) {
 			$key = $this->resolveKeyFromLookup($x, $lookup, $this->REFERENCE_WARNING_BANNER_KEYS);
 			if (($key !== '')) {
 				Lua::insert($out, $this->renderSubsectionBanner($pv, $lang, $key, null, $cats));
@@ -419,8 +414,9 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function wkRenderOneBiblioLi($item = null, $pv = null, $lang = null, $cats = null, $PF = null, $smwPending = null, $args = null) {
+		$item = $item->values;
 		$out = new Table([]);
-		$authors = Lua::trim((Lua::truth($v61 = $item['authors']) ? $v61 : ''));
+		$authors = $item['authors'];
 		if (($authors === '')) {
 			$authors = $PF['unknown_author'];
 		}
@@ -431,9 +427,9 @@ class ArgumentReferenceRenderer {
 				$this->smwQueueAdd($smwPending, $k, $authors, true);
 			}
 		}
-		$article = Lua::trim((Lua::truth($v64 = $item['article']) ? $v64 : ''));
-		$work = Lua::trim((Lua::truth($v65 = $item['work']) ? $v65 : ''));
-		$link = Lua::trim((Lua::truth($v66 = $item['link']) ? $v66 : ''));
+		$article = $item['article'];
+		$work = $item['work'];
+		$link = $item['link'];
 		{
 			if (Lua::truth($smwPending)) {
 				$ka = $this->smwPropRef($PF, 'article_name');
@@ -467,23 +463,23 @@ class ArgumentReferenceRenderer {
 				}
 			}
 		}
-		$volume = Lua::trim((Lua::truth($v67 = $item['volume']) ? $v67 : ''));
+		$volume = $item['volume'];
 		if (($volume !== '')) {
 			$out[(Lua::len($out) + 1)] = (', ' . $PF['volume_label'] . '&#160;' . $volume);
 		}
-		$number = Lua::trim((Lua::truth($v68 = $item['number']) ? $v68 : ''));
+		$number = $item['number'];
 		if (($number !== '')) {
 			$out[(Lua::len($out) + 1)] = (', ' . $PF['issue_label'] . '&#160;' . $number);
 		}
-		$location = Lua::trim((Lua::truth($v69 = $item['location']) ? $v69 : ''));
+		$location = $item['location'];
 		if (($location !== '')) {
 			$out[(Lua::len($out) + 1)] = (', ' . $location);
 		}
-		$page = Lua::trim((Lua::truth($v70 = $item['page']) ? $v70 : ''));
+		$page = $item['page'];
 		if (($page !== '')) {
 			$out[(Lua::len($out) + 1)] = (', p.' . $page);
 		}
-		$publisher = Lua::trim((Lua::truth($v71 = $item['publisher']) ? $v71 : ''));
+		$publisher = $item['publisher'];
 		if (($publisher !== '')) {
 			$out[(Lua::len($out) + 1)] = (', ' . $publisher);
 			{
@@ -493,7 +489,7 @@ class ArgumentReferenceRenderer {
 				}
 			}
 		}
-		$place = Lua::trim((Lua::truth($v74 = $item['place']) ? $v74 : ''));
+		$place = $item['place'];
 		if (($place !== '')) {
 			$out[(Lua::len($out) + 1)] = (', ' . $place);
 			{
@@ -503,7 +499,7 @@ class ArgumentReferenceRenderer {
 				}
 			}
 		}
-		$date = Lua::trim((Lua::truth($v77 = $item['date']) ? $v77 : ''));
+		$date = $item['date'];
 		if (($date !== '')) {
 			$out[(Lua::len($out) + 1)] = (', ' . $date);
 		}
@@ -512,12 +508,13 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function wkRenderOneWeblioLi($item = null, $pv = null, $lang = null, $cats = null, $PF = null, $smwPending = null, $args = null) {
+		$item = $item->values;
 		$out = new Table([]);
-		$page = Lua::trim((Lua::truth($v78 = $item['page']) ? $v78 : ''));
-		$site = Lua::trim((Lua::truth($v79 = $item['site']) ? $v79 : ''));
-		$link = Lua::trim((Lua::truth($v80 = $item['link']) ? $v80 : ''));
-		$date = Lua::trim((Lua::truth($v81 = $item['date']) ? $v81 : ''));
-		$authors = Lua::trim((Lua::truth($v82 = $item['authors']) ? $v82 : ''));
+		$page = $item['page'];
+		$site = $item['site'];
+		$link = $item['link'];
+		$date = $item['date'];
+		$authors = $item['authors'];
 		{
 			$k = (Lua::truth($v83 = (Lua::truth($v84 = $smwPending) ? $this->smwPropRef($PF, 'authors') : $v84)) ? $v83 : '');
 			if ((($k !== '') && ($authors !== ''))) {
@@ -555,10 +552,11 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function wkRenderOneVideoLi($item = null, $pv = null, $lang = null, $cats = null, $PF = null, $smwPending = null, $args = null) {
+		$item = $item->values;
 		$out = new Table([]);
-		$title = Lua::trim((Lua::truth($v91 = $item['title']) ? $v91 : ''));
-		$link = Lua::trim((Lua::truth($v92 = $item['link']) ? $v92 : ''));
-		$authors = Lua::trim((Lua::truth($v93 = $item['authors']) ? $v93 : ''));
+		$title = $item['title'];
+		$link = $item['link'];
+		$authors = $item['authors'];
 		{
 			$k = (Lua::truth($v94 = (Lua::truth($v95 = $smwPending) ? $this->smwPropRef($PF, 'authors') : $v95)) ? $v94 : '');
 			if ((($k !== '') && ($authors !== ''))) {
@@ -582,13 +580,13 @@ class ArgumentReferenceRenderer {
 
 	protected function wkRenderReferencesFromRaw($rawB = null, $rawW = null, $rawV = null, $pv = null, $lang = null, $cats = null, $PF = null, $smwPending = null, $args = null) {
 		[$b, $w, $v] = [[], [], []];
-		foreach (Lua::ipairs($this->wkParseBiblioMarkers($rawB)) as $_ => $it) {
+		foreach (($this->wkParseBiblioMarkers($rawB))->sequence() as $_ => $it) {
 			$b[] = $this->wkRenderOneBiblioLi($it, $pv, $lang, $cats, $PF, $smwPending, $args);
 		}
-		foreach (Lua::ipairs($this->wkParseWeblioMarkers($rawW)) as $_ => $it) {
+		foreach (($this->wkParseWeblioMarkers($rawW))->sequence() as $_ => $it) {
 			$w[] = $this->wkRenderOneWeblioLi($it, $pv, $lang, $cats, $PF, $smwPending, $args);
 		}
-		foreach (Lua::ipairs($this->wkParseVideoMarkers($rawV)) as $_ => $it) {
+		foreach (($this->wkParseVideoMarkers($rawV))->sequence() as $_ => $it) {
 			$v[] = $this->wkRenderOneVideoLi($it, $pv, $lang, $cats, $PF, $smwPending, $args);
 		}
 		if ((((count($b) === 0) && (count($w) === 0)) && (count($v) === 0))) {
@@ -704,7 +702,7 @@ class ArgumentReferenceRenderer {
 
 	protected function uniqList($list = null) {
 		[$out, $seen] = [[], []];
-		foreach (Lua::ipairs((Lua::truth($v107 = $list) ? $v107 : new Table([]))) as $_ => $x) {
+		foreach (((Lua::truth($v107 = $list) ? $v107 : new Table([])))->sequence() as $_ => $x) {
 			$x = Lua::trim(Lua::str((Lua::truth($v108 = $x) ? $v108 : '')));
 			if ((($x !== '') && !isset($seen[$x]))) {
 				$seen[$x] = true;
@@ -717,7 +715,7 @@ class ArgumentReferenceRenderer {
 	protected function smwAskTitles($conditions = null, $limit = null, string $origin = 'other') {
 		$limit = (Lua::truth($v109 = Lua::number($limit)) ? $v109 : 200);
 		$q = new Table([]);
-		foreach (Lua::ipairs((Lua::truth($v110 = $conditions) ? $v110 : new Table([]))) as $_ => $c) {
+		foreach (((Lua::truth($v110 = $conditions) ? $v110 : new Table([])))->sequence() as $_ => $c) {
 			Lua::insert($q, $c);
 		}
 		Lua::insert($q, ('limit=' . Lua::str($limit)));
@@ -735,7 +733,7 @@ class ArgumentReferenceRenderer {
 			return new Table([]);
 		}
 		[$out, $seen] = [new Table([]), new Table([])];
-		foreach (Lua::ipairs($res) as $_ => $row) {
+		foreach (($res)->sequence() as $_ => $row) {
 			$ft = (Lua::truth($v111 = (Lua::truth($v112 = $row['fulltext']) ? $v112 : $row['page'])) ? $v111 : $row[1]);
 			if ((((Lua::type($ft) === 'string') && ($ft !== '')) && !(Lua::truth($seen[$ft])))) {
 				$seen[$ft] = true;
@@ -773,7 +771,7 @@ class ArgumentReferenceRenderer {
 		if ((($target === '') || ($val === null))) {
 			return false;
 		}
-		$checkOne = function($x = null) use (&$val, &$target, &$checkOne, &$ft, &$_, &$y) {
+		$checkOne = function($x = null) use (&$target, &$checkOne) {
 		if (($x === null)) {
 			return false;
 		}
@@ -785,7 +783,7 @@ class ArgumentReferenceRenderer {
 			if (((Lua::type($ft) === 'string') && ($this->normTitle($ft) === $target))) {
 				return true;
 			}
-			foreach (Lua::ipairs($x) as $_ => $y) {
+			foreach (($x)->sequence() as $_ => $y) {
 				if (Lua::truth($checkOne($y))) {
 					return true;
 				}
@@ -813,7 +811,7 @@ class ArgumentReferenceRenderer {
 		[$debatsPour, $debatsContre] = [new Table([]), new Table([])];
 		[$seenP, $seenC] = [new Table([]), new Table([])];
 		if ((Lua::type($res) === 'table')) {
-			foreach (Lua::ipairs($res) as $_ => $row) {
+			foreach (($res)->sequence() as $_ => $row) {
 				$ft = (Lua::truth($v119 = (Lua::truth($v120 = $row['fulltext']) ? $v120 : $row['page'])) ? $v119 : $row[1]);
 				if (((Lua::type($ft) === 'string') && ($ft !== ''))) {
 					if ((Lua::truth($this->containsTitle($row['pro'], $argTitle)) && !(Lua::truth($seenP[$ft])))) {
@@ -852,7 +850,7 @@ class ArgumentReferenceRenderer {
 		[$justifs, $objs] = [new Table([]), new Table([])];
 		[$seenJ, $seenO] = [new Table([]), new Table([])];
 		if ((Lua::type($res) === 'table')) {
-			foreach (Lua::ipairs($res) as $_ => $row) {
+			foreach (($res)->sequence() as $_ => $row) {
 				$ft = (Lua::truth($v123 = (Lua::truth($v124 = $row['fulltext']) ? $v124 : $row['page'])) ? $v123 : $row[1]);
 				if (((Lua::type($ft) === 'string') && ($ft !== ''))) {
 					if ((Lua::truth($this->containsTitle($row['justif'], $argTitle)) && !(Lua::truth($seenJ[$ft])))) {
@@ -893,10 +891,10 @@ class ArgumentReferenceRenderer {
 		}
 		$final = new Table([]);
 		$this->ensureDebateParents($pv, $cache, $PF);
-		foreach (Lua::ipairs((Lua::truth($v127 = $cache['debatsPour']) ? $v127 : new Table([]))) as $_ => $d) {
+		foreach (((Lua::truth($v127 = $cache['debatsPour']) ? $v127 : new Table([])))->sequence() as $_ => $d) {
 			Lua::insert($final, $this->canonicalTitle($d));
 		}
-		foreach (Lua::ipairs((Lua::truth($v128 = $cache['debatsContre']) ? $v128 : new Table([]))) as $_ => $d) {
+		foreach (((Lua::truth($v128 = $cache['debatsContre']) ? $v128 : new Table([])))->sequence() as $_ => $d) {
 			Lua::insert($final, $this->canonicalTitle($d));
 		}
 		if (Lua::truth($this->hasSMW())) {
@@ -905,16 +903,16 @@ class ArgumentReferenceRenderer {
 			$propParentDebate = Lua::str((Lua::truth($v130 = $PF['prop_parent_debate']) ? $v130 : ''));
 			if ((($propBreadcrumb !== '') && ($propParentDebate !== ''))) {
 				$parents = new Table([]);
-				foreach (Lua::ipairs((Lua::truth($v131 = $cache['justifs']) ? $v131 : new Table([]))) as $_ => $a) {
+				foreach (((Lua::truth($v131 = $cache['justifs']) ? $v131 : new Table([])))->sequence() as $_ => $a) {
 					Lua::insert($parents, $this->canonicalTitle($a));
 				}
-				foreach (Lua::ipairs((Lua::truth($v132 = $cache['objs']) ? $v132 : new Table([]))) as $_ => $a) {
+				foreach (((Lua::truth($v132 = $cache['objs']) ? $v132 : new Table([])))->sequence() as $_ => $a) {
 					Lua::insert($parents, $this->canonicalTitle($a));
 				}
 				$parents = $this->uniqList($parents);
 				if ((Lua::len($parents) > 0)) {
 					$conds = new Table([]);
-					foreach (Lua::ipairs($parents) as $_ => $t) {
+					foreach (($parents)->sequence() as $_ => $t) {
 						$safe = $this->smwSafeTitle($t);
 						if (($safe !== '')) {
 							Lua::insert($conds, ('[[' . $safe . ']]'));
@@ -924,7 +922,7 @@ class ArgumentReferenceRenderer {
 						$q = new Table([1 => ('(' . Lua::concat($conds, ' OR ') . ')'), 2 => ('?' . $propBreadcrumb . '=chain'), 3 => ('?' . $propParentDebate . '=pdeb'), 4 => 'limit=200', 5 => 'link=none']);
 						$res = $this->smwAskSafe($q, 'breadcrumb');
 						if ((Lua::type($res) === 'table')) {
-							foreach (Lua::ipairs($res) as $_ => $row) {
+							foreach (($res)->sequence() as $_ => $row) {
 								$chain = $row['chain'];
 								$okLen = false;
 								if ((Lua::type($chain) === 'string')) {
@@ -933,7 +931,7 @@ class ArgumentReferenceRenderer {
 								}
 								else {
 									if ((Lua::type($chain) === 'table')) {
-										foreach (Lua::ipairs($chain) as $_ => $ch) {
+										foreach (($chain)->sequence() as $_ => $ch) {
 											if ((Lua::type($ch) === 'string')) {
 												$n = $this->breadcrumbLenByteSafe($ch);
 												if ((($n > 0) && ($n < 6))) {
@@ -951,7 +949,7 @@ class ArgumentReferenceRenderer {
 									}
 									else {
 										if ((Lua::type($pdeb) === 'table')) {
-											foreach (Lua::ipairs($pdeb) as $_ => $x) {
+											foreach (($pdeb)->sequence() as $_ => $x) {
 												if (((Lua::type($x) === 'string') && (Lua::trim($x) !== ''))) {
 													Lua::insert($final, $this->canonicalTitle($x));
 												}
@@ -1049,36 +1047,36 @@ class ArgumentReferenceRenderer {
 			return null;
 		}
 		$argTitle = $pv['rawTitle'];
-		$debateKey = function($d = null) use (&$pv, &$cache, &$lang, &$PF, &$argTitle, &$debateKey, &$linked, &$_, &$k, &$cardsTous, &$typeDebate, &$cardsPour, &$cardsContre) {
+		$debateKey = function($d = null) {
 		return $this->canonicalTitle($d);
 		};
 		$linked = new Table([]);
-		foreach (Lua::ipairs((Lua::truth($v141 = $cache['debatsPour']) ? $v141 : new Table([]))) as $_ => $d) {
+		foreach (((Lua::truth($v141 = $cache['debatsPour']) ? $v141 : new Table([])))->sequence() as $_ => $d) {
 			$k = $debateKey($d);
 			if (($k !== '')) {
 				$linked[$k] = true;
 			}
 		}
-		foreach (Lua::ipairs((Lua::truth($v142 = $cache['debatsContre']) ? $v142 : new Table([]))) as $_ => $d) {
+		foreach (((Lua::truth($v142 = $cache['debatsContre']) ? $v142 : new Table([])))->sequence() as $_ => $d) {
 			$k = $debateKey($d);
 			if (($k !== '')) {
 				$linked[$k] = true;
 			}
 		}
 		$cardsTous = new Table([]);
-		foreach (Lua::ipairs((Lua::truth($v143 = $cache['parentDebatesFinal']) ? $v143 : new Table([]))) as $_ => $d) {
+		foreach (((Lua::truth($v143 = $cache['parentDebatesFinal']) ? $v143 : new Table([])))->sequence() as $_ => $d) {
 			$k = $debateKey($d);
 			$typeDebate = (Lua::truth($v144 = (Lua::truth($v145 = (Lua::truth($v146 = ($k !== '')) ? $linked[$k] : $v146)) ? 'debate' : $v145)) ? $v144 : '');
 			Lua::insert($cardsTous, $this->cardDebateRendered($d, $argTitle, $typeDebate));
 		}
 		$cache['debatCardsTous'] = $cardsTous;
 		$cardsPour = new Table([]);
-		foreach (Lua::ipairs((Lua::truth($v147 = $cache['debatsPour']) ? $v147 : new Table([]))) as $_ => $d) {
+		foreach (((Lua::truth($v147 = $cache['debatsPour']) ? $v147 : new Table([])))->sequence() as $_ => $d) {
 			Lua::insert($cardsPour, $this->cardDebateRendered($d, $argTitle, 'debate'));
 		}
 		$cache['debatCardsPour'] = $cardsPour;
 		$cardsContre = new Table([]);
-		foreach (Lua::ipairs((Lua::truth($v148 = $cache['debatsContre']) ? $v148 : new Table([]))) as $_ => $d) {
+		foreach (((Lua::truth($v148 = $cache['debatsContre']) ? $v148 : new Table([])))->sequence() as $_ => $d) {
 			Lua::insert($cardsContre, $this->cardDebateRendered($d, $argTitle, 'debate'));
 		}
 		$cache['debatCardsContre'] = $cardsContre;
@@ -1092,12 +1090,12 @@ class ArgumentReferenceRenderer {
 		$argTitle = $pv['rawTitle'];
 		$typeArgument = 'argument';
 		$cj = new Table([]);
-		foreach (Lua::ipairs((Lua::truth($v149 = $cache['justifs']) ? $v149 : new Table([]))) as $_ => $a) {
+		foreach (((Lua::truth($v149 = $cache['justifs']) ? $v149 : new Table([])))->sequence() as $_ => $a) {
 			Lua::insert($cj, $this->cardArgumentRendered($a, $argTitle, $typeArgument));
 		}
 		$cache['argCardsJustifs'] = $cj;
 		$co = new Table([]);
-		foreach (Lua::ipairs((Lua::truth($v150 = $cache['objs']) ? $v150 : new Table([]))) as $_ => $a) {
+		foreach (((Lua::truth($v150 = $cache['objs']) ? $v150 : new Table([])))->sequence() as $_ => $a) {
 			Lua::insert($co, $this->cardArgumentRendered($a, $argTitle, $typeArgument));
 		}
 		$cache['argCardsObjs'] = $co;
@@ -1153,7 +1151,7 @@ class ArgumentReferenceRenderer {
 
 	protected function buildBannerLabelLookup($lang = null, $keys = null) {
 		$lookup = new Table([]);
-		foreach (Lua::ipairs((Lua::truth($v158 = $keys) ? $v158 : new Table([]))) as $_ => $key) {
+		foreach (((Lua::truth($v158 = $keys) ? $v158 : new Table([])))->sequence() as $_ => $key) {
 			$lab = Lua::trim($this->bannerMsg($lang, ($key . '_label')));
 			if (($lab !== '')) {
 				$lookup[$lab] = $key;
@@ -1172,7 +1170,7 @@ class ArgumentReferenceRenderer {
 
 	protected function renderBannersFromArgList($rawList = null, $lookup = null, $pv = null, $lang = null, $cats = null) {
 		$html = new Table([]);
-		foreach (Lua::ipairs($this->splitCSV($rawList, ',')) as $_ => $x) {
+		foreach (($this->splitCSV($rawList, ','))->sequence() as $_ => $x) {
 			$key = $this->resolveBannerKeyFromLookup($x, $lookup);
 			if (($key !== '')) {
 				Lua::insert($html, $this->renderBannerByKey($pv, $lang, $key, $cats));
@@ -1254,7 +1252,7 @@ class ArgumentReferenceRenderer {
 		}
 		$title = (Lua::truth($v177 = (Lua::truth($v178 = ($n === 1)) ? $PF['parent_debates_title_1'] : $v178)) ? $v177 : $PF['parent_debates_title_n']);
 		$lis = new Table([]);
-		foreach (Lua::ipairs((Lua::truth($v179 = $cache['debatCardsTous']) ? $v179 : new Table([]))) as $_ => $card) {
+		foreach (((Lua::truth($v179 = $cache['debatCardsTous']) ? $v179 : new Table([])))->sequence() as $_ => $card) {
 			Lua::insert($lis, ('<li style="position: relative;">' . $card . '</li>'));
 		}
 		return ('<h2 id="Parent_debates" class="wk-icon-before wk-icon-parent">' . $title . '</h2>' . '<ul class="hover-top navigation-not-searchable">' . Lua::concat($lis) . '</ul>');
@@ -1406,7 +1404,7 @@ class ArgumentReferenceRenderer {
 		}
 		$q = new Table([1 => ('([[' . $propJustif . '::' . $title . ']] OR [[' . $propObj . '::' . $title . ']] OR [[' . $propPro . '::' . $title . ']] OR [[' . $propCon . '::' . $title . ']] )'), 2 => ('?' . $propBreadcrumb . '=chain'), 3 => (Lua::truth($v211 = (Lua::truth($v212 = ($propDebateName !== '')) ? ('?' . $propDebateName . '=debateName') : $v212)) ? $v211 : null), 4 => 'limit=200', 5 => 'link=none']);
 		$qq = new Table([]);
-		foreach (Lua::ipairs($q) as $_ => $x) {
+		foreach (($q)->sequence() as $_ => $x) {
 			if (Lua::truth($x)) {
 				Lua::insert($qq, $x);
 			}
@@ -1416,13 +1414,13 @@ class ArgumentReferenceRenderer {
 			return null;
 		}
 		$bestByDebate = new Table([]);
-		$consider = function($ch = null) use (&$pv, &$cache, &$cats, &$lang, &$PF, &$title, &$propBreadcrumb, &$propDebateName, &$propPro, &$propCon, &$propJustif, &$propObj, &$q, &$qq, &$_, &$x, &$res, &$bestByDebate, &$consider, &$parts, &$clean, &$part, &$n, &$root, &$cur, &$row, &$chain, &$selected, &$item, &$filtered, &$chains, &$debates, &$tooLong, &$newChain) {
+		$consider = function($ch = null) use (&$bestByDebate) {
 		if (((Lua::type($ch) !== 'string') || ($ch === ''))) {
 			return null;
 		}
 		$parts = $this->splitByLiteral($ch, '⟭');
 		$clean = new Table([]);
-		foreach (Lua::ipairs($parts) as $_ => $part) {
+		foreach (($parts)->sequence() as $_ => $part) {
 			$part = Lua::trim($part);
 			if (($part !== '')) {
 				$clean[(Lua::len($clean) + 1)] = $part;
@@ -1441,14 +1439,14 @@ class ArgumentReferenceRenderer {
 			$bestByDebate[$root] = new Table(['root' => $root, 'chain' => Lua::concat($clean, '⟭'), 'len' => $n]);
 		}
 		};
-		foreach (Lua::ipairs($res) as $_ => $row) {
+		foreach (($res)->sequence() as $_ => $row) {
 			$chain = $row['chain'];
 			if ((Lua::type($chain) === 'string')) {
 				$consider($chain);
 			}
 			else {
 				if ((Lua::type($chain) === 'table')) {
-					foreach (Lua::ipairs($chain) as $_ => $ch) {
+					foreach (($chain)->sequence() as $_ => $ch) {
 						$consider($ch);
 					}
 				}
@@ -1463,7 +1461,7 @@ class ArgumentReferenceRenderer {
 		}
 		if ((Lua::len($selected) > 1)) {
 			$filtered = new Table([]);
-			foreach (Lua::ipairs($selected) as $_ => $item) {
+			foreach (($selected)->sequence() as $_ => $item) {
 				if (($item['len'] < 4)) {
 					$filtered[(Lua::len($filtered) + 1)] = $item;
 				}
@@ -1476,7 +1474,7 @@ class ArgumentReferenceRenderer {
 		$chains = new Table([]);
 		$debates = new Table([]);
 		$tooLong = false;
-		foreach (Lua::ipairs($selected) as $_ => $item) {
+		foreach (($selected)->sequence() as $_ => $item) {
 			$newChain = ($item['chain'] . '⟭' . $title);
 			if (($this->breadcrumbLenByteSafe($newChain) > 4)) {
 				$tooLong = true;
@@ -1494,13 +1492,13 @@ class ArgumentReferenceRenderer {
 	protected function wkBuildArgumentData($items = null) {
 		$items = (Lua::truth($v214 = $items) ? $v214 : new Table([]));
 		$listLines = new Table([]);
-		foreach (Lua::ipairs($items) as $_ => $it) {
+		foreach (($items)->sequence() as $_ => $it) {
 			Lua::insert($listLines, ('* ' . Lua::str((Lua::truth($v215 = $it['title']) ? $v215 : ''))));
 		}
 		$listText = Lua::concat($listLines, '
 ');
 		$argsVarParts = new Table([]);
-		foreach (Lua::ipairs($items) as $_ => $it) {
+		foreach (($items)->sequence() as $_ => $it) {
 			$page = Lua::trim(Lua::str((Lua::truth($v216 = $it['page']) ? $v216 : '')));
 			if (($page !== '')) {
 				$title = Lua::trim(Lua::str((Lua::truth($v217 = $it['title']) ? $v217 : '')));
@@ -1514,7 +1512,7 @@ class ArgumentReferenceRenderer {
 		}
 		$argsVar = Lua::concat($argsVarParts, $this->ITEM_SEP);
 		$hoverLines = new Table([]);
-		foreach (Lua::ipairs($items) as $_ => $it) {
+		foreach (($items)->sequence() as $_ => $it) {
 			Lua::insert($hoverLines, ('<div class="argument-title--map wk-icon-before wk-icon-argument">' . '[[' . Lua::str((Lua::truth($v218 = $it['page']) ? $v218 : '')) . '|' . Lua::str((Lua::truth($v219 = $it['title']) ? $v219 : '')) . ']]' . '</div>'));
 		}
 		$mapHoverHtml = Lua::concat($hoverLines, '
@@ -1529,7 +1527,7 @@ class ArgumentReferenceRenderer {
 		}
 		$lookup = $this->buildSummaryLabelLookup($lang, $this->DISPLAYED_TITLE_WARNING_BANNER_KEYS);
 		$hasBanner = false;
-		foreach (Lua::ipairs($this->splitCSV($warnsArg, ',')) as $_ => $x) {
+		foreach (($this->splitCSV($warnsArg, ','))->sequence() as $_ => $x) {
 			$key = $this->resolveKeyFromLookup($x, $lookup, $this->DISPLAYED_TITLE_WARNING_BANNER_KEYS);
 			if (($key !== '')) {
 				Lua::insert($out, $this->renderSubsectionBanner($pv, $lang, $key, null, null));
@@ -1568,7 +1566,7 @@ class ArgumentReferenceRenderer {
 			$rq_title = $this->wkRunQueryPath($PF['form_search_by_keywords']);
 			$rq_qkey = ($PF['form_search_by_keywords'] . '[' . $PF['keywords_field'] . ']');
 			$rendered = new Table([]);
-			foreach (Lua::ipairs($this->splitCSV($raw, ',')) as $_ => $k) {
+			foreach (($this->splitCSV($raw, ','))->sequence() as $_ => $k) {
 				$k = Lua::trim(Lua::str((Lua::truth($v228 = $k) ? $v228 : '')));
 				if (($k !== '')) {
 					$chip = $this->runQueryLink(new Table(['form' => $PF['form_search_by_keywords'], 'field' => $PF['keywords_field'], 'value' => $k, 'label' => $k, 'tooltip' => $PF['search_by_keyword_tt'], 'extra' => $extra, '_title' => $rq_title, '_qkey' => $rq_qkey]));
@@ -1611,7 +1609,7 @@ class ArgumentReferenceRenderer {
 					$aliases['_lang'] = $lang;
 					$this->SUMMARY_WARNING_ALIASES = $aliases;
 				}
-				foreach (Lua::ipairs($this->splitCSV($raw, ',')) as $_ => $x) {
+				foreach (($this->splitCSV($raw, ','))->sequence() as $_ => $x) {
 					$key = $this->resolveKeyFromLookup($x, $lookup, $this->SUMMARY_WARNING_BANNER_KEYS, $aliases);
 					if (($key !== '')) {
 						Lua::insert($out, $this->renderSubsectionBanner($pv, $lang, $key, null, $cats));
@@ -1670,7 +1668,7 @@ class ArgumentReferenceRenderer {
 					}
 					else {
 						if ((Lua::type($v) === 'table')) {
-							foreach (Lua::ipairs($v) as $_ => $x) {
+							foreach (($v)->sequence() as $_ => $x) {
 								if (((Lua::type($x) === 'string') && (Lua::trim($x) !== ''))) {
 									$mapHtml = $x;
 									break;
@@ -1715,7 +1713,7 @@ class ArgumentReferenceRenderer {
 		if ((Lua::truth($args['sections']) && ($args['sections'] !== ''))) {
 			$out = new Table([]);
 			$nOk = 0;
-			foreach (Lua::ipairs($this->splitCSV($args['sections'], ',')) as $_ => $r) {
+			foreach (($this->splitCSV($args['sections'], ','))->sequence() as $_ => $r) {
 				$r = $this->safeRubriqueValue($r);
 				if (($r !== '')) {
 					$nOk = ($nOk + 1);
@@ -1737,19 +1735,20 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function wkRenderOneQuoteHtml($item = null, $idx = null, $pv = null, $lang = null, $cats = null, $PF = null) {
+		$item = $item->values;
 		$quote = Lua::str((Lua::truth($v241 = $item['quote']) ? $v241 : ''));
-		$authors = Lua::trim((Lua::truth($v242 = $item['authors']) ? $v242 : ''));
-		$article = Lua::trim((Lua::truth($v243 = $item['article']) ? $v243 : ''));
-		$work = Lua::trim((Lua::truth($v244 = $item['work']) ? $v244 : ''));
-		$volume = Lua::trim((Lua::truth($v245 = $item['volume']) ? $v245 : ''));
-		$number = Lua::trim((Lua::truth($v246 = $item['number']) ? $v246 : ''));
-		$page = Lua::trim((Lua::truth($v247 = $item['page']) ? $v247 : ''));
-		$location = Lua::trim((Lua::truth($v248 = $item['location']) ? $v248 : ''));
-		$publisher = Lua::trim((Lua::truth($v249 = $item['publisher']) ? $v249 : ''));
-		$place = Lua::trim((Lua::truth($v250 = $item['place']) ? $v250 : ''));
-		$date = Lua::trim((Lua::truth($v251 = $item['date']) ? $v251 : ''));
-		$link = Lua::trim((Lua::truth($v252 = $item['link']) ? $v252 : ''));
-		$warnings = Lua::trim((Lua::truth($v253 = $item['warnings']) ? $v253 : ''));
+		$authors = $item['authors'];
+		$article = $item['article'];
+		$work = $item['work'];
+		$volume = $item['volume'];
+		$number = $item['number'];
+		$page = $item['page'];
+		$location = $item['location'];
+		$publisher = $item['publisher'];
+		$place = $item['place'];
+		$date = $item['date'];
+		$link = $item['link'];
+		$warnings = $item['warnings'];
 		$this->vset('WD_QUOTES_MAX', Lua::str($idx));
 		if (($authors !== '')) {
 			$cur = Lua::trim(Lua::str((Lua::truth($v254 = $this->vget('WD_QUOTES_AUTHORS')) ? $v254 : '')));
@@ -1886,10 +1885,10 @@ class ArgumentReferenceRenderer {
 			}
 			{
 				$parents = new Table([]);
-				foreach (Lua::ipairs((Lua::truth($v271 = $cache['justifs']) ? $v271 : new Table([]))) as $_ => $x) {
+				foreach (((Lua::truth($v271 = $cache['justifs']) ? $v271 : new Table([])))->sequence() as $_ => $x) {
 					Lua::insert($parents, $this->canonicalTitle($x));
 				}
-				foreach (Lua::ipairs((Lua::truth($v272 = $cache['objs']) ? $v272 : new Table([]))) as $_ => $x) {
+				foreach (((Lua::truth($v272 = $cache['objs']) ? $v272 : new Table([])))->sequence() as $_ => $x) {
 					Lua::insert($parents, $this->canonicalTitle($x));
 				}
 				$parents = $this->uniqList($parents);
@@ -1903,7 +1902,7 @@ class ArgumentReferenceRenderer {
 		$obj = (Lua::truth($v275 = $maps['obj']) ? $v275 : new Table([]));
 		{
 			$lst = new Table([]);
-			foreach (Lua::ipairs((Lua::truth($v276 = $justif['items']) ? $v276 : new Table([]))) as $_ => $it) {
+			foreach (((Lua::truth($v276 = $justif['items']) ? $v276 : new Table([])))->sequence() as $_ => $it) {
 				$t = $this->canonicalTitle((Lua::truth($v277 = $it['page']) ? $v277 : ''));
 				if (($t !== '')) {
 					Lua::insert($lst, $t);
@@ -1916,7 +1915,7 @@ class ArgumentReferenceRenderer {
 		}
 		{
 			$lst = new Table([]);
-			foreach (Lua::ipairs((Lua::truth($v278 = $obj['items']) ? $v278 : new Table([]))) as $_ => $it) {
+			foreach (((Lua::truth($v278 = $obj['items']) ? $v278 : new Table([])))->sequence() as $_ => $it) {
 				$t = $this->canonicalTitle((Lua::truth($v279 = $it['page']) ? $v279 : ''));
 				if (($t !== '')) {
 					Lua::insert($lst, $t);
@@ -1961,7 +1960,7 @@ class ArgumentReferenceRenderer {
 			$props[$PF['prop_detailed_debate']] = $this->canonicalTitle($args['dedicated-debate']);
 		}
 		{
-			$uniqCSVVar = function($varName = null) use (&$args, &$pv, &$lang, &$cache, &$PF, &$maps, &$rawB, &$rawW, &$rawV, &$props, &$chains, &$dp, &$parents, &$_, &$x, &$justif, &$obj, &$lst, &$it, &$t, &$justifSurvol, &$objSurvol, &$mc, &$list, &$uniqCSVVar, &$raw, &$authors, &$k, &$articles, &$works, &$pubs, &$places, &$r) {
+			$uniqCSVVar = function($varName = null) {
 		$raw = Lua::str((Lua::truth($v284 = $this->vget($varName)) ? $v284 : ''));
 		$raw = Lua::trim($raw);
 		if (($raw === '')) {
@@ -2010,7 +2009,7 @@ class ArgumentReferenceRenderer {
 		{
 			if ((Lua::truth($args['sections']) && ($args['sections'] !== ''))) {
 				$lst = new Table([]);
-				foreach (Lua::ipairs($this->splitCSV($args['sections'], ',')) as $_ => $r) {
+				foreach (($this->splitCSV($args['sections'], ','))->sequence() as $_ => $r) {
 					$r = $this->safeRubriqueValue($r);
 					if (($r !== '')) {
 						Lua::insert($lst, $r);
@@ -2030,27 +2029,27 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function seoJoinList($items = null) {
-		$out = new Table([]);
-		$seen = new Table([]);
-		foreach (Lua::ipairs((Lua::truth($v288 = $items) ? $v288 : new Table([]))) as $_ => $v) {
+		$out = [];
+		$seen = [];
+		foreach (((Lua::truth($v288 = $items) ? $v288 : new Table([])))->sequence() as $_ => $v) {
 			$v = Lua::trim(Lua::str((Lua::truth($v289 = $v) ? $v289 : '')));
-			if ((($v !== '') && !(Lua::truth($seen[$v])))) {
+			if ((($v !== '') && !isset($seen[$v]))) {
 				$seen[$v] = true;
-				$out[(Lua::len($out) + 1)] = $v;
+				$out[count($out) + 1] = $v;
 			}
 		}
-		return Lua::concat($out, ', ');
+		return implode(', ', $out);
 	}
 
 	protected function buildSeoKeywords($args = null, $lang = null) {
-		$items = new Table([]);
-		foreach (Lua::ipairs($this->splitCSV($args['keywords'], ',')) as $_ => $k) {
-			$items[(Lua::len($items) + 1)] = $k;
+		$items = [];
+		foreach (($this->splitCSV($args['keywords'], ','))->sequence() as $_ => $k) {
+			$items[count($items) + 1] = $k;
 		}
-		foreach (Lua::ipairs($this->splitCSV($args['sections'], ',')) as $_ => $s) {
-			$items[(Lua::len($items) + 1)] = $s;
+		foreach (($this->splitCSV($args['sections'], ','))->sequence() as $_ => $s) {
+			$items[count($items) + 1] = $s;
 		}
-		return $this->seoJoinList($items);
+		return $this->seoJoinList(new Table($items));
 	}
 
 	protected function renderFullSEO($args = null, $pv = null, $lang = null) {
@@ -2136,8 +2135,8 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function wkBuildAboutAndMentions($args = null) {
-		$about = new Table([]);
-		$mentions = new Table([]);
+		$about = [];
+		$mentions = [];
 		$rawKeywords = $this->splitCSV((Lua::truth($v299 = (Lua::truth($v300 = $args) ? $args['keywords'] : $v300)) ? $v299 : ''), ',');
 		$stop3 = Lua::len($rawKeywords);
 		for ($i = 1; $i <= $stop3; $i++) {
@@ -2145,18 +2144,18 @@ class ArgumentReferenceRenderer {
 			if (($kw !== '')) {
 				$node = new Table(['@type' => 'Thing', 'name' => $kw]);
 				if (($i <= 3)) {
-					$about[(Lua::len($about) + 1)] = $node;
+					$about[count($about) + 1] = $node;
 				}
 				else {
-					$mentions[(Lua::len($mentions) + 1)] = $node;
+					$mentions[count($mentions) + 1] = $node;
 				}
 			}
 		}
-		return [$about, $mentions];
+		return [new Table($about), new Table($mentions)];
 	}
 
 	protected function wkBuildKeywords($args = null, $lang = null) {
-		$out = new Table([]);
+		$out = [];
 		$sections = $this->splitCSV((Lua::truth($v302 = (Lua::truth($v303 = $args) ? $args['sections'] : $v303)) ? $v302 : ''), ',');
 		$termSetId = $this->wkBuildWikiUrl($lang, 'category_prefix', 'sections_label');
 		$stop3 = Lua::len($sections);
@@ -2166,10 +2165,10 @@ class ArgumentReferenceRenderer {
 			}
 			$section = Lua::trim(Lua::str((Lua::truth($v304 = $sections[$i]) ? $v304 : '')));
 			if (($section !== '')) {
-				$out[(Lua::len($out) + 1)] = new Table(['@type' => 'DefinedTerm', '@id' => $this->wkBuildWikiUrlFromText($lang, 'category_prefix', $section), 'name' => $section, 'inDefinedTermSet' => new Table(['@id' => $termSetId])]);
+				$out[count($out) + 1] = new Table(['@type' => 'DefinedTerm', '@id' => $this->wkBuildWikiUrlFromText($lang, 'category_prefix', $section), 'name' => $section, 'inDefinedTermSet' => new Table(['@id' => $termSetId])]);
 			}
 		}
-		return $out;
+		return new Table($out);
 	}
 
 	protected function wkBuildDiscussionUrl($pv = null, $lang = null) {
@@ -2178,7 +2177,7 @@ class ArgumentReferenceRenderer {
 
 	protected function wkAppendAllValidIds($out = null, $titles = null, $suffix = null, $lang = null) {
 		$added = false;
-		foreach (Lua::ipairs((Lua::truth($v305 = $titles) ? $v305 : new Table([]))) as $_ => $title) {
+		foreach (((Lua::truth($v305 = $titles) ? $v305 : new Table([])))->sequence() as $_ => $title) {
 			$title = $this->canonicalTitle(Lua::trim(Lua::str((Lua::truth($v306 = $title) ? $v306 : ''))));
 			if (($title !== '')) {
 				$url = $this->wkFullUrl($title, $lang);
@@ -2192,7 +2191,7 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function wkAppendFirstValidId($out = null, $titles = null, $suffix = null, $lang = null) {
-		foreach (Lua::ipairs((Lua::truth($v307 = $titles) ? $v307 : new Table([]))) as $_ => $title) {
+		foreach (((Lua::truth($v307 = $titles) ? $v307 : new Table([])))->sequence() as $_ => $title) {
 			$title = $this->canonicalTitle(Lua::trim(Lua::str((Lua::truth($v308 = $title) ? $v308 : ''))));
 			if (($title !== '')) {
 				$url = $this->wkFullUrl($title, $lang);
@@ -2209,10 +2208,10 @@ class ArgumentReferenceRenderer {
 		$out = new Table([]);
 		$out[(Lua::len($out) + 1)] = new Table(['@id' => $this->wkBuildWikiUrl($lang, 'category_prefix', 'arguments_label')]);
 		$debats = new Table([]);
-		foreach (Lua::ipairs((Lua::truth($v309 = (Lua::truth($v310 = $cache) ? $cache['debatsPour'] : $v310)) ? $v309 : new Table([]))) as $_ => $d) {
+		foreach (((Lua::truth($v309 = (Lua::truth($v310 = $cache) ? $cache['debatsPour'] : $v310)) ? $v309 : new Table([])))->sequence() as $_ => $d) {
 			Lua::insert($debats, $this->canonicalTitle($d));
 		}
-		foreach (Lua::ipairs((Lua::truth($v311 = (Lua::truth($v312 = $cache) ? $cache['debatsContre'] : $v312)) ? $v311 : new Table([]))) as $_ => $d) {
+		foreach (((Lua::truth($v311 = (Lua::truth($v312 = $cache) ? $cache['debatsContre'] : $v312)) ? $v311 : new Table([])))->sequence() as $_ => $d) {
 			Lua::insert($debats, $this->canonicalTitle($d));
 		}
 		$debats = $this->uniqList($debats);
@@ -2276,17 +2275,17 @@ class ArgumentReferenceRenderer {
 		if ((Lua::len($authors) === 1)) {
 			return new Table(['@type' => 'Person', 'name' => $authors[1]]);
 		}
-		$out = new Table([]);
-		foreach (Lua::ipairs($authors) as $_ => $one) {
+		$out = [];
+		foreach (($authors)->sequence() as $_ => $one) {
 			$one = Lua::trim(Lua::str((Lua::truth($v330 = $one) ? $v330 : '')));
 			if (($one !== '')) {
-				$out[(Lua::len($out) + 1)] = new Table(['@type' => 'Person', 'name' => $one]);
+				$out[count($out) + 1] = new Table(['@type' => 'Person', 'name' => $one]);
 			}
 		}
-		if ((Lua::len($out) === 0)) {
+		if ((count($out) === 0)) {
 			return null;
 		}
-		return $out;
+		return new Table($out);
 	}
 
 	protected function wkBuildSingleNodeFromFirstItem($items = null, $buildNode = null) {
@@ -2306,15 +2305,16 @@ class ArgumentReferenceRenderer {
 			return new Table([]);
 		}
 		$items = $this->wkParseQuoteMarkers($raw);
-		return $this->wkBuildSingleNodeFromFirstItem($items, function($item = null) use (&$raw, &$items, &$authors, &$article, &$work, &$volume, &$number, &$publisher, &$date, &$link, &$node, &$authorValue) {
-		$authors = Lua::trim(Lua::str((Lua::truth($v332 = $item['authors']) ? $v332 : '')));
-		$article = Lua::trim(Lua::str((Lua::truth($v333 = $item['article']) ? $v333 : '')));
-		$work = Lua::trim(Lua::str((Lua::truth($v334 = $item['work']) ? $v334 : '')));
-		$volume = Lua::trim(Lua::str((Lua::truth($v335 = $item['volume']) ? $v335 : '')));
-		$number = Lua::trim(Lua::str((Lua::truth($v336 = $item['number']) ? $v336 : '')));
-		$publisher = Lua::trim(Lua::str((Lua::truth($v337 = $item['publisher']) ? $v337 : '')));
-		$date = Lua::trim(Lua::str((Lua::truth($v338 = $item['date']) ? $v338 : '')));
-		$link = Lua::trim(Lua::str((Lua::truth($v339 = $item['link']) ? $v339 : '')));
+		return $this->wkBuildSingleNodeFromFirstItem($items, function($item = null) {
+		$item = $item->values;
+		$authors = $item['authors'];
+		$article = $item['article'];
+		$work = $item['work'];
+		$volume = $item['volume'];
+		$number = $item['number'];
+		$publisher = $item['publisher'];
+		$date = $item['date'];
+		$link = $item['link'];
 		$node = null;
 		if (((($number !== '') && ($article !== '')) && ($work !== ''))) {
 			$node = new Table(['@type' => 'Article', 'name' => $article, 'isPartOf' => new Table(['@type' => 'Periodical', 'name' => $work])]);
@@ -2371,15 +2371,16 @@ class ArgumentReferenceRenderer {
 			return new Table([]);
 		}
 		$items = $this->wkParseBiblioMarkers($raw);
-		return $this->wkBuildSingleNodeFromFirstItem($items, function($item = null) use (&$raw, &$items, &$authors, &$article, &$work, &$volume, &$number, &$publisher, &$date, &$link, &$node, &$authorValue) {
-		$authors = Lua::trim(Lua::str((Lua::truth($v341 = $item['authors']) ? $v341 : '')));
-		$article = Lua::trim(Lua::str((Lua::truth($v342 = $item['article']) ? $v342 : '')));
-		$work = Lua::trim(Lua::str((Lua::truth($v343 = $item['work']) ? $v343 : '')));
-		$volume = Lua::trim(Lua::str((Lua::truth($v344 = $item['volume']) ? $v344 : '')));
-		$number = Lua::trim(Lua::str((Lua::truth($v345 = $item['number']) ? $v345 : '')));
-		$publisher = Lua::trim(Lua::str((Lua::truth($v346 = $item['publisher']) ? $v346 : '')));
-		$date = Lua::trim(Lua::str((Lua::truth($v347 = $item['date']) ? $v347 : '')));
-		$link = Lua::trim(Lua::str((Lua::truth($v348 = $item['link']) ? $v348 : '')));
+		return $this->wkBuildSingleNodeFromFirstItem($items, function($item = null) {
+		$item = $item->values;
+		$authors = $item['authors'];
+		$article = $item['article'];
+		$work = $item['work'];
+		$volume = $item['volume'];
+		$number = $item['number'];
+		$publisher = $item['publisher'];
+		$date = $item['date'];
+		$link = $item['link'];
 		$node = null;
 		if (((($number !== '') && ($article !== '')) && ($work !== ''))) {
 			$node = new Table(['@type' => 'Article', 'name' => $article, 'isPartOf' => new Table(['@type' => 'Periodical', 'name' => $work])]);
@@ -2436,11 +2437,12 @@ class ArgumentReferenceRenderer {
 			return new Table([]);
 		}
 		$items = $this->wkParseWeblioMarkers($raw);
-		return $this->wkBuildSingleNodeFromFirstItem($items, function($item = null) use (&$raw, &$items, &$page, &$site, &$link, &$date, &$node) {
-		$page = Lua::trim(Lua::str((Lua::truth($v350 = $item['page']) ? $v350 : '')));
-		$site = Lua::trim(Lua::str((Lua::truth($v351 = $item['site']) ? $v351 : '')));
-		$link = Lua::trim(Lua::str((Lua::truth($v352 = $item['link']) ? $v352 : '')));
-		$date = Lua::trim(Lua::str((Lua::truth($v353 = $item['date']) ? $v353 : '')));
+		return $this->wkBuildSingleNodeFromFirstItem($items, function($item = null) {
+		$item = $item->values;
+		$page = $item['page'];
+		$site = $item['site'];
+		$link = $item['link'];
+		$date = $item['date'];
 		if ((($link === '') || ($page === ''))) {
 			return null;
 		}
@@ -2461,10 +2463,11 @@ class ArgumentReferenceRenderer {
 			return new Table([]);
 		}
 		$items = $this->wkParseVideoMarkers($raw);
-		return $this->wkBuildSingleNodeFromFirstItem($items, function($item = null) use (&$raw, &$items, &$title, &$link, &$authors, &$node, &$authorValue) {
-		$title = Lua::trim(Lua::str((Lua::truth($v355 = $item['title']) ? $v355 : '')));
-		$link = Lua::trim(Lua::str((Lua::truth($v356 = $item['link']) ? $v356 : '')));
-		$authors = Lua::trim(Lua::str((Lua::truth($v357 = $item['authors']) ? $v357 : '')));
+		return $this->wkBuildSingleNodeFromFirstItem($items, function($item = null) {
+		$item = $item->values;
+		$title = $item['title'];
+		$link = $item['link'];
+		$authors = $item['authors'];
 		if ((($title === '') || ($link === ''))) {
 			return null;
 		}
@@ -2564,6 +2567,8 @@ class ArgumentReferenceRenderer {
 
 	public function render($frame = null) {
 		$this->decodedReferences = null;
+		$this->renderData = null;
+		$this->SUMMARY_WARNING_ALIASES = null;
 		$this->vset('WD_QUOTES_AUTHORS', '');
 		$this->vset('WD_QUOTES_ARTICLES', '');
 		$this->vset('WD_QUOTES_WORKS', '');
@@ -2799,7 +2804,7 @@ class ArgumentReferenceRenderer {
 				$raw = (Lua::truth($v379 = (Lua::truth($v380 = (Lua::type($raw) === 'string')) ? Lua::trim($raw) : $v380)) ? $v379 : '');
 				if (($raw !== '')) {
 					$lookup = $this->buildSummaryLabelLookup($lang, $this->JUSTIFICATION_WARNING_BANNER_KEYS);
-					foreach (Lua::ipairs($this->splitCSV($raw, ',')) as $_ => $x) {
+					foreach (($this->splitCSV($raw, ','))->sequence() as $_ => $x) {
 						$key = $this->resolveKeyFromLookup($x, $lookup, $this->JUSTIFICATION_WARNING_BANNER_KEYS);
 						if (($key !== '')) {
 							Lua::insert($out, $this->renderSubsectionBanner($pv, $lang, $key, new Table(['reorg' => true, 'form' => $PF['form_edit_justifications'], 'tooltip' => $PF['edit_justifications_tooltip']]), $cats));
@@ -2810,7 +2815,7 @@ class ArgumentReferenceRenderer {
 			if ((Lua::len($justifItems) > 0)) {
 				$ulJ = (HtmlBuilder::create('ul'))->addClass('argument-list is-pro');
 				$lis = new Table([]);
-				foreach (Lua::ipairs($justifItems) as $i => $it) {
+				foreach (($justifItems)->sequence() as $i => $it) {
 					Lua::insert($lis, $this->wkRenderArgumentLi($pv, $lang, $it, 'justif', $i, $cats));
 				}
 				($ulJ)->wikitext(Lua::concat($lis, '
@@ -2840,7 +2845,7 @@ class ArgumentReferenceRenderer {
 				$raw = (Lua::truth($v387 = (Lua::truth($v388 = (Lua::type($raw) === 'string')) ? Lua::trim($raw) : $v388)) ? $v387 : '');
 				if (($raw !== '')) {
 					$lookup = $this->buildSummaryLabelLookup($lang, $this->OBJECTION_WARNING_BANNER_KEYS);
-					foreach (Lua::ipairs($this->splitCSV($raw, ',')) as $_ => $x) {
+					foreach (($this->splitCSV($raw, ','))->sequence() as $_ => $x) {
 						$key = $this->resolveKeyFromLookup($x, $lookup, $this->OBJECTION_WARNING_BANNER_KEYS);
 						if (($key !== '')) {
 							Lua::insert($out, $this->renderSubsectionBanner($pv, $lang, $key, new Table(['reorg' => true, 'form' => $PF['form_edit_objections'], 'tooltip' => $PF['edit_objections_tooltip']]), $cats));
@@ -2851,7 +2856,7 @@ class ArgumentReferenceRenderer {
 			if ((Lua::len($objItems) > 0)) {
 				$ulO = (HtmlBuilder::create('ul'))->addClass('argument-list is-con');
 				$lis = new Table([]);
-				foreach (Lua::ipairs($objItems) as $i => $it) {
+				foreach (($objItems)->sequence() as $i => $it) {
 					Lua::insert($lis, $this->wkRenderArgumentLi($pv, $lang, $it, 'obj', $i, $cats));
 				}
 				($ulO)->wikitext(Lua::concat($lis, '

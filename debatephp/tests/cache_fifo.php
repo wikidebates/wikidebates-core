@@ -22,6 +22,6 @@ foreach ([0, 1] as $limit) {
 	$check($call('cacheGet', $small, 'a') === null);
 	$check($call('cacheGet', $small, 'b') === ($limit === 0 ? null : 'second'));
 }
-$check($call('cacheMake', false)['max'] === 200);
+$check($call('cacheMake', false)->max === 200);
 $check($call('cacheGet', $call('cacheMake', 2), 'c') === null); // Invocation isolation.
 echo "$count FIFO assertions passed: bounds, update order, false/empty values and isolated caches.\n";

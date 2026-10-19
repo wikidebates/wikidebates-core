@@ -104,7 +104,8 @@ namespace {
 			$count++;
 		}
 	}
-	same([], $queryCache['data']->values, 'SQL exceptions are not memoized as empty query results');
+	$key = $rendererReflection->getMethod('smwKeyFromArray')->invoke($renderer, new Table([1 => '[[SECRET]]']));
+	same(null, $queryCache->get($key), 'SQL exceptions are not memoized as empty query results');
 	$GLOBALS['boundaryFailure'] = new RuntimeException('Recoverable');
 	foreach ($operations as $name => $operation) {
 		$value = $operation();

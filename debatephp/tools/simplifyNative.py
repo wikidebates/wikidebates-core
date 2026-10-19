@@ -67,4 +67,5 @@ def simplify(path: Path, argument: bool):
 		assert count == 13, count
 	assert '\tpublic function render(' in source, 'Native simplification removed the entry point'
 	from nativeOptimizations import optimize
-	path.write_text(optimize(source, argument))
+	from nativePhpPass import optimize as optimize_php
+	path.write_text(optimize_php(optimize(source, argument), argument))

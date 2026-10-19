@@ -7,6 +7,7 @@ namespace MediaWiki\Extension\DebatePHP;
  */
 class ReferenceRenderer {
 	private ?DecodedReferences $decodedReferences = null;
+	private ?RenderData $renderData = null;
 	protected Context $context;
 	protected $ITEM_SEP;
 	protected $FIELD_SEP;
@@ -57,7 +58,7 @@ class ReferenceRenderer {
 	}
 
 	protected function splitCSV($s = null, $sep = null) {
-		return SerializedData::csv($s, $sep);
+		return ($this->renderData ??= new RenderData)->csv($s, $sep);
 	}
 
 	protected function wkParseWikipediaMarkers($raw = null) {
@@ -89,27 +90,27 @@ class ReferenceRenderer {
 	}
 
 	protected function seoJoinList($items = null) {
-		$out = new Table([]);
-		$seen = new Table([]);
-		foreach (Lua::ipairs((Lua::truth($v11 = $items) ? $v11 : new Table([]))) as $_ => $v) {
+		$out = [];
+		$seen = [];
+		foreach (((Lua::truth($v11 = $items) ? $v11 : new Table([])))->sequence() as $_ => $v) {
 			$v = Lua::trim(Lua::str((Lua::truth($v12 = $v) ? $v12 : '')));
-			if ((($v !== '') && !(Lua::truth($seen[$v])))) {
+			if ((($v !== '') && !isset($seen[$v]))) {
 				$seen[$v] = true;
-				$out[(Lua::len($out) + 1)] = $v;
+				$out[count($out) + 1] = $v;
 			}
 		}
-		return Lua::concat($out, ', ');
+		return implode(', ', $out);
 	}
 
 	protected function buildSeoKeywords($args = null, $lang = null) {
-		$items = new Table([]);
-		foreach (Lua::ipairs($this->splitCSV($args['keywords'], ',')) as $_ => $k) {
-			$items[(Lua::len($items) + 1)] = $k;
+		$items = [];
+		foreach (($this->splitCSV($args['keywords'], ','))->sequence() as $_ => $k) {
+			$items[count($items) + 1] = $k;
 		}
-		foreach (Lua::ipairs($this->splitCSV($args['sections'], ',')) as $_ => $s) {
-			$items[(Lua::len($items) + 1)] = $s;
+		foreach (($this->splitCSV($args['sections'], ','))->sequence() as $_ => $s) {
+			$items[count($items) + 1] = $s;
 		}
-		return $this->seoJoinList($items);
+		return $this->seoJoinList(new Table($items));
 	}
 
 	protected function getPageCreation($pv = null, $args = null) {
@@ -207,7 +208,7 @@ class ReferenceRenderer {
 				$pending[$key] = $cur;
 			}
 			if ((Lua::type($val) === 'table')) {
-				foreach (Lua::ipairs($val) as $_ => $x) {
+				foreach (($val)->sequence() as $_ => $x) {
 					if (($x !== null)) {
 						$cur[(Lua::len($cur) + 1)] = $x;
 					}
@@ -413,14 +414,14 @@ class ReferenceRenderer {
 	}
 
 	protected function buildSummaryLabelLookup($lang = null, $keys = null) {
-		$lookup = new Table([]);
-		foreach (Lua::ipairs((Lua::truth($v59 = $keys) ? $v59 : new Table([]))) as $_ => $key) {
+		$lookup = [];
+		foreach (((Lua::truth($v59 = $keys) ? $v59 : new Table([])))->sequence() as $_ => $key) {
 			$lab = Lua::trim($this->subMsg($lang, ($key . '_label')));
 			if (($lab !== '')) {
 				$lookup[$lab] = $key;
 			}
 		}
-		return $lookup;
+		return new Table($lookup);
 	}
 
 	protected function getArgumentWarningLookup($lang = null) {
@@ -444,7 +445,7 @@ class ReferenceRenderer {
 			return $aliases[$raw];
 		}
 		if (Lua::truth($allowedKeys)) {
-			foreach (Lua::ipairs($allowedKeys) as $_ => $kk) {
+			foreach (($allowedKeys)->sequence() as $_ => $kk) {
 				if (($raw === $kk)) {
 					return $kk;
 				}
@@ -460,7 +461,7 @@ class ReferenceRenderer {
 		}
 		$lookup = $this->getArgumentWarningLookup($lang);
 		$hasBanner = false;
-		foreach (Lua::ipairs($this->splitCSV($warnsArg, ',')) as $_ => $x) {
+		foreach (($this->splitCSV($warnsArg, ','))->sequence() as $_ => $x) {
 			$key = $this->resolveKeyFromLookup($x, $lookup, $this->ARGUMENT_WARNING_BANNER_KEYS);
 			if (($key !== '')) {
 				Lua::insert($out, $this->renderSubsectionBanner($pv, $lang, $key, null, null));
@@ -492,13 +493,13 @@ class ReferenceRenderer {
 		$items = (Lua::truth($v68 = $items) ? $v68 : new Table([]));
 		$idPrefix = (Lua::truth($v69 = (Lua::truth($v70 = ($kind === 'pro')) ? 'Pro_argument_' : $v70)) ? $v69 : 'Con_argument_');
 		$listLines = new Table([]);
-		foreach (Lua::ipairs($items) as $_ => $it) {
+		foreach (($items)->sequence() as $_ => $it) {
 			Lua::insert($listLines, ('* ' . $it['title']));
 		}
 		$listText = Lua::concat($listLines, '
 ');
 		$argsVarParts = new Table([]);
-		foreach (Lua::ipairs($items) as $_ => $it) {
+		foreach (($items)->sequence() as $_ => $it) {
 			if (($it['page'] === $it['title'])) {
 				Lua::insert($argsVarParts, $it['page']);
 			}
@@ -508,13 +509,13 @@ class ReferenceRenderer {
 		}
 		$argsVar = Lua::concat($argsVarParts, ' -;- ');
 		$mapLines = new Table([]);
-		foreach (Lua::ipairs($items) as $i => $it) {
+		foreach (($items)->sequence() as $i => $it) {
 			Lua::insert($mapLines, ('<div  id="' . $idPrefix . $i . '_map" class="argument-title--map wk-icon-before wk-icon-argument">' . $it['title'] . '</div>'));
 		}
 		$mapHtml = Lua::concat($mapLines, '
 ');
 		$hoverLines = new Table([]);
-		foreach (Lua::ipairs($items) as $_ => $it) {
+		foreach (($items)->sequence() as $_ => $it) {
 			Lua::insert($hoverLines, ('<div class="argument-title--map wk-icon-before wk-icon-argument">' . '[[' . $it['page'] . '|' . $it['title'] . ']]</div>'));
 		}
 		$mapHoverHtml = Lua::concat($hoverLines, '
@@ -590,7 +591,7 @@ class ReferenceRenderer {
 
 	protected function buildBannerLabelLookup($lang = null, $keys = null) {
 		$lookup = new Table([]);
-		foreach (Lua::ipairs((Lua::truth($v86 = $keys) ? $v86 : new Table([]))) as $_ => $key) {
+		foreach (((Lua::truth($v86 = $keys) ? $v86 : new Table([])))->sequence() as $_ => $key) {
 			$lab = Lua::trim($this->bannerMsg($lang, ($key . '_label')));
 			if (($lab !== '')) {
 				$lookup[$lab] = $key;
@@ -613,9 +614,9 @@ class ReferenceRenderer {
 		$titleLookup = $this->buildBannerLabelLookup($lang, $this->TITLE_WARNING_BANNER_KEYS);
 		$debateLookup = $this->buildBannerLabelLookup($lang, $this->DEBATE_WARNING_BANNER_KEYS);
 		$progLookup = $this->buildBannerLabelLookup($lang, $this->PROGRESS_BANNER_KEYS);
-		$renderBannersFromList = function($list = null, $lookup = null) use (&$args, &$pv, &$cats, &$lang, &$av, &$out, &$titleLookup, &$debateLookup, &$progLookup, &$renderBannersFromList, &$html, &$_, &$x, &$key) {
+		$renderBannersFromList = function($list = null, $lookup = null) use (&$pv, &$cats, &$lang) {
 		$html = new Table([]);
-		foreach (Lua::ipairs($this->splitCSV($list, ',')) as $_ => $x) {
+		foreach (($this->splitCSV($list, ','))->sequence() as $_ => $x) {
 			$key = $this->resolveBannerKeyFromLookup($x, $lookup);
 			if (($key !== '')) {
 				Lua::insert($html, $this->renderBannerByKey($pv, $lang, $key, $cats));
@@ -671,7 +672,7 @@ class ReferenceRenderer {
 
 	protected function buildIntroSubWarningLookup($lang = null) {
 		$lookup = new Table([]);
-		foreach (Lua::ipairs($this->INTRO_SUB_WARNING_KEYS) as $_ => $k) {
+		foreach (($this->INTRO_SUB_WARNING_KEYS)->sequence() as $_ => $k) {
 			$lab = Lua::trim($this->subMsg($lang, ('intro_subbanner_' . $k . '_label')));
 			if (($lab !== '')) {
 				$lookup[$lab] = ('intro_subbanner_' . $k);
@@ -735,7 +736,7 @@ class ReferenceRenderer {
 		}
 		$lookup = $this->buildIntroSubWarningLookup($lang);
 		$out = new Table([]);
-		foreach (Lua::ipairs($items) as $_ => $it) {
+		foreach (($items)->sequence() as $_ => $it) {
 			$out[(Lua::len($out) + 1)] = $this->wkRenderIntroSubsection($pv, $lang, $it, $cats, $lookup);
 		}
 		return Lua::concat($out);
@@ -770,7 +771,7 @@ class ReferenceRenderer {
 			if ((Lua::len($pages) > 0)) {
 				$hasPages = true;
 				$items = new Table([]);
-				foreach (Lua::ipairs($pages) as $_ => $page) {
+				foreach (($pages)->sequence() as $_ => $page) {
 					$url = $this->wkWikipediaUrl($page, $lang);
 					$items[(Lua::len($items) + 1)] = ('<span class="hover-wikipedia">[' . $url . ' ' . $page . ']</span>');
 				}
@@ -820,7 +821,7 @@ class ReferenceRenderer {
 			$ul = ((HtmlBuilder::create('ul'))->addClass('argument-list'))->addClass((Lua::truth($v132 = (Lua::truth($v133 = $isCon) ? 'is-con' : $v133)) ? $v132 : 'is-pro'));
 			$lis = new Table([]);
 			$anyTitleWarnings = false;
-			foreach (Lua::ipairs($items) as $i => $it) {
+			foreach (($items)->sequence() as $i => $it) {
 				if ((Lua::truth($it['warnings']) && (Lua::trim($it['warnings']) !== ''))) {
 					$anyTitleWarnings = true;
 				}
@@ -857,7 +858,7 @@ class ReferenceRenderer {
 			return null;
 		}
 		$lookup = $this->buildSummaryLabelLookup($lang, $this->REFERENCE_WARNING_BANNER_KEYS);
-		foreach (Lua::ipairs($this->splitCSV($warnsRef, ',')) as $_ => $x) {
+		foreach (($this->splitCSV($warnsRef, ','))->sequence() as $_ => $x) {
 			$key = $this->resolveKeyFromLookup($x, $lookup, $this->REFERENCE_WARNING_BANNER_KEYS);
 			if (($key !== '')) {
 				Lua::insert($out, $this->renderSubsectionBanner($pv, $lang, $key, null, $cats));
@@ -871,7 +872,7 @@ class ReferenceRenderer {
 			return '';
 		}
 		$lis = [];
-		foreach (Lua::ipairs($items) as $_ => $item) {
+		foreach (($items)->sequence() as $_ => $item) {
 			$li = $renderOneFn($item);
 			if ((Lua::truth($li) && ($li !== ''))) {
 				$lis[] = $li;
@@ -885,16 +886,17 @@ class ReferenceRenderer {
 	}
 
 	protected function wkRenderOneBiblioLi($pv = null, $item = null, $lang = null, $categories = null, $smwPending = null) {
+		$item = $item->values;
 		$out = new Table([]);
-		$authors = Lua::trim((Lua::truth($v147 = $item['authors']) ? $v147 : ''));
+		$authors = $item['authors'];
 		if (($authors === '')) {
 			$authors = $this->L($lang, 'text', 'refs_to_review');
 			Lua::insert($categories, ('[[Category:' . $this->L($lang, 'categories', 'refs_to_review') . ']]'));
 		}
 		$out[(Lua::len($out) + 1)] = $authors;
-		$article = Lua::trim((Lua::truth($v148 = $item['article']) ? $v148 : ''));
-		$work = Lua::trim((Lua::truth($v149 = $item['work']) ? $v149 : ''));
-		$link = Lua::trim((Lua::truth($v150 = $item['link']) ? $v150 : ''));
+		$article = $item['article'];
+		$work = $item['work'];
+		$link = $item['link'];
 		if (($article !== '')) {
 			$this->smwQueueAdd($smwPending, $this->smwProp($lang, 'article_name'), $article, true);
 		}
@@ -923,34 +925,34 @@ class ReferenceRenderer {
 			}
 		}
 		if (($work !== '')) {
-			$volume = Lua::trim((Lua::truth($v151 = $item['volume']) ? $v151 : ''));
+			$volume = $item['volume'];
 			if (($volume !== '')) {
 				$out[(Lua::len($out) + 1)] = (', ' . $volume);
 			}
-			$number = Lua::trim((Lua::truth($v152 = $item['number']) ? $v152 : ''));
+			$number = $item['number'];
 			if (($number !== '')) {
 				$out[(Lua::len($out) + 1)] = (', n°' . $number);
 			}
 		}
-		$location = Lua::trim((Lua::truth($v153 = $item['location']) ? $v153 : ''));
+		$location = $item['location'];
 		if (($location !== '')) {
 			$out[(Lua::len($out) + 1)] = (', ' . $location);
 		}
-		$page = Lua::trim((Lua::truth($v154 = $item['page']) ? $v154 : ''));
+		$page = $item['page'];
 		if (($page !== '')) {
 			$out[(Lua::len($out) + 1)] = (', p.' . $page);
 		}
-		$publisher = Lua::trim((Lua::truth($v155 = $item['publisher']) ? $v155 : ''));
+		$publisher = $item['publisher'];
 		if (($publisher !== '')) {
 			$this->smwQueueAdd($smwPending, $this->smwProp($lang, 'publishing_house'), $publisher, true);
 			$out[(Lua::len($out) + 1)] = (', ' . $publisher);
 		}
-		$place = Lua::trim((Lua::truth($v156 = $item['place']) ? $v156 : ''));
+		$place = $item['place'];
 		if (($place !== '')) {
 			$this->smwQueueAdd($smwPending, $this->smwProp($lang, 'place_of_publication'), $place, true);
 			$out[(Lua::len($out) + 1)] = (', ' . $place);
 		}
-		$date = Lua::trim((Lua::truth($v157 = $item['date']) ? $v157 : ''));
+		$date = $item['date'];
 		if (($date !== '')) {
 			$out[(Lua::len($out) + 1)] = (', ' . $date);
 		}
@@ -959,7 +961,7 @@ class ReferenceRenderer {
 	}
 
 	protected function wkRenderBiblioListFromArg($raw = null, $pv = null, $lang = null, $categories = null, $smwPending = null) {
-		return $this->wkRenderLiListFromArg($raw, [$this, 'wkParseBiblioMarkers'], function($item = null) use (&$raw, &$pv, &$lang, &$categories, &$smwPending) {
+		return $this->wkRenderLiListFromArg($raw, [$this, 'wkParseBiblioMarkers'], function($item = null) use (&$pv, &$lang, &$categories, &$smwPending) {
 		return $this->wkRenderOneBiblioLi($pv, $item, $lang, $categories, $smwPending);
 		});
 	}
@@ -969,12 +971,13 @@ class ReferenceRenderer {
 	}
 
 	protected function wkRenderOneWeblioLi($pv = null, $item = null, $lang = null, $categories = null, $smwPending = null, $side = null) {
+		$item = $item->values;
 		$out = new Table([]);
-		$page = Lua::trim((Lua::truth($v160 = $item['page']) ? $v160 : ''));
-		$site = Lua::trim((Lua::truth($v161 = $item['site']) ? $v161 : ''));
-		$link = Lua::trim((Lua::truth($v162 = $item['link']) ? $v162 : ''));
-		$authors = Lua::trim((Lua::truth($v163 = $item['authors']) ? $v163 : ''));
-		$date = Lua::trim((Lua::truth($v164 = $item['date']) ? $v164 : ''));
+		$page = $item['page'];
+		$site = $item['site'];
+		$link = $item['link'];
+		$authors = $item['authors'];
+		$date = $item['date'];
 		if (($page !== '')) {
 			$this->smwQueueAdd($smwPending, $this->smwProp($lang, 'article_name'), $page, true);
 		}
@@ -1034,7 +1037,7 @@ class ReferenceRenderer {
 	}
 
 	protected function wkRenderWeblioListFromArg($raw = null, $pv = null, $lang = null, $categories = null, $smwPending = null, $side = null) {
-		return $this->wkRenderLiListFromArg($raw, [$this, 'wkParseWeblioMarkers'], function($item = null) use (&$raw, &$pv, &$lang, &$categories, &$smwPending, &$side) {
+		return $this->wkRenderLiListFromArg($raw, [$this, 'wkParseWeblioMarkers'], function($item = null) use (&$pv, &$lang, &$categories, &$smwPending, &$side) {
 		return $this->wkRenderOneWeblioLi($pv, $item, $lang, $categories, $smwPending, $side);
 		});
 	}
@@ -1044,12 +1047,13 @@ class ReferenceRenderer {
 	}
 
 	protected function wkRenderOneVideoLi($pv = null, $item = null, $lang = null, $categories = null, $smwPending = null) {
-		$title = Lua::trim((Lua::truth($v169 = $item['title']) ? $v169 : ''));
+		$item = $item->values;
+		$title = $item['title'];
 		if (($title === '')) {
 			return '';
 		}
-		$link = Lua::trim((Lua::truth($v170 = $item['link']) ? $v170 : ''));
-		$authors = Lua::trim((Lua::truth($v171 = $item['authors']) ? $v171 : ''));
+		$link = $item['link'];
+		$authors = $item['authors'];
 		$out = new Table([]);
 		if (($authors !== '')) {
 			$out[(Lua::len($out) + 1)] = $authors;
@@ -1067,7 +1071,7 @@ class ReferenceRenderer {
 	}
 
 	protected function wkRenderVideoListFromArg($raw = null, $pv = null, $lang = null, $categories = null, $smwPending = null) {
-		return $this->wkRenderLiListFromArg($raw, [$this, 'wkParseVideoMarkers'], function($item = null) use (&$raw, &$pv, &$lang, &$categories, &$smwPending) {
+		return $this->wkRenderLiListFromArg($raw, [$this, 'wkParseVideoMarkers'], function($item = null) use (&$pv, &$lang, &$categories, &$smwPending) {
 		return $this->wkRenderOneVideoLi($pv, $item, $lang, $categories, $smwPending);
 		});
 	}
@@ -1282,14 +1286,14 @@ class ReferenceRenderer {
 		$position = 1;
 		$proItems = (Lua::truth($v198 = (Lua::truth($v199 = (Lua::truth($v200 = $maps) ? $maps['pro'] : $v200)) ? $maps['pro']['items'] : $v199)) ? $v198 : new Table([]));
 		$conItems = (Lua::truth($v201 = (Lua::truth($v202 = (Lua::truth($v203 = $maps) ? $maps['con'] : $v203)) ? $maps['con']['items'] : $v202)) ? $v201 : new Table([]));
-		foreach (Lua::ipairs($this->wkTakeFirst($proItems, 3)) as $_ => $it) {
+		foreach (($this->wkTakeFirst($proItems, 3))->sequence() as $_ => $it) {
 			$node = $this->wkBuildAnswerNode($it, 'pro', $lang);
 			if (Lua::truth($node)) {
 				$out[(Lua::len($out) + 1)] = $node;
 				$position = ($position + 1);
 			}
 		}
-		foreach (Lua::ipairs($this->wkTakeFirst($conItems, 3)) as $_ => $it) {
+		foreach (($this->wkTakeFirst($conItems, 3))->sequence() as $_ => $it) {
 			$node = $this->wkBuildAnswerNode($it, 'con', $lang);
 			if (Lua::truth($node)) {
 				$out[(Lua::len($out) + 1)] = $node;
@@ -1330,7 +1334,7 @@ class ReferenceRenderer {
 	}
 
 	protected function wkBuildKeywords($args = null, $lang = null) {
-		$out = new Table([]);
+		$out = [];
 		$sections = $this->splitCSV((Lua::truth($v207 = (Lua::truth($v208 = $args) ? $args['sections'] : $v208)) ? $v207 : ''), ',');
 		$termSetId = $this->wkBuildWikiUrl($lang, 'category_prefix', 'sections_label');
 		$stop3 = Lua::len($sections);
@@ -1340,15 +1344,15 @@ class ReferenceRenderer {
 			}
 			$section = Lua::trim(Lua::str((Lua::truth($v209 = $sections[$i]) ? $v209 : '')));
 			if (($section !== '')) {
-				$out[(Lua::len($out) + 1)] = new Table(['@type' => 'DefinedTerm', '@id' => $this->wkBuildWikiUrlFromText($lang, 'category_prefix', $section), 'name' => $section, 'inDefinedTermSet' => new Table(['@id' => $termSetId])]);
+				$out[count($out) + 1] = new Table(['@type' => 'DefinedTerm', '@id' => $this->wkBuildWikiUrlFromText($lang, 'category_prefix', $section), 'name' => $section, 'inDefinedTermSet' => new Table(['@id' => $termSetId])]);
 			}
 		}
-		return $out;
+		return new Table($out);
 	}
 
 	protected function wkBuildAboutAndMentions($args = null) {
-		$about = new Table([]);
-		$mentions = new Table([]);
+		$about = [];
+		$mentions = [];
 		$keywords = $this->splitCSV((Lua::truth($v210 = (Lua::truth($v211 = $args) ? $args['keywords'] : $v211)) ? $v210 : ''), ',');
 		$stop3 = Lua::len($keywords);
 		for ($i = 1; $i <= $stop3; $i++) {
@@ -1356,14 +1360,14 @@ class ReferenceRenderer {
 			if (($kw !== '')) {
 				$node = new Table(['@type' => 'Thing', 'name' => $kw]);
 				if (($i <= 2)) {
-					$about[(Lua::len($about) + 1)] = $node;
+					$about[count($about) + 1] = $node;
 				}
 				else {
-					$mentions[(Lua::len($mentions) + 1)] = $node;
+					$mentions[count($mentions) + 1] = $node;
 				}
 			}
 		}
-		return [$about, $mentions];
+		return [new Table($about), new Table($mentions)];
 	}
 
 	protected function wkBuildDiscussionUrl($pv = null, $lang = null) {
@@ -1378,20 +1382,20 @@ class ReferenceRenderer {
 		if (($authors === '')) {
 			return null;
 		}
-		$out = new Table([]);
+		$out = [];
 		foreach (Lua::split($authors, ',', true) as $a) {
 			$a = Lua::trim(Lua::str((Lua::truth($v215 = $a) ? $v215 : '')));
 			if (($a !== '')) {
-				$out[(Lua::len($out) + 1)] = new Table(['@type' => 'Person', 'name' => $a]);
+				$out[count($out) + 1] = new Table(['@type' => 'Person', 'name' => $a]);
 			}
 		}
-		if ((Lua::len($out) === 0)) {
+		if ((count($out) === 0)) {
 			return null;
 		}
-		if ((Lua::len($out) === 1)) {
+		if ((count($out) === 1)) {
 			return $out[1];
 		}
-		return $out;
+		return new Table($out);
 	}
 
 	protected function wkBuildSingleNodeFromFirstItem($items = null, $builder = null) {
@@ -1413,15 +1417,16 @@ class ReferenceRenderer {
 			return new Table([]);
 		}
 		$items = $this->wkParseBiblioMarkers($raw);
-		return $this->wkBuildSingleNodeFromFirstItem($items, function($item = null) use (&$raw, &$items, &$authors, &$article, &$work, &$number, &$publisher, &$date, &$link, &$node, &$authorValue) {
-		$authors = Lua::trim(Lua::str((Lua::truth($v218 = $item['authors']) ? $v218 : '')));
-		$article = Lua::trim(Lua::str((Lua::truth($v219 = $item['article']) ? $v219 : '')));
-		$work = Lua::trim(Lua::str((Lua::truth($v220 = $item['work']) ? $v220 : '')));
-		$volume = Lua::trim(Lua::str((Lua::truth($v221 = $item['volume']) ? $v221 : '')));
-		$number = Lua::trim(Lua::str((Lua::truth($v222 = $item['number']) ? $v222 : '')));
-		$publisher = Lua::trim(Lua::str((Lua::truth($v223 = $item['publisher']) ? $v223 : '')));
-		$date = Lua::trim(Lua::str((Lua::truth($v224 = $item['date']) ? $v224 : '')));
-		$link = Lua::trim(Lua::str((Lua::truth($v225 = $item['link']) ? $v225 : '')));
+		return $this->wkBuildSingleNodeFromFirstItem($items, function($item = null) {
+		$item = $item->values;
+		$authors = $item['authors'];
+		$article = $item['article'];
+		$work = $item['work'];
+		$volume = $item['volume'];
+		$number = $item['number'];
+		$publisher = $item['publisher'];
+		$date = $item['date'];
+		$link = $item['link'];
 		$node = null;
 		if (((($number !== '') && ($article !== '')) && ($work !== ''))) {
 			$node = new Table(['@type' => 'Article', 'name' => $article, 'isPartOf' => new Table(['@type' => 'Periodical', 'name' => $work])]);
@@ -1478,11 +1483,12 @@ class ReferenceRenderer {
 			return new Table([]);
 		}
 		$items = $this->wkParseWeblioMarkers($raw);
-		return $this->wkBuildSingleNodeFromFirstItem($items, function($item = null) use (&$raw, &$items, &$page, &$site, &$link, &$date, &$node) {
-		$page = Lua::trim(Lua::str((Lua::truth($v227 = $item['page']) ? $v227 : '')));
-		$site = Lua::trim(Lua::str((Lua::truth($v228 = $item['site']) ? $v228 : '')));
-		$link = Lua::trim(Lua::str((Lua::truth($v229 = $item['link']) ? $v229 : '')));
-		$date = Lua::trim(Lua::str((Lua::truth($v230 = $item['date']) ? $v230 : '')));
+		return $this->wkBuildSingleNodeFromFirstItem($items, function($item = null) {
+		$item = $item->values;
+		$page = $item['page'];
+		$site = $item['site'];
+		$link = $item['link'];
+		$date = $item['date'];
 		if ((($link === '') || ($page === ''))) {
 			return null;
 		}
@@ -1503,10 +1509,11 @@ class ReferenceRenderer {
 			return new Table([]);
 		}
 		$items = $this->wkParseVideoMarkers($raw);
-		return $this->wkBuildSingleNodeFromFirstItem($items, function($item = null) use (&$raw, &$items, &$title, &$link, &$authors, &$node, &$authorValue) {
-		$title = Lua::trim(Lua::str((Lua::truth($v232 = $item['title']) ? $v232 : '')));
-		$link = Lua::trim(Lua::str((Lua::truth($v233 = $item['link']) ? $v233 : '')));
-		$authors = Lua::trim(Lua::str((Lua::truth($v234 = $item['authors']) ? $v234 : '')));
+		return $this->wkBuildSingleNodeFromFirstItem($items, function($item = null) {
+		$item = $item->values;
+		$title = $item['title'];
+		$link = $item['link'];
+		$authors = $item['authors'];
 		if ((($title === '') || ($link === ''))) {
 			return null;
 		}
@@ -1637,7 +1644,7 @@ class ReferenceRenderer {
 			$typeField = $this->L($lang, 'params', 'search_type_field');
 			$typeValue = $this->L($lang, 'params', 'search_type_value');
 			$extra = new Table([($fieldLabel . '[' . $typeField . ']') => $typeValue]);
-			foreach (Lua::ipairs($this->splitCSV($args['keywords'], ',')) as $_ => $k) {
+			foreach (($this->splitCSV($args['keywords'], ','))->sequence() as $_ => $k) {
 				$k = Lua::trim(Lua::str((Lua::truth($v239 = $k) ? $v239 : '')));
 				if (($k !== '')) {
 					$chip = $this->runQueryLink($formName, $fieldLabel, $fieldName, $k, $k, $tt, $extra);
@@ -1689,7 +1696,7 @@ class ReferenceRenderer {
 	protected function renderRubriques($args = null, $cats = null, $lang = null) {
 		if ((Lua::truth($args['sections']) && (Lua::trim($args['sections']) !== ''))) {
 			$out = new Table([]);
-			foreach (Lua::ipairs($this->splitCSV($args['sections'], ',')) as $_ => $r) {
+			foreach (($this->splitCSV($args['sections'], ','))->sequence() as $_ => $r) {
 				Lua::insert($out, ('[[Category:' . $r . ']]'));
 			}
 			return Lua::concat($out);
@@ -1703,12 +1710,12 @@ class ReferenceRenderer {
 		$con = (Lua::truth($v243 = $maps['con']) ? $v243 : new Table([]));
 		$pourPages = new Table([]);
 		$contrePages = new Table([]);
-		foreach (Lua::ipairs((Lua::truth($v244 = $pro['items']) ? $v244 : new Table([]))) as $_ => $it) {
+		foreach (((Lua::truth($v244 = $pro['items']) ? $v244 : new Table([])))->sequence() as $_ => $it) {
 			if ((Lua::truth($it['page']) && ($it['page'] !== ''))) {
 				Lua::insert($pourPages, $it['page']);
 			}
 		}
-		foreach (Lua::ipairs((Lua::truth($v245 = $con['items']) ? $v245 : new Table([]))) as $_ => $it) {
+		foreach (((Lua::truth($v245 = $con['items']) ? $v245 : new Table([])))->sequence() as $_ => $it) {
 			if ((Lua::truth($it['page']) && ($it['page'] !== ''))) {
 				Lua::insert($contrePages, $it['page']);
 			}
@@ -1749,6 +1756,7 @@ class ReferenceRenderer {
 
 	public function render($frame = null) {
 		$this->decodedReferences = null;
+		$this->renderData = null;
 		foreach (Lua::pairs($this->SEO_CACHE) as $k => $_value) {
 			$this->SEO_CACHE[$k] = null;
 		}

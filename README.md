@@ -99,6 +99,8 @@ fournies par le `vendor/` du laboratoire.
 La phase d'optimisation native et de fiabilisation SQL de la PR #3 est documentée
 dans [son rapport dédié](docs/native-php-optimizations.md), avec les comparaisons
 avant/après sous PHP 8.3 et les variantes SQLite/MariaDB isolées.
+La [suite en six points](docs/native-php-followup.md) détaille les parcours
+sans copie, le FIFO natif, la préparation commune et la réduction des captures.
 
 Les oracles hors ligne nécessitent Python, `lupa` et `luaparser` :
 

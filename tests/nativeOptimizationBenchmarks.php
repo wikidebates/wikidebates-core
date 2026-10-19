@@ -15,6 +15,12 @@ $scenarios['initialization'] = ['title' => 'WD FS orphan initialization',
 $scenarios['cards'] = ['title' => 'WD FS related argument',
 	'text' => '{{#argument:render|lang=en|summary=Summary|dedicated-debate=WD FS parent debate en|creation-date=2026-01-01}}'];
 $benchmark = ['repeats' => $repeats, 'samples_ms' => [], 'profiles' => [], 'profile_samples_ms' => []];
+$withoutDurations = static function(array $value) use (&$withoutDurations): array {
+	unset($value['milliseconds'], $value['total_ms'], $value['render_other_ms'], $value['max_ms']);
+	foreach ($value as $key => $item) { if (is_array($item)) { $value[$key] = $withoutDurations($item); } }
+	return $value;
+};
+$benchmark['effect_profile_comparisons'] = 0;
 mt_srand(803);
 foreach ($scenarios as $name => $case) {
 	foreach (['before-reference', 'before-optimized', 'reference', 'optimized'] as $mode) {
@@ -24,6 +30,11 @@ foreach ($scenarios as $name => $case) {
 		$benchmark['profiles'][$name][$mode] = $profiled['profiles'];
 		unset($plain['milliseconds'], $profiled['milliseconds'], $plain['profiles'], $profiled['profiles']);
 		same($plain, $profiled, 'Profiling cannot change rendered output or properties: ' . $name . '/' . $mode);
+	}
+	foreach (['reference', 'optimized'] as $mode) {
+		same($withoutDurations($benchmark['profiles'][$name]['before-' . $mode]), $withoutDurations($benchmark['profiles'][$name][$mode]),
+			'Native optimization preserves semantic query/write counts, cache hits, messages and preprocessing effects: ' . $name . '/' . $mode);
+		$benchmark['effect_profile_comparisons']++;
 	}
 	for ($repeat = 0; $repeat < $repeats; $repeat++) {
 		$modes = ['before-reference', 'before-optimized', 'reference', 'optimized'];

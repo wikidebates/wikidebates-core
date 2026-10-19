@@ -13,6 +13,11 @@ final class Table implements \ArrayAccess, \IteratorAggregate, \Countable {
 	}
 	public function offsetUnset($key): void { unset($this->values[$key]); }
 	public function getIterator(): \Traversable { return new \ArrayIterator($this->values); }
+	/** Capture a copy-on-write snapshot now, preserving ipairs' first-hole rule. */
+	public function sequence(): \Traversable { return self::iterateSequence($this->values); }
+	private static function iterateSequence(array $values): \Generator {
+		for ($i = 1; isset($values[$i]); $i++) { yield $i => $values[$i]; }
+	}
 	public function count(): int { return count($this->values); }
 	public static function wrap($value) {
 		if (!is_array($value)) { return $value; }

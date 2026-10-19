@@ -64,6 +64,7 @@ final class ArgumentTestContext implements ArgumentContext {
 	public function variableGet(string $name): ?string { return $this->effects['variables'][$name] ?? null; }
 }
 
+if (realpath($_SERVER['SCRIPT_FILENAME']) !== __FILE__) { return; }
 set_error_handler(static function($severity, $message, $file, $line) { throw new ErrorException($message, 0, $severity, $file, $line); });
 $cases = json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR); $out = [];
 foreach ($cases as $case) {

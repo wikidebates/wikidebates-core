@@ -2,6 +2,7 @@ from luaparser import ast,astnodes as n
 from pathlib import Path
 import json
 from phpConditions import condition, is_boolean
+from closureCaptures import free_variables
 root = Path(__file__).resolve().parent.parent
 source=(root/'resources/Module-Argument.reference.lua').read_text()
 x=ast.parse(source)
@@ -88,9 +89,12 @@ def e(v,multi=False):
 	# Capture locals by reference as in Lua lexical closures; PHP arguments remain local.
 		names=scope[-1] if scope else []
 		params=[z.id for z in v.args if isinstance(z,n.Name)]
-		caps=[z for z in names if z not in params]
+		caps=[z for z in names if z in free_variables(v)]
 		use=(' use ('+', '.join('&$'+z for z in caps)+')') if caps else ''
-		return 'function('+', '.join('$'+z+' = null' for z in params)+')'+use+' {\n'+block(v.body,2)+'\n\t\t}'
+		scope.append(list(dict.fromkeys(names+params+namesin(v.body))))
+		body=block(v.body,2)
+		scope.pop()
+		return 'function('+', '.join('$'+z+' = null' for z in params)+')'+use+' {\n'+body+'\n\t\t}'
 	raise Exception('EXPR '+type(v).__name__)
 def namesin(v):
 	out=[]
