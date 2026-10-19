@@ -84,6 +84,7 @@ namespace {
 		'recent changes' => static fn() => RecentDebateChanges::render($parser, new PPFrame, ['test'])
 	];
 	$failures = [new \Wikimedia\Rdbms\DBError('SECRET SQL'), new \Wikimedia\Rdbms\DBTransactionStateError('SECRET SQL'), new PDOException('SECRET SQL')];
+	if (class_exists('mysqli_sql_exception')) { $failures[] = new mysqli_sql_exception('SECRET SQL'); }
 	$failures[] = new RuntimeException('Wrapper', 0, $failures[0]);
 	foreach ([['SMW\\MediaWiki\\Connection\\Database', 'select'], ['SMW\\MediaWiki\\Connection\\TransactionHandler', 'markSectionTransaction']] as $thrower) {
 		try { $thrower(); } catch (RuntimeException $e) { $failures[] = $e; }

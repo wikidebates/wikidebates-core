@@ -5,7 +5,7 @@ namespace MediaWiki\Extension\DebatePHP;
 final class DatabaseFailure {
 	public static function rethrow(\Throwable $exception): void {
 		for ($cause = $exception; $cause !== null; $cause = $cause->getPrevious()) {
-			if ($cause instanceof \Wikimedia\Rdbms\DBError || $cause instanceof \PDOException) {
+			if ($cause instanceof \Wikimedia\Rdbms\DBError || $cause instanceof \PDOException || $cause instanceof \mysqli_sql_exception) {
 				throw $exception;
 			}
 			// SMW 6.0.1 Database::select discards both DBError's type and previous

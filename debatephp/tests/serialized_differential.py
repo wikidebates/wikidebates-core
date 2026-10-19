@@ -38,6 +38,8 @@ require=function() return {} end
 		# its string result. wkSplit2 deliberately uses both returned strings.
 		if isinstance(value, tuple) and method != 'wkSplit2': value = value[0]
 		expected.append(plain(value))
+	if module == 'Argument':
+		add('breadcrumbLenByteSafe', ['A⟭' * 100000])
 	samples = ['', '0', 'simple', ' ⟭ ', 'A⟬B', 'A⟬⟭', '⟭A⟬B⟬C⟬D⟭', '\tA\n⟬ B⟭', 'é⟭漢字⟬0⟭', '⟭⟭⟭Titre⟬⟬⟬Contenu⟬⟬⟬warn⟭⟭⟭',
 	'&apos; &#039; &#39; &amp; "quoted"', 'A\rB\r\nC\tD\vE\fF', 'A\x00B', '[a]{b}|c#d<e>"f', '%25%2F/?#', "L’argument d'Alice", '\u00a0 A\u00a0B ']
 	samples += [''.join(rng.choice(['A', '0', '⟬', '⟭', ' ', '\t', '\n', 'é']) for _ in range(rng.randrange(70))) for _ in range(140)]
@@ -50,7 +52,7 @@ require=function() return {} end
 						for limit in [None, False, 0, 1, 2, 6]: add(method, [text, separator, limit])
 		else:
 			for text in samples: add(method, [text])
-			if method in ['anchorId','normalizeTooltipText','escapeAttr','wkEncodePathSegment']:
+			if method in ['anchorId','normalizeTooltipText','escapeAttr','wkEncodePathSegment','breadcrumbLenByteSafe']:
 				for value in [None, False, True, 0, 1]: add(method, [value])
 result = subprocess.run([sys.argv[1] if len(sys.argv)>1 else 'php', str(root/'tests/serialized_native.php')], input=json.dumps(cases, ensure_ascii=False), text=True, capture_output=True, check=True)
 actual = json.loads(result.stdout)

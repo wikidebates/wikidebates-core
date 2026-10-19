@@ -877,9 +877,13 @@ class ArgumentReferenceRenderer {
 	protected function breadcrumbLenByteSafe($ch = null) {
 		if (!is_string($ch) || $ch === '') { return 0; }
 		$count = 0;
-		foreach (explode('⟭', $ch) as $part) {
+		$offset = 0;
+		do {
+			$end = strpos($ch, '⟭', $offset);
+			$part = $end === false ? substr($ch, $offset) : substr($ch, $offset, $end - $offset);
 			if (trim($part, " \t\r\n\v\f") !== '' && ++$count >= 6) { return $count; }
-		}
+			$offset = $end === false ? 0 : $end + 3;
+		} while ($end !== false);
 		return $count;
 	}
 
