@@ -47,7 +47,7 @@ foreach (['en', 'fr'] as $lang) {
 }
 fsFlush();
 
-function fsRender(string $title, string $source, string $mode, bool $profile = false): array {
+function fsRender(string $title, string $source, string $mode, bool $profile = false, ?callable $parseObserver = null): array {
 	$GLOBALS['wgDebatePHPMode'] = str_ends_with($mode, 'optimized') ? 'optimized' : 'reference';
 	$parser = MediaWikiServices::getInstance()->getParserFactory()->create();
 	$events = [];
@@ -62,9 +62,11 @@ function fsRender(string $title, string $source, string $mode, bool $profile = f
 		}
 		return $value;
 	});
+	$gcBefore = $parseObserver ? gc_status() : null;
 	$start = hrtime(true);
 	$out = $parser->parse(fsSource($source, $mode), Title::newFromText($title), $options, true, true);
 	$ms = (hrtime(true) - $start) / 1e6;
+	if ($parseObserver) { $parseObserver($gcBefore, gc_status()); }
 	check(!str_contains($out->getText(), 'scribunto-error'), 'Real Lua renderer succeeds: ' . $title);
 	check(str_contains($out->getText(), 'application/ld+json'), 'Real renderer emits JSON-LD: ' . $title . '/' . $mode);
 	$data = $out->getExtensionData(\SMW\ParserData::DATA_ID);
@@ -146,7 +148,7 @@ foreach ($cases as $case) {
 $persisted = 0;
 foreach ($cases as $index => $case) {
 	$name = $case['name'] ?? $case['title'];
-	if (!str_contains($name, 'complete debate') && !str_contains($name, 'complete argument') && !str_contains($name, 'semantic parent graph') && !str_contains($name, 'rich native')) { continue; }
+	if (!str_contains($name, 'complete debate') && !str_contains($name, 'complete argument') && !str_contains($name, 'semantic parent graph') && !str_contains($name, 'rich native') && !str_contains($name, 'measured lists')) { continue; }
 	$modes = getenv('WD_OPTIMIZATION_BASELINE') ? ['lua', 'reference', 'optimized', 'before-reference', 'before-optimized'] : ['lua', 'reference', 'optimized'];
 	foreach ($modes as $mode) {
 		fsSave($case['title'], 'Reset semantic state ' . $mode);
@@ -172,6 +174,22 @@ foreach ($cases as $index => $case) {
 	}
 }
 $report['persisted_render_variants'] = $persisted;
+$report['render_cases'] = count($results);
+$report['native_before_after_comparisons'] = getenv('WD_OPTIMIZATION_BASELINE') ? count($results) * 2 : 0;
+if (getenv('WD_FULLSTACK_RENDER_OUTPUT')) {
+	// Stream complete rows before the benchmarks: avoid duplicating the whole corpus.
+	$artifact = fopen(getenv('WD_FULLSTACK_RENDER_OUTPUT'), 'wb');
+	check(is_resource($artifact), 'Render comparison artifact opens');
+	try {
+		check(fwrite($artifact, '[') === 1, 'Render artifact starts');
+		foreach ($results as $index => $row) {
+			$json = ($index ? ',' : '') . json_encode($row, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+			check(fwrite($artifact, $json) === strlen($json), 'Complete render row written');
+		}
+		check(fwrite($artifact, ']') === 1, 'Render artifact completes');
+	} finally { fclose($artifact); }
+}
+unset($results, $row, $json, $before, $after);
 
 // A genuine template edit changes its revision dependency and subsequent rendering.
 fsSave('Template:WD FS cache', 'WD FS cache BEFORE');
@@ -204,8 +222,3 @@ if (getenv('WD_OPTIMIZATION_BASELINE')) { require __DIR__ . '/nativeOptimization
 fsFlush();
 $report['queues_empty'] = !MediaWikiServices::getInstance()->getJobQueueGroup()->queuesHaveJobs();
 check($report['queues_empty'], 'All isolated job queues are empty at completion');
-if (getenv('WD_FULLSTACK_RENDER_OUTPUT')) {
-	file_put_contents(getenv('WD_FULLSTACK_RENDER_OUTPUT'), json_encode($results, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
-}
-$report['render_cases'] = count($results);
-$report['native_before_after_comparisons'] = getenv('WD_OPTIMIZATION_BASELINE') ? count($results) * 2 : 0;

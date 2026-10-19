@@ -71,4 +71,16 @@ same(false, $native->rows[1]['flag'], 'Native formatter retains semantic boolean
 check(is_array($native->rows[1]['numbers']) && in_array(0, $native->rows[1]['numbers'], true) && in_array(12.5, $native->rows[1]['numbers'], true), 'Native formatter retains multivalued numeric zero and decimal');
 check(is_array($native->rows[1]['pages']) && count($native->rows[1]['pages']) === 2, 'Native formatter retains multivalued formatted pages');
 $report['native_reads']['formatter_comparisons'] = count($readQueries);
+// A reduced limit gives a small real-store counterexample to union = two branches.
+// At the production limit of 200, the same issue occurs beyond 200 distinct parents.
+fsSave('WD FS limit parent A', '[[WD FS Parent A::WD FS limit target]]');
+fsSave('WD FS limit parent B', '[[WD FS Parent B::WD FS limit target]]');
+fsFlush();
+$union = $factory->newQueryResultFrom(['[[WD FS Parent A::WD FS limit target]] OR [[WD FS Parent B::WD FS limit target]]', 'limit=1', 'link=none']);
+$a = $factory->newQueryResultFrom(['[[WD FS Parent A::WD FS limit target]]', 'limit=1', 'link=none']);
+$b = $factory->newQueryResultFrom(['[[WD FS Parent B::WD FS limit target]]', 'limit=1', 'link=none']);
+same(1, $union->getCount(), 'Union limit applies to both parent branches together');
+check($union->hasFurtherResults(), 'Limited parent union is incomplete in the genuine store');
+same(2, $a->getCount() + $b->getCount(), 'Separate queries retain one result per branch');
+$report['native_reads']['parent_union_limit_counterexample'] = ['limit' => 1, 'union_count' => $union->getCount(), 'union_further' => $union->hasFurtherResults(), 'separate_count' => $a->getCount() + $b->getCount()];
 echo 'Native SMW reads: exact formatted values; empty union proof ' . ($empty->completeEmpty ? 'accepted' : 'conservatively rejected') . "\n";

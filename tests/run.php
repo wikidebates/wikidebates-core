@@ -74,7 +74,7 @@ foreach (['en', 'fr'] as $language) {
 echo "OK: $messages translation comparisons, offline snapshot checks, Lua semantics, escaping and telemetry\n";
 (static function(): void { require __DIR__ . '/i18n.php'; })();
 
-foreach (['argument_adapter.php', 'i18n_bundle.php', 'telemetry.php', 'cache_fifo.php', 'native_collections.php', 'native_paths.php', 'native_reads.php', 'render_reuse.php', 'db_error_propagation.php', 'database_boundaries.php', 'decoded_references.php'] as $test) {
+foreach (['argument_adapter.php', 'i18n_bundle.php', 'telemetry.php', 'cache_fifo.php', 'native_collections.php', 'native_paths.php', 'native_reads.php', 'measured_candidates.php', 'render_reuse.php', 'db_error_propagation.php', 'database_boundaries.php', 'decoded_references.php'] as $test) {
 	$command = [PHP_BINARY];
 	if (php_ini_loaded_file()) { array_push($command, '-c', php_ini_loaded_file()); }
 	$command[] = __DIR__ . '/../debatephp/tests/' . $test;

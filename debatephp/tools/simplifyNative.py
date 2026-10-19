@@ -70,4 +70,5 @@ def simplify(path: Path, argument: bool):
 	from nativePhpPass import optimize as optimize_php
 	from nativeFurtherPass import optimize as optimize_further
 	from nativeReadPass import optimize as optimize_read
-	path.write_text(optimize_read(optimize_further(optimize_php(optimize(source, argument), argument), argument), argument))
+	from nativeMeasuredPass import optimize as optimize_measured
+	path.write_text(optimize_measured(optimize_read(optimize_further(optimize_php(optimize(source, argument), argument), argument), argument), argument))

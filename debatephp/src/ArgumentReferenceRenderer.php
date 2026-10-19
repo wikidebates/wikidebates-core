@@ -8,6 +8,7 @@ namespace MediaWiki\Extension\DebatePHP;
 class ArgumentReferenceRenderer {
 	private ?DecodedReferences $decodedReferences = null;
 	private ?RenderData $renderData = null;
+	private ?FifoCache $cardTitleCache = null;
 	private ?FifoCache $nativeSemanticCache = null;
 	private bool $nativeJson = false;
 	protected ArgumentContext $context;
@@ -986,25 +987,23 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function normalizeTitleForCard($s = null) {
-		$s = Lua::trim(Lua::str((Lua::truth($v135 = $s) ? $v135 : '')));
-		if (($s === '')) {
-			return '';
+		$s = trim(Lua::str($s === null || $s === false ? '' : $s), " \t\r\n\v\f");
+		if ($s === '' || ($s[0] !== ':' && strpbrk($s, '[<&') === false)) { return $s; }
+		$key = $s;
+		$cache = $this->cardTitleCache ??= new FifoCache(200);
+		$hit = $cache->get($key);
+		if ($hit !== null) { return $hit; }
+		$s = preg_replace('/^:[\x09-\x0d ]*/', '', $s);
+		if (preg_match('/^\[\[([^\]|]+)\|[^\n]*?\]\]$/D', $s, $match)
+			|| preg_match('/^\[\[([^\]]+)\]\]$/D', $s, $match)) { $s = $match[1]; }
+		$s = preg_replace('/^:[\x09-\x0d ]*/', '', trim($s, " \t\r\n\v\f"));
+		// str_replace applies pairs sequentially, preserving nested entity behavior.
+		if (str_contains($s, '&')) {
+			$s = str_replace(['&nbsp;', '&#160;', '&amp;', '&quot;', '&#39;', '&lt;', '&gt;'], [' ', ' ', '&', '"', "'", '<', '>'], $s);
 		}
-		if (((Lua::byte($s, 1) !== 58) && !(Lua::truth(Lua::find($s, '[%[<&]'))))) {
-			return $s;
-		}
-		$s = Lua::gsub($s, '^:%s*', '');
-		{
-			$target = (Lua::truth($v136 = Lua::match($s, '^%[%[([^%]|]+)%|.-%]%]$')) ? $v136 : Lua::match($s, '^%[%[([^%]]+)%]%]$'));
-			if ((Lua::truth($target) && ($target !== ''))) {
-				$s = $target;
-			}
-		}
-		$s = Lua::gsub(Lua::trim($s), '^:%s*', '');
-		if (Lua::truth(Lua::find($s, '&', 1, true))) {
-			$s = Lua::gsub(Lua::gsub(Lua::gsub(Lua::gsub(Lua::gsub(Lua::gsub(Lua::gsub($s, '&nbsp;', ' '), '&#160;', ' '), '&amp;', '&'), '&quot;', '"'), '&#39;', '\''), '&lt;', '<'), '&gt;', '>');
-		}
-		return Lua::trim($s);
+		$s = trim($s, " \t\r\n\v\f");
+		if (strlen($key) <= 1024) { $cache->put($key, $s); }
+		return $s;
 	}
 
 	protected function mwUrlEncodePF($s = null) {
@@ -1503,32 +1502,28 @@ class ArgumentReferenceRenderer {
 
 	protected function wkBuildArgumentData($items = null) {
 		$items = (Lua::truth($v214 = $items) ? $v214 : new Table([]));
-		$listLines = new Table([]);
-		foreach (($items)->sequence() as $_ => $it) {
-			Lua::insert($listLines, ('* ' . Lua::str((Lua::truth($v215 = $it['title']) ? $v215 : ''))));
-		}
-		$listText = Lua::concat($listLines, '
-');
-		$argsVarParts = new Table([]);
-		foreach (($items)->sequence() as $_ => $it) {
+		$listLines = [];
+		$argsVarParts = [];
+		$hoverLines = [];
+		foreach (($items)->sequence() as $i => $it) {
+			$listLines[] = ('* ' . Lua::str((Lua::truth($v215 = $it['title']) ? $v215 : '')));
 			$page = Lua::trim(Lua::str((Lua::truth($v216 = $it['page']) ? $v216 : '')));
 			if (($page !== '')) {
 				$title = Lua::trim(Lua::str((Lua::truth($v217 = $it['title']) ? $v217 : '')));
 				if ((($title === '') || ($title === $page))) {
-					Lua::insert($argsVarParts, $page);
+					$argsVarParts[] = $page;
 				}
 				else {
-					Lua::insert($argsVarParts, ($page . $this->FIELD_SEP . $title));
+					$argsVarParts[] = ($page . $this->FIELD_SEP . $title);
 				}
 			}
+			$hoverLines[] = ('<div class="argument-title--map wk-icon-before wk-icon-argument">' . '[[' . Lua::str((Lua::truth($v218 = $it['page']) ? $v218 : '')) . '|' . Lua::str((Lua::truth($v219 = $it['title']) ? $v219 : '')) . ']]' . '</div>');
 		}
-		$argsVar = Lua::concat($argsVarParts, $this->ITEM_SEP);
-		$hoverLines = new Table([]);
-		foreach (($items)->sequence() as $_ => $it) {
-			Lua::insert($hoverLines, ('<div class="argument-title--map wk-icon-before wk-icon-argument">' . '[[' . Lua::str((Lua::truth($v218 = $it['page']) ? $v218 : '')) . '|' . Lua::str((Lua::truth($v219 = $it['title']) ? $v219 : '')) . ']]' . '</div>'));
-		}
-		$mapHoverHtml = Lua::concat($hoverLines, '
-');
+		$listText = implode('
+', $listLines);
+		$argsVar = implode($this->ITEM_SEP, $argsVarParts);
+		$mapHoverHtml = implode('
+', $hoverLines);
 		return new Table(['items' => $items, 'list' => $listText, 'argsVar' => $argsVar, 'mapHover' => $mapHoverHtml]);
 	}
 
@@ -2583,6 +2578,7 @@ class ArgumentReferenceRenderer {
 		$this->nativeSemanticCache = null;
 		$this->decodedReferences = null;
 		$this->renderData = null;
+		$this->cardTitleCache = null;
 		$this->SUMMARY_WARNING_ALIASES = null;
 		$this->vset('WD_QUOTES_AUTHORS', '');
 		$this->vset('WD_QUOTES_ARTICLES', '');

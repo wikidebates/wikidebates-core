@@ -32,23 +32,23 @@
 		"resources/WD-I18N.reference.lua": "7975891b1cd0c797f7e97df1fcbbc735e3626164cb42e587be58d0b16e4f691a"
 	},
 	"local_adaptations": {
-		"description": "The sha256 map above records the original 0.8 import. Local adaptations include the shared MediaWiki i18n catalogues and PR #3 SQL error propagation, semantic profiling, per-render decoded references and verified native accumulators. Lua oracle snapshots remain unchanged; see docs/native-php-optimizations.md. The six-point follow-up adds snapshot sequence iteration, a native FIFO, per-render pure CSV preprocessing, normalized-record consumers and lexical closure captures; see docs/native-php-followup.md. The five-path follow-up adds byte-identical native query keys, shared native HTML fragments, pure JSON conversion without unconditional sorting, native record views with lazy legacy envelopes and a byte-bounded adaptive CSV cache with numeric-only profiling; see docs/native-php-further-optimizations.md. Native read/JSON paths, certified empty parent-query fallbacks and read-only CSV/HTML follow-up: see docs/native-php-read-optimizations.md.",
+		"description": "The sha256 map above records the original 0.8 import. Local adaptations include the shared MediaWiki i18n catalogues and PR #3 SQL error propagation, semantic profiling, per-render decoded references and verified native accumulators. Lua oracle snapshots remain unchanged; see docs/native-php-optimizations.md. The six-point follow-up adds snapshot sequence iteration, a native FIFO, per-render pure CSV preprocessing, normalized-record consumers and lexical closure captures; see docs/native-php-followup.md. The five-path follow-up adds byte-identical native query keys, shared native HTML fragments, pure JSON conversion without unconditional sorting, native record views with lazy legacy envelopes and a byte-bounded adaptive CSV cache with numeric-only profiling; see docs/native-php-further-optimizations.md. Native read/JSON paths, certified empty parent-query fallbacks and read-only CSV/HTML follow-up: see docs/native-php-read-optimizations.md. Measured local argument/HTML passes, native card-title normalization and bounded native reference admission: see docs/native-php-measured-optimizations.md.",
 		"sha256": {
 			"src/I18n.php": "12aa6f46ef463e8aa215e98dd41be20751d54fe4dd519f358bd3a4c28f0b1427",
 			"src/MessageCatalog.php": "270f5d9758308416cf2dd0576ec03ecf119185666a0534412c50d4c03aecfe0d",
 			"resources/I18nData.php": "a79728f32cb5836317ab4a91678238ffcf1f97c5455a89bae24d3afdc213ee25",
 			"tools/compileI18n.php": "fca59eeae04073abe66f150b290640ab2aaed7461876605b9143f0dba5a7f37c",
 			"tools/maintainI18n.php": "623f042cb13efa8597e7aa7acf174af3dc9802e9c868ee3f2bba9e7227f13936",
-			"src/ArgumentReferenceRenderer.php": "f582818e1c860a3d10bbbffb0e924e353e3cabcee3ba94d04a2204771f1289d3",
-			"src/ReferenceRenderer.php": "a1ecdb679957d4511938b711f64d08a2b3226a80c4acefc10ea1c9fb47e31037",
+			"src/ArgumentReferenceRenderer.php": "91e8d0da827d59e139ac759cd8ec86fbb09861a1508906c4a02d792f687bee6c",
+			"src/ReferenceRenderer.php": "5e589e4ff598574402b4277200102edaa170550a20a91b7116b757de9317a1ce",
 			"src/SerializedData.php": "097b386d983156b03673c178e02c5bd5310286e909e49438a89cde4b9f4e9b2d",
 			"src/Lua.php": "18a990db401e8b7b7597edfffc472703552fd85232d0829a6536da07b4269a6d",
 			"src/MediaWikiContext.php": "d92d5fd4b27ed647b302b1d567e57ed8c55cda2ef531f62fb485260a1ea2c21a",
 			"src/Telemetry.php": "15e3a399b7e555739cc91eaba605ea7a23a0475e5f61e9d218ce2af587e1d962",
 			"src/DatabaseFailure.php": "9a8cd669ba0f9da2604c819b66e495518ffc76ac574f6954ec09a7497db04f3f",
-			"src/DecodedReferences.php": "a2a5814a72afe24778dc548875d0eb7ceba09078cea8b81b8c65b465eba06506",
+			"src/DecodedReferences.php": "107cbca60d338e238382a999d539e547c97ca105aea6399181fc7282e5dffcd5",
 			"src/SemanticProfilingContext.php": "875f5808c3830f33ecd594fb2b996857076812314fd531a55045867ebd287abf",
-			"tools/simplifyNative.py": "6aeab4c9bd34081e6ce0bc482f518dd3d2914e9178e6b38ecf0f9d733647a009",
+			"tools/simplifyNative.py": "4202aca9ee4c239e1c14acf7997aab1cc1025c9f2acbbda6cb48fbe7b60cd2f3",
 			"tools/nativeOptimizations.py": "ef12578bbcb4eb952c193cc57c969c1026f5ee36321d69591fa3013d214d880e",
 			"src/Table.php": "e632649315e7b5faf9d3fb4a18eb58f93901b4cd868f039cfaa1e8053bd49728",
 			"src/FifoCache.php": "6d13b5f58e155a4bb5aa609ec270198b6fc5324e950f7bd1e9786f3b6ebbf40f",
@@ -66,7 +66,8 @@
 			"src/NativeSemanticContext.php": "d4b6e2648d4f478924c9ce7ae757cada7e64d9cf29ebbc36898b98eb9908a64e",
 			"src/JsonData.php": "953a963d80b3b26c56526055204d424e67436ee3e442af9fbc857234385251d7",
 			"src/EmptyParentQuery.php": "304e2fedda270023e4d4b9967538675e6cd619ff68476b203d54296d2da8d47e",
-			"tools/nativeReadPass.py": "d8703ac21d4701b231c41475536eae6992f07302d407508370b5c868770c9c69"
+			"tools/nativeReadPass.py": "d8703ac21d4701b231c41475536eae6992f07302d407508370b5c868770c9c69",
+			"tools/nativeMeasuredPass.py": "b95542f0b3121abfb751895a72efb96c17b44bc23ac26a655e0960c7f2697b19"
 		}
 	}
 }

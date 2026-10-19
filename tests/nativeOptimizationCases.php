@@ -32,6 +32,12 @@ foreach (['en', 'fr'] as $lang) {
 		$args[$prefix . 'videography'] = implode('⟭', $videos);
 	}
 	$cases[] = ['title' => 'WD FS rich debate ' . $lang, 'name' => 'rich native debate ' . $lang, 'text' => $call('debate', $args)];
+	$items = implode('⟭', array_map(static fn($i) => 'WD FS listed ' . $i . '⟬Displayed ' . $i . '⟬', range(1, 100))) . '⟭';
+	$intro = implode('⟭⟭⟭', array_map(static fn($i) => 'Heading ' . $i . '⟬⟬⟬Content ' . $i . '⟬⟬⟬', range(1, 40))) . '⟭⟭⟭';
+	$cases[] = ['title' => 'WD FS measured debate ' . $lang, 'name' => 'measured lists debate ' . $lang,
+		'text' => $call('debate', ['lang' => $lang, 'topic' => 'Topic', 'creation-date' => '2026-01-01', 'pro-arguments' => $items, 'con-arguments' => $items, 'introduction' => $intro])];
+	$cases[] = ['title' => 'WD FS measured argument ' . $lang, 'name' => 'measured lists argument ' . $lang,
+		'text' => $call('argument', ['lang' => $lang, 'summary' => 'Summary', 'creation-date' => '2026-01-01', 'justifications' => $items, 'objections' => $items])];
 	$cases[] = ['title' => 'WD FS reference edges ' . $lang, 'name' => 'native reference edges ' . $lang,
 		'text' => $call('argument', ['lang' => $lang, 'summary' => '0', 'creation-date' => '2026-01-01',
 			'quotes' => '⟭⟭⟭ 0⟬⟬⟬0⟬⟬⟬⟬⟬⟬Work⟭⟭⟭ ⟬⟬⟬ ⟭⟭⟭',

@@ -522,34 +522,28 @@ class ReferenceRenderer {
 	protected function wkBuildArgumentData($items = null, $lang = null, $kind = null) {
 		$items = (Lua::truth($v68 = $items) ? $v68 : new Table([]));
 		$idPrefix = (Lua::truth($v69 = (Lua::truth($v70 = ($kind === 'pro')) ? 'Pro_argument_' : $v70)) ? $v69 : 'Con_argument_');
-		$listLines = new Table([]);
-		foreach (($items)->sequence() as $_ => $it) {
-			Lua::insert($listLines, ('* ' . $it['title']));
-		}
-		$listText = Lua::concat($listLines, '
-');
-		$argsVarParts = new Table([]);
-		foreach (($items)->sequence() as $_ => $it) {
+		$listLines = [];
+		$argsVarParts = [];
+		$mapLines = [];
+		$hoverLines = [];
+		foreach (($items)->sequence() as $i => $it) {
+			$listLines[] = ('* ' . $it['title']);
 			if (($it['page'] === $it['title'])) {
-				Lua::insert($argsVarParts, $it['page']);
+				if ($it['page'] !== null) { $argsVarParts[] = $it['page']; }
 			}
 			else {
-				Lua::insert($argsVarParts, ($it['page'] . '⟬' . $it['title']));
+				$argsVarParts[] = ($it['page'] . '⟬' . $it['title']);
 			}
+			$mapLines[] = ('<div  id="' . $idPrefix . $i . '_map" class="argument-title--map wk-icon-before wk-icon-argument">' . $it['title'] . '</div>');
+			$hoverLines[] = ('<div class="argument-title--map wk-icon-before wk-icon-argument">' . '[[' . $it['page'] . '|' . $it['title'] . ']]</div>');
 		}
-		$argsVar = Lua::concat($argsVarParts, ' -;- ');
-		$mapLines = new Table([]);
-		foreach (($items)->sequence() as $i => $it) {
-			Lua::insert($mapLines, ('<div  id="' . $idPrefix . $i . '_map" class="argument-title--map wk-icon-before wk-icon-argument">' . $it['title'] . '</div>'));
-		}
-		$mapHtml = Lua::concat($mapLines, '
-');
-		$hoverLines = new Table([]);
-		foreach (($items)->sequence() as $_ => $it) {
-			Lua::insert($hoverLines, ('<div class="argument-title--map wk-icon-before wk-icon-argument">' . '[[' . $it['page'] . '|' . $it['title'] . ']]</div>'));
-		}
-		$mapHoverHtml = Lua::concat($hoverLines, '
-');
+		$listText = implode('
+', $listLines);
+		$argsVar = implode(' -;- ', $argsVarParts);
+		$mapHtml = implode('
+', $mapLines);
+		$mapHoverHtml = implode('
+', $hoverLines);
 		return new Table(['items' => $items, 'list' => $listText, 'argsVar' => $argsVar, 'map' => $mapHtml, 'mapHover' => $mapHoverHtml]);
 	}
 
@@ -718,12 +712,12 @@ class ReferenceRenderer {
 		if (($titre === '')) {
 			$titre = $this->L($lang, 'text', 'default_subsection_title');
 		}
-		$out = new Table([]);
-		Lua::insert($out, '<div class="fr-collapsible fr-collapsed">');
-		Lua::insert($out, ('<h3 class="fr-collapsible-toggle wk-icon-before wk-carret wk-icon-after wk-icon-question">' . $titre . '</h3>'));
-		Lua::insert($out, '<div class="fr-collapsible-content"><div class="encadre-section-deroulante">');
+		$out = [];
+		$out[] = '<div class="fr-collapsible fr-collapsed">';
+		$out[] = ('<h3 class="fr-collapsible-toggle wk-icon-before wk-carret wk-icon-after wk-icon-question">' . $titre . '</h3>');
+		$out[] = '<div class="fr-collapsible-content"><div class="encadre-section-deroulante">';
 		if (($avert !== '')) {
-			$banners = new Table([]);
+			$banners = [];
 			foreach (Lua::split($avert, ',', true) as $lab) {
 				$lab = Lua::trim($lab);
 				if (($lab !== '')) {
@@ -731,17 +725,17 @@ class ReferenceRenderer {
 					if (($k !== '')) {
 						$h = $this->renderSubsectionBanner($pv, $lang, $k, new Table([]), $cats);
 						if ((Lua::truth($h) && ($h !== ''))) {
-							$banners[(Lua::len($banners) + 1)] = $h;
+							$banners[] = $h;
 						}
 					}
 				}
 			}
-			if ((Lua::len($banners) > 0)) {
-				Lua::insert($out, ('<div class="minibandeaux">' . Lua::concat($banners) . '</div>'));
+			if ((count($banners) > 0)) {
+				$out[] = ('<div class="minibandeaux">' . implode('', $banners) . '</div>');
 			}
 		}
 		if (($contenu !== '')) {
-			Lua::insert($out, $contenu);
+			$out[] = $contenu;
 		}
 		else {
 			$editForm = $this->L($lang, 'forms', 'intro_edit_title');
@@ -750,13 +744,13 @@ class ReferenceRenderer {
 			$emptyIntro = $this->L($lang, 'text', 'intro_empty_msg');
 			$emptyCat = $this->L($lang, 'text', 'intro_empty_category');
 			$link = $this->addDataLink($editForm, $pv['rawTitle'], $linkLabel, $editTT);
-			Lua::insert($out, ('<i>' . $emptyIntro . '</i>'));
+			$out[] = ('<i>' . $emptyIntro . '</i>');
 			if (($emptyCat !== '')) {
 				Lua::insert($cats, ('[[Category:' . $emptyCat . ']]'));
 			}
 		}
-		Lua::insert($out, '</div></div></div>');
-		return Lua::concat($out);
+		$out[] = '</div></div></div>';
+		return implode('', $out);
 	}
 
 	protected function wkRenderIntroSubsectionsBlock($pv = null, $lang = null, $raw = null, $cats = null) {
@@ -765,11 +759,11 @@ class ReferenceRenderer {
 			return '';
 		}
 		$lookup = $this->buildIntroSubWarningLookup($lang);
-		$out = new Table([]);
+		$out = [];
 		foreach (($items)->sequence() as $_ => $it) {
-			$out[(Lua::len($out) + 1)] = $this->wkRenderIntroSubsection($pv, $lang, $it, $cats, $lookup);
+			$out[] = $this->wkRenderIntroSubsection($pv, $lang, $it, $cats, $lookup);
 		}
-		return Lua::concat($out);
+		return implode('', $out);
 	}
 
 	protected function renderIntroduction($args = null, $pv = null, $lang = null, $cats = null) {
@@ -849,16 +843,16 @@ class ReferenceRenderer {
 		$items = (Lua::truth($v130 = (Lua::truth($v131 = $data) ? $data['items'] : $v131)) ? $v130 : new Table([]));
 		if ((($mode === 'data') && (Lua::len($items) > 0))) {
 			$ul = ((HtmlBuilder::create('ul'))->addClass('argument-list'))->addClass((Lua::truth($v132 = (Lua::truth($v133 = $isCon) ? 'is-con' : $v133)) ? $v132 : 'is-pro'));
-			$lis = new Table([]);
+			$lis = [];
 			$anyTitleWarnings = false;
 			foreach (($items)->sequence() as $i => $it) {
 				if ((Lua::truth($it['warnings']) && (Lua::trim($it['warnings']) !== ''))) {
 					$anyTitleWarnings = true;
 				}
-				Lua::insert($lis, $this->wkRenderArgumentLi($pv, $lang, $it, (Lua::truth($v134 = (Lua::truth($v135 = $isCon) ? 'con' : $v135)) ? $v134 : 'pro'), $i, $cats));
+				$lis[] = $this->wkRenderArgumentLi($pv, $lang, $it, (Lua::truth($v134 = (Lua::truth($v135 = $isCon) ? 'con' : $v135)) ? $v134 : 'pro'), $i, $cats);
 			}
-			($ul)->wikitext(Lua::concat($lis, '
-'));
+			($ul)->wikitext(implode('
+', $lis));
 			if (Lua::truth($anyTitleWarnings)) {
 				Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'refs_to_review') . ']]'));
 			}
@@ -1121,15 +1115,15 @@ class ReferenceRenderer {
 	}
 
 	protected function renderReferences($args = null, $pageVars = null, $lang = null, $categories = null, $smwPending = null, $refRaw = null) {
-		$wrap = new Table([]);
+		$wrap = [];
 		$refRaw = (Lua::truth($v174 = $refRaw) ? $v174 : new Table([]));
 		$refRaw['bibliography'] = (Lua::truth($v175 = $refRaw['bibliography']) ? $v175 : new Table([]));
 		$refRaw['webliography'] = (Lua::truth($v176 = $refRaw['webliography']) ? $v176 : new Table([]));
 		$refRaw['videography'] = (Lua::truth($v177 = $refRaw['videography']) ? $v177 : new Table([]));
-		Lua::insert($wrap, ('<h2 class="wk-icon-before wk-icon-further">' . $this->L($lang, 'text', 'further_reading_title') . '</h2>'));
+		$wrap[] = ('<h2 class="wk-icon-before wk-icon-further">' . $this->L($lang, 'text', 'further_reading_title') . '</h2>');
 		{
 			$h3 = ('<h3 id="Bibliography" class="fr-collapsible-toggle wk-icon-before wk-carret wk-icon-after wk-icon-bibliography">' . $this->L($lang, 'text', 'bibliography_title') . '</h3>');
-			$content = new Table([]);
+			$content = [];
 			$proRaw = (Lua::truth($v178 = $args['pro-bibliography']) ? $v178 : '');
 			if (($proRaw !== '')) {
 				$refRaw['bibliography']['pro'] = $this->context->expandField($proRaw, 'debate.bibliography.pro');
@@ -1154,14 +1148,14 @@ class ReferenceRenderer {
 			else {
 				$refRaw['bibliography']['neutral'] = '';
 			}
-			Lua::insert($content, $this->renderRefBlock($pageVars, $lang, 'wk-icon-argument is-pro', $this->L($lang, 'text', 'side_pro_title'), 'biblio_pro_title', $proRaw));
-			Lua::insert($content, $this->renderRefBlock($pageVars, $lang, 'wk-icon-argument is-con', $this->L($lang, 'text', 'side_con_title'), 'biblio_con_title', $conRaw));
-			Lua::insert($content, $this->renderRefBlock($pageVars, $lang, 'wk-icon-neutral mw-no-invert', $this->L($lang, 'text', 'side_neutral_title'), 'biblio_neutral_title', $neuRaw));
-			Lua::insert($wrap, ('<div class="fr-collapsible fr-collapsed">' . $h3 . '<div class="fr-collapsible-content contenu-references">' . Lua::concat($content) . '</div></div>'));
+			$content[] = $this->renderRefBlock($pageVars, $lang, 'wk-icon-argument is-pro', $this->L($lang, 'text', 'side_pro_title'), 'biblio_pro_title', $proRaw);
+			$content[] = $this->renderRefBlock($pageVars, $lang, 'wk-icon-argument is-con', $this->L($lang, 'text', 'side_con_title'), 'biblio_con_title', $conRaw);
+			$content[] = $this->renderRefBlock($pageVars, $lang, 'wk-icon-neutral mw-no-invert', $this->L($lang, 'text', 'side_neutral_title'), 'biblio_neutral_title', $neuRaw);
+			$wrap[] = ('<div class="fr-collapsible fr-collapsed">' . $h3 . '<div class="fr-collapsible-content contenu-references">' . implode('', $content) . '</div></div>');
 		}
 		{
 			$h3 = ('<h3 id="Webliography" class="fr-collapsible-toggle wk-icon-before wk-carret wk-icon-after wk-icon-webliography">' . $this->L($lang, 'text', 'webliography_title') . '</h3>');
-			$content = new Table([]);
+			$content = [];
 			$proRaw = (Lua::truth($v181 = $args['pro-webliography']) ? $v181 : '');
 			if (($proRaw !== '')) {
 				$refRaw['webliography']['pro'] = $this->context->expandField($proRaw, 'debate.webliography.pro');
@@ -1186,14 +1180,14 @@ class ReferenceRenderer {
 			else {
 				$refRaw['webliography']['neutral'] = '';
 			}
-			Lua::insert($content, $this->renderRefBlock($pageVars, $lang, 'wk-icon-argument is-pro', $this->L($lang, 'text', 'side_pro_title'), 'webliography_pro_title', $proRaw));
-			Lua::insert($content, $this->renderRefBlock($pageVars, $lang, 'wk-icon-argument is-con', $this->L($lang, 'text', 'side_con_title'), 'webliography_con_title', $conRaw));
-			Lua::insert($content, $this->renderRefBlock($pageVars, $lang, 'wk-icon-neutral mw-no-invert', $this->L($lang, 'text', 'side_neutral_title'), 'webliography_neutral_title', $neuRaw));
-			Lua::insert($wrap, ('<div class="fr-collapsible fr-collapsed">' . $h3 . '<div class="fr-collapsible-content contenu-references">' . Lua::concat($content) . '</div></div>'));
+			$content[] = $this->renderRefBlock($pageVars, $lang, 'wk-icon-argument is-pro', $this->L($lang, 'text', 'side_pro_title'), 'webliography_pro_title', $proRaw);
+			$content[] = $this->renderRefBlock($pageVars, $lang, 'wk-icon-argument is-con', $this->L($lang, 'text', 'side_con_title'), 'webliography_con_title', $conRaw);
+			$content[] = $this->renderRefBlock($pageVars, $lang, 'wk-icon-neutral mw-no-invert', $this->L($lang, 'text', 'side_neutral_title'), 'webliography_neutral_title', $neuRaw);
+			$wrap[] = ('<div class="fr-collapsible fr-collapsed">' . $h3 . '<div class="fr-collapsible-content contenu-references">' . implode('', $content) . '</div></div>');
 		}
 		{
 			$h3 = ('<h3 id="Videography" class="fr-collapsible-toggle wk-icon-before wk-carret wk-icon-after wk-icon-videography">' . $this->L($lang, 'text', 'videography_title') . '</h3>');
-			$content = new Table([]);
+			$content = [];
 			$proRaw = (Lua::truth($v184 = $args['pro-videography']) ? $v184 : '');
 			if (($proRaw !== '')) {
 				$refRaw['videography']['pro'] = $this->context->expandField($proRaw, 'debate.videography.pro');
@@ -1218,12 +1212,12 @@ class ReferenceRenderer {
 			else {
 				$refRaw['videography']['neutral'] = '';
 			}
-			Lua::insert($content, $this->renderRefBlock($pageVars, $lang, 'wk-icon-argument is-pro', $this->L($lang, 'text', 'side_pro_title'), 'videography_pro_title', $proRaw));
-			Lua::insert($content, $this->renderRefBlock($pageVars, $lang, 'wk-icon-argument is-con', $this->L($lang, 'text', 'side_con_title'), 'videography_con_title', $conRaw));
-			Lua::insert($content, $this->renderRefBlock($pageVars, $lang, 'wk-icon-neutral mw-no-invert', $this->L($lang, 'text', 'side_neutral_title'), 'videography_neutral_title', $neuRaw));
-			Lua::insert($wrap, ('<div class="fr-collapsible fr-collapsed">' . $h3 . '<div class="fr-collapsible-content contenu-references">' . Lua::concat($content) . '</div></div>'));
+			$content[] = $this->renderRefBlock($pageVars, $lang, 'wk-icon-argument is-pro', $this->L($lang, 'text', 'side_pro_title'), 'videography_pro_title', $proRaw);
+			$content[] = $this->renderRefBlock($pageVars, $lang, 'wk-icon-argument is-con', $this->L($lang, 'text', 'side_con_title'), 'videography_con_title', $conRaw);
+			$content[] = $this->renderRefBlock($pageVars, $lang, 'wk-icon-neutral mw-no-invert', $this->L($lang, 'text', 'side_neutral_title'), 'videography_neutral_title', $neuRaw);
+			$wrap[] = ('<div class="fr-collapsible fr-collapsed">' . $h3 . '<div class="fr-collapsible-content contenu-references">' . implode('', $content) . '</div></div>');
 		}
-		return Lua::concat($wrap);
+		return implode('', $wrap);
 	}
 
 	protected function wkBuildWikiUrl($lang = null, $prefixKey = null, $labelKey = null) {

@@ -4,7 +4,7 @@
 $repeats = max(5, (int)(getenv('WD_NATIVE_BENCHMARK_REPEATS') ?: 15));
 $scenarios = [];
 foreach (require __DIR__ . '/nativeOptimizationCases.php' as $case) {
-	if (str_contains($case['name'], 'rich native')) { $scenarios[$case['name']] = $case; }
+	if (str_contains($case['name'], 'rich native') || str_contains($case['name'], 'measured lists')) { $scenarios[$case['name']] = $case; }
 }
 foreach (['en', 'fr'] as $lang) {
 	$scenarios['parents ' . $lang] = ['title' => 'WD FS related argument',
@@ -37,6 +37,7 @@ foreach ($scenarios as $name => $case) {
 		foreach ($afterProfile as $i => &$event) {
 			foreach ($event['semantic_fallbacks_skipped'] ?? [] as $origin => $skipped) {
 				check(in_array($origin, ['debate-parents', 'argument-parents'], true) && $skipped === 2, 'Only a proven empty parent union can skip its two fallbacks');
+				$skipped -= $beforeProfile[$i]['semantic_fallbacks_skipped'][$origin] ?? 0;
 				foreach (['read', 'query', 'result'] as $phase) {
 					same($event['semantic'][$origin][$phase]['calls'] + $skipped, $beforeProfile[$i]['semantic'][$origin][$phase]['calls'], 'Exact certified semantic call reduction');
 					$event['semantic'][$origin][$phase]['calls'] += $skipped;
@@ -44,6 +45,7 @@ foreach ($scenarios as $name => $case) {
 				$event['stages']['semantic-query']['calls'] += $skipped;
 			}
 			unset($event['semantic_fallbacks_skipped']);
+			unset($beforeProfile[$i]['semantic_fallbacks_skipped']);
 		}
 		unset($event);
 		same($beforeProfile, $afterProfile,
