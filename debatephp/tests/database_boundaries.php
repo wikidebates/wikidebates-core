@@ -74,6 +74,11 @@ namespace {
 	$events = [];
 	$telemetry = new Telemetry(true, true, [], static function($event) use (&$events): void { $events[] = $event; });
 	$reflection->getProperty('telemetry')->setValue($context, $telemetry);
+	$renderer = new \MediaWiki\Extension\DebatePHP\ArgumentReferenceRenderer($context);
+	$rendererReflection = new ReflectionClass($renderer);
+	$queryCache = $rendererReflection->getMethod('cacheMake')->invoke($renderer, 250);
+	$rendererReflection->getProperty('SMW_ASK_CACHE')->setValue($renderer, $queryCache);
+	$ask = $rendererReflection->getMethod('smwAskSafe');
 	$operations = [
 		'query' => static fn() => $context->smwAsk(new Table([1 => '[[SECRET]]'])),
 		'set' => static fn() => $context->smwSet(new Table(['SECRET' => 'VALUE'])),
@@ -81,6 +86,7 @@ namespace {
 		'variable write' => static fn() => $context->variableSet('SECRET', 'VALUE'),
 		'variable read' => static fn() => $context->variableGet('SECRET'),
 		'pcall' => static fn() => Lua::pcall('boundaryFailure'),
+		'cached query' => static fn() => $ask->invoke($renderer, new Table([1 => '[[SECRET]]']), 'cards'),
 		'recent changes' => static fn() => RecentDebateChanges::render($parser, new PPFrame, ['test'])
 	];
 	$failures = [new \Wikimedia\Rdbms\DBError('SECRET SQL'), new \Wikimedia\Rdbms\DBTransactionStateError('SECRET SQL'), new PDOException('SECRET SQL')];
@@ -98,6 +104,7 @@ namespace {
 			$count++;
 		}
 	}
+	same([], $queryCache['data']->values, 'SQL exceptions are not memoized as empty query results');
 	$GLOBALS['boundaryFailure'] = new RuntimeException('Recoverable');
 	foreach ($operations as $name => $operation) {
 		$value = $operation();

@@ -1,0 +1,55 @@
+<?php
+
+/** Paired, shuffled, warm parser benchmarks with the genuine SMW stack. */
+$repeats = max(5, (int)(getenv('WD_NATIVE_BENCHMARK_REPEATS') ?: 15));
+$scenarios = [];
+foreach (require __DIR__ . '/nativeOptimizationCases.php' as $case) {
+	if (str_contains($case['name'], 'rich native')) { $scenarios[$case['name']] = $case; }
+}
+foreach (['en', 'fr'] as $lang) {
+	$scenarios['parents ' . $lang] = ['title' => 'WD FS related argument',
+		'text' => '{{#argument:render|lang=' . $lang . '|summary=Summary|creation-date=2026-01-01}}'];
+}
+$scenarios['initialization'] = ['title' => 'WD FS orphan initialization',
+	'text' => '{{#argument:render|lang=en|summary=Summary|initialization=Pro argument@42|creation-date=2020-01-01}}'];
+$scenarios['cards'] = ['title' => 'WD FS related argument',
+	'text' => '{{#argument:render|lang=en|summary=Summary|dedicated-debate=WD FS parent debate en|creation-date=2026-01-01}}'];
+$benchmark = ['repeats' => $repeats, 'samples_ms' => [], 'profiles' => [], 'profile_samples_ms' => []];
+mt_srand(803);
+foreach ($scenarios as $name => $case) {
+	foreach (['before-reference', 'before-optimized', 'reference', 'optimized'] as $mode) {
+		fsRender($case['title'], $case['text'], $mode);
+		$plain = fsRender($case['title'], $case['text'], $mode);
+		$profiled = fsRender($case['title'], $case['text'], $mode, true);
+		$benchmark['profiles'][$name][$mode] = $profiled['profiles'];
+		unset($plain['milliseconds'], $profiled['milliseconds'], $plain['profiles'], $profiled['profiles']);
+		same($plain, $profiled, 'Profiling cannot change rendered output or properties: ' . $name . '/' . $mode);
+	}
+	for ($repeat = 0; $repeat < $repeats; $repeat++) {
+		$modes = ['before-reference', 'before-optimized', 'reference', 'optimized'];
+		shuffle($modes);
+		foreach ($modes as $mode) {
+			$benchmark['samples_ms'][$name][$mode][] = fsRender($case['title'], $case['text'], $mode)['milliseconds'];
+		}
+	}
+	for ($repeat = 0; $repeat < $repeats; $repeat++) {
+		$modes = ['reference', 'optimized']; shuffle($modes);
+		foreach ($modes as $mode) {
+			$benchmark['profile_samples_ms'][$name][$mode][] = fsRender($case['title'], $case['text'], $mode, true)['milliseconds'];
+		}
+	}
+}
+$origins = [];
+foreach ($benchmark['profiles'] as $modes) {
+	foreach (['reference', 'optimized'] as $mode) {
+		foreach ($modes[$mode] as $event) {
+			foreach ($event['semantic'] as $origin => $phases) { $origins[$origin] = true; }
+			check(!str_contains(json_encode($event), 'https://example.test'), 'Semantic profile omits content URLs');
+		}
+	}
+}
+foreach (['debate-parents', 'argument-parents', 'breadcrumb', 'cards', 'initialization', 'writes'] as $origin) {
+	check(isset($origins[$origin]), 'Real profile observes origin: ' . $origin);
+}
+$report['native_optimization'] = $benchmark;
+echo "Paired native optimization benchmarks and genuine SMW profile assertions: passed\n";

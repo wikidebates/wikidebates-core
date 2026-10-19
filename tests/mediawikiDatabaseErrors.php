@@ -16,9 +16,9 @@ try {
 } catch (DBError $e) {
 	$failure = $e;
 }
-check($failure instanceof DBError, 'Failed real SQLite SELECT propagates through pcall');
+check($failure instanceof DBError, 'Failed real SQL SELECT propagates through pcall');
 foreach ([$failure, new DBTransactionStateError($db, 'Synthetic transaction state failure'), new RuntimeException('Wrapped', 0, $failure)] as $exception) {
 	try { DatabaseFailure::rethrow($exception); throw new LogicException('Lost SQL failure'); }
 	catch (Throwable $e) { same($exception, $e, 'Original real MediaWiki exception preserved'); }
 }
-echo "Real SQLite query error, MediaWiki 1.43 DBTransactionStateError and wrapped SQL cause: passed\n";
+echo "Real " . ($testSocket === null ? 'SQLite' : 'MariaDB') . " query error, MediaWiki 1.43 DBTransactionStateError and wrapped SQL cause: passed\n";

@@ -8,6 +8,7 @@ use MediaWiki\Parser\ParserOptions;
 use MediaWiki\Parser\ParserOutputLinkTypes;
 use MediaWiki\Title\Title;
 
+require __DIR__ . '/nativeOptimizationSupport.php';
 $resources = dirname(__DIR__) . '/debatephp/resources/';
 foreach (['Module:Debate' => 'Module-Debate.reference.lua', 'Module:Argument' => 'Module-Argument.reference.lua',
 	'Module:WD/I18N' => 'WD-I18N.reference.lua', 'Module:WD/I18N/Data' => 'WD-I18N-Data.snapshot.lua'] as $title => $file) {
@@ -46,9 +47,11 @@ foreach (['en', 'fr'] as $lang) {
 }
 fsFlush();
 
-function fsRender(string $title, string $source, string $mode): array {
-	$GLOBALS['wgDebatePHPMode'] = $mode === 'optimized' ? 'optimized' : 'reference';
+function fsRender(string $title, string $source, string $mode, bool $profile = false): array {
+	$GLOBALS['wgDebatePHPMode'] = str_ends_with($mode, 'optimized') ? 'optimized' : 'reference';
 	$parser = MediaWikiServices::getInstance()->getParserFactory()->create();
+	$events = [];
+	nativeOptimizationHooks($parser, $mode, $profile, $events);
 	$options = ParserOptions::newFromAnon();
 	$options->setTimestamp('20261018000000');
 	$normal = $options->getTemplateCallback();
@@ -81,7 +84,7 @@ function fsRender(string $title, string $source, string $mode): array {
 		'links' => array_map(static fn($entry) => [$entry['link']->getNamespace(), $entry['link']->getDBkey(), $entry['pageid']], $out->getLinkList(ParserOutputLinkTypes::LOCAL)),
 		'externalLinks' => $out->getExternalLinks(), 'languageLinks' => $out->getLanguageLinks(),
 		'modules' => $out->getModules(), 'flags' => $out->getAllFlags(), 'expiry' => $out->getCacheExpiry(),
-		'semantic_snapshot' => fsSnapshot($data), 'variables' => $variables
+		'semantic_snapshot' => fsSnapshot($data), 'variables' => $variables, 'profiles' => $events
 	];
 }
 
@@ -92,6 +95,7 @@ function fsSource(string $source, string $mode): string {
 }
 
 $cases = json_decode(file_get_contents(dirname(__DIR__) . '/debatephp/tests/fixtures/debate-v070.json'), true, 512, JSON_THROW_ON_ERROR);
+$cases = array_merge($cases, require __DIR__ . '/nativeOptimizationCases.php');
 foreach ((static fn() => require __DIR__ . '/renderCases.php')() as $name => $text) {
 	$cases[] = ['title' => 'WD FS ' . $name, 'text' => $text];
 }
@@ -119,8 +123,16 @@ foreach ($cases as $case) {
 	if (!$title) { throw new RuntimeException('Invalid render fixture: ' . $case['title']); }
 	if (!$title->exists()) { fsSave($case['title'], 'Stable page identity for the isolated render comparison'); fsFlush(); }
 	$row = ['title' => $case['title'], 'name' => $case['name'] ?? $case['title'], 'full_stack' => true, 'variants' => []];
-	foreach (['lua', 'reference', 'optimized'] as $mode) {
+	$modes = getenv('WD_OPTIMIZATION_BASELINE') ? ['lua', 'reference', 'optimized', 'before-reference', 'before-optimized'] : ['lua', 'reference', 'optimized'];
+	foreach ($modes as $mode) {
 		$row['variants'][$mode] = fsRender($case['title'], $case['text'], $mode);
+	}
+	if (getenv('WD_OPTIMIZATION_BASELINE')) {
+		foreach (['reference', 'optimized'] as $mode) {
+			$before = $row['variants']['before-' . $mode]; $after = $row['variants'][$mode];
+			unset($before['milliseconds'], $after['milliseconds']);
+			same($before, $after, 'Exact native before/after HTML, JSON-LD, semantics, variables and dependencies: ' . $row['name'] . '/' . $mode);
+		}
 	}
 	if (str_contains($row['name'], 'semantic parent graph')) {
 		$props = $row['variants']['reference']['semantic_snapshot']['properties'];
@@ -134,13 +146,25 @@ foreach ($cases as $case) {
 $persisted = 0;
 foreach ($cases as $index => $case) {
 	$name = $case['name'] ?? $case['title'];
-	if (!str_contains($name, 'complete debate') && !str_contains($name, 'complete argument') && !str_contains($name, 'semantic parent graph')) { continue; }
-	foreach (['lua', 'reference', 'optimized'] as $mode) {
+	if (!str_contains($name, 'complete debate') && !str_contains($name, 'complete argument') && !str_contains($name, 'semantic parent graph') && !str_contains($name, 'rich native')) { continue; }
+	$modes = getenv('WD_OPTIMIZATION_BASELINE') ? ['lua', 'reference', 'optimized', 'before-reference', 'before-optimized'] : ['lua', 'reference', 'optimized'];
+	foreach ($modes as $mode) {
 		fsSave($case['title'], 'Reset semantic state ' . $mode);
 		fsFlush();
-		$GLOBALS['wgDebatePHPMode'] = $mode === 'optimized' ? 'optimized' : 'reference';
-		fsSave($case['title'], fsSource($case['text'], $mode));
-		fsFlush();
+		$GLOBALS['wgDebatePHPMode'] = str_ends_with($mode, 'optimized') ? 'optimized' : 'reference';
+		$source = fsSource($case['text'], $mode);
+		$isBefore = str_starts_with($mode, 'before-');
+		if ($isBefore) {
+			$GLOBALS['wdTestPersistBaseline'] = true;
+			$installBefore($services->getParser());
+		}
+		try { fsSave($case['title'], $source); fsFlush(); }
+		finally {
+			if ($isBefore) {
+				$GLOBALS['wdTestPersistBaseline'] = false;
+				\MediaWiki\Extension\DebatePHP\Hooks::onParserFirstCallInit($services->getParser());
+			}
+		}
 		$stored = fsStored($case['title']);
 		same($results[$index]['variants'][$mode]['semantic_snapshot'], $stored, 'Rendered properties persist unchanged: ' . $name . '/' . $mode);
 		$results[$index]['variants'][$mode]['stored_semantics'] = $stored;
@@ -176,6 +200,7 @@ foreach (['debate' => $cases[1], 'argument' => ['title' => 'WD FS related argume
 	}
 }
 $report['parse_timings_ms'] = $timings;
+if (getenv('WD_OPTIMIZATION_BASELINE')) { require __DIR__ . '/nativeOptimizationBenchmarks.php'; }
 fsFlush();
 $report['queues_empty'] = !MediaWikiServices::getInstance()->getJobQueueGroup()->queuesHaveJobs();
 check($report['queues_empty'], 'All isolated job queues are empty at completion');
@@ -183,3 +208,4 @@ if (getenv('WD_FULLSTACK_RENDER_OUTPUT')) {
 	file_put_contents(getenv('WD_FULLSTACK_RENDER_OUTPUT'), json_encode($results, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
 }
 $report['render_cases'] = count($results);
+$report['native_before_after_comparisons'] = getenv('WD_OPTIMIZATION_BASELINE') ? count($results) * 2 : 0;

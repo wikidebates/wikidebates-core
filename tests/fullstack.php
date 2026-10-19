@@ -20,7 +20,7 @@ foreach ([SMW\SQLStore\SQLStore::class, SMW\Scribunto\LibraryFactory::class, Liq
 	check(str_starts_with(realpath($file), realpath(MW_INSTALL_PATH . '/extensions') . '/'), 'Class belongs to an installed extension: ' . $class);
 	check(!str_contains($file, 'Double'), 'No extension double: ' . $class);
 }
-same('sqlite', MediaWikiServices::getInstance()->getMainConfig()->get('DBtype'), 'Isolated SQLite database');
+same($testSocket === null ? 'sqlite' : 'mysql', MediaWikiServices::getInstance()->getMainConfig()->get('DBtype'), 'Isolated test database');
 same($temporary, MediaWikiServices::getInstance()->getMainConfig()->get('SQLiteDataDir'), 'Database belongs to this test invocation');
 same('reference', MediaWikiServices::getInstance()->getMainConfig()->get('DebatePHPMode'), 'Reference remains the default');
 $store = ServicesFactory::getInstance()->getStore();
@@ -50,7 +50,8 @@ $jobs = fsFlush();
 \Wikimedia\ScopedCallback::consume($guard);
 $after = fsValues('WD FS probe', 'WD FS Text');
 check(count($after) === 1 && $after[0][1] === 'first', 'Deferred semantic write persisted');
-$report = ['tested_at_utc' => gmdate('c'), 'php' => PHP_VERSION, 'sqlite' => SQLite3::version()['versionString'],
+$report = ['tested_at_utc' => gmdate('c'), 'php' => PHP_VERSION, 'sqlite' => $testSocket === null ? SQLite3::version()['versionString'] : null,
+	'database' => MediaWikiServices::getInstance()->getConnectionProvider()->getPrimaryDatabase()->getServerVersion(),
 	'mediawiki' => MW_VERSION, 'extensions' => array_map(static fn($info) => $info['version'] ?? null, $registry->getAllThings()),
 	'smw' => SMW_VERSION, 'semantic_scribunto' => SMW_SCRIBUNTO_VERSION,
 	'baseline_deferred_write' => ['pending' => $pending, 'before' => $before, 'after' => $after], 'writes' => []];
@@ -121,6 +122,7 @@ foreach (['reference', 'optimized'] as $mode) {
 	same(fsCanonical($luaQuery), fsCanonical($native), 'Real semantic query matches Lua: ' . $mode);
 }
 $report['query'] = $luaQuery;
+require __DIR__ . '/fullstackDirectApiStudy.php';
 
 // Reparse through SMW's actual queued update job, not only LinksUpdate's callbacks.
 $beforeJob = fsStored('WD FS query target');
@@ -152,6 +154,7 @@ require __DIR__ . '/fullstackRender.php';
 require __DIR__ . '/fullstackParentLink.php';
 $report['queues_empty'] = !$services->getJobQueueGroup()->queuesHaveJobs();
 check($report['queues_empty'], 'Queues remain empty after the automatic parent hook');
+require __DIR__ . '/fullstackDatabaseErrors.php';
 if (getenv('WD_FULLSTACK_OUTPUT')) {
 	file_put_contents(getenv('WD_FULLSTACK_OUTPUT'), json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) . "\n");
 }
