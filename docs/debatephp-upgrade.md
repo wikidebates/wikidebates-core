@@ -200,11 +200,14 @@ Aucun pourcentage d’accélération globale en production n’en est déduit.
 Aucune nouvelle régression de rendu ou de métadonnées n’est détectée dans les
 corpus exécutés. Cela ne prouve pas l’équivalence sur toutes les pages du site.
 
-Les appels sémantiques sont vérifiés par des doubles et par la conservation de
-leur chemin d’adaptation. Les écritures différées et valeurs persistées dans un
-vrai magasin SMW restent à valider sur une copie de la base du site.
-VariablesLua n’a pas été chargé réellement ici ; ses appels et leur volatilité
-sont couverts par des doubles, et Variables a été chargé dans le banc réel.
+Lors de ce premier bilan, les appels sémantiques étaient vérifiés par des doubles
+et par la conservation de leur chemin d’adaptation. La validation complémentaire
+avec SMW 6.0.1, SemanticScribunto 2.3.3 et VariablesLua 1.7.0 réels vérifie maintenant
+les écritures différées, lectures, variables et rendus sur un SQLStore SQLite neuf.
+Voir le [rapport complémentaire](debatephp-fullstack-validation.md) pour ses
+résultats et les contrôles restant à réaliser avec des données représentatives.
+Le banc historique utilisait des doubles VariablesLua ; le banc complémentaire
+charge maintenant cette extension et vérifie les échanges effectifs avec PHP.
 
 Le retrait des gardes Lua est volontaire et ne doit pas masquer une modification
 future des anciennes pages : celles-ci ne sont plus l’autorité du rendu PHP.

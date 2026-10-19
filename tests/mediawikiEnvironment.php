@@ -42,13 +42,24 @@ function wikidebatesTestConfig($settings): void {
 		'JobRunRate' => 0,
 		'ShowExceptionDetails' => true
 	]);
+	if (defined('WD_FULLSTACK_TEST')) {
+		// These paths always belong to the new temporary SQLite installation above.
+		$GLOBALS['smwgConfigFileDir'] = $temporary;
+		$GLOBALS['smwgEnabledDeferredUpdate'] = true;
+		$GLOBALS['smwgEnableUpdateJobs'] = true;
+		$GLOBALS['wgScribuntoDefaultEngine'] = 'luastandalone';
+	}
 	foreach (array_filter(explode(',', getenv('WD_TEST_EXTENSIONS') ?: '')) as $extension) {
-		if (!in_array($extension, ['Scribunto', 'ParserFunctions', 'Cite', 'PageForms', 'ShortDescription', 'Variables', 'VariablesLua', 'WikiSEO', 'HTMLTags'], true)) {
+		if (!in_array($extension, ['Scribunto', 'ParserFunctions', 'Cite', 'PageForms', 'ShortDescription', 'Variables', 'VariablesLua', 'WikiSEO', 'HTMLTags', 'SemanticMediaWiki', 'SemanticScribunto'], true)) {
 			throw new RuntimeException('Unsupported test extension: ' . $extension);
 		}
 		wfLoadExtension($extension);
 	}
 	wfLoadExtension('Wikidebates', dirname(__DIR__) . '/extension.json');
+}
+if (defined('WD_FULLSTACK_TEST') && getenv('WD_FULLSTACK_AUTOLOAD')) {
+	// Optional dependency autoloader for manual isolated SMW installations.
+	require getenv('WD_FULLSTACK_AUTOLOAD');
 }
 require MW_INSTALL_PATH . '/includes/BootstrapHelperFunctions.php';
 require MW_INSTALL_PATH . '/includes/Setup.php';

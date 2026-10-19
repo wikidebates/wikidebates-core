@@ -4,6 +4,7 @@ namespace MediaWiki\Extension\Wikidebates;
 
 use CommentStoreComment;
 use MediaWiki\Content\ContentHandler;
+use MediaWiki\Content\TextContent;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Revision\SlotRecord;
 
@@ -199,7 +200,7 @@ class AutoParentLink {
 			return;
 		}
 
-		$text = ContentHandler::getContentText( $content );
+		$text = $content instanceof TextContent ? $content->getText() : null;
 		if ( $text === null || $text === '' ) {
 			self::logProblem( 'Texte principal vide pour page=' . $title->getPrefixedText() );
 			return;
@@ -287,7 +288,7 @@ class AutoParentLink {
 			return;
 		}
 
-		$parentText = ContentHandler::getContentText( $parentContent );
+		$parentText = $parentContent instanceof TextContent ? $parentContent->getText() : null;
 		if ( $parentText === null || $parentText === '' ) {
 			self::logProblem( 'Texte parent vide pour parent=' . $parentTitle->getPrefixedText() );
 			return;

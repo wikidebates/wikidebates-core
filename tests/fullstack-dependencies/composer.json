@@ -1,0 +1,43 @@
+{
+	"name": "wikidebates/isolated-fullstack-tests",
+	"require": {
+		"php": ">=8.1",
+		"ext-mbstring": "*",
+		"composer/installers": "^2.2.0|^1.0.1",
+		"psr/log": "~1.0",
+		"mediawiki/parser-hooks": "~1.4",
+		"param-processor/param-processor": "~1.2",
+		"serialization/serialization": "~3.2|~4.0",
+		"onoi/message-reporter": "~1.0",
+		"onoi/cache": "~1.2",
+		"onoi/event-dispatcher": "~1.0",
+		"onoi/blob-store": "~1.2",
+		"mediawiki/http-request": "~2.0|~1.1",
+		"onoi/callback-container": "~2.0",
+		"symfony/css-selector": "^5|^4|^3.3",
+		"seld/jsonlint": "^1.7",
+		"justinrainbow/json-schema": "~5.2",
+		"jeroen/file-fetcher": "^6|^5|^4.4",
+		"wikimedia/cdb": "^3|^2|^1",
+		"wikimedia/textcat": "^2|^1.1"
+	},
+	"autoload": {
+		"psr-4": {
+			"SMW\\": "../mediawiki/extensions/SemanticMediaWiki/src/",
+			"SMW\\Maintenance\\": "../mediawiki/extensions/SemanticMediaWiki/maintenance/",
+			"Onoi\\Tesa\\": "../mediawiki/extensions/SemanticMediaWiki/Tesa/src/"
+		},
+		"classmap": [
+			"../mediawiki/extensions/SemanticMediaWiki/includes"
+		],
+		"files": [
+			"../mediawiki/extensions/SemanticMediaWiki/includes/GlobalFunctions.php"
+		]
+	},
+	"config": {
+		"allow-plugins": false,
+		"preferred-install": "source",
+		"prepend-autoloader": false
+	},
+	"repositories": []
+}

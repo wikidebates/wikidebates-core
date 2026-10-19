@@ -82,6 +82,20 @@ fin d’exécution. Il ne lit ni n’écrit `LocalSettings.php` et n’utilise a
 existante. PDO SQLite et les extensions PHP normales de MediaWiki sont requis.
 Sans `WD_TEST_EXTENSIONS`, il vérifie que seule Wikidebates est chargée.
 
+Avec les vraies extensions SMW, SemanticScribunto et VariablesLua installées
+dans ce laboratoire, la validation des écritures différées, requêtes, variables
+et rendus Lua/PHP se lance avec :
+
+```sh
+MW_INSTALL_PATH=/path/to/mediawiki-1.43 WD_FULLSTACK_AUTOLOAD=/path/to/dependencies/vendor/autoload.php python3 tests/fullstack.py --php php --output /tmp/wikidebates-fullstack.json
+```
+
+Versions testées, installation isolée reproductible, résultats, mesures et
+contrôles restant à effectuer figurent dans le
+[rapport de validation avec les extensions réelles](docs/debatephp-fullstack-validation.md).
+L'autoload supplémentaire est optionnel si les dépendances SMW sont déjà
+fournies par le `vendor/` du laboratoire.
+
 Les oracles hors ligne nécessitent Python, `lupa` et `luaparser` :
 
 ```sh

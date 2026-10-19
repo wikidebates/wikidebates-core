@@ -15,7 +15,7 @@ def legacy_graph(x):
 rows=json.loads(pathlib.Path(sys.argv[1]).read_text());bad=[];corrections=0;tested=0
 for row in rows:
 	name=row.get('name',row['title']);want=row['variants']['lua']
-	if 'scribunto-error' in want['html']:bad.append([name,'lua','oracle error']);continue
+	if 'scribunto-error' in want['html'] or 'Lua error' in want['html']:bad.append([name,'lua','oracle error']);continue
 	for mode in ['reference','optimized']:
 		tested+=1;got=row['variants'][mode];dif=[]
 		if base.html_key(visible(want['html']))!=base.html_key(visible(got['html'])):dif.append('visible HTML')
@@ -37,6 +37,9 @@ for row in rows:
 		if 'semantic' in want:
 			from collections import Counter
 			if [Counter(x) for x in want['semantic']]!=[Counter(x) for x in got['semantic']]:dif.append('SMW values')
+		for key in ['semantic_snapshot','variables','stored_semantics']:
+			if key in want or key in got:
+				if want.get(key)!=got.get(key):dif.append(key)
 		if dif:bad.append([name,mode,dif])
 report={'cases':len(rows),'comparisons':tested,'passed':not bad,'failures':bad,'jsonld_encoding_corrections':corrections,
 	'comparison':'Visible output and metadata unchanged except removal of obsolete Lua source dependencies; JSON nodes checked against Lua after reproducing its old escaping on the new raw values'}
