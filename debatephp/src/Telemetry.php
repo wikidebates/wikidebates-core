@@ -11,12 +11,37 @@ final class Telemetry {
 	private array $stages = [];
 	private array $counters = ['preprocess_executed' => 0, 'preprocess_cache_hits' => 0, 'native_cache_hits' => 0, 'literal_fields' => 0];
 	private array $preprocessing = [];
+	private array $semantic = [];
+	private array $semanticCacheHits = [];
 	public function __construct(bool $profiling, bool $diagnostics, array $context = [], ?callable $sink = null) {
 		$this->profiling = $profiling; $this->diagnostics = $diagnostics;
 		$this->context = $context; $this->sink = $sink === null ? null : \Closure::fromCallable($sink);
 		$this->started = $this->start();
 	}
 	public function start(): ?int { return $this->profiling ? hrtime(true) : null; }
+	public function isProfiling(): bool { return $this->profiling; }
+	private function semanticOrigin(string $origin): string {
+		return in_array($origin, ['debate-parents', 'argument-parents', 'breadcrumb', 'cards', 'initialization', 'writes', 'other'], true) ? $origin : 'other';
+	}
+	/** read includes query + result; write measures scheduling, not deferred persistence. */
+	public function semanticFinish(string $origin, string $phase, ?int $started, bool $failed = false): void {
+		if ($started === null) { return; }
+		$origin = $this->semanticOrigin($origin);
+		$phase = in_array($phase, ['read', 'query', 'result', 'write'], true) ? $phase : 'read';
+		$duration = hrtime(true) - $started;
+		$entry = &$this->semantic[$origin][$phase];
+		$entry ??= ['calls' => 0, 'failures' => 0, 'nanoseconds' => 0, 'max_nanoseconds' => 0];
+		$entry['calls']++;
+		$entry['failures'] += (int)$failed;
+		$entry['nanoseconds'] += $duration;
+		$entry['max_nanoseconds'] = max($entry['max_nanoseconds'], $duration);
+	}
+	public function semanticCacheHit(string $origin, string $layer): void {
+		if (!$this->profiling) { return; }
+		$origin = $this->semanticOrigin($origin);
+		$layer = in_array($layer, ['query', 'titles', 'card'], true) ? $layer : 'query';
+		$this->semanticCacheHits[$origin][$layer] = ($this->semanticCacheHits[$origin][$layer] ?? 0) + 1;
+	}
 	public function count(string $name): void {
 		if ($this->profiling) { $this->counters[$name] = ($this->counters[$name] ?? 0) + 1; }
 	}
@@ -60,9 +85,17 @@ final class Telemetry {
 		foreach ($this->preprocessing as $reason => $value) {
 			$preprocessing[$reason] = ['calls' => $value['calls'], 'milliseconds' => round($value['nanoseconds'] / 1e6, 4)];
 		}
+		$semantic = [];
+		foreach ($this->semantic as $origin => $phases) {
+			foreach ($phases as $phase => $entry) {
+				$semantic[$origin][$phase] = ['calls' => $entry['calls'], 'failures' => $entry['failures'],
+					'milliseconds' => round($entry['nanoseconds'] / 1e6, 4), 'max_ms' => round($entry['max_nanoseconds'] / 1e6, 4)];
+			}
+		}
 		$this->emit(['event' => 'profile', 'total_ms' => round((hrtime(true) - $this->started) / 1e6, 4),
 			'render_other_ms' => round($other / 1e6, 4), 'stages' => $stages,
-			'counters' => $this->counters, 'preprocessing' => $preprocessing]);
+			'counters' => $this->counters, 'preprocessing' => $preprocessing,
+			'semantic' => $semantic, 'semantic_cache_hits' => $this->semanticCacheHits]);
 	}
 	private function emit(array $event): void {
 		try {

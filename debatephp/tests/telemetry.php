@@ -21,4 +21,17 @@ if (count($events) !== 2 || $events[1]['stages']['messages']['calls'] !== 1
 }
 $broken = new Telemetry(true, true, [], static function() { throw new RuntimeException('Log unavailable'); });
 $broken->problem('semantic', 'exception'); $broken->report();
+$silent->semanticFinish('SECRET', 'read', $silent->start());
+$silent->semanticCacheHit('SECRET', 'query');
+$silent->report();
+if (count($events) !== 2) { throw new RuntimeException('Disabled SMW profiling emitted data'); }
+$safe = new Telemetry(true, false, [], $sink);
+$safe->semanticFinish('SECRET', 'SECRET', $safe->start(), true);
+$safe->semanticCacheHit('SECRET', 'SECRET');
+$safe->report();
+$semantic = $events[2]['semantic']['other']['read'];
+if ($semantic['calls'] !== 1 || $semantic['failures'] !== 1 || $semantic['max_ms'] !== $semantic['milliseconds']
+	|| $events[2]['semantic_cache_hits']['other']['query'] !== 1 || str_contains(json_encode($events), 'SECRET')) {
+	throw new RuntimeException('SMW profiling counts, maxima or origin allowlist failed');
+}
 echo "Disabled logging, actual/failed preprocessing counts, cache hits, omitted values and failing log sink: passed\n";

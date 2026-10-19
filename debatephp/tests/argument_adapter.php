@@ -178,5 +178,37 @@ namespace {
 	}
 	try { Hooks::argument(new Parser, new PPFrame, ['unknown']); $check(false,'Unknown entry accepted'); }
 	catch (\InvalidArgumentException $e) { $check(str_contains($e->getMessage(),'#argument'), 'Wrong argument entry error'); }
+	$events = [];
+	$profile = new \MediaWiki\Extension\DebatePHP\Telemetry(true, false, [], static function($event) use (&$events): void { $events[] = $event; });
+	$profiled = new MediaWikiContext(new Parser, new PPFrame, [], false, false, $profile, 'Argument');
+	$renderer = new \MediaWiki\Extension\DebatePHP\ArgumentReferenceRenderer($profiled);
+	$reflection = new \ReflectionClass($renderer);
+	$makeCache = $reflection->getMethod('cacheMake');
+	foreach (['SMW_ASK_CACHE', 'SMW_TITLES_CACHE', 'CARD_CACHE'] as $name) {
+		$reflection->getProperty($name)->setValue($renderer, $makeCache->invoke($renderer, 250));
+	}
+	$ask = $reflection->getMethod('smwAskSafe');
+	$ask->invoke($renderer, new Table([1 => '[[SECRET]]']), 'debate-parents');
+	$ask->invoke($renderer, new Table([1 => '[[SECRET]]']), 'argument-parents');
+	$titles = $reflection->getMethod('smwAskTitles');
+	$titles->invoke($renderer, new Table([1 => '[[SECRET2]]']), 200, 'breadcrumb');
+	$titles->invoke($renderer, new Table([1 => '[[SECRET2]]']), 200, 'breadcrumb');
+	LibraryFactory::$fail = true;
+	$ask->invoke($renderer, new Table([1 => '[[SECRET3]]']), 'cards');
+	$ask->invoke($renderer, new Table([1 => '[[SECRET3]]']), 'cards');
+	LibraryFactory::$fail = false;
+	$profiled->smwAsk(new Table([1 => '[[SECRET4]]']));
+	$profiled->smwSet(new Table(['SECRET' => 'VALUE']));
+	$profile->report();
+	$event = $events[0];
+	$check($event['semantic']['debate-parents']['read']['calls'] === 1, 'Executed SMW calls counted once');
+	$check($event['semantic_cache_hits']['argument-parents']['query'] === 1, 'Shared query hit attributed to its requesting origin');
+	$check($event['semantic_cache_hits']['breadcrumb']['titles'] === 1, 'Title-layer hit is distinct from query cache hit');
+	$check($event['semantic']['cards']['query']['failures'] === 1 && $event['semantic']['cards']['read']['failures'] === 1, 'Failures counted, including recovered exceptions');
+	$check($event['semantic_cache_hits']['cards']['query'] === 1, 'Cached null stays a cache hit');
+	$check($event['semantic']['other']['read']['calls'] === 1, 'Query origin restored after exception');
+	$check($event['semantic']['writes']['write']['calls'] === 1, 'Write scheduling counted');
+	$check($event['semantic']['debate-parents']['read']['milliseconds'] >= $event['semantic']['debate-parents']['query']['milliseconds'], 'Inclusive timings consistent');
+	$check(!str_contains(json_encode($events), 'SECRET') && !str_contains(json_encode($events), 'VALUE'), 'Profiler must not log queries or property values');
 	echo "$count native adapter assertions passed (MediaWiki/SMW doubles).\n";
 }

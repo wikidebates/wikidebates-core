@@ -8,7 +8,7 @@ use MediaWiki\Parser\PPFrame;
 use MediaWiki\Title\Title;
 
 /** MediaWiki 1.43 legacy parser boundary. No recursive parse/reset of the current Parser. */
-final class MediaWikiContext implements ArgumentContext {
+final class MediaWikiContext implements ArgumentContext, SemanticProfilingContext {
 	private Parser $parser;
 	private PPFrame $caller;
 	private PPFrame $module;
@@ -21,6 +21,7 @@ final class MediaWikiContext implements ArgumentContext {
 	private array $htmlAttributes;
 	private bool $argumentMode;
 	private array $titles = [];
+	private string $semanticOrigin = 'other';
 	public function __construct(Parser $parser, PPFrame $caller, array $nodes, bool $optimize, bool $tracing = false, ?Telemetry $telemetry = null, string $moduleName = 'Debate') {
 		$this->telemetry = $telemetry; $this->argumentMode = $moduleName === 'Argument';
 		$this->htmlAttributes = NativeTags::policy();
@@ -208,6 +209,7 @@ final class MediaWikiContext implements ArgumentContext {
 	public function smwSet(Table $data): void {
 		if (!class_exists(\SMW\Scribunto\LibraryFactory::class)) { $this->telemetry?->problem('semantic', 'service-unavailable'); return; }
 		$started = $this->telemetry?->start();
+		$failed = true;
 		try {
 			// Same path as SemanticScribunto 2.3.3. Values are parameters, never rebuilt wikitext.
 			$raw = [];
@@ -219,12 +221,16 @@ final class MediaWikiContext implements ArgumentContext {
 			$result = $factory->newSetParserFunction($this->parser)->parse($factory->newParserParameterProcessorFrom($raw));
 			if (is_array($result) && !($result['noparse'] ?? true)) { $this->parser->recursiveTagParseFully($result[0]); }
 			$error = is_array($result) ? ($result[0] ?? '') : $result;
-			if (is_string($error) && trim($error) !== '') { $this->telemetry?->problem('semantic', 'returned-error'); }
+			$failed = is_string($error) && trim($error) !== '';
+			if ($failed) { $this->telemetry?->problem('semantic', 'returned-error'); }
 		} catch (\Throwable $e) {
 			DatabaseFailure::rethrow($e);
 			$this->telemetry?->problem('semantic', 'exception', $e);
 		}
-		finally { $this->telemetry?->finish('semantic', $started); }
+		finally {
+			$this->telemetry?->semanticFinish('writes', 'write', $started, $failed);
+			$this->telemetry?->finish('semantic', $started);
+		}
 	}
 	public function seoSet(Table $data): void {
 		if (!class_exists(\MediaWiki\Extension\WikiSEO\Validator::class)) { $this->telemetry?->problem('seo', 'service-unavailable'); return; }
@@ -238,28 +244,53 @@ final class MediaWikiContext implements ArgumentContext {
 			$this->telemetry?->problem('seo', 'exception', $e);
 		}
 		finally { $this->telemetry?->finish('seo', $started); }
-	}	public function smwAvailable(): bool { return class_exists(\SMW\Scribunto\LibraryFactory::class); }
+	}
+	public function smwAvailable(): bool { return class_exists(\SMW\Scribunto\LibraryFactory::class); }
+	public function profiledSmwAsk(Table $query, string $origin): ?Table {
+		if (!$this->telemetry?->isProfiling()) { return $this->smwAsk($query); }
+		$previous = $this->semanticOrigin;
+		$this->semanticOrigin = $origin;
+		try { return $this->smwAsk($query); }
+		finally { $this->semanticOrigin = $previous; }
+	}
+	public function smwCacheHit(string $origin, string $layer): void {
+		$this->telemetry?->semanticCacheHit($origin, $layer);
+	}
 	public function smwAsk(Table $query): ?Table {
 		if (!$this->smwAvailable()) { $this->telemetry?->problem('semantic-query', 'service-unavailable'); return null; }
 		$started = $this->telemetry?->start();
+		$failed = true;
 		try {
-			$factory = new \SMW\Scribunto\LibraryFactory(\SMW\Services\ServicesFactory::getInstance()->getStore());
-			$result = $factory->newQueryResultFrom(array_values(Table::unwrap($query)));
+			$queryStarted = $this->telemetry?->start();
+			$queryFailed = true;
+			try {
+				$factory = new \SMW\Scribunto\LibraryFactory(\SMW\Services\ServicesFactory::getInstance()->getStore());
+				$result = $factory->newQueryResultFrom(array_values(Table::unwrap($query)));
+				$queryFailed = !$result instanceof \SMW\Query\QueryResult;
+			} finally { $this->telemetry?->semanticFinish($this->semanticOrigin, 'query', $queryStarted, $queryFailed); }
 			// Same conversion and printout formatting as mw.smw.ask, without a Lua engine.
 			if (!$result instanceof \SMW\Query\QueryResult) { return null; }
-			$values = $factory->newLuaAskResultProcessor($result)->getProcessedResult();
-			$toTable = static function($value) use (&$toTable) {
-				if (!is_array($value)) { return $value; }
-				array_unshift($value, ''); unset($value[0]);
-				return new Table(array_map($toTable, $value));
-			};
-			return $toTable($values);
+			$resultStarted = $this->telemetry?->start();
+			try {
+				$values = $factory->newLuaAskResultProcessor($result)->getProcessedResult();
+				$toTable = static function($value) use (&$toTable) {
+					if (!is_array($value)) { return $value; }
+					array_unshift($value, ''); unset($value[0]);
+					return new Table(array_map($toTable, $value));
+				};
+				$converted = $toTable($values);
+				$failed = false;
+				return $converted;
+			} finally { $this->telemetry?->semanticFinish($this->semanticOrigin, 'result', $resultStarted, $failed); }
 		} catch (\Throwable $e) {
 			DatabaseFailure::rethrow($e);
 			$this->telemetry?->problem('semantic-query', 'exception', $e);
 			return null;
 		}
-		finally { $this->telemetry?->finish('semantic-query', $started); }
+		finally {
+			$this->telemetry?->semanticFinish($this->semanticOrigin, 'read', $started, $failed);
+			$this->telemetry?->finish('semantic-query', $started);
+		}
 	}
 	public function titleInfo(string $text): ?Table {
 		if (array_key_exists($text, $this->titles)) { return $this->titles[$text]; }

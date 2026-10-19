@@ -717,7 +717,7 @@ class ArgumentReferenceRenderer {
 		return $out;
 	}
 
-	protected function smwAskTitles($conditions = null, $limit = null) {
+	protected function smwAskTitles($conditions = null, $limit = null, string $origin = 'other') {
 		$limit = (Lua::truth($v109 = Lua::number($limit)) ? $v109 : 200);
 		$q = new Table([]);
 		foreach (Lua::ipairs((Lua::truth($v110 = $conditions) ? $v110 : new Table([]))) as $_ => $c) {
@@ -729,9 +729,10 @@ class ArgumentReferenceRenderer {
 ' . $this->smwKeyFromArray($q));
 		$hit = $this->cacheGet($this->SMW_TITLES_CACHE, $ck);
 		if (($hit !== null)) {
+			$this->smwCacheHit($origin, 'titles');
 			return $hit;
 		}
-		$res = $this->smwAskSafe($q);
+		$res = $this->smwAskSafe($q, $origin);
 		if ((Lua::type($res) !== 'table')) {
 			$this->cachePut($this->SMW_TITLES_CACHE, $ck, new Table([]));
 			return new Table([]);
@@ -811,7 +812,7 @@ class ArgumentReferenceRenderer {
 			return null;
 		}
 		$q = new Table([1 => ('([[' . $propPro . '::' . $argTitle . ']] OR [[' . $propCon . '::' . $argTitle . ']] )'), 2 => ('?' . $propPro . '=pro'), 3 => ('?' . $propCon . '=con'), 4 => 'limit=200', 5 => 'link=none']);
-		$res = $this->smwAskSafe($q);
+		$res = $this->smwAskSafe($q, 'debate-parents');
 		[$debatsPour, $debatsContre] = [new Table([]), new Table([])];
 		[$seenP, $seenC] = [new Table([]), new Table([])];
 		if ((Lua::type($res) === 'table')) {
@@ -830,8 +831,8 @@ class ArgumentReferenceRenderer {
 			}
 		}
 		if (((Lua::len($debatsPour) === 0) && (Lua::len($debatsContre) === 0))) {
-			$debatsPour = $this->uniqList($this->smwAskTitles(new Table([1 => ('[[' . $propPro . '::' . $argTitle . ']]')]), 200));
-			$debatsContre = $this->uniqList($this->smwAskTitles(new Table([1 => ('[[' . $propCon . '::' . $argTitle . ']]')]), 200));
+			$debatsPour = $this->uniqList($this->smwAskTitles(new Table([1 => ('[[' . $propPro . '::' . $argTitle . ']]')]), 200, 'debate-parents'));
+			$debatsContre = $this->uniqList($this->smwAskTitles(new Table([1 => ('[[' . $propCon . '::' . $argTitle . ']]')]), 200, 'debate-parents'));
 		}
 		$cache['debatsPour'] = $debatsPour;
 		$cache['debatsContre'] = $debatsContre;
@@ -850,7 +851,7 @@ class ArgumentReferenceRenderer {
 			return null;
 		}
 		$q = new Table([1 => ('([[' . $propJustif . '::' . $argTitle . ']] OR [[' . $propObj . '::' . $argTitle . ']] )'), 2 => ('?' . $propJustif . '=justif'), 3 => ('?' . $propObj . '=obj'), 4 => 'limit=200', 5 => 'link=none']);
-		$res = $this->smwAskSafe($q);
+		$res = $this->smwAskSafe($q, 'argument-parents');
 		[$justifs, $objs] = [new Table([]), new Table([])];
 		[$seenJ, $seenO] = [new Table([]), new Table([])];
 		if ((Lua::type($res) === 'table')) {
@@ -869,8 +870,8 @@ class ArgumentReferenceRenderer {
 			}
 		}
 		if (((Lua::len($justifs) === 0) && (Lua::len($objs) === 0))) {
-			$justifs = $this->uniqList($this->smwAskTitles(new Table([1 => ('[[' . $propJustif . '::' . $argTitle . ']]')]), 200));
-			$objs = $this->uniqList($this->smwAskTitles(new Table([1 => ('[[' . $propObj . '::' . $argTitle . ']]')]), 200));
+			$justifs = $this->uniqList($this->smwAskTitles(new Table([1 => ('[[' . $propJustif . '::' . $argTitle . ']]')]), 200, 'argument-parents'));
+			$objs = $this->uniqList($this->smwAskTitles(new Table([1 => ('[[' . $propObj . '::' . $argTitle . ']]')]), 200, 'argument-parents'));
 		}
 		$cache['justifs'] = $justifs;
 		$cache['objs'] = $objs;
@@ -944,7 +945,7 @@ class ArgumentReferenceRenderer {
 					}
 					if ((Lua::len($conds) > 0)) {
 						$q = new Table([1 => ('(' . Lua::concat($conds, ' OR ') . ')'), 2 => ('?' . $propBreadcrumb . '=chain'), 3 => ('?' . $propParentDebate . '=pdeb'), 4 => 'limit=200', 5 => 'link=none']);
-						$res = $this->smwAskSafe($q);
+						$res = $this->smwAskSafe($q, 'breadcrumb');
 						if ((Lua::type($res) === 'table')) {
 							foreach (Lua::ipairs($res) as $_ => $row) {
 								$chain = $row['chain'];
@@ -1050,6 +1051,7 @@ class ArgumentReferenceRenderer {
 ' . Lua::str((Lua::truth($v140 = $typeValue) ? $v140 : '')));
 		$cached = $this->cacheGet($this->CARD_CACHE, $key);
 		if (($cached !== null)) {
+			$this->smwCacheHit('cards', 'card');
 			return $cached;
 		}
 		$rendered = $this->argumentMapCardLua($targetTitle, $currentArgTitle, $typeValue);
@@ -1308,7 +1310,7 @@ class ArgumentReferenceRenderer {
 				$parentId = (Lua::truth($v190 = Lua::match($parentId, '(%d+)')) ? $v190 : '');
 				if ((((($parentId !== '') && Lua::truth(true)) && Lua::truth($this->context->smwAvailable())) && (Lua::type(($this->context->smwAvailable() ? function($query) { return $this->context->smwAsk($query); } : null)) === 'function'))) {
 					$PF['prop_debate_number'] = $this->L($lang, 'props', 'debate_number');
-					[$ok, $res] = Lua::pcall(($this->context->smwAvailable() ? function($query) { return $this->context->smwAsk($query); } : null), new Table([1 => ('[[' . $PF['prop_debate_number'] . '::' . $parentId . ']] OR [[' . $PF['prop_arg_number'] . '::' . $parentId . ']]'), 2 => 'limit=1', 3 => 'link=none']));
+					[$ok, $res] = Lua::pcall(function($query) { return $this->smwAskUncached($query, 'initialization'); }, new Table([1 => ('[[' . $PF['prop_debate_number'] . '::' . $parentId . ']] OR [[' . $PF['prop_arg_number'] . '::' . $parentId . ']]'), 2 => 'limit=1', 3 => 'link=none']));
 					if (((Lua::truth($ok) && (Lua::type($res) === 'table')) && Lua::truth($res[1]))) {
 						$row = $res[1];
 						$ft = (Lua::truth($v191 = (Lua::truth($v192 = $row['fulltext']) ? $v192 : $row['page'])) ? $v191 : $row[1]);
@@ -1432,7 +1434,7 @@ class ArgumentReferenceRenderer {
 				Lua::insert($qq, $x);
 			}
 		}
-		$res = $this->smwAskSafe($qq);
+		$res = $this->smwAskSafe($qq, 'breadcrumb');
 		if (((Lua::type($res) !== 'table') || (Lua::len($res) === 0))) {
 			return null;
 		}
@@ -1683,7 +1685,7 @@ class ArgumentReferenceRenderer {
 		if ((((Lua::truth($this->hasSMW()) && (Lua::type(($this->context->smwAvailable() ? function($query) { return $this->context->smwAsk($query); } : null)) === 'function')) && Lua::truth($PF['prop_argument_map'])) && ($PF['prop_argument_map'] !== ''))) {
 			$debatSafe = $this->smwSafeTitle($debat);
 			if (($debatSafe !== '')) {
-				$res = $this->smwAskSafe(new Table([1 => ('[[' . $debatSafe . ']]'), 2 => ('?' . $PF['prop_argument_map'] . '=map'), 3 => 'limit=1', 4 => 'link=none']));
+				$res = $this->smwAskSafe(new Table([1 => ('[[' . $debatSafe . ']]'), 2 => ('?' . $PF['prop_argument_map'] . '=map'), 3 => 'limit=1', 4 => 'link=none']), 'cards');
 				if ((((Lua::type($res) === 'table') && Lua::truth($res[1])) && Lua::truth($res[1]['map']))) {
 					$v = $res[1]['map'];
 					if ((Lua::type($v) === 'string')) {
@@ -2926,14 +2928,21 @@ class ArgumentReferenceRenderer {
 	protected function safeJsonEncode($data) { return $this->context->jsonEncode($data); }
 	protected function seoKeyPart($text) { return md5(Lua::str($text ?? '')); }
 	protected function absUrlFromTitle($title, $query) { return $this->context->fullUrl($title, $query) ?? $this->context->localUrl($title, $query) ?? ''; }
-	protected function smwAskSafe($query) {
+	protected function smwAskSafe($query, string $origin = 'other') {
 		if (!$this->hasSMW()) { return null; }
 		$key = $this->smwKeyFromArray($query);
 		$hit = $this->cacheGet($this->SMW_ASK_CACHE, $key);
-		if ($hit !== null) { return $hit === false ? null : $hit; }
-		$result = $this->context->smwAsk($query);
+		if ($hit !== null) { $this->smwCacheHit($origin, 'query'); return $hit === false ? null : $hit; }
+		$result = $this->smwAskUncached($query, $origin);
 		$this->cachePut($this->SMW_ASK_CACHE, $key, $result ?? false);
 		return $result;
+	}
+	protected function smwAskUncached(Table $query, string $origin): ?Table {
+		return $this->context instanceof SemanticProfilingContext
+			? $this->context->profiledSmwAsk($query, $origin) : $this->context->smwAsk($query);
+	}
+	protected function smwCacheHit(string $origin, string $layer): void {
+		if ($this->context instanceof SemanticProfilingContext) { $this->context->smwCacheHit($origin, $layer); }
 	}
 	protected function getArgs($frame = null) { return $this->context->arguments(); }
 	protected function detectLang($args = null) { return $this->context->language($args); }
