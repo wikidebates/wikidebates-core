@@ -40,6 +40,24 @@ Les événements rapprochés des formulaires sont regroupés. Seuls les champs e
 les lignes interlangues modifiés sont relus. La dernière mise à jour du résumé
 est exécutée avant la soumission, même si elle arrive juste après la saisie.
 
+## Repli progressif du titre sur mobile
+
+Sur MinervaNeue, la hauteur du titre suit désormais directement les 80 premiers
+pixels de défilement, jusqu'à une ligne sur les pages assez longues. La taille du
+texte et les retours à la ligne restent stables. Le repli s'arrête avec le geste
+et s'inverse lorsqu'on revient en haut ; les seuils, le délai de basculement et
+les corrections forcées de position sont supprimés.
+
+Pour les pages courtes, le repli est limité à une hauteur compatible avec la
+plage de défilement disponible. Cela évite que le navigateur change la position
+à répétition en bas de page. Sans défilement, le titre reste entièrement visible.
+Les images, polices, rotations et changements d'argument déclenchent une nouvelle
+mesure. Les observateurs sont déconnectés à la fermeture du panneau.
+
+Quatre tests de mise en page Chromium, en plus des onze tests JavaScript, couvrent
+ces comportements. Le comportement tactile sur des appareils iOS/Android réels
+reste à contrôler. Vector 2022 n'est pas modifié par ce correctif mobile.
+
 ## Vérifications
 
 Voir [les tests de régression](../tests/README.md). Onze tests JavaScript couvrent

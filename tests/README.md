@@ -13,6 +13,21 @@ retry after failure, unchanged page parse parameters and extraction boundaries,
 coalesced content notifications, incremental form summary updates and synchronous
 submission. jsdom does not measure real browser layout or server latency.
 
+The progressive Minerva header also has real layout tests using an installed
+Chromium executable (no browser download is performed by npm):
+
+```sh
+npm run test:browser --prefix tests
+# If Chromium is installed elsewhere:
+CHROMIUM_PATH=/path/to/chromium npm run test:browser --prefix tests
+```
+
+The four browser tests cover continuous/reversible collapse, an idle title that
+stops updating, short-page stability, single-line titles, viewport changes,
+argument replacement and observer cleanup. They execute the actual reading UI
+and CSS in Chromium with fixture content; testing on physical iOS/Android devices
+remains useful for touch and browser-specific behavior.
+
 `php/RecentDebateChangesTest.php` is an integration smoke test for MediaWiki 1.43.
 Run it only on a **disposable SQLite wiki** whose database name ends in
 `_performance_test`, without Semantic MediaWiki tables. It creates minimal SMW
