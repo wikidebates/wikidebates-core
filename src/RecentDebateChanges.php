@@ -6,12 +6,15 @@ use MediaWiki\MediaWikiServices;
 use Parser;
 use PPFrame;
 use Title;
+use Wikimedia\ObjectCache\WANObjectCache;
 
 class RecentDebateChanges {
 
 	private const DEFAULT_LIMIT = 100;
 	private const MAX_LIMIT = 200;
 	private const BREADCRUMB_SEPARATOR = '⟭';
+	private const CACHE_TTL = 60;
+	private const EXCLUDED_USERS = [ 'Wikirobot', 'ChatGPT' ];
 
 	public static function register( Parser $parser ): void {
 		$parser->setFunctionHook(
@@ -23,6 +26,9 @@ class RecentDebateChanges {
 
 	public static function render( Parser $parser, PPFrame $frame, array $args ): string {
 		try {
+			// The data cache below owns freshness. A parser cache on top of it
+			// could otherwise retain an already 60-second-old result for longer.
+			$parser->getOutput()->updateCacheExpiry( 0 );
 			$params = self::parseArgs( $frame, $args );
 
 			$page = trim( (string)( $params['page'] ?? '' ) );
@@ -43,7 +49,7 @@ class RecentDebateChanges {
 				$limit = self::MAX_LIMIT;
 			}
 
-			$items = self::fetchRecentChanges( $parser, $frame, $page, $limit );
+			$items = self::fetchRecentChanges( $page, $limit );
 
 			if ( is_string( $items ) ) {
 				return $items;
@@ -131,13 +137,35 @@ class RecentDebateChanges {
 		return $out;
 	}
 
-	private static function fetchRecentChanges( Parser $parser, PPFrame $frame, string $debatePage, int $limit ): array|string {
+	private static function fetchRecentChanges( string $debatePage, int $limit ): array|string {
 		$title = Title::newFromText( $debatePage );
 
 		if ( !$title ) {
 			return self::makeError( 'wikidebates-recent-changes-error-invalid-title' );
 		}
 
+		$services = MediaWikiServices::getInstance();
+		$cache = $services->getMainWANObjectCache();
+		$key = $cache->makeKey(
+			'wikidebates', 'recent-debate-changes', 'v1',
+			$title->getPrefixedDBkey(), $services->getContentLanguage()->getCode(), $limit
+		);
+
+		return $cache->getWithSetCallback(
+			$key,
+			self::CACHE_TTL,
+			static function ( $oldValue, &$ttl ) use ( $title, $limit ) {
+				$items = self::queryRecentChanges( $title, $limit );
+				if ( is_string( $items ) ) {
+					// Do not cache errors (for example, SMW setup still in progress).
+					$ttl = WANObjectCache::TTL_UNCACHEABLE;
+				}
+				return $items;
+			}
+		);
+	}
+
+	private static function queryRecentChanges( Title $title, int $limit ): array|string {
 		$dbr = MediaWikiServices::getInstance()
 			->getDBLoadBalancerFactory()
 			->getReplicaDatabase();
@@ -177,79 +205,64 @@ class RecentDebateChanges {
 
 		$rows = [];
 		$childIds = [];
-		$botStatusByUserId = [];
-		$batchSize = max( 100, $limit );
-		$offset = 0;
+		$res = $dbr->newSelectQueryBuilder()
+			->select( [
+				'child_id'		=> 'child_ids.smw_id',
+				'child_title'	=> 'child_ids.smw_title',
+				'child_ns'		=> 'child_ids.smw_namespace',
+				'rev_timestamp'	=> 'rev.rev_timestamp',
+				'actor_name'	=> 'actor.actor_name',
+				'comment_text'	=> 'comment_store.comment_text'
+			] )
+			->from( 'smw_di_wikipage' )
+			->join(
+				'smw_object_ids',
+				'child_ids',
+				'child_ids.smw_id = smw_di_wikipage.s_id'
+			)
+			->join(
+				'page',
+				'page',
+				'page.page_namespace = child_ids.smw_namespace AND page.page_title = child_ids.smw_title'
+			)
+			->leftJoin(
+				'revision',
+				'rev',
+				'rev.rev_id = page.page_latest'
+			)
+			->leftJoin(
+				'actor',
+				'actor',
+				'actor.actor_id = rev.rev_actor'
+			)
+			->leftJoin(
+				'comment',
+				'comment_store',
+				'comment_store.comment_id = rev.rev_comment_id'
+			)
+			->where( [
+				'smw_di_wikipage.o_id' => $debateId,
+				'smw_di_wikipage.p_id' => $parentPropertyIds
+			] )
+			->andWhere(
+				$dbr->expr( 'actor.actor_name', '!=', self::EXCLUDED_USERS )
+					->or( 'actor.actor_name', '=', null )
+			)
+			->orderBy( 'rev.rev_timestamp', 'DESC' )
+			->orderBy( 'child_ids.smw_id', 'ASC' )
+			->limit( $limit )
+			->fetchResultSet();
 
-		do {
-			$res = $dbr->newSelectQueryBuilder()
-				->select( [
-					'child_id'		=> 'child_ids.smw_id',
-					'child_title'	=> 'child_ids.smw_title',
-					'child_ns'		=> 'child_ids.smw_namespace',
-					'rev_timestamp'	=> 'rev.rev_timestamp',
-					'actor_user'	=> 'actor.actor_user',
-					'actor_name'	=> 'actor.actor_name',
-					'comment_text'	=> 'comment_store.comment_text'
-				] )
-				->from( 'smw_di_wikipage' )
-				->join(
-					'smw_object_ids',
-					'child_ids',
-					'child_ids.smw_id = smw_di_wikipage.s_id'
-				)
-				->join(
-					'page',
-					'page',
-					'page.page_namespace = child_ids.smw_namespace AND page.page_title = child_ids.smw_title'
-				)
-				->leftJoin(
-					'revision',
-					'rev',
-					'rev.rev_id = page.page_latest'
-				)
-				->leftJoin(
-					'actor',
-					'actor',
-					'actor.actor_id = rev.rev_actor'
-				)
-				->leftJoin(
-					'comment',
-					'comment_store',
-					'comment_store.comment_id = rev.rev_comment_id'
-				)
-				->where( [
-					'smw_di_wikipage.o_id' => $debateId,
-					'smw_di_wikipage.p_id' => $parentPropertyIds
-				] )
-				->orderBy( 'rev.rev_timestamp', 'DESC' )
-				->orderBy( 'child_ids.smw_id', 'ASC' )
-				->limit( $batchSize )
-				->offset( $offset )
-				->fetchResultSet();
+		foreach ( $res as $row ) {
+			$childId = (int)( $row->child_id ?? 0 );
 
-			$batchCount = 0;
-
-			foreach ( $res as $row ) {
-				$batchCount++;
-
-				$childId = (int)( $row->child_id ?? 0 );
-				$userId = (int)( $row->actor_user ?? 0 );
-
-				if ( !$childId || self::isBotUser( $userId, $botStatusByUserId ) ) {
-					continue;
-				}
-
-				$rows[] = $row;
-				$childIds[] = $childId;
-
-				if ( count( $rows ) >= $limit ) {
-					break;
-				}
+			if ( !$childId ) {
+				continue;
 			}
 
-			$offset += $batchCount;
-		} while ( count( $rows ) < $limit && $batchCount === $batchSize );
+			$rows[] = $row;
+			$childIds[] = $childId;
+		}
 
 		if ( !$rows ) {
 			return [];
@@ -434,24 +447,6 @@ class RecentDebateChanges {
 		}
 
 		return '';
-	}
-
-	private static function isBotUser( int $userId, array &$botStatusByUserId ): bool {
-		if ( $userId <= 0 ) {
-			return false;
-		}
-
-		if ( array_key_exists( $userId, $botStatusByUserId ) ) {
-			return $botStatusByUserId[$userId];
-		}
-
-		$services = MediaWikiServices::getInstance();
-		$user = $services->getUserFactory()->newFromId( $userId );
-		$groups = $services->getUserGroupManager()->getUserGroups( $user );
-
-		$botStatusByUserId[$userId] = in_array( 'bot', $groups, true );
-
-		return $botStatusByUserId[$userId];
 	}
 
 	private static function normalizeUserPage( string $userName ): string {

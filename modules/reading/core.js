@@ -501,20 +501,7 @@
 	function wkReadingLoadFragment( argPage ) {
 		if ( wkArgEmbedCache.has( argPage ) ) return Promise.resolve( wkArgEmbedCache.get( argPage ) || '' );
 
-		var base = {
-			action: 'parse',
-			formatversion: 2,
-			page: argPage,
-			prop: 'text',
-			usearticle: 1,
-			uselang: ( mw.config.get( 'wgUserLanguage' ) || 'fr' ).toLowerCase(),
-			redirects: 1
-		};
-
-		var extra = ( UI.getParseParams ? UI.getParseParams() : null ) || {};
-		for ( var k in extra ) base[ k ] = extra[ k ];
-
-		return WK.wkGetApi().get( base ).then( function ( data ) {
+		return WK.wkParsePage( wkReadingBuildParseRequestParams( argPage ) ).then( function ( data ) {
 			var html = ( data && data.parse && data.parse.text ) ? data.parse.text : '';
 			if ( !html ) return '';
 			return wkReadingExtractFragment( html ) || '';

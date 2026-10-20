@@ -512,112 +512,12 @@
 		Parse cache (Minerva)
 	   ========================= */
 
-	var WKReadingParseCache = ( function () {
-		var max = 50;
-		var map = new Map();
-
-		function stableStringify( obj ) {
-			if ( !obj || typeof obj !== 'object' ) return String( obj );
-
-			var keys = Object.keys( obj ).sort();
-			var out = [];
-
-			for ( var i = 0; i < keys.length; i++ ) {
-				var k = keys[ i ];
-				var v = obj[ k ];
-
-				if ( v === undefined ) continue;
-
-				if ( v && typeof v === 'object' && !Array.isArray( v ) ) {
-					out.push( k + '={' + stableStringify( v ) + '}' );
-				} else if ( Array.isArray( v ) ) {
-					out.push( k + '=[' + v.join( ',' ) + ']' );
-				} else {
-					out.push( k + '=' + String( v ) );
-				}
-			}
-
-			return out.join( '&' );
-		}
-
-		function get( key ) {
-			if ( !map.has( key ) ) return null;
-
-			var v = map.get( key );
-			map.delete( key );
-			map.set( key, v );
-			return v;
-		}
-
-		function set( key, val ) {
-			if ( map.has( key ) ) map.delete( key );
-			map.set( key, val );
-
-			while ( map.size > max ) {
-				var firstKey = map.keys().next().value;
-				map.delete( firstKey );
-			}
-		}
-
-		return {
-			key: function ( params ) { return stableStringify( params ); },
-			get: get,
-			set: set
-		};
-	}() );
-
-	var WKReadingParseInFlight = Object.create( null );
+	var WKReadingParseCache = WK.wkPageParseCache;
 	var WKReadingParseCacheHook = null;
 
-	var WKReadingApiPatched = false;
-
-	function wkReadingPatchApiGetParseCache() {
-		if ( WKReadingApiPatched ) return;
-		WKReadingApiPatched = true;
-
-		if ( !W.mw || !W.jQuery ) return;
-		if ( !WK || typeof WK.wkGetApi !== 'function' ) return;
-
-		var $ = W.jQuery;
-		var origGetApi = WK.wkGetApi;
-
-		WK.wkGetApi = function () {
-			var api = origGetApi();
-			if ( !api || api._wkReadingGetPatched ) return api;
-
-			api._wkReadingGetPatched = true;
-
-			var origGet = api.get;
-
-			api.get = function ( params ) {
-				try {
-					if ( params && params.action === 'parse' && params.page && params.prop === 'text' ) {
-						var key = 'parse?' + WKReadingParseCache.key( params );
-
-						var cached = WKReadingParseCache.get( key );
-						if ( cached ) return $.Deferred().resolve( cached ).promise();
-
-						var req = origGet.call( api, params );
-
-						if ( req && typeof req.then === 'function' ) {
-							req.then( function ( data ) {
-								if ( data && data.parse ) {
-									WKReadingParseCache.set( key, data );
-									if ( typeof WKReadingParseCacheHook === 'function' ) WKReadingParseCacheHook( key );
-								}
-							} );
-						}
-
-						return req;
-					}
-				} catch ( e ) {}
-
-				return origGet.call( api, params );
-			};
-
-			return api;
-		};
-	}
+	mw.hook( 'wikidebates.pageParsed' ).add( function ( key ) {
+		if ( typeof WKReadingParseCacheHook === 'function' ) WKReadingParseCacheHook( key );
+	} );
 
 	/* =========================
 		Swipe siblings (Minerva)
@@ -721,21 +621,10 @@
 			if ( !params ) return;
 
 			try {
-				var key = 'parse?' + WKReadingParseCache.key( params );
+				var key = WKReadingParseCache.key( params );
 
 				if ( WKReadingParseCache.get( key ) ) return;
-				if ( WKReadingParseInFlight[ key ] ) return;
-
-				var req = WK.wkGetApi().get( params );
-				WKReadingParseInFlight[ key ] = 1;
-
-				if ( req && typeof req.always === 'function' ) {
-					req.always( function () { delete WKReadingParseInFlight[ key ]; } );
-				} else if ( req && typeof req.finally === 'function' ) {
-					req.finally( function () { delete WKReadingParseInFlight[ key ]; } );
-				} else {
-					W.setTimeout( function () { delete WKReadingParseInFlight[ key ]; }, 4000 );
-				}
+				WK.wkParsePage( params );
 			} catch ( e ) {}
 		}
 
@@ -1028,7 +917,7 @@
 				return false;
 			}
 
-			var key = 'parse?' + WKReadingParseCache.key( params );
+			var key = WKReadingParseCache.key( params );
 			var cached = WKReadingParseCache.get( key );
 
 			var frag = cached ? getFragmentFromParseData( cached ) : '';
@@ -1574,7 +1463,6 @@
 				content: D.getElementById( UI_IDS.contentId )
 			};
 
-			wkReadingPatchApiGetParseCache();
 			wkReadingBindLeftSheet( ui );
 			wkReadingBindSiblingSwipeMinerva( ui );
 			wkReadingBindH1CollapseOnScroll( ui );
@@ -1616,7 +1504,6 @@
 
 		var ui2 = { root: root, panel: panel, left: left, stack: stack, siblings: siblings, content: content };
 
-		wkReadingPatchApiGetParseCache();
 		wkReadingBindLeftSheet( ui2 );
 		wkReadingBindSiblingSwipeMinerva( ui2 );
 		wkReadingBindH1CollapseOnScroll( ui2 );

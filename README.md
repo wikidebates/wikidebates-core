@@ -144,3 +144,9 @@ La distribution combinée est GPL-3.0-or-later ; les sources Wikidebates
 préexistantes conservent leur licence MIT. Les snapshots conservent leurs
 licences et attributions. Les révisions historiques sont maintenant conservées
 dans `debatephp/tests/fixtures/revisions.json`.
+
+## Optimisations de lecture et des formulaires
+
+Le partage des requêtes, le cache des modifications récentes et les commandes
+de mise à jour serveur sont décrits dans
+[la note sur les optimisations](docs/optimisations-lecture-formulaires.md).

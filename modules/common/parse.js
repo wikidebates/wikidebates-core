@@ -28,6 +28,9 @@
 	var wkParseInFlight = new Map();
 	var wkParseQueue = [];
 	var wkParseActive = 0;
+	var wkPageParseCache = new Map();
+	var wkPageParseInFlight = new Map();
+	var WK_PAGE_PARSE_CACHE_MAX = 50;
 
 	var WK_PARSE_FAIL_TTL_MS = 15000;
 	var wkParseFailUntil = new Map();
@@ -80,6 +83,33 @@
 		}
 	}
 
+	function wkPageParseKey( params ) {
+		return JSON.stringify( Object.keys( params ).sort().map( function ( key ) {
+			return [ key, params[ key ] ];
+		} ) );
+	}
+
+	/* Shared by foreground reads and mobile prefetches. Keep the full API
+	 * response so the swipe preview can use it without another request. */
+	function wkParsePage( params ) {
+		var key = wkPageParseKey( params );
+		var cached = wkCacheGetLRU( wkPageParseCache, key );
+		if ( cached !== null ) return jQuery.Deferred().resolve( cached ).promise();
+		if ( wkPageParseInFlight.has( key ) ) return wkPageParseInFlight.get( key );
+
+		var request = wkGetApi().get( params );
+		wkPageParseInFlight.set( key, request );
+		request.always( function () {
+			wkPageParseInFlight.delete( key );
+		} ).done( function ( data ) {
+			if ( data && data.parse ) {
+				wkCacheSetLRU( wkPageParseCache, WK_PAGE_PARSE_CACHE_MAX, key, data );
+				mw.hook( 'wikidebates.pageParsed' ).fire( key );
+			}
+		} );
+		return request;
+	}
+
 	function wkFailIsHot( bucket, keyLocal ) {
 		var k = bucket + '|' + keyLocal;
 		var until = wkParseFailUntil.get( k ) || 0;
@@ -114,7 +144,9 @@
 	function wkParseWikitext( wikitext, bucket ) {
 		bucket = bucket || 'def';
 
-		var cache = wkGetBucketCache( bucket );
+		// Recent changes have a server-side 60-second cache. Do not add
+		// another browser cache on top of it and extend their stale lifetime.
+		var cache = bucket === 'latest' ? null : wkGetBucketCache( bucket );
 		var keyLocal = String( wikitext || '' );
 		var inFlightKey = bucket + '|' + keyLocal;
 
@@ -196,7 +228,7 @@
 
 					if ( html ) html = html.replace( /<!--[\S\s]*?-->/gm, '' );
 
-					var cache2 = wkGetBucketCache( job2.bucket );
+					var cache2 = job2.bucket === 'latest' ? null : wkGetBucketCache( job2.bucket );
 					var max = WK_PARSE_CACHE_MAX[ job2.bucket ];
 					if ( typeof max !== 'number' ) max = WK_PARSE_CACHE_MAX.def;
 
@@ -222,6 +254,11 @@
 	WK.wkGetApi = wkGetApi;
 	WK.wkParseWikitext = wkParseWikitext;
 	WK.wkParseCancel = wkParseCancel;
+	WK.wkParsePage = wkParsePage;
+	WK.wkPageParseCache = {
+		key: wkPageParseKey,
+		get: function ( key ) { return wkCacheGetLRU( wkPageParseCache, key ); }
+	};
 
 	/*	Alias legacy */
 	W.wkGetApi = wkGetApi;

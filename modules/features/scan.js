@@ -7,6 +7,11 @@
 	var $ = jQuery;
 
 	var WK = W.Wikidebates || ( W.Wikidebates = {} );
+	var contentFeatures = [
+		{ selector: '.fr-collapsible', module: 'ext.wikidebates.features.frCollapsible' },
+		{ selector: '.more-content-button', module: 'ext.wikidebates.features.moreContent' },
+		{ selector: '.smw-highlighter', module: 'ext.wikidebates.features.smwTooltips' }
+	];
 
 	function bindOngletExterne() {
 		if ( typeof WK.wkOnce === 'function' ) {
@@ -49,28 +54,22 @@
 
 	function hasIn( root, selector ) {
 		var el = ( WK.wkRootNode ? WK.wkRootNode( root ) : ( root || D ) );
-		try { return !!( el && el.querySelector && el.querySelector( selector ) ); } catch ( e ) {}
+		try { return !!( el && ( ( el.matches && el.matches( selector ) ) || ( el.querySelector && el.querySelector( selector ) ) ) ); } catch ( e ) {}
 		return false;
 	}
 
 	function scanAndDispatch( root ) {
 		var el = ( WK.wkRootNode ? WK.wkRootNode( root ) : ( root || D ) );
 
-		/*	Commun : fr-collapsible */
-		if ( hasIn( el, '.fr-collapsible' ) ) {
-			wkLoadIdleOnce( 'wk:load:frCollapsible', 'ext.wikidebates.features.frCollapsible' );
-		}
+		contentFeatures.forEach( function ( feature ) {
+			if ( !feature.loaded && hasIn( el, feature.selector ) ) {
+				feature.loaded = true;
+				wkLoadIdleOnce( 'wk:load:' + feature.module, feature.module );
+			}
+		} );
+	}
 
-		/*	Commun : more-content */
-		if ( hasIn( el, '.more-content-button' ) ) {
-			wkLoadIdleOnce( 'wk:load:moreContent', 'ext.wikidebates.features.moreContent' );
-		}
-
-		/*	Commun : SMW tooltips (lazy) */
-		if ( hasIn( el, '.smw-highlighter' ) || hasIn( D, '.smw-highlighter' ) ) {
-			wkLoadIdleOnce( 'wk:load:smwTooltips', 'ext.wikidebates.features.smwTooltips' );
-		}
-
+	function initPageFeatures() {
 		/*	FormEdit (module séparé) */
 		try {
 			if ( typeof WK.wkIsFormEdit === 'function' && WK.wkIsFormEdit() ) {
@@ -93,17 +92,8 @@
 		}
 
 		bindOngletExterne();
-
-		mw.hook( 'wikipage.ready' ).add( function () {
-			scanAndDispatch( D );
-		} );
-
-		mw.hook( 'wikipage.content' ).add( function ( $content ) {
-			var root = ( $content && $content[ 0 ] ) ? $content[ 0 ] : D;
-			scanAndDispatch( root );
-		} );
-
-		scanAndDispatch( D );
+		initPageFeatures();
+		WK.wkBindContentScan( scanAndDispatch );
 	}
 
 	if ( D.readyState === 'loading' ) D.addEventListener( 'DOMContentLoaded', boot, { once: true } );
