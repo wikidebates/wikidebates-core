@@ -42,11 +42,15 @@
 	right: 0;
 }
 
-.wk-reading-h1.is-collapsed .wk-reading-h1__title {
-	display: -webkit-box;
+.wk-reading-h1__title {
+	/* Clip progressively without rewrapping or scaling the title text. */
+	max-height: var( --wk-h1-title-height, none );
 	overflow: hidden;
-	-webkit-box-orient: vertical;
-	-webkit-line-clamp: 1;
+}
+
+#wk-reading-content {
+	/* Header resizing must not trigger scroll anchoring adjustments. */
+	overflow-anchor: none;
 }
 
 #wk-reading-mode .wk-reading-panel {
@@ -63,6 +67,7 @@
 }
 
 .wk-reading-panel .wk-reading-h1 {
+	flex: 0 0 auto;
 	display: flex;
 	align-items: center;
 }

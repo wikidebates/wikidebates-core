@@ -416,6 +416,11 @@ function wkInitEditSummaries() {
 	var managedSummaryParts = [];
 	var interlangStates = [];
 	var interlangStateByElement = new WeakMap();
+	var dirtySummaryZones = new Set();
+	var dirtyInterlangStates = new Set();
+	var progressDirty = false;
+	var progressSummaryPart = '';
+	var summaryTimer = null;
 
 	function getControlValue( el ) {
 		if ( !el ) return '';
@@ -466,10 +471,12 @@ function wkInitEditSummaries() {
 	}
 
 	function setManagedSummaryParts( parts ) {
+		if ( arraysEqual( managedSummaryParts, parts ) ) return;
 		var $summary = getSummaryField();
 		if ( !$summary.length ) return;
 
 		var current = $summary.val() || '';
+		var original = current;
 
 		managedSummaryParts.forEach( function ( part ) {
 			if ( current === part ) {
@@ -525,7 +532,7 @@ function wkInitEditSummaries() {
 
 		managedSummaryParts = parts.slice();
 
-		if ( next === current ) return;
+		if ( next === original ) return;
 
 		$summary.val( next );
 		fireNativeInputEvent( $summary.get( 0 ) );
@@ -565,6 +572,7 @@ function wkInitEditSummaries() {
 	singleValueSummaryZones.forEach( function ( config ) {
 		config.field = getPrimaryFieldFromZone( config.selector );
 		config.initialValue = getControlValue( config.field );
+		config.summaryPart = '';
 	} );
 
 	var progressField = D.querySelector( '.zone-bandeaux select' );
@@ -616,7 +624,8 @@ function wkInitEditSummaries() {
 		var state = {
 			element: container,
 			initial: isInitial ? current : { language: '', page: '' },
-			removed: false
+			removed: false,
+			summaryPart: ''
 		};
 
 		interlangStates.push( state );
@@ -632,9 +641,13 @@ function wkInitEditSummaries() {
 	}
 
 	function recomputeManagedSummaries() {
-		var parts = [];
+		if ( summaryTimer !== null ) clearTimeout( summaryTimer );
+		summaryTimer = null;
 
-		singleValueSummaryZones.forEach( function ( config ) {
+		// Read only the controls changed since the previous batch. In
+		// particular, typing in one field must not rescan every interlang row.
+		dirtySummaryZones.forEach( function ( config ) {
+			config.summaryPart = '';
 			if ( !config.field ) return;
 
 			var initial = config.initialValue;
@@ -643,43 +656,47 @@ function wkInitEditSummaries() {
 			if ( initial === current ) return;
 
 			if ( initial === '' && current !== '' ) {
-				parts.push( formatSectionSummary( config.sectionKey, config.addKey, current ) );
+				config.summaryPart = formatSectionSummary( config.sectionKey, config.addKey, current );
 			} else if ( initial !== '' && current === '' ) {
-				parts.push( formatSectionSummary( config.sectionKey, config.deleteKey, initial ) );
+				config.summaryPart = formatSectionSummary( config.sectionKey, config.deleteKey, initial );
 			} else if ( current !== '' ) {
-				parts.push( formatSectionSummary( config.sectionKey, config.modifyKey, current ) );
+				config.summaryPart = formatSectionSummary( config.sectionKey, config.modifyKey, current );
 			}
 		} );
+		dirtySummaryZones.clear();
 
-		if ( progressField ) {
+		if ( progressDirty && progressField ) {
+			progressSummaryPart = '';
 			var progressCurrentValue = getControlValue( progressField );
 			if ( progressCurrentValue !== progressInitialValue ) {
-				parts.push( formatSectionSummary(
+				progressSummaryPart = formatSectionSummary(
 					'wk-summary-section-warning-banners',
 					'wk-summary-progress-change',
 					progressCurrentValue
-				) );
+				);
 			}
 		}
+		progressDirty = false;
 
-		interlangStates.forEach( function ( state ) {
+		dirtyInterlangStates.forEach( function ( state ) {
+			state.summaryPart = '';
 			var initial = state.initial;
 			var current = state.removed ? { language: '', page: '' } : getInterlangData( state.element );
 			var initialLink = formatInterlangLink( initial );
 			var currentLink = formatInterlangLink( current );
 
 			if ( !initialLink && currentLink ) {
-				parts.push( formatSectionSummary(
+				state.summaryPart = formatSectionSummary(
 					'wk-summary-section-interlanguage-link',
 					'wk-summary-interlanguage-page-add',
 					currentLink
-				) );
+				);
 			} else if ( initialLink && !currentLink ) {
-				parts.push( formatSectionSummary(
+				state.summaryPart = formatSectionSummary(
 					'wk-summary-section-interlanguage-link',
 					'wk-summary-interlanguage-page-delete',
 					initialLink
-				) );
+				);
 			} else if (
 				initialLink &&
 				currentLink &&
@@ -688,16 +705,31 @@ function wkInitEditSummaries() {
 					initial.page !== current.page
 				)
 			) {
-				parts.push( formatSectionSummary(
+				state.summaryPart = formatSectionSummary(
 					'wk-summary-section-interlanguage-link',
 					'wk-summary-interlanguage-page-modify',
 					currentLink
-				) );
+				);
 			}
 		} );
+		dirtyInterlangStates.clear();
 
+		var parts = singleValueSummaryZones.map( function ( config ) { return config.summaryPart; } );
+		parts.push( progressSummaryPart );
+		interlangStates.forEach( function ( state ) { parts.push( state.summaryPart ); } );
+		parts = parts.filter( function ( part ) { return !!part; } );
 		setManagedSummaryParts( parts );
 	}
+
+	function scheduleManagedSummaries() {
+		if ( summaryTimer === null ) summaryTimer = setTimeout( recomputeManagedSummaries, 0 );
+	}
+
+	// Flush before PageForms' submit handlers serialize the form, including
+	// when the final input/change event occurred in this same event turn.
+	D.addEventListener( 'submit', function ( e ) {
+		if ( e.target && e.target.id === 'pfForm' && summaryTimer !== null ) recomputeManagedSummaries();
+	}, true );
 
 	/*	Page Forms peut imbriquer .multipleTemplateInstanceTable et
 		.multipleTemplateInstance pour une même ligne. On initialise donc
@@ -865,20 +897,24 @@ function wkInitEditSummaries() {
 	/*	Nom consacré / débat dédié / interlangue : résumés fondés sur l’état initial. */
 	$D.on(
 		'input.wkSummaryCustom change.wkSummaryCustom blur.wkSummaryCustom select2:select.wkSummaryCustom select2:unselect.wkSummaryCustom select2:clear.wkSummaryCustom',
-		'input, textarea, select',
+		singleValueSummaryZones.map( function ( config ) { return config.selector; } ).concat( '.zone-interlangue' ).map( function ( selector ) {
+			return selector + ', ' + selector + ' input, ' + selector + ' textarea, ' + selector + ' select';
+		} ).join( ', ' ),
 		function () {
+			if ( !this.matches( 'input, textarea, select' ) ) return;
 			var $field = $( this );
 
 			if ( $field.closest( '.zone-interlangue' ).length ) {
 				var container = getInstanceContainerFromElement( this );
-				if ( container ) registerInterlangInstance( container, false );
-				recomputeManagedSummaries();
+				if ( container ) dirtyInterlangStates.add( registerInterlangInstance( container, false ) );
+				scheduleManagedSummaries();
 				return;
 			}
 
-			if ( $field.closest( '.zone-nom-consacre, .zone-debat-dedie, .zone-sujet-debat, .zone-sujet-developpe' ).length ) {
-				recomputeManagedSummaries();
-			}
+			singleValueSummaryZones.forEach( function ( config ) {
+				if ( config.field === this ) dirtySummaryZones.add( config );
+			}, this );
+			if ( dirtySummaryZones.size ) scheduleManagedSummaries();
 		}
 	);
 
@@ -893,7 +929,8 @@ function wkInitEditSummaries() {
 		if ( !state ) return;
 
 		state.removed = true;
-		setTimeout( recomputeManagedSummaries, 0 );
+		dirtyInterlangStates.add( state );
+		scheduleManagedSummaries();
 	}, true );
 
 	/*	Checkboxes avertissements / rubriques */
@@ -922,7 +959,8 @@ function wkInitEditSummaries() {
 	/*	Niveau d’avancement : résumé fondé sur l’état initial. */
 	$D.on( 'change.wkProgress', '.zone-bandeaux select', function () {
 		if ( this !== progressField ) return;
-		recomputeManagedSummaries();
+		progressDirty = true;
+		scheduleManagedSummaries();
 	} );
 
 	/*	Tokens Select2 : suppression.

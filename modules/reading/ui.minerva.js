@@ -128,143 +128,115 @@
 
 	function wkReadingBindH1CollapseOnScroll( ui ) {
 		if ( !ui || !ui.content || !ui.panel ) return;
-
-		if ( ui.content.dataset.wkH1ScrollBound === '1' ) return;
-		ui.content.dataset.wkH1ScrollBound = '1';
-
-		var lastState = '';
-		var lastT = 0;
-
-		/*	Anti ping-pong :
-			1) on n’autorise le collapse que si la page reste scrollable APRÈS collapse
-			2) après ajout de is-collapsed, on corrige scrollTop si le navigateur l’a clampé,
-			   sinon ça retombe à 0 => uncollapse => recollapse… */
-		var rangeExpanded = -1;
-		var rangeCollapsed = -1;
-		var lastToggleAt = 0;
-
-		function getH1() {
-			return ui.panel.querySelector( '.wk-reading-h1' );
+		if ( ui.content._wkH1Collapse ) {
+			ui.content._wkH1Collapse.refresh();
+			return;
 		}
 
-		function measureRanges() {
-			var h1 = getH1();
-			if ( !h1 ) return;
+		var distance = 80;
+		var frame = 0;
+		var needsMeasure = true;
+		var h1 = null;
+		var title = null;
+		var expandedHeight = 0;
+		var titleWidth = 0;
+		var reduction = 0;
+		var maxProgress = 0;
+		var lastHeight = -1;
+		var stopped = false;
+		var resizeObserver = null;
 
-			var was = h1.classList.contains( 'is-collapsed' );
-
-			h1.classList.remove( 'is-collapsed' );
-			rangeExpanded = ( ui.content.scrollHeight || 0 ) - ( ui.content.clientHeight || 0 );
-
-			h1.classList.add( 'is-collapsed' );
-			rangeCollapsed = ( ui.content.scrollHeight || 0 ) - ( ui.content.clientHeight || 0 );
-
-			if ( !was ) h1.classList.remove( 'is-collapsed' );
-
-			ui.content.dataset.wkH1RangeExpanded = String( rangeExpanded );
-			ui.content.dataset.wkH1RangeCollapsed = String( rangeCollapsed );
-		}
-
-		function canCollapse() {
-			if ( rangeExpanded < 0 || rangeCollapsed < 0 ) {
-				var a = parseInt( ui.content.dataset.wkH1RangeExpanded || '', 10 );
-				var b = parseInt( ui.content.dataset.wkH1RangeCollapsed || '', 10 );
-
-				if ( !isNaN( a ) ) rangeExpanded = a;
-				if ( !isNaN( b ) ) rangeCollapsed = b;
-
-				if ( rangeExpanded < 0 || rangeCollapsed < 0 ) measureRanges();
+		function measure() {
+			h1 = ui.panel.querySelector( '.wk-reading-h1' );
+			var nextTitle = h1 && h1.querySelector( '.wk-reading-h1__title' );
+			if ( title !== nextTitle ) {
+				if ( resizeObserver && title ) resizeObserver.unobserve( title );
+				title = nextTitle;
+				lastHeight = -1;
+				if ( resizeObserver && title ) resizeObserver.observe( title );
 			}
+			if ( !title ) return;
 
-			/*	Il faut que le contenu reste scrollable après collapse.
-				Seuil bas (px) : juste “non nul” + une petite marge pour la stabilité. */
-			return ( rangeCollapsed >= 8 );
-		}
+			var bounds = title.getBoundingClientRect();
+			var style = W.getComputedStyle( title );
+			var lineHeight = parseFloat( style.lineHeight ) || ( parseFloat( style.fontSize ) || 16 ) * 1.25;
+			expandedHeight = title.scrollHeight;
+			titleWidth = bounds.width;
+			reduction = Math.max( 0, expandedHeight - lineHeight );
 
-		function clampScrollTopTo( minT ) {
-			try {
-				var el = ui.content;
-				var maxT = ( el.scrollHeight || 0 ) - ( el.clientHeight || 0 );
-				if ( maxT < 0 ) maxT = 0;
-
-				var target = minT;
-				if ( target > maxT ) target = maxT;
-
-				if ( el.scrollTop < target ) el.scrollTop = target;
-			} catch ( e ) {}
+			// Recover the scroll range with the title fully expanded, without
+			// temporarily changing its height or moving the reader's position.
+			var currentReduction = Math.max( 0, expandedHeight - bounds.height );
+			var range = Math.max( 0, ui.content.scrollHeight - ui.content.clientHeight + currentReduction );
+			// On short pages, cap p so range - reduction * p >= distance * p.
+			// Otherwise shrinking the header clamps scrollTop, which changes p
+			// again and can make the title oscillate. One extra pixel covers rounding.
+			maxProgress = reduction > 0 ? Math.min( 1, range / ( distance + reduction + 1 ) ) : 0;
 		}
 
 		function apply() {
-			var h1 = getH1();
-			if ( !h1 ) return;
-
-			var t = ui.content.scrollTop || 0;
-
-			if ( !canCollapse() ) {
-				lastState = 'off';
-				h1.classList.remove( 'is-collapsed' );
-				h1.style.setProperty( '--wk-h1-collapse', '0' );
-				lastT = t;
+			frame = 0;
+			if ( stopped ) return;
+			if ( !ui.panel.isConnected ) {
+				disconnect();
 				return;
 			}
-
-			var p = t / 80;
-			if ( p < 0 ) p = 0;
-			if ( p > 1 ) p = 1;
-
-			/*	Direction (utile, mais on ajoute un cooldown aussi) */
-			var dir = ( t > lastT ) ? 1 : ( t < lastT ? -1 : 0 );
-			lastT = t;
-
-			var onAt = 18;
-			var offAt = 6;
-
-			/*	Cooldown : évite l’oscillation due aux reflows / clamps de scrollTop */
-			var now = Date.now();
-			if ( now - lastToggleAt < 180 ) {
-				h1.style.setProperty( '--wk-h1-collapse', String( p ) );
-				return;
+			if ( needsMeasure ) {
+				needsMeasure = false;
+				measure();
 			}
+			if ( !title ) return;
 
-			if ( lastState !== 'on' && dir >= 0 && t >= onAt ) {
-				lastState = 'on';
-				lastToggleAt = now;
-				h1.classList.add( 'is-collapsed' );
-
-				/*	Si le collapse a réduit la zone scrollable, certains navigateurs
-					clampent scrollTop (parfois jusqu’à 0). On remonte à un seuil stable. */
-				W.requestAnimationFrame( function () {
-					clampScrollTopTo( onAt );
-				} );
-			} else if ( lastState === 'on' && dir <= 0 && t <= offAt ) {
-				lastState = 'off';
-				lastToggleAt = now;
-				h1.classList.remove( 'is-collapsed' );
+			var progress = Math.min( maxProgress, Math.max( 0, ui.content.scrollTop ) / distance );
+			var height = expandedHeight - reduction * progress;
+			if ( height !== lastHeight ) {
+				h1.style.setProperty( '--wk-h1-title-height', height + 'px' );
+				h1.style.setProperty( '--wk-h1-collapse', String( progress ) );
+				lastHeight = height;
 			}
-
-			h1.style.setProperty( '--wk-h1-collapse', String( p ) );
 		}
 
-		ui.content.addEventListener( 'scroll', function () {
-			if ( ui._wkH1ScrollRAF ) return;
-			ui._wkH1ScrollRAF = W.requestAnimationFrame( function () {
-				ui._wkH1ScrollRAF = 0;
-				apply();
-			} );
-		}, { passive: true } );
-
-		if ( ui.content.dataset.wkH1ResizeBound !== '1' ) {
-			ui.content.dataset.wkH1ResizeBound = '1';
-
-			W.addEventListener( 'resize', function () {
-				rangeExpanded = -1;
-				rangeCollapsed = -1;
-				W.requestAnimationFrame( function () { measureRanges(); apply(); } );
-			} );
+		function schedule() {
+			if ( !stopped && !frame ) frame = W.requestAnimationFrame( apply );
 		}
 
-		measureRanges();
-		apply();
+		function refresh() {
+			needsMeasure = true;
+			schedule();
+		}
+
+		function disconnect() {
+			stopped = true;
+			if ( frame ) W.cancelAnimationFrame( frame );
+			if ( resizeObserver ) resizeObserver.disconnect();
+			mutations.disconnect();
+			ui.content.removeEventListener( 'scroll', schedule );
+			ui.content.removeEventListener( 'load', refresh, true );
+			W.removeEventListener( 'resize', refresh );
+			if ( D.fonts ) D.fonts.removeEventListener( 'loadingdone', refresh );
+			delete ui.content._wkH1Collapse;
+		}
+
+		ui.content._wkH1Collapse = { refresh: refresh, disconnect: disconnect };
+		ui.content.addEventListener( 'scroll', schedule, { passive: true } );
+		ui.content.addEventListener( 'load', refresh, true );
+		W.addEventListener( 'resize', refresh );
+		if ( D.fonts ) D.fonts.addEventListener( 'loadingdone', refresh );
+
+		// A new argument replaces both the header and its body. Observe DOM
+		// changes, not our style writes, and remeasure images/fonts when ready.
+		var mutations = new MutationObserver( refresh );
+		mutations.observe( ui.panel, { childList: true, subtree: true, characterData: true } );
+		if ( W.ResizeObserver ) {
+			resizeObserver = new ResizeObserver( function ( entries ) {
+				if ( entries.some( function ( entry ) {
+					return entry.target === ui.panel || ( title &&
+						( Math.abs( title.getBoundingClientRect().width - titleWidth ) > 1 || title.scrollHeight !== expandedHeight ) );
+				} ) ) refresh();
+			} );
+			resizeObserver.observe( ui.panel );
+		}
+		refresh();
 	}
 
 
@@ -512,112 +484,12 @@
 		Parse cache (Minerva)
 	   ========================= */
 
-	var WKReadingParseCache = ( function () {
-		var max = 50;
-		var map = new Map();
-
-		function stableStringify( obj ) {
-			if ( !obj || typeof obj !== 'object' ) return String( obj );
-
-			var keys = Object.keys( obj ).sort();
-			var out = [];
-
-			for ( var i = 0; i < keys.length; i++ ) {
-				var k = keys[ i ];
-				var v = obj[ k ];
-
-				if ( v === undefined ) continue;
-
-				if ( v && typeof v === 'object' && !Array.isArray( v ) ) {
-					out.push( k + '={' + stableStringify( v ) + '}' );
-				} else if ( Array.isArray( v ) ) {
-					out.push( k + '=[' + v.join( ',' ) + ']' );
-				} else {
-					out.push( k + '=' + String( v ) );
-				}
-			}
-
-			return out.join( '&' );
-		}
-
-		function get( key ) {
-			if ( !map.has( key ) ) return null;
-
-			var v = map.get( key );
-			map.delete( key );
-			map.set( key, v );
-			return v;
-		}
-
-		function set( key, val ) {
-			if ( map.has( key ) ) map.delete( key );
-			map.set( key, val );
-
-			while ( map.size > max ) {
-				var firstKey = map.keys().next().value;
-				map.delete( firstKey );
-			}
-		}
-
-		return {
-			key: function ( params ) { return stableStringify( params ); },
-			get: get,
-			set: set
-		};
-	}() );
-
-	var WKReadingParseInFlight = Object.create( null );
+	var WKReadingParseCache = WK.wkPageParseCache;
 	var WKReadingParseCacheHook = null;
 
-	var WKReadingApiPatched = false;
-
-	function wkReadingPatchApiGetParseCache() {
-		if ( WKReadingApiPatched ) return;
-		WKReadingApiPatched = true;
-
-		if ( !W.mw || !W.jQuery ) return;
-		if ( !WK || typeof WK.wkGetApi !== 'function' ) return;
-
-		var $ = W.jQuery;
-		var origGetApi = WK.wkGetApi;
-
-		WK.wkGetApi = function () {
-			var api = origGetApi();
-			if ( !api || api._wkReadingGetPatched ) return api;
-
-			api._wkReadingGetPatched = true;
-
-			var origGet = api.get;
-
-			api.get = function ( params ) {
-				try {
-					if ( params && params.action === 'parse' && params.page && params.prop === 'text' ) {
-						var key = 'parse?' + WKReadingParseCache.key( params );
-
-						var cached = WKReadingParseCache.get( key );
-						if ( cached ) return $.Deferred().resolve( cached ).promise();
-
-						var req = origGet.call( api, params );
-
-						if ( req && typeof req.then === 'function' ) {
-							req.then( function ( data ) {
-								if ( data && data.parse ) {
-									WKReadingParseCache.set( key, data );
-									if ( typeof WKReadingParseCacheHook === 'function' ) WKReadingParseCacheHook( key );
-								}
-							} );
-						}
-
-						return req;
-					}
-				} catch ( e ) {}
-
-				return origGet.call( api, params );
-			};
-
-			return api;
-		};
-	}
+	mw.hook( 'wikidebates.pageParsed' ).add( function ( key ) {
+		if ( typeof WKReadingParseCacheHook === 'function' ) WKReadingParseCacheHook( key );
+	} );
 
 	/* =========================
 		Swipe siblings (Minerva)
@@ -721,21 +593,10 @@
 			if ( !params ) return;
 
 			try {
-				var key = 'parse?' + WKReadingParseCache.key( params );
+				var key = WKReadingParseCache.key( params );
 
 				if ( WKReadingParseCache.get( key ) ) return;
-				if ( WKReadingParseInFlight[ key ] ) return;
-
-				var req = WK.wkGetApi().get( params );
-				WKReadingParseInFlight[ key ] = 1;
-
-				if ( req && typeof req.always === 'function' ) {
-					req.always( function () { delete WKReadingParseInFlight[ key ]; } );
-				} else if ( req && typeof req.finally === 'function' ) {
-					req.finally( function () { delete WKReadingParseInFlight[ key ]; } );
-				} else {
-					W.setTimeout( function () { delete WKReadingParseInFlight[ key ]; }, 4000 );
-				}
+				WK.wkParsePage( params );
 			} catch ( e ) {}
 		}
 
@@ -1028,7 +889,7 @@
 				return false;
 			}
 
-			var key = 'parse?' + WKReadingParseCache.key( params );
+			var key = WKReadingParseCache.key( params );
 			var cached = WKReadingParseCache.get( key );
 
 			var frag = cached ? getFragmentFromParseData( cached ) : '';
@@ -1574,7 +1435,6 @@
 				content: D.getElementById( UI_IDS.contentId )
 			};
 
-			wkReadingPatchApiGetParseCache();
 			wkReadingBindLeftSheet( ui );
 			wkReadingBindSiblingSwipeMinerva( ui );
 			wkReadingBindH1CollapseOnScroll( ui );
@@ -1616,7 +1476,6 @@
 
 		var ui2 = { root: root, panel: panel, left: left, stack: stack, siblings: siblings, content: content };
 
-		wkReadingPatchApiGetParseCache();
 		wkReadingBindLeftSheet( ui2 );
 		wkReadingBindSiblingSwipeMinerva( ui2 );
 		wkReadingBindH1CollapseOnScroll( ui2 );
@@ -1826,6 +1685,8 @@
 	}
 
 	function closeUi() {
+		var content = D.getElementById( UI_IDS.contentId );
+		if ( content && content._wkH1Collapse ) content._wkH1Collapse.disconnect();
 		var root = D.getElementById( UI_IDS.rootId );
 		if ( root && root.parentNode ) root.parentNode.removeChild( root );
 	}

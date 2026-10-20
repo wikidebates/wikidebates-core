@@ -10,6 +10,7 @@
 	var D = document;
 	var W = window;
 	var WK = W.Wikidebates || ( W.Wikidebates = {} );
+	var refTooltipsLoaded = false;
 
 	function wkLoadOnce( key, moduleName ) {
 		if ( typeof WK.wkOnce === 'function' ) {
@@ -43,14 +44,14 @@
 	}
 
 	function hasIn( root, selector ) {
-		try { return !!( root && root.querySelector && root.querySelector( selector ) ); } catch ( e ) {}
+		try { return !!( root && ( ( root.matches && root.matches( selector ) ) || ( root.querySelector && root.querySelector( selector ) ) ) ); } catch ( e ) {}
 		return false;
 	}
 
 	function onContent( root ) {
 		var el = root && root.nodeType ? root : D;
 		var hasHover = hasIn( el, '.hover-map, .hover-wikipedia, .hover-link' );
-		var hasRef = hasIn( el, '.reference' );
+		var hasRef = !refTooltipsLoaded && hasIn( el, '.reference' );
 
 		/*	Hover (Vector only) */
 		if ( hasHover ) {
@@ -62,9 +63,12 @@
 
 		/*	Ref tooltips (Vector only) */
 		if ( hasRef ) {
+			refTooltipsLoaded = true;
 			wkLoadIdleOnce( 'wk:vector:load:refTooltips', 'ext.wikidebates.vector.refTooltips' );
 		}
+	}
 
+	function initPageFeatures() {
 		/*	NS0 view : Vector UI */
 		try {
 			if ( typeof WK.wkIsNs === 'function' && typeof WK.wkIsView === 'function' && WK.wkIsNs( 0 ) && WK.wkIsView() ) {
@@ -79,14 +83,8 @@
 			if ( !WK.wkOnce( 'wk:vector:booted' ) ) return;
 		}
 
-		mw.hook( 'wikipage.ready' ).add( function () { onContent( D ); } );
-
-		mw.hook( 'wikipage.content' ).add( function ( $content ) {
-			var root = ( $content && $content[ 0 ] ) ? $content[ 0 ] : D;
-			onContent( root );
-		} );
-
-		onContent( D );
+		initPageFeatures();
+		WK.wkBindContentScan( onContent );
 	}
 
 	function boot() {

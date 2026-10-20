@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "scripts": {
+    "test": "node --test js/*.test.cjs",
+    "test:browser": "node --test browser/*.test.cjs"
+  },
+  "devDependencies": {
+    "jquery": "3.7.1",
+    "jsdom": "26.1.0",
+    "playwright-core": "1.56.1"
+  }
+}

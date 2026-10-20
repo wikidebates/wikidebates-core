@@ -52,6 +52,39 @@
 		return D;
 	}
 
+	/* Initial hook notifications often describe the same document. Merge them
+	 * once, then scan only the roots supplied by subsequent content updates. */
+	function wkBindContentScan( scan ) {
+		var pending = [];
+		var scheduled = false;
+		var initialized = false;
+
+		function flush() {
+			var roots = pending;
+			pending = [];
+			scheduled = false;
+			initialized = true;
+			roots.forEach( scan );
+		}
+
+		function schedule( root ) {
+			var el = initialized ? wkRootNode( root ) : D;
+			if ( pending.some( function ( parent ) { return parent === el || parent.contains( el ); } ) ) return;
+			pending = pending.filter( function ( child ) { return !el.contains( child ); } );
+			pending.push( el );
+			if ( !scheduled ) {
+				scheduled = true;
+				setTimeout( flush, 0 );
+			}
+		}
+
+		mw.hook( 'wikipage.ready' ).add( function () {
+			if ( !initialized ) schedule( D );
+		} );
+		mw.hook( 'wikipage.content' ).add( schedule );
+		schedule( D );
+	}
+
 	function wkIsNs( ns ) {
 		try { return mw.config.get( 'wgNamespaceNumber' ) === ns; } catch ( e ) { return false; }
 	}
@@ -103,6 +136,7 @@
 	WK.wkIdle = wkIdle;
 	WK.wkWaitFor = wkWaitFor;
 	WK.wkRootNode = wkRootNode;
+	WK.wkBindContentScan = wkBindContentScan;
 
 	WK.wkIsNs = wkIsNs;
 	WK.wkIsView = wkIsView;
