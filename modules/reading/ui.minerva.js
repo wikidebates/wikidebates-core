@@ -507,6 +507,7 @@
 		var lastY = 0;
 		var tracking = false;
 		var locked = false;
+		var scrollLocked = false;
 		var lockedDir = 0;
 
 		var vLocked = false;
@@ -1217,6 +1218,7 @@
 
 			tracking = true;
 			locked = false;
+			scrollLocked = false;
 			lockedDir = 0;
 
 			startX = e.touches[ 0 ].clientX;
@@ -1238,7 +1240,7 @@
 		}, { passive: true } );
 
 		ui.content.addEventListener( 'touchmove', function ( e ) {
-			if ( !tracking ) return;
+			if ( !tracking || scrollLocked ) return;
 			if ( isSheetOpen() && !vLocked ) return;
 			if ( !e.touches || e.touches.length !== 1 ) return;
 
@@ -1247,14 +1249,6 @@
 
 			var dx = lastX - startX;
 			var dy = lastY - startY;
-
-			if ( !locked && !vLocked ) {
-				var vMaybe = ( Math.abs( dy ) > 6 && Math.abs( dy ) > Math.abs( dx ) * 1.1 );
-
-				if ( vMaybe && !vStartAtTop && !vStartAtBottom && !atTop() && !atBottom() ) return;
-				if ( atBottom() && dy > 0 ) return;
-				if ( atTop() && dy < 0 ) return;
-			}
 
 			if ( locked ) {
 				setDragOffset( dx );
@@ -1360,6 +1354,10 @@
 					e.stopPropagation();
 					return;
 				}
+
+				/* Le défilement garde la main jusqu'au relâchement, même si
+				 * le doigt change de direction ou atteint une extrémité. */
+				scrollLocked = true;
 			}
 		}, { passive: false } );
 

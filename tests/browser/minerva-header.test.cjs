@@ -158,3 +158,106 @@ test( 'viewport resize and argument replacement remeasure the title; closing rel
 	await open();
 	assert.equal( ( await metrics() ).progress, 0 );
 } );
+
+async function gestureFixture( t ) {
+	const env = await fixture( t );
+	await env.page.evaluate( () => {
+		Wikidebates.WK_READING.state.siblingsByDepth[ 1 ] = [
+			{ page: 'Previous', title: 'Previous' },
+			{ page: 'Argument 1', title: 'Current' },
+			{ page: 'Next', title: 'Next' }
+		];
+	} );
+	await env.open();
+	async function touch( type, x = 195, y = 300, scrollTop ) {
+		return env.page.evaluate( ( { type, x, y, scrollTop } ) => {
+			const content = document.getElementById( 'wk-reading-content' );
+			if ( scrollTop !== undefined ) content.scrollTop = scrollTop;
+			const touches = /touchend|touchcancel/.test( type ) ? [] : [
+				new Touch( { identifier: 1, target: content, clientX: x, clientY: y } )
+			];
+			const event = new TouchEvent( type, { bubbles: true, cancelable: true, touches } );
+			content.dispatchEvent( event );
+			const transform = new DOMMatrix( content.style.transform );
+			return {
+				prevented: event.defaultPrevented,
+				offsetX: transform.m41, offsetY: transform.m42,
+				page: Wikidebates.WK_READING.state._wkCurrentPage,
+				sheet: document.getElementById( 'wk-reading-mode' ).classList.contains( 'is-sheet-open' )
+			};
+		}, { type, x, y, scrollTop } );
+	}
+	return { ...env, touch };
+}
+
+test( 'vertical scrolling cannot turn into sibling navigation before release', async ( t ) => {
+	const { touch, scroll, metrics } = await gestureFixture( t );
+	const { range } = await metrics();
+	for ( const [ offset, dy ] of [ [ 200, -30 ], [ 200, 30 ], [ 0, -30 ], [ range, 30 ] ] ) {
+		for ( const x of [ 75, 315 ] ) {
+			await scroll( offset );
+			await touch( 'touchstart' );
+			const vertical = await touch( 'touchmove', 195, 300 + dy );
+			assert.equal( vertical.prevented, false, 'ordinary scrolling stays with the browser' );
+			const lateral = await touch( 'touchmove', x, 300 + dy );
+			assert.equal( lateral.offsetX, 0, 'no horizontal preview after vertical scrolling' );
+			assert.equal( lateral.offsetY, 0 );
+			assert.equal( ( await touch( 'touchend' ) ).page, 'Argument 1' );
+		}
+	}
+} );
+
+test( 'scrolling to an edge and reversing keeps the same gesture in scroll mode', async ( t ) => {
+	const { touch, scroll, metrics } = await gestureFixture( t );
+	const { range } = await metrics();
+	for ( const [ edge, dy ] of [ [ 0, 30 ], [ range, -30 ] ] ) {
+		await scroll( 200 );
+		await touch( 'touchstart' );
+		await touch( 'touchmove', 195, 300 - dy );
+		const state = await touch( 'touchmove', 195, 300 + dy, edge );
+		assert.equal( state.offsetX, 0 );
+		assert.equal( state.offsetY, 0 );
+		assert.equal( state.sheet, false );
+		await touch( 'touchmove', 75, 300 + dy );
+		assert.equal( ( await touch( 'touchend' ) ).page, 'Argument 1' );
+	}
+} );
+
+test( 'release and cancellation allow a fresh horizontal gesture in either direction', async ( t ) => {
+	for ( const end of [ 'touchend', 'touchcancel' ] ) {
+		const { touch, scroll, settle } = await gestureFixture( t );
+		await scroll( 200 );
+		await touch( 'touchstart' );
+		await touch( 'touchmove', 195, 270 );
+		await touch( end );
+		await touch( 'touchstart' );
+		await touch( 'touchmove', 75, 300 );
+		assert.equal( ( await touch( 'touchend' ) ).page, 'Next' );
+		await settle();
+		await touch( 'touchstart' );
+		await touch( 'touchmove', 315, 300 );
+		assert.equal( ( await touch( 'touchend' ) ).page, 'Argument 1' );
+	}
+} );
+
+test( 'small or diagonal initial motion does not prematurely choose the vertical axis', async ( t ) => {
+	const { touch, scroll } = await gestureFixture( t );
+	await scroll( 200 );
+	await touch( 'touchstart' );
+	await touch( 'touchmove', 196, 303 );
+	await touch( 'touchmove', 175, 280 );
+	await touch( 'touchmove', 75, 280 );
+	assert.equal( ( await touch( 'touchend' ) ).page, 'Next' );
+} );
+
+test( 'vertical edge gestures still reveal the parent and open the contents sheet', async ( t ) => {
+	const { touch, scroll } = await gestureFixture( t );
+	await scroll( 0 );
+	await touch( 'touchstart' );
+	assert.equal( ( await touch( 'touchmove', 195, 340 ) ).offsetY, 40 );
+	await touch( 'touchcancel' );
+	await scroll( 10000 );
+	await touch( 'touchstart' );
+	assert.equal( ( await touch( 'touchmove', 195, 220 ) ).sheet, true );
+	assert.equal( ( await touch( 'touchend' ) ).sheet, true );
+} );
