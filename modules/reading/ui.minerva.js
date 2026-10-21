@@ -126,58 +126,18 @@
 		return btn;
 	}
 
-	function wkReadingBindH1CollapseOnScroll( ui ) {
+	function wkReadingBindTitleFade( ui ) {
 		if ( !ui || !ui.content || !ui.panel ) return;
-		if ( ui.content._wkH1Collapse ) {
-			ui.content._wkH1Collapse.refresh();
+		if ( ui.content._wkTitleFade ) {
+			ui.content._wkTitleFade.refresh();
 			return;
 		}
 
-		var distance = 400;
 		var frame = 0;
-		var needsMeasure = true;
-		var h1 = null;
-		var title = null;
-		var expandedHeight = 0;
-		var titleWidth = 0;
-		var reduction = 0;
-		var maxProgress = 0;
-		var lastHeight = -1;
+		var fullTitle = null;
+		var lastOpacity = -1;
 		var stopped = false;
 		var resizeObserver = null;
-
-		function measure() {
-			h1 = ui.panel.querySelector( '.wk-reading-h1' );
-			var nextTitle = h1 && h1.querySelector( '.wk-reading-h1__title' );
-			if ( title !== nextTitle ) {
-				if ( resizeObserver && title ) resizeObserver.unobserve( title );
-				title = nextTitle;
-				lastHeight = -1;
-				if ( resizeObserver && title ) resizeObserver.observe( title );
-			}
-			if ( !title ) return;
-
-			var bounds = title.getBoundingClientRect();
-			var style = W.getComputedStyle( title );
-			var lineHeight = parseFloat( style.lineHeight ) || ( parseFloat( style.fontSize ) || 16 ) * 1.25;
-			expandedHeight = title.scrollHeight;
-			titleWidth = bounds.width;
-			reduction = Math.max( 0, expandedHeight - lineHeight );
-			// Spread long titles over a longer gesture. With the eased curve below,
-			// the header adds less than a fifth of a pixel per scrolled pixel,
-			// including during slow reversals toward the fully expanded title.
-			distance = Math.max( 400, reduction * 8 );
-
-			// Recover the scroll range with the title fully expanded, without
-			// temporarily changing its height or moving the reader's position.
-			var currentReduction = Math.max( 0, expandedHeight - bounds.height );
-			var range = Math.max( 0, ui.content.scrollHeight - ui.content.clientHeight + currentReduction );
-			// On short pages, cap both the collapse and its scroll distance so
-			// range - reduction * p >= distance * p at the end of the gesture.
-			// Otherwise shrinking the header clamps scrollTop, which changes p
-			// again and can make the title oscillate. One extra pixel covers rounding.
-			maxProgress = reduction > 0 ? Math.min( 1, range / ( distance + reduction + 1 ) ) : 0;
-		}
 
 		function apply() {
 			frame = 0;
@@ -186,32 +146,29 @@
 				disconnect();
 				return;
 			}
-			if ( needsMeasure ) {
-				needsMeasure = false;
-				measure();
-			}
-			if ( !title ) return;
 
-			var scrollDistance = distance * maxProgress;
-			var offset = scrollDistance > 0 ? Math.min( 1, Math.max( 0, ui.content.scrollTop ) / scrollDistance ) : 0;
-			// Ease the start and end in scroll space, with no animation after the
-			// reader stops and no writes to the browser's native scroll position.
-			var progress = maxProgress * offset * offset * ( 3 - 2 * offset );
-			var height = expandedHeight - reduction * progress;
-			if ( height !== lastHeight ) {
-				h1.style.setProperty( '--wk-h1-title-height', height + 'px' );
-				h1.style.setProperty( '--wk-h1-collapse', String( progress ) );
-				lastHeight = height;
+			var nextTitle = ui.content.querySelector( '.wk-reading-full-title' );
+			if ( fullTitle !== nextTitle ) {
+				if ( resizeObserver && fullTitle ) resizeObserver.unobserve( fullTitle );
+				fullTitle = nextTitle;
+				lastOpacity = -1;
+				if ( resizeObserver && fullTitle ) resizeObserver.observe( fullTitle );
 			}
-		}
 
-		function schedule() {
-			if ( !stopped && !frame ) frame = W.requestAnimationFrame( apply );
+			var bar = ui.panel.querySelector( '.wk-reading-h1' );
+			if ( !bar ) return;
+			// Only opacity changes. The full heading belongs to the native scroll
+			// flow, and the toolbar reserves the same space even while loading.
+			var hidden = fullTitle ? ui.content.getBoundingClientRect().top - fullTitle.getBoundingClientRect().bottom : 0;
+			var opacity = Math.max( 0, Math.min( 1, hidden / 32 ) );
+			if ( opacity !== lastOpacity ) {
+				bar.style.setProperty( '--wk-reading-title-opacity', String( opacity ) );
+				lastOpacity = opacity;
+			}
 		}
 
 		function refresh() {
-			needsMeasure = true;
-			schedule();
+			if ( !stopped && !frame ) frame = W.requestAnimationFrame( apply );
 		}
 
 		function disconnect() {
@@ -219,35 +176,32 @@
 			if ( frame ) W.cancelAnimationFrame( frame );
 			if ( resizeObserver ) resizeObserver.disconnect();
 			mutations.disconnect();
-			ui.content.removeEventListener( 'scroll', schedule );
-			ui.content.removeEventListener( 'load', refresh, true );
+			ui.content.removeEventListener( 'scroll', refresh );
 			W.removeEventListener( 'resize', refresh );
 			if ( D.fonts ) D.fonts.removeEventListener( 'loadingdone', refresh );
-			delete ui.content._wkH1Collapse;
+			delete ui.content._wkTitleFade;
 		}
 
-		ui.content._wkH1Collapse = { refresh: refresh, disconnect: disconnect };
-		ui.content.addEventListener( 'scroll', schedule, { passive: true } );
-		ui.content.addEventListener( 'load', refresh, true );
+		ui.content._wkTitleFade = { refresh: refresh, disconnect: disconnect };
+		ui.content.addEventListener( 'scroll', refresh, { passive: true } );
 		W.addEventListener( 'resize', refresh );
 		if ( D.fonts ) D.fonts.addEventListener( 'loadingdone', refresh );
 
-		// A new argument replaces both the header and its body. Observe DOM
-		// changes, not our style writes, and remeasure images/fonts when ready.
 		var mutations = new MutationObserver( refresh );
-		mutations.observe( ui.panel, { childList: true, subtree: true, characterData: true } );
+		mutations.observe( ui.content, { childList: true, subtree: true, characterData: true } );
 		if ( W.ResizeObserver ) {
-			resizeObserver = new ResizeObserver( function ( entries ) {
-				if ( entries.some( function ( entry ) {
-					return entry.target === ui.panel || ( title &&
-						( Math.abs( title.getBoundingClientRect().width - titleWidth ) > 1 || title.scrollHeight !== expandedHeight ) );
-				} ) ) refresh();
-			} );
-			resizeObserver.observe( ui.panel );
+			resizeObserver = new ResizeObserver( refresh );
+			resizeObserver.observe( ui.content );
 		}
 		refresh();
 	}
 
+	function wkReadingBuildFullTitle( text ) {
+		var title = D.createElement( 'h1' );
+		title.className = 'wk-reading-full-title wk-icon-before wk-icon-argument';
+		title.textContent = text;
+		return title;
+	}
 
 	function wkReadingBuildOverlay() {
 		var ov = D.createElement( 'div' );
@@ -672,6 +626,7 @@
 
 			var layer = D.createElement( 'div' );
 			layer.className = 'wk-reading-peek';
+			layer.setAttribute( 'aria-hidden', 'true' );
 			layer.style.position = 'absolute';
 			layer.style.top = '0';
 			layer.style.left = '0';
@@ -923,7 +878,10 @@
 			ui._wkPeekPendingDir = 0;
 			ui._wkPeekPendingPage = '';
 
-			if ( ui._wkPeekBody ) ui._wkPeekBody.innerHTML = frag;
+			if ( ui._wkPeekBody ) {
+				ui._wkPeekBody.innerHTML = frag;
+				ui._wkPeekBody.insertBefore( wkReadingBuildFullTitle( getSiblingTitleByPage( page ) || page ), ui._wkPeekBody.firstChild );
+			}
 
 			layer.style.display = '';
 			hideRealH1( true );
@@ -1081,9 +1039,7 @@
 		}
 
 		function atBottom() {
-			/*	Tolérance + exact :
-				- exact : tout en bas
-				- tolérance : “presque en bas” (utile quand le H1 collapsed change la hauteur) */
+			/* Tolérance pour les arrondis et le rebond natif près du bas. */
 			try {
 				var el = ui.content;
 				var st = el.scrollTop || 0;
@@ -1230,8 +1186,8 @@
 
 		function lockToNativeScroll() {
 			if ( !tracking || scrollLocked || vLocked || getScrollPosition() === startScrollTop ) return;
-			// Native scrolling can start before the 12px touch threshold, while
-			// the title is already resizing. Keep it in control until release.
+			// Native scrolling can start before the 12px touch threshold or
+			// before its scroll event is delivered. Keep it in control until release.
 			scrollLocked = true;
 			if ( locked ) {
 				locked = false;
@@ -1470,7 +1426,7 @@
 
 			wkReadingBindLeftSheet( ui );
 			wkReadingBindSiblingSwipeMinerva( ui );
-			wkReadingBindH1CollapseOnScroll( ui );
+			wkReadingBindTitleFade( ui );
 
 			return ui;
 		}
@@ -1509,9 +1465,11 @@
 
 		var ui2 = { root: root, panel: panel, left: left, stack: stack, siblings: siblings, content: content };
 
+		ensureH1Dom( ui2 );
+		updateH1Actions( ui2 );
 		wkReadingBindLeftSheet( ui2 );
 		wkReadingBindSiblingSwipeMinerva( ui2 );
-		wkReadingBindH1CollapseOnScroll( ui2 );
+		wkReadingBindTitleFade( ui2 );
 
 		return ui2;
 	}
@@ -1526,7 +1484,16 @@
 		if ( !ui || !ui.panel ) return null;
 
 		var h1 = ui.panel.querySelector( '.wk-reading-h1' );
-		if ( !h1 ) return null;
+		if ( !h1 ) {
+			h1 = D.createElement( 'div' );
+			h1.className = 'wk-reading-h1';
+			var compactTitle = D.createElement( 'div' );
+			compactTitle.className = 'wk-reading-h1__title wk-icon-before wk-icon-argument';
+			// The complete, semantic heading is in the scrollable content.
+			compactTitle.setAttribute( 'aria-hidden', 'true' );
+			h1.appendChild( compactTitle );
+			ui.panel.insertBefore( h1, ui.content );
+		}
 
 		var close = h1.querySelector( '#' + UI_IDS.closeId );
 		if ( !close ) {
@@ -1675,19 +1642,16 @@
 		}
 		if ( !last || !last.title ) return;
 
-		var existing = ui.panel.querySelector( '.wk-reading-h1' );
-		if ( existing && existing.parentNode ) existing.parentNode.removeChild( existing );
+		var bar = ensureH1Dom( ui );
+		bar.querySelector( '.wk-reading-h1__title' ).textContent = last.title;
+		bar.style.setProperty( '--wk-reading-title-opacity', '0' );
+		wkReadingCloseH1Menu( bar );
 
-		var wrap = D.createElement( 'div' );
-		wrap.className = 'wk-reading-h1';
+		var existing = ui.content.querySelector( '.wk-reading-full-title' );
+		if ( existing ) existing.remove();
 
-		var title = D.createElement( 'div' );
-		title.className = 'wk-reading-h1__title wk-icon-before wk-icon-argument';
-		title.textContent = last.title;
-
-		wrap.appendChild( title );
-
-		ui.panel.insertBefore( wrap, ui.content );
+		ui.content.insertBefore( wkReadingBuildFullTitle( last.title ), ui.content.firstChild );
+		if ( ui.content._wkTitleFade ) ui.content._wkTitleFade.refresh();
 
 		updateH1Actions( ui );
 	}
@@ -1719,7 +1683,7 @@
 
 	function closeUi() {
 		var content = D.getElementById( UI_IDS.contentId );
-		if ( content && content._wkH1Collapse ) content._wkH1Collapse.disconnect();
+		if ( content && content._wkTitleFade ) content._wkTitleFade.disconnect();
 		var root = D.getElementById( UI_IDS.rootId );
 		if ( root && root.parentNode ) root.parentNode.removeChild( root );
 	}

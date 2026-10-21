@@ -4,9 +4,9 @@ const path = require( 'node:path' );
 const { chromium } = require( 'playwright-core' );
 
 const root = path.resolve( __dirname, '../..' );
-const longTitle = 'Un argument avec un titre particulièrement long qui doit rester lisible sur plusieurs lignes pendant la lecture et se replier progressivement lorsque la personne fait défiler son contenu sur mobile';
+const longTitle = 'Un argument avec un titre particulièrement long qui doit rester lisible sur plusieurs lignes pendant la lecture et défiler naturellement avec son contenu sur mobile';
 
-async function fixture( t ) {
+async function fixture( t, skin = 'minerva' ) {
 	const browser = await chromium.launch( {
 		executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium',
 		headless: true, args: [ '--no-sandbox' ]
@@ -15,14 +15,16 @@ async function fixture( t ) {
 	const errors = [];
 	page.on( 'pageerror', ( error ) => errors.push( error.message ) );
 	t.after( async () => { await browser.close(); assert.deepEqual( errors, [] ); } );
-	await page.setContent( '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body class="skin-minerva action-view"></body></html>' );
+	await page.setContent( '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body class="skin-' + skin + ' action-view"><div id="bodyContent"></div></body></html>' );
 	await page.addStyleTag( { content: 'html,body { margin:0; font:16px Arial,sans-serif; } :root { --wd-arg-icon-size:20px; --background-color-base:#fff; --background-color-neutral-subtle:#fff; }' } );
-	for ( const file of [ 'base.css', 'minerva.css' ] ) await page.addStyleTag( { path: path.join( root, 'modules/reading', file ) } );
+	for ( const file of [ 'base.css', skin === 'minerva' ? 'minerva.css' : 'vector-2022.css' ] ) {
+		await page.addStyleTag( { path: path.join( root, 'modules/reading', file ) } );
+	}
 	await page.addScriptTag( { path: require.resolve( 'jquery' ) } );
-	await page.evaluate( () => {
+	await page.evaluate( ( skin ) => {
 		const hooks = new Map();
 		window.mw = {
-			config: { get: ( key ) => ( { skin: 'minerva', wgUserLanguage: 'fr', wgNamespaceNumber: 0 } )[ key ] },
+			config: { get: ( key ) => ( { skin, wgUserLanguage: 'fr', wgNamespaceNumber: 0 } )[ key ] },
 			util: { getUrl: ( title ) => '/wiki/' + encodeURIComponent( title ) },
 			hook: ( key ) => {
 				if ( !hooks.has( key ) ) {
@@ -32,20 +34,28 @@ async function fixture( t ) {
 				return hooks.get( key );
 			},
 			Api: function () {
-				this.get = () => jQuery.Deferred().resolve( { parse: { text: window.argumentHTML } } ).promise();
+				this.get = () => {
+					const reply = jQuery.Deferred();
+					if ( window.deferRead ) window.pendingRead = reply;
+					else reply.resolve( { parse: { text: window.argumentHTML } } );
+					return reply.promise();
+				};
 			}
 		};
-	} );
-	for ( const file of [ 'common/core.js', 'common/parse.js', 'reading/core.js', 'reading/ui.minerva.js' ] ) {
+	}, skin );
+	for ( const file of [ 'common/core.js', 'common/parse.js', 'reading/core.js', 'reading/ui.' + ( skin === 'minerva' ? 'minerva' : 'vector' ) + '.js' ] ) {
 		await page.addScriptTag( { path: path.join( root, 'modules', file ) } );
 	}
 	let id = 0;
-	async function open( title = longTitle, height = 1800 ) {
+	async function beginOpen( title = longTitle, height = 1800 ) {
 		await page.evaluate( ( { title, height, id } ) => {
-			window.argumentHTML = '<h2 id="Summary">Résumé</h2><div id="body-probe" style="height:' + height + 'px">Contenu de l’argument</div><h2 id="Parent_debates">Débats parents</h2>';
+			window.argumentHTML = '<h2 id="Summary">Résumé</h2><div id="body-probe" style="height:' + height + 'px"><span id="body-line">Contenu de l’argument</span></div><h2 id="Parent_debates">Débats parents</h2>';
 			Wikidebates.wkOpenReadingModeFromPageTitle( 'Argument ' + id, [ { page: 'Argument ' + id, title, type: 'pour' } ], { history: false } );
 		}, { title, height, id: ++id } );
-		await page.waitForSelector( '.wk-reading-h1' );
+	}
+	async function open( title = longTitle, height = 1800 ) {
+		await beginOpen( title, height );
+		await page.waitForSelector( skin === 'minerva' ? '.wk-reading-full-title' : '.wk-reading-h1' );
 		await settle();
 	}
 	async function settle() {
@@ -54,16 +64,17 @@ async function fixture( t ) {
 	async function metrics() {
 		return page.evaluate( () => {
 			const header = document.querySelector( '.wk-reading-h1' );
-			const title = header.querySelector( '.wk-reading-h1__title' );
+			const title = document.querySelector( '.wk-reading-full-title' );
+			const compact = header.querySelector( '.wk-reading-h1__title' );
 			const content = document.getElementById( 'wk-reading-content' );
-			const style = getComputedStyle( title );
 			return {
-				height: title.getBoundingClientRect().height,
-				expanded: title.scrollHeight,
-				line: parseFloat( style.lineHeight ), font: style.fontSize,
+				headerHeight: header.getBoundingClientRect().height,
+				titleHeight: title.getBoundingClientRect().height,
+				contentTop: content.getBoundingClientRect().top, contentHeight: content.clientHeight,
+				exit: title.getBoundingClientRect().bottom - content.getBoundingClientRect().top + content.scrollTop,
 				scroll: content.scrollTop, range: content.scrollHeight - content.clientHeight,
-				bodyTop: document.getElementById( 'body-probe' ).getBoundingClientRect().top,
-				progress: parseFloat( header.style.getPropertyValue( '--wk-h1-collapse' ) || '0' )
+				bodyTop: document.getElementById( 'body-line' ).getBoundingClientRect().top,
+				opacity: parseFloat( getComputedStyle( compact ).opacity )
 			};
 		} );
 	}
@@ -72,133 +83,198 @@ async function fixture( t ) {
 		await settle();
 		return metrics();
 	}
-	return { page, open, settle, metrics, scroll };
+	return { page, beginOpen, open, settle, metrics, scroll };
 }
 
-test( 'multiline title eases into and out of collapse without abrupt body movement', async ( t ) => {
+function assertStableFlow( before, after ) {
+	assert.equal( after.headerHeight, before.headerHeight, 'the toolbar never changes height' );
+	assert.equal( after.titleHeight, before.titleHeight, 'the complete title never changes height while scrolling' );
+	assert.equal( after.contentTop, before.contentTop, 'the reading viewport never moves' );
+	assert.equal( after.range, before.range, 'fading never changes the scroll range' );
+	assert.ok( Math.abs( after.bodyTop - before.bodyTop + after.scroll - before.scroll ) < 0.25,
+		'the reading text moves only by the distance actually scrolled' );
+}
+
+test( 'a fixed toolbar reserves its place before the argument loads', async ( t ) => {
+	const { page, beginOpen, settle, metrics } = await fixture( t );
+	await page.evaluate( () => { window.deferRead = true; } );
+	await beginOpen();
+	await page.waitForSelector( '.wk-reading-h1' );
+	const loading = await page.evaluate( () => ( {
+		height: document.querySelector( '.wk-reading-h1' ).getBoundingClientRect().height,
+		top: document.getElementById( 'wk-reading-content' ).getBoundingClientRect().top,
+		close: !!document.getElementById( 'wk-reading-close' )
+	} ) );
+	assert.ok( loading.height > 0 && loading.close );
+	await page.evaluate( () => pendingRead.resolve( { parse: { text: argumentHTML } } ) );
+	await page.waitForSelector( '.wk-reading-full-title' );
+	await settle();
+	assert.equal( ( await metrics() ).headerHeight, loading.height );
+	assert.equal( ( await metrics() ).contentTop, loading.top );
+} );
+
+test( 'the full heading scrolls naturally; only the short title fades after it disappears', async ( t ) => {
 	const { page, open, metrics, scroll } = await fixture( t );
 	await open( longTitle, 5000 );
 	const initial = await metrics();
-	assert.ok( initial.expanded > initial.line * 2 );
-	const distance = Math.ceil( Math.max( 400, ( initial.expanded - initial.line ) * 8 ) );
-	const offsets = [ ...new Set( [ 0, 1, 2, 8, 16, 17, 18, 19, 20, 40, 60, 80,
-		120, 160, 200, Math.floor( distance / 2 ), distance - 2, distance - 1, distance, distance + 20 ] ) ].sort( ( a, b ) => a - b );
+	assert.equal( initial.opacity, 0 );
+	assert.ok( initial.titleHeight > 50 );
+	assert.equal( await page.evaluate( () => document.getElementById( 'wk-reading-content' ).firstElementChild.matches( 'h1.wk-reading-full-title' ) ), true );
+	const offsets = [ 0, 1, 2, 8, 40, initial.exit - 1, initial.exit, initial.exit + 1,
+		initial.exit + 8, initial.exit + 16, initial.exit + 24, initial.exit + 32, initial.exit + 80 ];
 	let previous = initial;
 	for ( const offset of offsets.concat( offsets.slice().reverse() ) ) {
 		const state = await scroll( offset );
-		const step = Math.abs( offset - previous.scroll );
-		assert.ok( Math.abs( state.height - previous.height ) <= step * 0.2 + 0.1,
-			'the header must not add more than a fifth of a pixel of motion per scrolled pixel' );
-		assert.ok( Math.abs( state.bodyTop - previous.bodyTop ) <= step * 1.2 + 0.1,
-			'the reading text must move gently along with the scroll' );
-		if ( offset <= 2 ) assert.ok( initial.height - state.height < 0.2, 'gentle start' );
-		if ( offset >= distance - 2 ) assert.ok( state.height - initial.line < 0.2, 'gentle finish' );
-		if ( offset === 80 ) assert.ok( state.progress < 0.5, 'collapse takes substantially more than 80 pixels' );
-		if ( offset === distance ) assert.ok( Math.abs( state.height - initial.line ) < 0.1 );
-		assert.equal( state.scroll, offset, 'header updates must not force scrollTop' );
-		assert.equal( state.font, initial.font, 'text must not scale or rewrap during the gesture' );
+		assertStableFlow( previous, state );
+		assert.ok( Math.abs( state.opacity - Math.max( 0, Math.min( 1, ( state.scroll - initial.exit ) / 32 ) ) ) < 0.001 );
 		previous = state;
 	}
-	await scroll( 80 );
-	const idleWrites = await page.evaluate( async () => {
-		let writes = 0;
-		const observer = new MutationObserver( ( records ) => { writes += records.length; } );
-		observer.observe( document.querySelector( '.wk-reading-h1' ), { attributes: true, attributeFilter: [ 'style' ] } );
+	await scroll( initial.exit + 16 );
+	const writes = await page.evaluate( async () => {
+		let count = 0;
+		const observer = new MutationObserver( ( records ) => { count += records.length; } );
+		observer.observe( document.querySelector( '.wk-reading-h1' ), { attributes: true } );
 		for ( let i = 0; i < 8; i++ ) await new Promise( requestAnimationFrame );
 		observer.disconnect();
-		return writes;
+		return count;
 	} );
-	assert.equal( idleWrites, 0, 'no animation or style updates continue after scrolling stops' );
+	assert.equal( writes, 0, 'no animation or layout writes continue after scrolling stops' );
 } );
 
-test( 'collapse covers at least 400 pixels and changes gently during small forward and backward scrolls', async ( t ) => {
+test( 'slow movement and repeated direction reversals add no displacement to the reading text', async ( t ) => {
 	const { open, metrics, scroll } = await fixture( t );
-	await open( 'Un titre assez long pour occuper plusieurs lignes sur un écran de téléphone' );
-	const shorter = await metrics();
-	assert.ok( shorter.expanded > shorter.line );
-	assert.ok( ( await scroll( 200 ) ).height > shorter.line + 1 );
-	assert.ok( Math.abs( ( await scroll( 400 ) ).height - shorter.line ) < 0.1 );
-	let previous = await scroll( 0 );
-	for ( const offset of [ 1, 2, 4, 8, 12, 16, 20, 24, 20, 16, 12, 8, 4, 2, 1, 0 ] ) {
-		const state = await scroll( offset );
-		assert.equal( state.scroll, offset );
-		assert.ok( Math.abs( state.height - previous.height ) <= Math.abs( offset - previous.scroll ) * 0.05 + 0.02,
-			'barely perceptible title changes near the top' );
-		assert.ok( state.progress < 0.02 );
-		previous = state;
-	}
-	await open( longTitle, 5000 );
-	const taller = await metrics();
-	assert.ok( taller.expanded > shorter.expanded );
-	assert.ok( ( await scroll( 400 ) ).height > taller.line + 1 );
-} );
-
-test( 'short scrollable page settles at a partial collapse without oscillating at the bottom', async ( t ) => {
-	const { page, open, metrics, scroll, settle } = await fixture( t );
 	await open();
-	await page.evaluate( () => {
-		const content = document.getElementById( 'wk-reading-content' );
-		const probe = document.getElementById( 'body-probe' );
-		const gap = probe.getBoundingClientRect().top - content.getBoundingClientRect().top;
-		probe.style.height = ( content.clientHeight - gap - parseFloat( getComputedStyle( content ).paddingBottom ) + 60 ) + 'px';
-		probe.dispatchEvent( new Event( 'load' ) );
-	} );
-	await settle();
 	const initial = await metrics();
-	assert.ok( initial.range > 50 && initial.range < 70, JSON.stringify( initial ) );
-	let previous = initial;
-	for ( const offset of [ 1, 8, 16, 24, 32 ] ) {
-		const state = await scroll( offset );
-		assert.equal( state.scroll, offset );
-		assert.ok( previous.height - state.height <= ( offset - previous.scroll ) * 0.2 + 0.1 );
-		previous = state;
+	for ( const start of [ 0, initial.exit - 4, initial.exit + 12, initial.exit + 28 ] ) {
+		let previous = await scroll( start );
+		for ( const step of [ 1, 2, 3, 4, 3, 2, 1, 0, 1, 0 ] ) {
+			const state = await scroll( start + step );
+			assertStableFlow( previous, state );
+			previous = state;
+		}
 	}
-	await scroll( 10000 );
-	const values = [];
-	for ( let i = 0; i < 10; i++ ) { await settle(); values.push( await metrics() ); }
-	assert.ok( values[ 0 ].height < initial.height );
-	assert.ok( values[ 0 ].height > initial.line );
-	assert.ok( Math.max( ...values.map( ( v ) => v.height ) ) - Math.min( ...values.map( ( v ) => v.height ) ) < 1 );
-	assert.ok( Math.max( ...values.map( ( v ) => v.scroll ) ) - Math.min( ...values.map( ( v ) => v.scroll ) ) < 1 );
-	const restored = await scroll( 0 );
-	assert.ok( Math.abs( restored.height - initial.height ) < 1 );
 } );
 
-test( 'non-scrolling and single-line arguments keep their natural title height', async ( t ) => {
+test( 'short pages remain stable at the bottom, including a partially faded compact title', async ( t ) => {
+	const { page, open, metrics, scroll, settle } = await fixture( t );
+	for ( const fadeAtBottom of [ false, true ] ) {
+		await open();
+		const start = await metrics();
+		await page.evaluate( ( range ) => {
+			const content = document.getElementById( 'wk-reading-content' );
+			const probe = document.getElementById( 'body-probe' );
+			const gap = probe.getBoundingClientRect().top - content.getBoundingClientRect().top;
+			probe.style.height = ( content.clientHeight - gap - parseFloat( getComputedStyle( content ).paddingBottom ) + range ) + 'px';
+		}, fadeAtBottom ? start.exit + 16 : 60 );
+		await settle();
+		const initial = await metrics();
+		let previous = initial;
+		for ( const offset of [ 1, 8, 16, 24, 32, 10000 ] ) {
+			const state = await scroll( offset );
+			assertStableFlow( previous, state );
+			previous = state;
+		}
+		if ( fadeAtBottom ) assert.ok( previous.opacity > 0 && previous.opacity < 1 );
+		else assert.equal( previous.opacity, 0 );
+		for ( let i = 0; i < 8; i++ ) {
+			await settle();
+			assert.deepEqual( await metrics(), previous );
+		}
+		assert.equal( ( await scroll( 0 ) ).opacity, 0 );
+	}
+} );
+
+test( 'short and non-scrolling arguments leave the toolbar in place and the full title readable', async ( t ) => {
 	const { open, metrics, scroll } = await fixture( t );
 	await open( longTitle, 10 );
 	const initial = await metrics();
 	assert.equal( initial.range, 0 );
-	assert.equal( ( await scroll( 80 ) ).height, initial.height );
+	assert.deepEqual( await scroll( 80 ), initial );
 	await open( 'Titre court' );
 	const single = await metrics();
-	assert.ok( Math.abs( single.height - single.line ) < 1 );
-	assert.equal( ( await scroll( 80 ) ).height, single.height );
+	assertStableFlow( single, await scroll( 80 ) );
+	assert.equal( ( await scroll( single.exit + 32 ) ).opacity, 1 );
 } );
 
-test( 'viewport resize and argument replacement remeasure the title; closing releases observers', async ( t ) => {
+test( 'very long titles wrap without clipping and can be read completely by native scrolling', async ( t ) => {
+	const { page, open, metrics, scroll } = await fixture( t );
+	const title = longTitle.repeat( 8 ) + ' MotSansEspaces'.repeat( 20 ).replaceAll( ' ', '' );
+	await open( title, 1800 );
+	const initial = await metrics();
+	assert.ok( initial.titleHeight > initial.contentHeight );
+	assert.equal( await page.textContent( 'h1.wk-reading-full-title' ), title );
+	assert.equal( await page.evaluate( () => {
+		const h = document.querySelector( '.wk-reading-full-title' );
+		return h.scrollWidth <= h.clientWidth && h.scrollHeight <= h.clientHeight;
+	} ), true );
+	const state = await scroll( initial.exit );
+	assertStableFlow( initial, state );
+	assert.equal( state.opacity, 0 );
+	assert.equal( ( await scroll( initial.exit + 32 ) ).opacity, 1 );
+	assert.equal( await page.getAttribute( '.wk-reading-h1__title', 'aria-hidden' ), 'true' );
+} );
+
+test( 'resize, argument replacement and reopening preserve the fixed toolbar and release observers', async ( t ) => {
 	const { page, open, metrics, scroll, settle } = await fixture( t );
 	await open();
-	await scroll( 40 );
-	await page.setViewportSize( { width: 600, height: 390 } );
-	await settle();
-	let state = await scroll( 0 );
-	assert.ok( Math.abs( state.height - state.expanded ) < 1 );
-	await page.setViewportSize( { width: 320, height: 700 } );
-	await settle();
-	state = await metrics();
-	assert.ok( Math.abs( state.height - state.expanded ) < 1 );
+	const initial = await metrics();
+	await scroll( initial.exit + 32 );
+	await page.evaluate( () => { window.originalToolbar = document.querySelector( '.wk-reading-h1' ); } );
+	for ( const viewport of [ { width: 600, height: 390 }, { width: 320, height: 700 } ] ) {
+		await page.setViewportSize( viewport );
+		await settle();
+		assert.equal( ( await metrics() ).headerHeight, initial.headerHeight );
+		assert.equal( ( await scroll( 0 ) ).opacity, 0 );
+	}
 	await open( 'Un autre titre court' );
-	state = await metrics();
-	assert.ok( Math.abs( state.height - state.line ) < 1 );
-	assert.equal( state.progress, 0 );
+	assert.equal( await page.evaluate( () => window.originalToolbar === document.querySelector( '.wk-reading-h1' ) ), true );
+	assert.equal( await page.textContent( '.wk-reading-full-title' ), 'Un autre titre court' );
+	assert.equal( ( await metrics() ).opacity, 0 );
+	assert.equal( ( await metrics() ).scroll, 0 );
 	assert.equal( await page.evaluate( () => {
 		const content = document.getElementById( 'wk-reading-content' );
 		Wikidebates.wkCloseReadingMode();
-		return content._wkH1Collapse === undefined;
+		return content._wkTitleFade === undefined;
 	} ), true );
 	await open();
-	assert.equal( ( await metrics() ).progress, 0 );
+	assert.equal( ( await metrics() ).opacity, 0 );
+} );
+
+test( 'toolbar actions, copy, contents sheet and close still work after the title fades', async ( t ) => {
+	const { page, open, metrics, scroll } = await fixture( t );
+	await page.evaluate( () => {
+		Wikidebates.WK_READING.state.h1Links = {
+			editHref: 'https://example.test/edit-title', detailHref: 'https://example.test/argument'
+		};
+		Object.defineProperty( navigator, 'clipboard', { configurable: true,
+			value: { writeText: ( text ) => { window.copied = text; return Promise.resolve(); } } } );
+	} );
+	await open();
+	await scroll( ( await metrics() ).exit + 32 );
+	const before = await metrics();
+	await page.click( '.wk-h1-more > .wk-icon-more' );
+	assert.equal( await page.getAttribute( '.wk-h1-more > .wk-icon-more', 'aria-expanded' ), 'true' );
+	assert.equal( await page.getAttribute( '.wk-h1-menu__detail', 'href' ), 'https://example.test/argument' );
+	assert.equal( await page.getAttribute( '.wk-h1-menu__edit', 'href' ), 'https://example.test/edit-title' );
+	await page.click( '.wk-h1-menu__copy' );
+	assert.equal( await page.evaluate( () => window.copied ), 'https://example.test/argument' );
+	assert.equal( await page.getAttribute( '.wk-h1-more > .wk-icon-more', 'aria-expanded' ), 'false' );
+	assertStableFlow( before, await metrics() );
+	await page.click( '#wk-reading-navbtn' );
+	assert.equal( await page.evaluate( () => document.getElementById( 'wk-reading-mode' ).classList.contains( 'is-sheet-open' ) ), true );
+	await page.click( '#wk-reading-overlay', { position: { x: 10, y: 10 } } );
+	assert.equal( await page.evaluate( () => document.getElementById( 'wk-reading-mode' ).classList.contains( 'is-sheet-open' ) ), false );
+	assertStableFlow( before, await metrics() );
+	await page.click( '#wk-reading-close' );
+	assert.equal( await page.locator( '#wk-reading-mode' ).count(), 0 );
+} );
+
+test( 'Vector keeps its existing header outside the argument content', async ( t ) => {
+	const { page, open } = await fixture( t, 'vector-2022' );
+	await open();
+	assert.equal( await page.textContent( '.wk-reading-h1__title' ), longTitle );
+	assert.equal( await page.locator( '.wk-reading-full-title' ).count(), 0 );
+	assert.equal( await page.evaluate( () => document.getElementById( 'wk-reading-content' ).contains( document.querySelector( '.wk-reading-h1' ) ) ), false );
 } );
 
 async function gestureFixture( t ) {
@@ -251,22 +327,24 @@ test( 'vertical scrolling cannot turn into sibling navigation before release', a
 	}
 } );
 
-test( 'tiny native scroll during header collapse locks out sideways previews before and after scroll events', async ( t ) => {
+test( 'tiny native scroll during title fading locks out sideways previews before and after scroll events', async ( t ) => {
 	const { touch, scroll, settle, metrics } = await gestureFixture( t );
 	for ( const waitForScroll of [ false, true ] ) {
 		for ( const dy of [ -6, 6 ] ) {
 			for ( const x of [ 75, 315 ] ) {
-				await scroll( 120 );
+				const offset = Math.ceil( ( await metrics() ).exit + 16 );
+				await scroll( offset );
 				const before = await metrics();
 				await touch( 'touchstart' );
-				await touch( 'touchmove', 195, 300 + dy, 120 - dy );
+				await touch( 'touchmove', 195, 300 + dy, offset - dy );
 				if ( waitForScroll ) {
 					await settle();
-					assert.notEqual( ( await metrics() ).height, before.height, 'the title is resizing during this gesture' );
+					assert.notEqual( ( await metrics() ).opacity, before.opacity, 'the compact title is fading during this gesture' );
+					assertStableFlow( before, await metrics() );
 				}
 				const lateral = await touch( 'touchmove', x, 300 + dy );
 				assert.equal( lateral.offsetX, 0, 'native scrolling must take priority even below the 12px gesture threshold' );
-				assert.equal( lateral.peek, false, 'no sibling preview during header resizing' );
+				assert.equal( lateral.peek, false, 'no sibling preview during title fading' );
 				assert.equal( ( await touch( 'touchend' ) ).page, 'Argument 1' );
 			}
 		}
@@ -289,31 +367,86 @@ test( 'a delayed native scroll cancels an already prepared sideways preview unti
 	assert.equal( ( await touch( 'touchend' ) ).page, 'Next' );
 } );
 
-test( 'browser-driven diagonal touch scrolling resizes the title without revealing a sibling', async ( t ) => {
+test( 'a fresh sibling preview includes the complete incoming heading and matches the committed layout', async ( t ) => {
+	const { page, touch, scroll, settle, metrics } = await gestureFixture( t );
+	await scroll( 0 );
+	await touch( 'touchstart' );
+	assert.equal( ( await touch( 'touchmove', 75, 300 ) ).peek, true );
+	const preview = await page.evaluate( () => {
+		const layer = document.querySelector( '.wk-reading-peek' );
+		return {
+			title: layer.querySelector( '.wk-reading-full-title' ).textContent,
+			line: layer.querySelector( '#body-line' ).getBoundingClientRect().top,
+			decorative: layer.getAttribute( 'aria-hidden' )
+		};
+	} );
+	assert.equal( preview.title, 'Next' );
+	assert.equal( preview.decorative, 'true' );
+	assert.equal( ( await touch( 'touchend' ) ).page, 'Next' );
+	await settle();
+	assert.equal( await page.textContent( '#wk-reading-content .wk-reading-full-title' ), 'Next' );
+	assert.ok( Math.abs( ( await metrics() ).bodyTop - preview.line ) < 0.25,
+		'committing a preview does not introduce a different heading layout' );
+} );
+
+test( 'browser-driven touch scrolling and reversal fade the title without displacing text or previewing siblings', async ( t ) => {
 	const { page, scroll, settle, metrics } = await gestureFixture( t );
-	await scroll( 180 );
+	await scroll( ( await metrics() ).exit - 12 );
 	const before = await metrics();
 	await page.evaluate( () => {
-		window.sidewaysPreviews = 0;
-		document.getElementById( 'wk-reading-content' ).addEventListener( 'touchmove', () => {
+		window.touchSamples = [];
+		window.touchPreviews = 0;
+		window.trustedTouchMoves = 0;
+		window.touchSampling = true;
+		document.getElementById( 'wk-reading-content' ).addEventListener( 'touchmove', ( event ) => {
+			if ( event.isTrusted ) window.trustedTouchMoves++;
 			const peek = document.querySelector( '.wk-reading-peek' );
-			if ( peek && getComputedStyle( peek ).display !== 'none' ) window.sidewaysPreviews++;
+			if ( peek && getComputedStyle( peek ).display !== 'none' ) window.touchPreviews++;
 		} );
+		function sample() {
+			const content = document.getElementById( 'wk-reading-content' );
+			const peek = document.querySelector( '.wk-reading-peek' );
+			if ( peek && getComputedStyle( peek ).display !== 'none' ) window.touchPreviews++;
+			window.touchSamples.push( {
+				scroll: content.scrollTop,
+				bodyTop: document.getElementById( 'body-line' ).getBoundingClientRect().top,
+				headerHeight: document.querySelector( '.wk-reading-h1' ).getBoundingClientRect().height,
+				opacity: parseFloat( getComputedStyle( document.querySelector( '.wk-reading-h1__title' ) ).opacity )
+			} );
+			if ( window.touchSampling ) requestAnimationFrame( sample );
+		}
+		sample();
 	} );
 	const session = await page.context().newCDPSession( page );
 	await session.send( 'Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [ { x: 195, y: 500 } ] } );
-	for ( const [ x, y ] of [ [ 215, 480 ], [ 235, 460 ], [ 75, 460 ] ] ) {
+	// Native touch input: Chromium, not the test, changes scrollTop. Cross the
+	// fade boundary slowly, reverse, then move sharply sideways without release.
+	for ( const [ x, y ] of [ [ 195, 480 ], [ 195, 470 ], [ 195, 460 ], [ 195, 450 ],
+		[ 195, 440 ], [ 195, 430 ], [ 195, 440 ], [ 195, 450 ], [ 195, 460 ], [ 75, 460 ] ] ) {
 		await session.send( 'Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [ { x, y } ] } );
 		await settle();
 	}
 	const after = await metrics();
-	assert.ok( after.scroll > before.scroll, 'Chromium itself scrolls the content with the finger held down' );
-	assert.ok( after.height < before.height, 'the multiline title is collapsing during the gesture' );
+	assert.ok( after.scroll > before.scroll, 'Chromium scrolls natively with the finger held down' );
+	assertStableFlow( before, after );
 	await session.send( 'Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] } );
-	assert.deepEqual( await page.evaluate( () => ( {
-		previews: window.sidewaysPreviews,
-		page: Wikidebates.WK_READING.state._wkCurrentPage
-	} ) ), { previews: 0, page: 'Argument 1' } );
+	const result = await page.evaluate( () => {
+		window.touchSampling = false;
+		return { samples: window.touchSamples, previews: window.touchPreviews, trustedMoves: window.trustedTouchMoves,
+			page: Wikidebates.WK_READING.state._wkCurrentPage };
+	} );
+	assert.equal( result.previews, 0 );
+	assert.equal( result.page, 'Argument 1' );
+	assert.ok( result.trustedMoves > 0, 'Chromium dispatches trusted touch input, not synthetic DOM events' );
+	assert.ok( result.samples.some( ( sample ) => sample.opacity > 0 && sample.opacity < 1 ), 'the actual touch crosses the fade' );
+	assert.ok( result.samples.some( ( sample, i, all ) => i && sample.scroll < all[ i - 1 ].scroll ), 'native scroll reverses while the finger remains down' );
+	for ( const sample of result.samples ) {
+		assert.equal( sample.headerHeight, before.headerHeight );
+		assert.ok( Math.abs( sample.bodyTop - before.bodyTop + sample.scroll - before.scroll ) < 0.25,
+			'every rendered frame moves the text only by the native scroll distance' );
+	}
+	const maxExtraMovement = Math.max( ...result.samples.map( ( sample ) => Math.abs( sample.bodyTop - before.bodyTop + sample.scroll - before.scroll ) ) );
+	t.diagnostic( 'Trusted touch moves: ' + result.trustedMoves + '; maximum extra line movement: ' + maxExtraMovement.toFixed( 4 ) + ' CSS px' );
 } );
 
 test( 'scrolling to an edge and reversing keeps the same gesture in scroll mode', async ( t ) => {
@@ -383,4 +516,20 @@ test( 'vertical edge gestures still reveal the parent and open the contents shee
 	await touch( 'touchmove', 195, 294 );
 	assert.equal( ( await touch( 'touchmove', 195, 220 ) ).sheet, true );
 	assert.equal( ( await touch( 'touchend' ) ).sheet, true );
+} );
+
+test( 'a fresh pull from the top still opens the parent argument', async ( t ) => {
+	const { page, open, touch, scroll, settle } = await gestureFixture( t );
+	await open();
+	await page.evaluate( () => Wikidebates.wkOpenReadingModeFromPageTitle( 'Child', [
+		{ page: 'Parent', title: 'Titre parent', type: 'pour' },
+		{ page: 'Child', title: 'Titre enfant', type: 'pour' }
+	], { history: false } ) );
+	await settle();
+	await scroll( 0 );
+	await touch( 'touchstart' );
+	await touch( 'touchmove', 195, 390 );
+	assert.equal( ( await touch( 'touchend' ) ).page, 'Parent' );
+	await settle();
+	assert.equal( await page.textContent( '#wk-reading-content .wk-reading-full-title' ), 'Titre parent' );
 } );

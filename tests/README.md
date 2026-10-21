@@ -13,7 +13,7 @@ retry after failure, unchanged page parse parameters and extraction boundaries,
 coalesced content notifications, incremental form summary updates and synchronous
 submission. jsdom does not measure real browser layout or server latency.
 
-The progressive Minerva header also has real layout tests using an installed
+The fixed Minerva toolbar and scrolling heading have real layout tests using an installed
 Chromium executable (no browser download is performed by npm):
 
 ```sh
@@ -22,18 +22,36 @@ npm run test:browser --prefix tests
 CHROMIUM_PATH=/path/to/chromium npm run test:browser --prefix tests
 ```
 
-The browser tests cover reversible collapse with a gentle start and finish over
-at least 400 scroll pixels on long pages (longer for taller titles), bounded body
-displacement, an idle title that stops updating, short-page stability, single-line
-titles, viewport changes, argument replacement and observer cleanup. Synthetic
-touch sequences also check that even tiny scroll changes during header resizing
-keep control until release or cancellation, including before a scroll event is
-delivered and after a sideways preview has been prepared. Fresh horizontal gestures
-and vertical edge actions remain available. A browser-driven touch sequence checks
-actual Chromium scrolling and header collapse during a diagonal gesture.
-The tests execute the actual reading UI and CSS with fixture content; scrolling
-during the synthetic sequences is set explicitly. Testing on physical iOS/Android
-devices remains useful for browser-specific behavior.
+The Minerva toolbar reserves 56 CSS pixels before the argument loads and never
+changes height. The complete heading is an unclipped `h1` at the beginning of the
+scrollable content. Its compact, ellipsized duplicate is hidden from accessibility
+tools and fades in over 32 scroll pixels after the full heading leaves the viewport;
+scrolling back reverses the fade. No heading height or scroll position is adjusted.
+
+Browser assertions track an actual line of reading text: its viewport movement
+plus the change in native `scrollTop` must remain within 0.25 CSS pixels. They also
+check constant toolbar/title heights, viewport origin and scroll range, slow
+reversals, idle behavior, very long/unbroken headings, non-scrolling and short pages
+(including a partially faded title at the bottom), resize, argument replacement,
+observer cleanup, loading, toolbar actions, sibling previews/navigation, parent
+navigation, the contents sheet and an unchanged Vector header.
+
+Synthetic touch sequences explicitly set scrolling to cover tiny position changes,
+scroll-event ordering, cancellation of an already prepared sideways preview and
+release/cancellation. They preserve the vertical-scroll lock until finger release,
+including direction changes and reaching an edge. A separate CDP
+`Input.dispatchTouchEvent` sequence drives native Chromium touch scrolling through
+the fade, reverses direction with the finger down, then moves sideways. It samples
+rendered frames to verify native scrolling, a constant toolbar, no extra line
+movement and no lateral preview/navigation. The test never sets `scrollTop` during
+that real browser gesture (only its initial position).
+
+These automated checks use the real reading UI/CSS and fixture content; they do
+not replace a physical phone. Before production deployment, check slow and diagonal
+drags, reversals, momentum, browser edge bounce, expanding/collapsing browser chrome,
+portrait/landscape and large system text on iOS Safari and Android browsers. Include
+long titles, short arguments, parent/sibling navigation, actions and the contents
+sheet. No physical-device result is claimed by the automated suite.
 
 `php/RecentDebateChangesTest.php` is an integration smoke test for MediaWiki 1.43.
 Run it only on a **disposable SQLite wiki** whose database name ends in

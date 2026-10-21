@@ -6,11 +6,11 @@
 	--wk-reading-stack-padding: 0 0.5em 1em 0.5em;
 	--wk-reading-left-padding: 0;
 	--wk-reading-siblings-list-margin-left: 1em;
-	--wk-reading-h1-padding: 0.75em 2em 0.75em 0.25em;
+	--wk-reading-h1-padding: 0 44px;
 	--wk-reading-h1-title-size: 125%;
 	--wk-reading-h1-title-line-height: 1.25;
 	--wk-reading-h1-title-padding-left: calc( var( --wd-arg-icon-size ) + 0.35em );
-	--wk-reading-h1-title-margin-left: 2.25em;
+	--wk-reading-h1-title-margin-left: 0;
 	--wk-reading-h1-title-icon-size: 20px;
 	--wk-reading-h1-title-icon-top: calc(0.5 * var( --wk-reading-h1-title-line-height ) * 1em);
 	--wk-reading-h2-size: 110%;
@@ -34,27 +34,46 @@
 
 .wk-reading-h1 {
 	z-index: 50;
+	box-sizing: border-box;
+	height: 56px;
+	min-height: 56px;
+	max-height: 56px;
 }
 
 .wk-reading-h1__actions {
 	position: absolute;
-	top: 0.5em;
-	right: 0;
+	top: 8px;
+	right: 4px;
 }
 
 .wk-reading-h1__title {
-	/* Clip progressively without rewrapping or scaling the title text. */
-	max-height: var( --wk-h1-title-height, none );
+	min-width: 0;
+	max-width: 100%;
+	font-size: 100%;
+	white-space: nowrap;
 	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
-#wk-reading-content {
-	/* Header resizing must not trigger scroll anchoring adjustments. */
-	overflow-anchor: none;
+.wk-reading-panel > .wk-reading-h1 .wk-reading-h1__title {
+	opacity: var( --wk-reading-title-opacity, 0 );
+}
+
+#wk-reading-mode .wk-reading-full-title {
+	position: relative;
+	margin: 0;
+	padding: 12px 0 16px var( --wk-reading-h1-title-padding-left );
+	font-size: var( --wk-reading-h1-title-size );
+	font-weight: bold;
+	line-height: var( --wk-reading-h1-title-line-height );
+	overflow-wrap: anywhere;
+	--wd-arg-icon-size: var( --wk-reading-h1-title-icon-size );
+	--wd-icon-top: calc( 12px + var( --wk-reading-h1-title-icon-top ) );
 }
 
 #wk-reading-mode .wk-reading-panel {
-	min-height: 100%;
+	height: 100%;
+	min-height: 0;
 }
 
 .wk-reading-active .mw-headline {
@@ -81,7 +100,9 @@
 }
 
 .wk-reading-close {
-	position: fixed;
+	position: absolute;
+	top: 8px;
+	left: 4px;
 	z-index: 100000;
 	opacity: 0.6;
 }
