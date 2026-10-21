@@ -26,9 +26,12 @@ The Minerva toolbar is a constant-height 56 CSS pixel overlay. It reserves no em
 strip: the complete, unclipped `h1` starts at the top of the scrollable content,
 between the close and menu buttons. Both buttons have 44 by 44 CSS pixel touch
 targets, share a vertical center and remain available when the toolbar background
-is transparent. The full heading uses the compact title's font size and first-line
-position; only the full heading wraps. The toolbar background, separator and
-compact, ellipsized duplicate title fade in over 32 scroll pixels after the full heading leaves the viewport;
+is transparent. The full heading is 115% of the normal text size (20.7px for 18px
+text), while the compact title stays at 100%. Both titles share a horizontal text
+and icon alignment and the same first-line vertical center; only the full heading
+wraps. There is no separator under the full heading. The toolbar background,
+separator and compact, ellipsized duplicate title fade in over 32 scroll pixels
+after the full heading leaves the viewport;
 scrolling back reverses the fade. The duplicate is hidden from accessibility tools.
 No heading height or scroll position is adjusted, and the decorative overlay lets
 touch input reach the reading content underneath.
@@ -42,7 +45,8 @@ observer cleanup, loading, toolbar actions, sibling previews/navigation, parent
 navigation, the contents sheet and an unchanged Vector header. Toolbar checks also
 cover transparency, hit testing and button/icon alignment at multiple viewport and
 font sizes, including a late, important wiki-wide heading rule reproducing the
-reported 24.3px full title versus 18px compact title. Sibling previews include the
+reported 24.3px full title versus 18px compact title. The intended scale and
+alignment must prevail over that competing rule. Sibling previews include the
 same full heading, without a duplicate toolbar reserving space above it.
 
 Synthetic touch sequences explicitly set scrolling to cover tiny position changes,

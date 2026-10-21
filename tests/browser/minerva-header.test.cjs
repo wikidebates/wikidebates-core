@@ -137,7 +137,7 @@ test( 'the toolbar background and border fade with the compact title; content re
 	}
 } );
 
-test( 'buttons stay centered and the full title matches the compact title typography and first-line position', async ( t ) => {
+test( 'buttons stay centered and the larger reading title aligns with the compact title', async ( t ) => {
 	const { page, open, settle } = await fixture( t );
 	await open( 'Titre court' );
 	// Reproduce the reported 24.3px heading with an 18px parent, even when
@@ -157,7 +157,10 @@ test( 'buttons stay centered and the full title matches the compact title typogr
 					range.setStart( element.firstChild, 0 );
 					range.setEnd( element.firstChild, 1 );
 					return {
-						font: [ style.fontFamily, style.fontSize, style.fontWeight, style.lineHeight, style.letterSpacing ],
+						font: [ style.fontFamily, style.fontWeight, style.letterSpacing ],
+						fontSize: parseFloat( style.fontSize ),
+						lineHeight: parseFloat( style.lineHeight ),
+						lineCenter: element.getBoundingClientRect().top + parseFloat( style.paddingTop ) + parseFloat( style.lineHeight ) / 2,
 						firstLetter: range.getBoundingClientRect().toJSON()
 					};
 				};
@@ -182,9 +185,12 @@ test( 'buttons stay centered and the full title matches the compact title typogr
 			assert.equal( boxes.menu.right, width - 4 );
 			assert.ok( boxes.title.left >= boxes.close.right && boxes.title.right <= boxes.menu.left );
 			assert.equal( boxes.title.top, boxes.bar.top, 'the full heading starts alongside the buttons' );
-			assert.deepEqual( boxes.fullText.font, boxes.compactText.font, 'both titles use identical typography' );
+			assert.deepEqual( boxes.fullText.font, boxes.compactText.font, 'both titles retain the same font family, weight and spacing' );
+			assert.equal( boxes.compactText.fontSize, fontSize, 'the compact title keeps the normal text size' );
+			assert.ok( Math.abs( boxes.fullText.fontSize - fontSize * 1.15 ) < 0.001, 'the reading title is moderately larger, including 20.7px for 18px text' );
+			assert.ok( Math.abs( boxes.fullText.lineHeight - boxes.fullText.fontSize * 1.25 ) < 0.001 );
 			assert.equal( boxes.fullText.firstLetter.left, boxes.compactText.firstLetter.left, 'both titles start at the same horizontal position' );
-			assert.equal( boxes.fullText.firstLetter.top, boxes.compactText.firstLetter.top, 'the first line uses the same vertical position' );
+			assert.ok( Math.abs( boxes.fullText.lineCenter - boxes.compactText.lineCenter ) < 0.02, 'the first line stays centered with the toolbar despite its larger font' );
 		}
 	}
 } );
@@ -283,10 +289,11 @@ test( 'very long titles wrap without clipping and can be read completely by nati
 		const h = document.querySelector( '.wk-reading-full-title' );
 		return h.scrollWidth <= h.clientWidth && h.scrollHeight <= h.clientHeight;
 	} ), true );
-	const state = await scroll( initial.exit );
+	// Native scrolling may round a fractional heading height to a whole pixel.
+	const state = await scroll( Math.floor( initial.exit ) );
 	assertStableFlow( initial, state );
 	assert.equal( state.opacity, 0 );
-	assert.equal( ( await scroll( initial.exit + 32 ) ).opacity, 1 );
+	assert.equal( ( await scroll( Math.ceil( initial.exit ) + 32 ) ).opacity, 1 );
 	assert.equal( await page.getAttribute( '.wk-reading-h1__title', 'aria-hidden' ), 'true' );
 } );
 
