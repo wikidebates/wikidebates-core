@@ -23,14 +23,17 @@ CHROMIUM_PATH=/path/to/chromium npm run test:browser --prefix tests
 ```
 
 The browser tests cover reversible collapse with a gentle start and finish over
-at least 200 scroll pixels on long pages (longer for taller titles), bounded body
+at least 400 scroll pixels on long pages (longer for taller titles), bounded body
 displacement, an idle title that stops updating, short-page stability, single-line
-titles, viewport changes, argument replacement and observer cleanup. Synthetic touch sequences also check
-that vertical scrolling keeps control until release or cancellation, while fresh
-horizontal gestures and vertical edge actions remain available. They execute the
-actual reading UI and CSS in Chromium with fixture content; scrolling during the
-synthetic sequences is set explicitly. Testing on physical iOS/Android devices
-remains useful for native touch scrolling and browser-specific behavior.
+titles, viewport changes, argument replacement and observer cleanup. Synthetic
+touch sequences also check that even tiny scroll changes during header resizing
+keep control until release or cancellation, including before a scroll event is
+delivered and after a sideways preview has been prepared. Fresh horizontal gestures
+and vertical edge actions remain available. A browser-driven touch sequence checks
+actual Chromium scrolling and header collapse during a diagonal gesture.
+The tests execute the actual reading UI and CSS with fixture content; scrolling
+during the synthetic sequences is set explicitly. Testing on physical iOS/Android
+devices remains useful for browser-specific behavior.
 
 `php/RecentDebateChangesTest.php` is an integration smoke test for MediaWiki 1.43.
 Run it only on a **disposable SQLite wiki** whose database name ends in

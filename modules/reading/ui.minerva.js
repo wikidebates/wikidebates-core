@@ -133,7 +133,7 @@
 			return;
 		}
 
-		var distance = 200;
+		var distance = 400;
 		var frame = 0;
 		var needsMeasure = true;
 		var h1 = null;
@@ -164,8 +164,9 @@
 			titleWidth = bounds.width;
 			reduction = Math.max( 0, expandedHeight - lineHeight );
 			// Spread long titles over a longer gesture. With the eased curve below,
-			// the header adds at most half a pixel of movement per scrolled pixel.
-			distance = Math.max( 200, reduction * 3 );
+			// the header adds less than a fifth of a pixel per scrolled pixel,
+			// including during slow reversals toward the fully expanded title.
+			distance = Math.max( 400, reduction * 8 );
 
 			// Recover the scroll range with the title fully expanded, without
 			// temporarily changing its height or moving the reader's position.
@@ -511,6 +512,7 @@
 
 		var startX = 0;
 		var startY = 0;
+		var startScrollTop = 0;
 		var lastX = 0;
 		var lastY = 0;
 		var tracking = false;
@@ -947,11 +949,11 @@
 			h1.style.willChange = 'transform';
 		}
 
-		function resetH1SwipeOffset() {
+		function resetH1SwipeOffset( immediate ) {
 			var h1 = ui.panel ? ui.panel.querySelector( '.wk-reading-h1' ) : null;
 			if ( !h1 ) return;
 
-			h1.style.transition = 'transform 180ms cubic-bezier(0.2,0,0.2,1)';
+			h1.style.transition = immediate ? '' : 'transform 180ms cubic-bezier(0.2,0,0.2,1)';
 			h1.style.transform = 'translateX(0)';
 
 			W.setTimeout( function () {
@@ -990,10 +992,10 @@
 			}
 		}
 
-		function resetDragOffset() {
+		function resetDragOffset( immediate ) {
 			if ( !ui.content ) return;
 
-			ui.content.style.transition = 'transform 180ms cubic-bezier(0.2,0,0.2,1)';
+			ui.content.style.transition = immediate ? '' : 'transform 180ms cubic-bezier(0.2,0,0.2,1)';
 			ui.content.style.transform = 'translateX(0)';
 
 			var layer = ui._wkPeekLayer;
@@ -1219,6 +1221,27 @@
 			return false;
 		}
 
+		function getScrollPosition() {
+			// Safari can report positions outside the scroll range during its
+			// edge bounce. Leave these movements to the parent and TOC gestures.
+			var max = Math.max( 0, ui.content.scrollHeight - ui.content.clientHeight );
+			return Math.max( 0, Math.min( max, ui.content.scrollTop ) );
+		}
+
+		function lockToNativeScroll() {
+			if ( !tracking || scrollLocked || vLocked || getScrollPosition() === startScrollTop ) return;
+			// Native scrolling can start before the 12px touch threshold, while
+			// the title is already resizing. Keep it in control until release.
+			scrollLocked = true;
+			if ( locked ) {
+				locked = false;
+				resetDragOffset( true );
+				resetH1SwipeOffset( true );
+			}
+		}
+
+		ui.content.addEventListener( 'scroll', lockToNativeScroll, { passive: true } );
+
 		ui.content.addEventListener( 'touchstart', function ( e ) {
 			if ( isSheetOpen() ) return;
 			if ( !e.touches || e.touches.length !== 1 ) return;
@@ -1231,6 +1254,7 @@
 
 			startX = e.touches[ 0 ].clientX;
 			startY = e.touches[ 0 ].clientY;
+			startScrollTop = getScrollPosition();
 			lastX = startX;
 			lastY = startY;
 
@@ -1248,6 +1272,8 @@
 		}, { passive: true } );
 
 		ui.content.addEventListener( 'touchmove', function ( e ) {
+			// Check the position too: a touch event may precede its scroll event.
+			lockToNativeScroll();
 			if ( !tracking || scrollLocked ) return;
 			if ( isSheetOpen() && !vLocked ) return;
 			if ( !e.touches || e.touches.length !== 1 ) return;
@@ -1371,6 +1397,7 @@
 
 		function endGesture() {
 			if ( !tracking ) return;
+			lockToNativeScroll();
 			tracking = false;
 
 			var dx = lastX - startX;
