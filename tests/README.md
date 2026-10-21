@@ -41,8 +41,9 @@ reversals, idle behavior, very long/unbroken headings, non-scrolling and short p
 observer cleanup, loading, toolbar actions, sibling previews/navigation, parent
 navigation, the contents sheet and an unchanged Vector header. Toolbar checks also
 cover transparency, hit testing and button/icon alignment at multiple viewport and
-font sizes. Sibling previews include the same full heading, without a duplicate
-toolbar reserving space above it.
+font sizes, including a late, important wiki-wide heading rule reproducing the
+reported 24.3px full title versus 18px compact title. Sibling previews include the
+same full heading, without a duplicate toolbar reserving space above it.
 
 Synthetic touch sequences explicitly set scrolling to cover tiny position changes,
 scroll-event ordering, cancellation of an already prepared sideways preview and

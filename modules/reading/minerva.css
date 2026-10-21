@@ -105,7 +105,8 @@
 	position: relative;
 	margin: 0 32px;
 	padding: var( --wk-reading-h1-title-top ) 0 16px var( --wk-reading-h1-title-padding-left );
-	font-size: var( --wk-reading-h1-title-size );
+	/* Keep the compact title's size despite wiki-wide h1 overrides. */
+	font-size: var( --wk-reading-h1-title-size ) !important;
 	font-weight: bold;
 	line-height: var( --wk-reading-h1-title-line-height );
 	overflow-wrap: anywhere;

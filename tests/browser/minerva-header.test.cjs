@@ -140,9 +140,12 @@ test( 'the toolbar background and border fade with the compact title; content re
 test( 'buttons stay centered and the full title matches the compact title typography and first-line position', async ( t ) => {
 	const { page, open, settle } = await fixture( t );
 	await open( 'Titre court' );
+	// Reproduce the reported 24.3px heading with an 18px parent, even when
+	// a wiki-wide heading rule is loaded after the extension stylesheet.
+	await page.addStyleTag( { content: '#wk-reading-mode h1 { font-size: 135% !important; }' } );
 	for ( const width of [ 320, 390 ] ) {
 		await page.setViewportSize( { width, height: 700 } );
-		for ( const fontSize of [ 16, 20, 24 ] ) {
+		for ( const fontSize of [ 18, 16, 20, 24 ] ) {
 			await page.evaluate( ( size ) => { document.body.style.fontSize = size + 'px'; }, fontSize );
 			await settle();
 			const boxes = await page.evaluate( () => {
