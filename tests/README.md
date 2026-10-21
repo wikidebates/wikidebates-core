@@ -22,9 +22,10 @@ npm run test:browser --prefix tests
 CHROMIUM_PATH=/path/to/chromium npm run test:browser --prefix tests
 ```
 
-The browser tests cover continuous/reversible collapse, an idle title that
-stops updating, short-page stability, single-line titles, viewport changes,
-argument replacement and observer cleanup. Synthetic touch sequences also check
+The browser tests cover reversible collapse with a gentle start and finish over
+at least 200 scroll pixels on long pages (longer for taller titles), bounded body
+displacement, an idle title that stops updating, short-page stability, single-line
+titles, viewport changes, argument replacement and observer cleanup. Synthetic touch sequences also check
 that vertical scrolling keeps control until release or cancellation, while fresh
 horizontal gestures and vertical edge actions remain available. They execute the
 actual reading UI and CSS in Chromium with fixture content; scrolling during the

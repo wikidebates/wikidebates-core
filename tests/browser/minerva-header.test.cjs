@@ -62,6 +62,7 @@ async function fixture( t ) {
 				expanded: title.scrollHeight,
 				line: parseFloat( style.lineHeight ), font: style.fontSize,
 				scroll: content.scrollTop, range: content.scrollHeight - content.clientHeight,
+				bodyTop: document.getElementById( 'body-probe' ).getBoundingClientRect().top,
 				progress: parseFloat( header.style.getPropertyValue( '--wk-h1-collapse' ) || '0' )
 			};
 		} );
@@ -74,19 +75,31 @@ async function fixture( t ) {
 	return { page, open, settle, metrics, scroll };
 }
 
-test( 'multiline title follows small scroll steps continuously and reverses without a threshold', async ( t ) => {
+test( 'multiline title eases into and out of collapse without abrupt body movement', async ( t ) => {
 	const { page, open, metrics, scroll } = await fixture( t );
 	await open();
 	const initial = await metrics();
 	assert.ok( initial.expanded > initial.line * 2 );
-	for ( const offset of [ 8, 16, 17, 18, 19, 20, 40, 60, 80, 120, 60, 20, 0 ] ) {
+	const distance = Math.ceil( Math.max( 200, ( initial.expanded - initial.line ) * 3 ) );
+	const offsets = [ ...new Set( [ 0, 1, 2, 8, 16, 17, 18, 19, 20, 40, 60, 80,
+		120, 160, 200, Math.floor( distance / 2 ), distance - 2, distance - 1, distance, distance + 20 ] ) ].sort( ( a, b ) => a - b );
+	let previous = initial;
+	for ( const offset of offsets.concat( offsets.slice().reverse() ) ) {
 		const state = await scroll( offset );
-		const progress = Math.min( 1, offset / 80 );
-		assert.ok( Math.abs( state.progress - progress ) < 0.01, JSON.stringify( { offset, state } ) );
-		assert.ok( Math.abs( state.height - ( initial.expanded - ( initial.expanded - initial.line ) * progress ) ) < 1 );
+		const step = Math.abs( offset - previous.scroll );
+		assert.ok( Math.abs( state.height - previous.height ) <= step * 0.5 + 0.1,
+			'the header must not add more than half a pixel of motion per scrolled pixel' );
+		assert.ok( Math.abs( state.bodyTop - previous.bodyTop ) <= step * 1.5 + 0.1,
+			'the reading text must move gently along with the scroll' );
+		if ( offset <= 2 ) assert.ok( initial.height - state.height < 0.2, 'gentle start' );
+		if ( offset >= distance - 2 ) assert.ok( state.height - initial.line < 0.2, 'gentle finish' );
+		if ( offset === 80 ) assert.ok( state.progress < 0.5, 'collapse takes substantially more than 80 pixels' );
+		if ( offset === distance ) assert.ok( Math.abs( state.height - initial.line ) < 0.1 );
 		assert.equal( state.scroll, offset, 'header updates must not force scrollTop' );
 		assert.equal( state.font, initial.font, 'text must not scale or rewrap during the gesture' );
+		previous = state;
 	}
+	await scroll( 80 );
 	const idleWrites = await page.evaluate( async () => {
 		let writes = 0;
 		const observer = new MutationObserver( ( records ) => { writes += records.length; } );
@@ -96,6 +109,19 @@ test( 'multiline title follows small scroll steps continuously and reverses with
 		return writes;
 	} );
 	assert.equal( idleWrites, 0, 'no animation or style updates continue after scrolling stops' );
+} );
+
+test( 'collapse covers at least 200 pixels and takes longer for taller titles', async ( t ) => {
+	const { open, metrics, scroll } = await fixture( t );
+	await open( 'Un titre assez long pour occuper plusieurs lignes sur un écran de téléphone' );
+	const shorter = await metrics();
+	assert.ok( shorter.expanded > shorter.line );
+	assert.ok( ( await scroll( 190 ) ).height > shorter.line + 0.1 );
+	assert.ok( Math.abs( ( await scroll( 200 ) ).height - shorter.line ) < 0.1 );
+	await open();
+	const taller = await metrics();
+	assert.ok( taller.expanded > shorter.expanded );
+	assert.ok( ( await scroll( 200 ) ).height > taller.line + 1 );
 } );
 
 test( 'short scrollable page settles at a partial collapse without oscillating at the bottom', async ( t ) => {
@@ -111,6 +137,13 @@ test( 'short scrollable page settles at a partial collapse without oscillating a
 	await settle();
 	const initial = await metrics();
 	assert.ok( initial.range > 50 && initial.range < 70, JSON.stringify( initial ) );
+	let previous = initial;
+	for ( const offset of [ 1, 8, 16, 24, 32 ] ) {
+		const state = await scroll( offset );
+		assert.equal( state.scroll, offset );
+		assert.ok( previous.height - state.height <= ( offset - previous.scroll ) * 0.5 + 0.1 );
+		previous = state;
+	}
 	await scroll( 10000 );
 	const values = [];
 	for ( let i = 0; i < 10; i++ ) { await settle(); values.push( await metrics() ); }

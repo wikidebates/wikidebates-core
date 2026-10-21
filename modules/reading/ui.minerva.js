@@ -133,7 +133,7 @@
 			return;
 		}
 
-		var distance = 80;
+		var distance = 200;
 		var frame = 0;
 		var needsMeasure = true;
 		var h1 = null;
@@ -163,12 +163,16 @@
 			expandedHeight = title.scrollHeight;
 			titleWidth = bounds.width;
 			reduction = Math.max( 0, expandedHeight - lineHeight );
+			// Spread long titles over a longer gesture. With the eased curve below,
+			// the header adds at most half a pixel of movement per scrolled pixel.
+			distance = Math.max( 200, reduction * 3 );
 
 			// Recover the scroll range with the title fully expanded, without
 			// temporarily changing its height or moving the reader's position.
 			var currentReduction = Math.max( 0, expandedHeight - bounds.height );
 			var range = Math.max( 0, ui.content.scrollHeight - ui.content.clientHeight + currentReduction );
-			// On short pages, cap p so range - reduction * p >= distance * p.
+			// On short pages, cap both the collapse and its scroll distance so
+			// range - reduction * p >= distance * p at the end of the gesture.
 			// Otherwise shrinking the header clamps scrollTop, which changes p
 			// again and can make the title oscillate. One extra pixel covers rounding.
 			maxProgress = reduction > 0 ? Math.min( 1, range / ( distance + reduction + 1 ) ) : 0;
@@ -187,7 +191,11 @@
 			}
 			if ( !title ) return;
 
-			var progress = Math.min( maxProgress, Math.max( 0, ui.content.scrollTop ) / distance );
+			var scrollDistance = distance * maxProgress;
+			var offset = scrollDistance > 0 ? Math.min( 1, Math.max( 0, ui.content.scrollTop ) / scrollDistance ) : 0;
+			// Ease the start and end in scroll space, with no animation after the
+			// reader stops and no writes to the browser's native scroll position.
+			var progress = maxProgress * offset * offset * ( 3 - 2 * offset );
 			var height = expandedHeight - reduction * progress;
 			if ( height !== lastHeight ) {
 				h1.style.setProperty( '--wk-h1-title-height', height + 'px' );
