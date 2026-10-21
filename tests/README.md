@@ -26,8 +26,9 @@ The Minerva toolbar is a constant-height 56 CSS pixel overlay. It reserves no em
 strip: the complete, unclipped `h1` starts at the top of the scrollable content,
 between the close and menu buttons. Both buttons have 44 by 44 CSS pixel touch
 targets, share a vertical center and remain available when the toolbar background
-is transparent. The toolbar background, separator and compact, ellipsized duplicate
-title fade in over 32 scroll pixels after the full heading leaves the viewport;
+is transparent. The full heading uses the compact title's font size and first-line
+position; only the full heading wraps. The toolbar background, separator and
+compact, ellipsized duplicate title fade in over 32 scroll pixels after the full heading leaves the viewport;
 scrolling back reverses the fade. The duplicate is hidden from accessibility tools.
 No heading height or scroll position is adjusted, and the decorative overlay lets
 touch input reach the reading content underneath.

@@ -7,8 +7,9 @@
 	--wk-reading-left-padding: 0;
 	--wk-reading-siblings-list-margin-left: 1em;
 	--wk-reading-h1-padding: 0 48px;
-	--wk-reading-h1-title-size: 125%;
+	--wk-reading-h1-title-size: 100%;
 	--wk-reading-h1-title-line-height: 1.25;
+	--wk-reading-h1-title-top: calc( ( 56px - 1em * var( --wk-reading-h1-title-line-height ) ) / 2 );
 	--wk-reading-h1-title-padding-left: calc( var( --wd-arg-icon-size ) + 0.35em );
 	--wk-reading-h1-title-margin-left: 0;
 	--wk-reading-h1-title-icon-size: 20px;
@@ -91,7 +92,6 @@
 .wk-reading-h1__title {
 	min-width: 0;
 	max-width: 100%;
-	font-size: 100%;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -104,13 +104,13 @@
 #wk-reading-mode .wk-reading-full-title {
 	position: relative;
 	margin: 0 32px;
-	padding: 16px 0 16px var( --wk-reading-h1-title-padding-left );
+	padding: var( --wk-reading-h1-title-top ) 0 16px var( --wk-reading-h1-title-padding-left );
 	font-size: var( --wk-reading-h1-title-size );
 	font-weight: bold;
 	line-height: var( --wk-reading-h1-title-line-height );
 	overflow-wrap: anywhere;
 	--wd-arg-icon-size: var( --wk-reading-h1-title-icon-size );
-	--wd-icon-top: calc( 16px + var( --wk-reading-h1-title-icon-top ) );
+	--wd-icon-top: calc( var( --wk-reading-h1-title-top ) + var( --wk-reading-h1-title-icon-top ) );
 }
 
 #wk-reading-mode .wk-reading-panel {

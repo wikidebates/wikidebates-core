@@ -137,7 +137,7 @@ test( 'the toolbar background and border fade with the compact title; content re
 	}
 } );
 
-test( 'close and menu buttons share a vertical center and equal touch targets at every font size', async ( t ) => {
+test( 'buttons stay centered and the full title matches the compact title typography and first-line position', async ( t ) => {
 	const { page, open, settle } = await fixture( t );
 	await open( 'Titre court' );
 	for ( const width of [ 320, 390 ] ) {
@@ -147,10 +147,22 @@ test( 'close and menu buttons share a vertical center and equal touch targets at
 			await settle();
 			const boxes = await page.evaluate( () => {
 				const rect = ( selector ) => document.querySelector( selector ).getBoundingClientRect().toJSON();
+				const text = ( selector ) => {
+					const element = document.querySelector( selector );
+					const style = getComputedStyle( element );
+					const range = document.createRange();
+					range.setStart( element.firstChild, 0 );
+					range.setEnd( element.firstChild, 1 );
+					return {
+						font: [ style.fontFamily, style.fontSize, style.fontWeight, style.lineHeight, style.letterSpacing ],
+						firstLetter: range.getBoundingClientRect().toJSON()
+					};
+				};
 				return {
 					bar: rect( '.wk-reading-h1' ), close: rect( '#wk-reading-close' ),
 					menu: rect( '.wk-h1-more > .wk-icon-more' ),
 					title: rect( '.wk-reading-full-title' ),
+					fullText: text( '.wk-reading-full-title' ), compactText: text( '.wk-reading-h1__title' ),
 					closeIcon: rect( '#wk-reading-close svg' ), menuIcon: rect( '.wk-icon-more svg' )
 				};
 			} );
@@ -167,6 +179,9 @@ test( 'close and menu buttons share a vertical center and equal touch targets at
 			assert.equal( boxes.menu.right, width - 4 );
 			assert.ok( boxes.title.left >= boxes.close.right && boxes.title.right <= boxes.menu.left );
 			assert.equal( boxes.title.top, boxes.bar.top, 'the full heading starts alongside the buttons' );
+			assert.deepEqual( boxes.fullText.font, boxes.compactText.font, 'both titles use identical typography' );
+			assert.equal( boxes.fullText.firstLetter.left, boxes.compactText.firstLetter.left, 'both titles start at the same horizontal position' );
+			assert.equal( boxes.fullText.firstLetter.top, boxes.compactText.firstLetter.top, 'the first line uses the same vertical position' );
 		}
 	}
 } );
