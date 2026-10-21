@@ -158,7 +158,7 @@
 			var bar = ui.panel.querySelector( '.wk-reading-h1' );
 			if ( !bar ) return;
 			// Only opacity changes. The full heading belongs to the native scroll
-			// flow, and the toolbar reserves the same space even while loading.
+			// flow; the overlay never resizes or moves the reading viewport.
 			var hidden = fullTitle ? ui.content.getBoundingClientRect().top - fullTitle.getBoundingClientRect().bottom : 0;
 			var opacity = Math.max( 0, Math.min( 1, hidden / 32 ) );
 			if ( opacity !== lastOpacity ) {
@@ -606,21 +606,6 @@
 			}
 		}
 
-		function setPeekTitleEarly( on ) {
-			if ( !ui._wkPeekH1 ) return;
-
-			if ( on ) {
-				ui._wkPeekH1.style.transition = 'opacity 120ms linear';
-				ui._wkPeekH1.style.opacity = '1';
-			} else {
-				ui._wkPeekH1.style.transition = 'opacity 120ms linear';
-				ui._wkPeekH1.style.opacity = '0';
-				W.setTimeout( function () {
-					if ( ui._wkPeekH1 ) ui._wkPeekH1.style.transition = '';
-				}, 140 );
-			}
-		}
-
 		function ensurePeekLayer() {
 			if ( ui._wkPeekLayer ) return ui._wkPeekLayer;
 
@@ -653,33 +638,6 @@
 			layer.style.transform = 'translateX(100%)';
 
 			if ( !ui.panel.style.position ) ui.panel.style.position = 'relative';
-
-			var head = D.createElement( 'div' );
-			head.className = 'wk-reading-h1 wk-reading-h1--peek';
-			head.style.position = 'sticky';
-			head.style.top = '0';
-			head.style.zIndex = '3';
-			head.style.pointerEvents = 'none';
-			head.style.background = 'inherit';
-			head.style.willChange = 'transform';
-			head.style.opacity = '0';
-
-			var title = D.createElement( 'div' );
-			title.className = 'wk-reading-h1__title wk-icon-before wk-icon-argument';
-			title.style.marginLeft = '0';
-			title.style.setProperty( 'margin-left', '0', 'important' );
-
-			title.style.whiteSpace = 'nowrap';
-			title.style.overflow = 'hidden';
-			title.style.textOverflow = 'ellipsis';
-			title.style.maxWidth = '100%';
-			title.style.display = 'block';
-
-			head.appendChild( title );
-			layer.appendChild( head );
-
-			ui._wkPeekH1 = head;
-			ui._wkPeekH1Title = title;
 
 			var body = D.createElement( 'div' );
 			body.className = 'wk-reading-peek-body';
@@ -872,8 +830,6 @@
 				return false;
 			}
 
-			if ( ui._wkPeekH1Title ) ui._wkPeekH1Title.textContent = getSiblingTitleByPage( page ) || page;
-
 			ui._wkPeekPendingKey = '';
 			ui._wkPeekPendingDir = 0;
 			ui._wkPeekPendingPage = '';
@@ -886,7 +842,6 @@
 			layer.style.display = '';
 			hideRealH1( true );
 			layer.style.pointerEvents = 'none';
-			setPeekTitleEarly( true );
 
 			if ( dir > 0 ) layer.style.transform = 'translateX(100%)';
 			else layer.style.transform = 'translateX(-100%)';
@@ -935,19 +890,6 @@
 				if ( dx < 0 ) layer.style.transform = 'translateX(calc(100% + ' + dx + 'px))';
 				else layer.style.transform = 'translateX(calc(-100% + ' + dx + 'px))';
 			}
-
-			if ( ui._wkPeekH1 && layer && layer.style.display !== 'none' ) {
-				var mx = dx * 0.22;
-				if ( mx > 18 ) mx = 18;
-				if ( mx < -18 ) mx = -18;
-				ui._wkPeekH1.style.transform = 'translateX(' + mx + 'px)';
-			}
-
-			if ( ui._wkPeekH1 && layer && layer.style.display !== 'none' ) {
-				var showAt = 18;
-				if ( Math.abs( dx ) >= showAt ) setPeekTitleEarly( true );
-				else setPeekTitleEarly( false );
-			}
 		}
 
 		function resetDragOffset( immediate ) {
@@ -961,10 +903,8 @@
 				layer.style.transition = 'transform 180ms cubic-bezier(0.2,0,0.2,1)';
 				layer.style.transform = 'translateX(100%)';
 				layer.style.pointerEvents = 'none';
-				if ( ui._wkPeekH1 ) ui._wkPeekH1.style.transform = '';
 				layer.style.display = 'none';
 				hideRealH1( false );
-				setPeekTitleEarly( false );
 			}
 
 			W.setTimeout( function () {
@@ -1516,7 +1456,11 @@
 			moreWrap.className = 'wk-h1-more';
 
 			moreWrap.innerHTML =
-				'<div class="wk-h1-btn wk-icon-before wk-icon-more" aria-haspopup="true" aria-expanded="false"></div>' +
+				'<button type="button" class="wk-h1-btn wk-icon-more" aria-haspopup="true" aria-expanded="false">' +
+					'<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+						'<circle cx="12" cy="5" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="12" cy="19" r="1.8" />' +
+					'</svg>' +
+				'</button>' +
 				'<div class="wk-h1-menu" hidden>' +
 					'<a class="wk-h1-menu__detail wk-icon-before wk-icon-page" href="#"></a>' +
 					'<a class="wk-h1-menu__edit wk-icon-before wk-icon-edit" href="#"></a>' +

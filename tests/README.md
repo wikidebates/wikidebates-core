@@ -22,11 +22,15 @@ npm run test:browser --prefix tests
 CHROMIUM_PATH=/path/to/chromium npm run test:browser --prefix tests
 ```
 
-The Minerva toolbar reserves 56 CSS pixels before the argument loads and never
-changes height. The complete heading is an unclipped `h1` at the beginning of the
-scrollable content. Its compact, ellipsized duplicate is hidden from accessibility
-tools and fades in over 32 scroll pixels after the full heading leaves the viewport;
-scrolling back reverses the fade. No heading height or scroll position is adjusted.
+The Minerva toolbar is a constant-height 56 CSS pixel overlay. It reserves no empty
+strip: the complete, unclipped `h1` starts at the top of the scrollable content,
+between the close and menu buttons. Both buttons have 44 by 44 CSS pixel touch
+targets, share a vertical center and remain available when the toolbar background
+is transparent. The toolbar background, separator and compact, ellipsized duplicate
+title fade in over 32 scroll pixels after the full heading leaves the viewport;
+scrolling back reverses the fade. The duplicate is hidden from accessibility tools.
+No heading height or scroll position is adjusted, and the decorative overlay lets
+touch input reach the reading content underneath.
 
 Browser assertions track an actual line of reading text: its viewport movement
 plus the change in native `scrollTop` must remain within 0.25 CSS pixels. They also
@@ -34,7 +38,10 @@ check constant toolbar/title heights, viewport origin and scroll range, slow
 reversals, idle behavior, very long/unbroken headings, non-scrolling and short pages
 (including a partially faded title at the bottom), resize, argument replacement,
 observer cleanup, loading, toolbar actions, sibling previews/navigation, parent
-navigation, the contents sheet and an unchanged Vector header.
+navigation, the contents sheet and an unchanged Vector header. Toolbar checks also
+cover transparency, hit testing and button/icon alignment at multiple viewport and
+font sizes. Sibling previews include the same full heading, without a duplicate
+toolbar reserving space above it.
 
 Synthetic touch sequences explicitly set scrolling to cover tiny position changes,
 scroll-event ordering, cancellation of an already prepared sideways preview and
@@ -44,7 +51,11 @@ including direction changes and reaching an edge. A separate CDP
 the fade, reverses direction with the finger down, then moves sideways. It samples
 rendered frames to verify native scrolling, a constant toolbar, no extra line
 movement and no lateral preview/navigation. The test never sets `scrollTop` during
-that real browser gesture (only its initial position).
+that real browser gesture (only its initial position). Another native touch test
+scrolls away from the top, reverses all the way back to it, then moves far enough
+sideways to trigger horizontal navigation without the scroll lock. It checks both
+directions, starting at and below the top, while the finger stays down: no lateral
+preview, parent pull, navigation or extra line movement is allowed.
 
 These automated checks use the real reading UI/CSS and fixture content; they do
 not replace a physical phone. Before production deployment, check slow and diagonal

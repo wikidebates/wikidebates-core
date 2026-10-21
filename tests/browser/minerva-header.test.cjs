@@ -95,7 +95,7 @@ function assertStableFlow( before, after ) {
 		'the reading text moves only by the distance actually scrolled' );
 }
 
-test( 'a fixed toolbar reserves its place before the argument loads', async ( t ) => {
+test( 'the toolbar overlays the content from opening without reserving an empty strip', async ( t ) => {
 	const { page, beginOpen, settle, metrics } = await fixture( t );
 	await page.evaluate( () => { window.deferRead = true; } );
 	await beginOpen();
@@ -106,11 +106,69 @@ test( 'a fixed toolbar reserves its place before the argument loads', async ( t 
 		close: !!document.getElementById( 'wk-reading-close' )
 	} ) );
 	assert.ok( loading.height > 0 && loading.close );
+	assert.equal( loading.top, 0, 'the viewport starts at the top, underneath the overlay' );
 	await page.evaluate( () => pendingRead.resolve( { parse: { text: argumentHTML } } ) );
 	await page.waitForSelector( '.wk-reading-full-title' );
 	await settle();
 	assert.equal( ( await metrics() ).headerHeight, loading.height );
 	assert.equal( ( await metrics() ).contentTop, loading.top );
+} );
+
+test( 'the toolbar background and border fade with the compact title; content remains touchable underneath', async ( t ) => {
+	const { page, open, metrics, scroll } = await fixture( t );
+	await open();
+	const initial = await metrics();
+	for ( const offset of [ 0, initial.exit + 16, initial.exit + 32, 0 ] ) {
+		const state = await scroll( offset );
+		assertStableFlow( initial, state );
+		const chrome = await page.evaluate( () => {
+			const bar = document.querySelector( '.wk-reading-h1' );
+			const content = document.getElementById( 'wk-reading-content' );
+			const style = getComputedStyle( bar, '::before' );
+			return {
+				opacity: parseFloat( style.opacity ),
+				border: getComputedStyle( bar ).borderBottomWidth,
+				contentReceivesTouch: content.contains( document.elementFromPoint( 195, 28 ) )
+			};
+		} );
+		assert.equal( chrome.opacity, state.opacity );
+		assert.equal( chrome.border, '0px', 'no permanent separator above the full heading' );
+		assert.equal( chrome.contentReceivesTouch, true, 'the decorative overlay does not intercept scrolling' );
+	}
+} );
+
+test( 'close and menu buttons share a vertical center and equal touch targets at every font size', async ( t ) => {
+	const { page, open, settle } = await fixture( t );
+	await open( 'Titre court' );
+	for ( const width of [ 320, 390 ] ) {
+		await page.setViewportSize( { width, height: 700 } );
+		for ( const fontSize of [ 16, 20, 24 ] ) {
+			await page.evaluate( ( size ) => { document.body.style.fontSize = size + 'px'; }, fontSize );
+			await settle();
+			const boxes = await page.evaluate( () => {
+				const rect = ( selector ) => document.querySelector( selector ).getBoundingClientRect().toJSON();
+				return {
+					bar: rect( '.wk-reading-h1' ), close: rect( '#wk-reading-close' ),
+					menu: rect( '.wk-h1-more > .wk-icon-more' ),
+					title: rect( '.wk-reading-full-title' ),
+					closeIcon: rect( '#wk-reading-close svg' ), menuIcon: rect( '.wk-icon-more svg' )
+				};
+			} );
+			const center = boxes.bar.top + boxes.bar.height / 2;
+			for ( const button of [ boxes.close, boxes.menu ] ) {
+				assert.equal( button.width, 44 );
+				assert.equal( button.height, 44 );
+				assert.equal( button.top + button.height / 2, center );
+			}
+			for ( const icon of [ boxes.closeIcon, boxes.menuIcon ] ) {
+				assert.ok( Math.abs( icon.top + icon.height / 2 - center ) < 0.25 );
+			}
+			assert.equal( boxes.close.left, 4 );
+			assert.equal( boxes.menu.right, width - 4 );
+			assert.ok( boxes.title.left >= boxes.close.right && boxes.title.right <= boxes.menu.left );
+			assert.equal( boxes.title.top, boxes.bar.top, 'the full heading starts alongside the buttons' );
+		}
+	}
 } );
 
 test( 'the full heading scrolls naturally; only the short title fades after it disappears', async ( t ) => {
@@ -447,6 +505,61 @@ test( 'browser-driven touch scrolling and reversal fade the title without displa
 	}
 	const maxExtraMovement = Math.max( ...result.samples.map( ( sample ) => Math.abs( sample.bodyTop - before.bodyTop + sample.scroll - before.scroll ) ) );
 	t.diagnostic( 'Trusted touch moves: ' + result.trustedMoves + '; maximum extra line movement: ' + maxExtraMovement.toFixed( 4 ) + ' CSS px' );
+} );
+
+test( 'native scrolling back to the top never unlocks sibling previews before finger release', async ( t ) => {
+	const { page, scroll, settle, metrics } = await gestureFixture( t );
+	const session = await page.context().newCDPSession( page );
+	for ( const initialOffset of [ 0, 40 ] ) {
+		for ( const x of [ 15, 375 ] ) {
+			await scroll( initialOffset );
+			const before = await metrics();
+			await page.evaluate( () => {
+				window.edgeSamples = [];
+				window.edgeSampling = true;
+				function sample() {
+					const content = document.getElementById( 'wk-reading-content' );
+					const peek = document.querySelector( '.wk-reading-peek' );
+					window.edgeSamples.push( {
+						scroll: content.scrollTop,
+						bodyTop: document.getElementById( 'body-line' ).getBoundingClientRect().top,
+						headerHeight: document.querySelector( '.wk-reading-h1' ).getBoundingClientRect().height,
+						preview: !!peek && getComputedStyle( peek ).display !== 'none',
+						offsetX: new DOMMatrix( content.style.transform ).m41,
+						offsetY: new DOMMatrix( content.style.transform ).m42
+					} );
+					if ( window.edgeSampling ) requestAnimationFrame( sample );
+				}
+				sample();
+			} );
+			await session.send( 'Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [ { x: 195, y: 400 } ] } );
+			// Scroll away from the top, reverse to the top and keep holding there.
+			// The final lateral displacement exceeds the horizontal threshold even
+			// relative to the original touch point, so only the scroll lock blocks it.
+			for ( const y of [ 380, 360, 380, 400, 420, 440, 460 ] ) {
+				await session.send( 'Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [ { x: 195, y } ] } );
+				await settle();
+			}
+			assert.equal( ( await metrics() ).scroll, 0, 'Chromium has returned to the top without releasing the finger' );
+			await session.send( 'Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [ { x, y: 460 } ] } );
+			await settle();
+			await session.send( 'Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] } );
+			const result = await page.evaluate( () => {
+				window.edgeSampling = false;
+				return { samples: window.edgeSamples, page: Wikidebates.WK_READING.state._wkCurrentPage };
+			} );
+			assert.ok( result.samples.some( ( sample ) => sample.scroll > initialOffset ), 'native scrolling actually began' );
+			assert.equal( result.page, 'Argument 1' );
+			for ( const sample of result.samples ) {
+				assert.equal( sample.preview, false, 'no lateral preview, even after returning to the top' );
+				assert.equal( sample.offsetX, 0 );
+				assert.equal( sample.offsetY, 0, 'returning to the top must not trigger a parent pull' );
+				assert.equal( sample.headerHeight, before.headerHeight );
+				assert.ok( Math.abs( sample.bodyTop - before.bodyTop + sample.scroll - before.scroll ) < 0.25 );
+			}
+			await settle();
+		}
+	}
 } );
 
 test( 'scrolling to an edge and reversing keeps the same gesture in scroll mode', async ( t ) => {
