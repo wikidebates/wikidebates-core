@@ -2,6 +2,7 @@ const assert = require( 'node:assert/strict' );
 const test = require( 'node:test' );
 const path = require( 'node:path' );
 const { chromium } = require( 'playwright-core' );
+const { resourceModuleFiles } = require( '../resourceModuleFiles.cjs' );
 
 const root = path.resolve( __dirname, '../..' );
 const longTitle = 'Un argument avec un titre particulièrement long qui doit rester lisible sur plusieurs lignes pendant la lecture et défiler naturellement avec son contenu sur mobile';
@@ -43,8 +44,9 @@ async function fixture( t, skin = 'minerva' ) {
 			}
 		};
 	}, skin );
-	for ( const file of [ 'common/core.js', 'common/parse.js', 'reading/core.js', 'reading/ui.' + ( skin === 'minerva' ? 'minerva' : 'vector' ) + '.js' ] ) {
-		await page.addScriptTag( { path: path.join( root, 'modules', file ) } );
+	for ( const file of [ 'modules/common/core.js', 'modules/common/parse.js', 'modules/reading/core.js',
+		...resourceModuleFiles( 'ext.wikidebates.reading.ui.' + ( skin === 'minerva' ? 'minerva' : 'vector' ) ) ] ) {
+		await page.addScriptTag( { path: path.join( root, file ) } );
 	}
 	let id = 0;
 	async function beginOpen( title = longTitle, height = 1800 ) {

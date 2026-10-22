@@ -2,6 +2,7 @@ const fs = require( 'node:fs' );
 const path = require( 'node:path' );
 const { JSDOM } = require( 'jsdom' );
 const jquery = require( 'jquery' );
+const { resourceModuleFiles } = require( '../resourceModuleFiles.cjs' );
 
 async function environment( html = '', config = {} ) {
 	const dom = new JSDOM( '<!doctype html><body class="action-view">' + html + '</body>', {
@@ -34,7 +35,12 @@ async function environment( html = '', config = {} ) {
 			return hooks.get( name );
 		}
 	};
-	const run = ( file ) => window.eval( fs.readFileSync( path.join( __dirname, '../..', file ), 'utf8' ) );
+	const runScript = ( file ) => window.eval( fs.readFileSync( path.join( __dirname, '../..', file ), 'utf8' ) );
+	const run = ( file ) => {
+		if ( file === 'modules/reading/ui.minerva.js' ) {
+			resourceModuleFiles( 'ext.wikidebates.reading.ui.minerva' ).forEach( runScript );
+		} else runScript( file );
+	};
 	run( 'modules/common/core.js' );
 	window.Wikidebates.wkIdle = ( fn ) => fn();
 	return { window, $, run, loads, close: () => window.close() };

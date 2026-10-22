@@ -220,6 +220,12 @@
 		},
 		"ext.wikidebates.reading.ui.minerva": {
 			"scripts": [
+				"reading/minerva/shared.js",
+				"reading/minerva/header.js",
+				"reading/minerva/sheet.js",
+				"reading/minerva/prefetch.js",
+				"reading/minerva/previews.js",
+				"reading/minerva/gestures.js",
 				"reading/ui.minerva.js"
 			],
 			"dependencies": [
