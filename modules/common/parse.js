@@ -169,11 +169,12 @@
 			wkParsePump();
 		} );
 
-		wkParseInFlight.set( inFlightKey, p );
-
-		p.finally( function () {
+		// Return and share the cleanup promise too, so a handled API failure
+		// cannot leave a second, unobserved rejected promise behind.
+		p = p.finally( function () {
 			wkParseInFlight.delete( inFlightKey );
 		} );
+		wkParseInFlight.set( inFlightKey, p );
 
 		return p;
 	}
