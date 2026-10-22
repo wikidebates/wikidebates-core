@@ -1,0 +1,2194 @@
+{
+  "collectedAt": "2026-10-22T10:52:24.531083+00:00",
+  "repositoryHead": "6f1877bfd13e168233a567a3649a8558ee27d63a",
+  "methodology": {
+    "requests": "GET only, no cache busting, purge or writes; at most one request per wiki at a time.",
+    "samples": "3 repeated full-page requests after section discovery and probe; no forced cold-cache run.",
+    "sizes": "HTTP body bytes observed with explicit gzip negotiation, excluding headers and TLS overhead.",
+    "projection": "Identical local JSON encoder and gzip level 6 for full and fragment responses; not a deployed endpoint.",
+    "timing": "Network totals include proxy, connection, TLS, wiki and transfer. No server CPU or parser-cache hit ratio is inferred.",
+    "cache": "HTTP cache headers are not parser-cache evidence. Parser-cache eligibility is checked separately in MediaWiki source.",
+    "extractor": "The actual modules/reading/core.js function, executed by Node; 21 local extraction samples per response.",
+    "privacy": "Only public metadata, sizes, hashes and timings saved. No secret values or downloaded HTML saved."
+  },
+  "hosts": {
+    "fr.wikidebates.org": {
+      "mediaWikiGenerator": "MediaWiki 1.43.11",
+      "selection": "Smallest, median and largest stored page among 500 latest category memberships plus arguments in the first 30 mainspace pages of at least 10000 bytes; not a representative audience sample or exhaustive largest-page search.",
+      "candidateCount": 509,
+      "largeCandidateCount": 9,
+      "requests": 33,
+      "cases": [
+        {
+          "title": "Le massacre de la famille impériale n'a jamais existé, comme l'ont montré depuis les années 1980 Marina Grey, fille du général Denikine, et Marc Ferro",
+          "skin": "minerva",
+          "language": "fr",
+          "revisionAtDiscovery": 207931,
+          "sections": [
+            {
+              "anchor": "Summary",
+              "index": "",
+              "number": "1"
+            },
+            {
+              "anchor": "Citations",
+              "index": "",
+              "number": "2"
+            },
+            {
+              "anchor": "Références",
+              "index": "",
+              "number": "3"
+            },
+            {
+              "anchor": "Justifications",
+              "index": "",
+              "number": "4"
+            },
+            {
+              "anchor": "Objections",
+              "index": "",
+              "number": "5"
+            },
+            {
+              "anchor": "Parent_debates",
+              "index": "",
+              "number": "6"
+            }
+          ],
+          "displayedHeadingAnchors": [
+            "Summary",
+            "Citations",
+            "Références",
+            "Justifications",
+            "Objections"
+          ],
+          "discoveryRequest": {
+            "httpStatus": 200,
+            "contentEncoding": "gzip",
+            "bodyBytes": 8814,
+            "decodedBodyBytes": 36240,
+            "responseHeadersMs": 655.6384469995464,
+            "totalMs": 811.4629479996438,
+            "httpCache": {
+              "CF-Cache-Status": "DYNAMIC",
+              "Age": null,
+              "Cache-Control": "private, must-revalidate, max-age=0",
+              "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+            }
+          },
+          "sectionProbe": {
+            "httpStatus": 200,
+            "contentEncoding": "gzip",
+            "bodyBytes": 339,
+            "decodedBodyBytes": 498,
+            "responseHeadersMs": 488.5048989999632,
+            "totalMs": 488.60523300027126,
+            "httpCache": {
+              "CF-Cache-Status": "DYNAMIC",
+              "Age": null,
+              "Cache-Control": "private, must-revalidate, max-age=0",
+              "Vary": null
+            },
+            "requestedSection": "1",
+            "apiError": "nosuchsection",
+            "exactlyMatchesReadingFragment": false
+          },
+          "fragmentStableAcrossRepeatedReads": true,
+          "samples": [
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 8611,
+              "decodedBodyBytes": 35174,
+              "responseHeadersMs": 630.6574419995741,
+              "totalMs": 786.4422079992437,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.00857899999982692,
+              "extractionP95Ms": 0.013958999999886146,
+              "htmlUtf8Bytes": 34229,
+              "fragmentUtf8Bytes": 22177,
+              "fragmentSha256": "d1667ab4f5fb0228f5196a83aaa16dbd995d7feb84ed27740d6a1d4e28756b72",
+              "projected": {
+                "fullJsonBytes": 35174,
+                "fragmentJsonBytes": 22661,
+                "fullGzipBytes": 8643,
+                "fragmentGzipBytes": 6998,
+                "gzipBytesSaved": 1645,
+                "gzipReduction": 0.19032743260441976
+              }
+            },
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 8611,
+              "decodedBodyBytes": 35174,
+              "responseHeadersMs": 631.1675509996348,
+              "totalMs": 785.9238370001549,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.008197000000109256,
+              "extractionP95Ms": 0.01231999999981781,
+              "htmlUtf8Bytes": 34229,
+              "fragmentUtf8Bytes": 22177,
+              "fragmentSha256": "d1667ab4f5fb0228f5196a83aaa16dbd995d7feb84ed27740d6a1d4e28756b72",
+              "projected": {
+                "fullJsonBytes": 35174,
+                "fragmentJsonBytes": 22661,
+                "fullGzipBytes": 8643,
+                "fragmentGzipBytes": 6998,
+                "gzipBytesSaved": 1645,
+                "gzipReduction": 0.19032743260441976
+              }
+            },
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 8611,
+              "decodedBodyBytes": 35174,
+              "responseHeadersMs": 612.0014429998264,
+              "totalMs": 782.862557000044,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.008181999999578693,
+              "extractionP95Ms": 0.01930700000048091,
+              "htmlUtf8Bytes": 34229,
+              "fragmentUtf8Bytes": 22177,
+              "fragmentSha256": "d1667ab4f5fb0228f5196a83aaa16dbd995d7feb84ed27740d6a1d4e28756b72",
+              "projected": {
+                "fullJsonBytes": 35174,
+                "fragmentJsonBytes": 22661,
+                "fullGzipBytes": 8643,
+                "fragmentGzipBytes": 6998,
+                "gzipBytesSaved": 1645,
+                "gzipReduction": 0.19032743260441976
+              }
+            }
+          ],
+          "summary": {
+            "httpTotalMs": {
+              "count": 3,
+              "median": 785.9238370001549,
+              "min": 782.862557000044,
+              "max": 786.4422079992437
+            },
+            "httpBodyBytes": {
+              "count": 3,
+              "median": 8611,
+              "min": 8611,
+              "max": 8611
+            },
+            "extractionMedianMs": 0.008197000000109256,
+            "projectedGzipBytesSaved": 1645,
+            "projectedGzipReduction": 0.19032743260441976
+          },
+          "storedPageBytes": 13652
+        },
+        {
+          "title": "Le massacre de la famille impériale n'a jamais existé, comme l'ont montré depuis les années 1980 Marina Grey, fille du général Denikine, et Marc Ferro",
+          "skin": "vector",
+          "language": "fr",
+          "revisionAtDiscovery": 207931,
+          "sections": [
+            {
+              "anchor": "Summary",
+              "index": "",
+              "number": "1"
+            },
+            {
+              "anchor": "Citations",
+              "index": "",
+              "number": "2"
+            },
+            {
+              "anchor": "Références",
+              "index": "",
+              "number": "3"
+            },
+            {
+              "anchor": "Justifications",
+              "index": "",
+              "number": "4"
+            },
+            {
+              "anchor": "Objections",
+              "index": "",
+              "number": "5"
+            },
+            {
+              "anchor": "Parent_debates",
+              "index": "",
+              "number": "6"
+            }
+          ],
+          "displayedHeadingAnchors": [
+            "Summary",
+            "Citations",
+            "Références",
+            "Justifications",
+            "Objections"
+          ],
+          "discoveryRequest": {
+            "httpStatus": 200,
+            "contentEncoding": "gzip",
+            "bodyBytes": 8816,
+            "decodedBodyBytes": 36240,
+            "responseHeadersMs": 618.3321859998614,
+            "totalMs": 773.9478399998916,
+            "httpCache": {
+              "CF-Cache-Status": "DYNAMIC",
+              "Age": null,
+              "Cache-Control": "private, must-revalidate, max-age=0",
+              "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+            }
+          },
+          "sectionProbe": {
+            "httpStatus": 200,
+            "contentEncoding": "gzip",
+            "bodyBytes": 339,
+            "decodedBodyBytes": 498,
+            "responseHeadersMs": 467.0341479995841,
+            "totalMs": 467.13571500004036,
+            "httpCache": {
+              "CF-Cache-Status": "DYNAMIC",
+              "Age": null,
+              "Cache-Control": "private, must-revalidate, max-age=0",
+              "Vary": null
+            },
+            "requestedSection": "1",
+            "apiError": "nosuchsection",
+            "exactlyMatchesReadingFragment": false
+          },
+          "fragmentStableAcrossRepeatedReads": true,
+          "samples": [
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 8611,
+              "decodedBodyBytes": 35174,
+              "responseHeadersMs": 627.1136729992577,
+              "totalMs": 783.3990679991985,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.008122000000184926,
+              "extractionP95Ms": 0.008839999999509018,
+              "htmlUtf8Bytes": 34229,
+              "fragmentUtf8Bytes": 22177,
+              "fragmentSha256": "d1667ab4f5fb0228f5196a83aaa16dbd995d7feb84ed27740d6a1d4e28756b72",
+              "projected": {
+                "fullJsonBytes": 35174,
+                "fragmentJsonBytes": 22661,
+                "fullGzipBytes": 8643,
+                "fragmentGzipBytes": 6998,
+                "gzipBytesSaved": 1645,
+                "gzipReduction": 0.19032743260441976
+              }
+            },
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 8611,
+              "decodedBodyBytes": 35174,
+              "responseHeadersMs": 641.1998429994128,
+              "totalMs": 798.0787400001645,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.008179000000382075,
+              "extractionP95Ms": 0.010157999999137246,
+              "htmlUtf8Bytes": 34229,
+              "fragmentUtf8Bytes": 22177,
+              "fragmentSha256": "d1667ab4f5fb0228f5196a83aaa16dbd995d7feb84ed27740d6a1d4e28756b72",
+              "projected": {
+                "fullJsonBytes": 35174,
+                "fragmentJsonBytes": 22661,
+                "fullGzipBytes": 8643,
+                "fragmentGzipBytes": 6998,
+                "gzipBytesSaved": 1645,
+                "gzipReduction": 0.19032743260441976
+              }
+            },
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 8611,
+              "decodedBodyBytes": 35174,
+              "responseHeadersMs": 641.800418999992,
+              "totalMs": 790.4377859995293,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.0081609999997454,
+              "extractionP95Ms": 0.009637999999540625,
+              "htmlUtf8Bytes": 34229,
+              "fragmentUtf8Bytes": 22177,
+              "fragmentSha256": "d1667ab4f5fb0228f5196a83aaa16dbd995d7feb84ed27740d6a1d4e28756b72",
+              "projected": {
+                "fullJsonBytes": 35174,
+                "fragmentJsonBytes": 22661,
+                "fullGzipBytes": 8643,
+                "fragmentGzipBytes": 6998,
+                "gzipBytesSaved": 1645,
+                "gzipReduction": 0.19032743260441976
+              }
+            }
+          ],
+          "summary": {
+            "httpTotalMs": {
+              "count": 3,
+              "median": 790.4377859995293,
+              "min": 783.3990679991985,
+              "max": 798.0787400001645
+            },
+            "httpBodyBytes": {
+              "count": 3,
+              "median": 8611,
+              "min": 8611,
+              "max": 8611
+            },
+            "extractionMedianMs": 0.0081609999997454,
+            "projectedGzipBytesSaved": 1645,
+            "projectedGzipReduction": 0.19032743260441976
+          },
+          "storedPageBytes": 13652
+        },
+        {
+          "title": "Une conception compatibiliste du libre arbitre demande une délibération efficace plutôt qu'un futur métaphysiquement ouvert",
+          "skin": "minerva",
+          "language": "fr",
+          "revisionAtDiscovery": 234424,
+          "sections": [
+            {
+              "anchor": "Summary",
+              "index": "",
+              "number": "1"
+            },
+            {
+              "anchor": "Résumé",
+              "index": "",
+              "number": "2"
+            },
+            {
+              "anchor": "Citations",
+              "index": "",
+              "number": "3"
+            },
+            {
+              "anchor": "Références",
+              "index": "",
+              "number": "4"
+            },
+            {
+              "anchor": "Justifications",
+              "index": "",
+              "number": "5"
+            },
+            {
+              "anchor": "Objections",
+              "index": "",
+              "number": "6"
+            },
+            {
+              "anchor": "Parent_debates",
+              "index": "",
+              "number": "7"
+            }
+          ],
+          "displayedHeadingAnchors": [
+            "Summary",
+            "Résumé",
+            "Citations",
+            "Références",
+            "Justifications",
+            "Objections"
+          ],
+          "discoveryRequest": {
+            "httpStatus": 200,
+            "contentEncoding": "gzip",
+            "bodyBytes": 3669,
+            "decodedBodyBytes": 20987,
+            "responseHeadersMs": 607.9410950005695,
+            "totalMs": 763.7291099999857,
+            "httpCache": {
+              "CF-Cache-Status": "DYNAMIC",
+              "Age": null,
+              "Cache-Control": "private, must-revalidate, max-age=0",
+              "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+            }
+          },
+          "sectionProbe": {
+            "httpStatus": 200,
+            "contentEncoding": "gzip",
+            "bodyBytes": 314,
+            "decodedBodyBytes": 469,
+            "responseHeadersMs": 459.23132600000827,
+            "totalMs": 459.36989199981326,
+            "httpCache": {
+              "CF-Cache-Status": "DYNAMIC",
+              "Age": null,
+              "Cache-Control": "private, must-revalidate, max-age=0",
+              "Vary": null
+            },
+            "requestedSection": "1",
+            "apiError": "nosuchsection",
+            "exactlyMatchesReadingFragment": false
+          },
+          "fragmentStableAcrossRepeatedReads": true,
+          "samples": [
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 3449,
+              "decodedBodyBytes": 19751,
+              "responseHeadersMs": 593.9972740006851,
+              "totalMs": 748.6551600004532,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.004831000000194763,
+              "extractionP95Ms": 0.005735999999160413,
+              "htmlUtf8Bytes": 18875,
+              "fragmentUtf8Bytes": 6949,
+              "fragmentSha256": "4bb4f2ecbf3b67078136dcbaa3216750a9c8c8d8f70144b0697ea050f376deec",
+              "projected": {
+                "fullJsonBytes": 19751,
+                "fragmentJsonBytes": 7285,
+                "fullGzipBytes": 3421,
+                "fragmentGzipBytes": 1641,
+                "gzipBytesSaved": 1780,
+                "gzipReduction": 0.5203156971645717
+              }
+            },
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 3449,
+              "decodedBodyBytes": 19751,
+              "responseHeadersMs": 599.141685000177,
+              "totalMs": 753.912111000318,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.0046339999989868375,
+              "extractionP95Ms": 0.006617999999434687,
+              "htmlUtf8Bytes": 18875,
+              "fragmentUtf8Bytes": 6949,
+              "fragmentSha256": "4bb4f2ecbf3b67078136dcbaa3216750a9c8c8d8f70144b0697ea050f376deec",
+              "projected": {
+                "fullJsonBytes": 19751,
+                "fragmentJsonBytes": 7285,
+                "fullGzipBytes": 3421,
+                "fragmentGzipBytes": 1641,
+                "gzipBytesSaved": 1780,
+                "gzipReduction": 0.5203156971645717
+              }
+            },
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 3449,
+              "decodedBodyBytes": 19751,
+              "responseHeadersMs": 607.9968029998781,
+              "totalMs": 763.2164240003476,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.004883999999947264,
+              "extractionP95Ms": 0.10800300000119023,
+              "htmlUtf8Bytes": 18875,
+              "fragmentUtf8Bytes": 6949,
+              "fragmentSha256": "4bb4f2ecbf3b67078136dcbaa3216750a9c8c8d8f70144b0697ea050f376deec",
+              "projected": {
+                "fullJsonBytes": 19751,
+                "fragmentJsonBytes": 7285,
+                "fullGzipBytes": 3421,
+                "fragmentGzipBytes": 1641,
+                "gzipBytesSaved": 1780,
+                "gzipReduction": 0.5203156971645717
+              }
+            }
+          ],
+          "summary": {
+            "httpTotalMs": {
+              "count": 3,
+              "median": 753.912111000318,
+              "min": 748.6551600004532,
+              "max": 763.2164240003476
+            },
+            "httpBodyBytes": {
+              "count": 3,
+              "median": 3449,
+              "min": 3449,
+              "max": 3449
+            },
+            "extractionMedianMs": 0.004831000000194763,
+            "projectedGzipBytesSaved": 1780,
+            "projectedGzipReduction": 0.5203156971645717
+          },
+          "storedPageBytes": 1164
+        },
+        {
+          "title": "LFI a été déboutée dans ses porusuites judiciaires contre lui mais n'a pas été pour autant condamnée",
+          "skin": "minerva",
+          "language": "fr",
+          "revisionAtDiscovery": 241689,
+          "sections": [
+            {
+              "anchor": "Summary",
+              "index": "",
+              "number": "1"
+            },
+            {
+              "anchor": "Citations",
+              "index": "",
+              "number": "2"
+            },
+            {
+              "anchor": "Références",
+              "index": "",
+              "number": "3"
+            },
+            {
+              "anchor": "Justifications",
+              "index": "",
+              "number": "4"
+            },
+            {
+              "anchor": "Objections",
+              "index": "",
+              "number": "5"
+            },
+            {
+              "anchor": "Parent_debates",
+              "index": "",
+              "number": "6"
+            }
+          ],
+          "displayedHeadingAnchors": [
+            "Summary",
+            "Citations",
+            "Références",
+            "Justifications",
+            "Objections"
+          ],
+          "discoveryRequest": {
+            "httpStatus": 200,
+            "contentEncoding": "gzip",
+            "bodyBytes": 2741,
+            "decodedBodyBytes": 14908,
+            "responseHeadersMs": 618.700940999588,
+            "totalMs": 773.0263690000356,
+            "httpCache": {
+              "CF-Cache-Status": "DYNAMIC",
+              "Age": null,
+              "Cache-Control": "private, must-revalidate, max-age=0",
+              "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+            }
+          },
+          "sectionProbe": {
+            "httpStatus": 200,
+            "contentEncoding": "gzip",
+            "bodyBytes": 300,
+            "decodedBodyBytes": 449,
+            "responseHeadersMs": 478.49899799984996,
+            "totalMs": 478.6214480000126,
+            "httpCache": {
+              "CF-Cache-Status": "DYNAMIC",
+              "Age": null,
+              "Cache-Control": "private, must-revalidate, max-age=0",
+              "Vary": null
+            },
+            "requestedSection": "1",
+            "apiError": "nosuchsection",
+            "exactlyMatchesReadingFragment": false
+          },
+          "fragmentStableAcrossRepeatedReads": true,
+          "samples": [
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 2540,
+              "decodedBodyBytes": 13842,
+              "responseHeadersMs": 602.9633789994477,
+              "totalMs": 757.8091149998727,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.0032600000013189856,
+              "extractionP95Ms": 0.004815000000235159,
+              "htmlUtf8Bytes": 13187,
+              "fragmentUtf8Bytes": 4925,
+              "fragmentSha256": "89102dfd53c78a8dc12c46c2baa7427a57a003188ad58ebdb5e747ffba46fcb1",
+              "projected": {
+                "fullJsonBytes": 13842,
+                "fragmentJsonBytes": 5197,
+                "fullGzipBytes": 2499,
+                "fragmentGzipBytes": 966,
+                "gzipBytesSaved": 1533,
+                "gzipReduction": 0.6134453781512605
+              }
+            },
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 2540,
+              "decodedBodyBytes": 13842,
+              "responseHeadersMs": 605.6867670004067,
+              "totalMs": 760.2729700001873,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.00326399999903515,
+              "extractionP95Ms": 0.0053870000010647345,
+              "htmlUtf8Bytes": 13187,
+              "fragmentUtf8Bytes": 4925,
+              "fragmentSha256": "89102dfd53c78a8dc12c46c2baa7427a57a003188ad58ebdb5e747ffba46fcb1",
+              "projected": {
+                "fullJsonBytes": 13842,
+                "fragmentJsonBytes": 5197,
+                "fullGzipBytes": 2499,
+                "fragmentGzipBytes": 966,
+                "gzipBytesSaved": 1533,
+                "gzipReduction": 0.6134453781512605
+              }
+            },
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 2540,
+              "decodedBodyBytes": 13842,
+              "responseHeadersMs": 623.7052549995497,
+              "totalMs": 778.7538699994911,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.003112999998847954,
+              "extractionP95Ms": 0.0057899999992514495,
+              "htmlUtf8Bytes": 13187,
+              "fragmentUtf8Bytes": 4925,
+              "fragmentSha256": "89102dfd53c78a8dc12c46c2baa7427a57a003188ad58ebdb5e747ffba46fcb1",
+              "projected": {
+                "fullJsonBytes": 13842,
+                "fragmentJsonBytes": 5197,
+                "fullGzipBytes": 2499,
+                "fragmentGzipBytes": 966,
+                "gzipBytesSaved": 1533,
+                "gzipReduction": 0.6134453781512605
+              }
+            }
+          ],
+          "summary": {
+            "httpTotalMs": {
+              "count": 3,
+              "median": 760.2729700001873,
+              "min": 757.8091149998727,
+              "max": 778.7538699994911
+            },
+            "httpBodyBytes": {
+              "count": 3,
+              "median": 2540,
+              "min": 2540,
+              "max": 2540
+            },
+            "extractionMedianMs": 0.0032600000013189856,
+            "projectedGzipBytesSaved": 1533,
+            "projectedGzipReduction": 0.6134453781512605
+          },
+          "storedPageBytes": 40
+        },
+        {
+          "title": "Une conception compatibiliste du libre arbitre demande une délibération efficace plutôt qu'un futur métaphysiquement ouvert",
+          "skin": "vector",
+          "language": "fr",
+          "revisionAtDiscovery": 234424,
+          "sections": [
+            {
+              "anchor": "Summary",
+              "index": "",
+              "number": "1"
+            },
+            {
+              "anchor": "Résumé",
+              "index": "",
+              "number": "2"
+            },
+            {
+              "anchor": "Citations",
+              "index": "",
+              "number": "3"
+            },
+            {
+              "anchor": "Références",
+              "index": "",
+              "number": "4"
+            },
+            {
+              "anchor": "Justifications",
+              "index": "",
+              "number": "5"
+            },
+            {
+              "anchor": "Objections",
+              "index": "",
+              "number": "6"
+            },
+            {
+              "anchor": "Parent_debates",
+              "index": "",
+              "number": "7"
+            }
+          ],
+          "displayedHeadingAnchors": [
+            "Summary",
+            "Résumé",
+            "Citations",
+            "Références",
+            "Justifications",
+            "Objections"
+          ],
+          "discoveryRequest": {
+            "httpStatus": 200,
+            "contentEncoding": "gzip",
+            "bodyBytes": 3669,
+            "decodedBodyBytes": 20987,
+            "responseHeadersMs": 616.1459579998336,
+            "totalMs": 771.7077429997516,
+            "httpCache": {
+              "CF-Cache-Status": "DYNAMIC",
+              "Age": null,
+              "Cache-Control": "private, must-revalidate, max-age=0",
+              "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+            }
+          },
+          "sectionProbe": {
+            "httpStatus": 200,
+            "contentEncoding": "gzip",
+            "bodyBytes": 314,
+            "decodedBodyBytes": 469,
+            "responseHeadersMs": 454.70343600027263,
+            "totalMs": 455.5998690002525,
+            "httpCache": {
+              "CF-Cache-Status": "DYNAMIC",
+              "Age": null,
+              "Cache-Control": "private, must-revalidate, max-age=0",
+              "Vary": null
+            },
+            "requestedSection": "1",
+            "apiError": "nosuchsection",
+            "exactlyMatchesReadingFragment": false
+          },
+          "fragmentStableAcrossRepeatedReads": true,
+          "samples": [
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 3449,
+              "decodedBodyBytes": 19751,
+              "responseHeadersMs": 602.7971910007182,
+              "totalMs": 758.2023560007656,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.004429000000527594,
+              "extractionP95Ms": 0.0066160000023955945,
+              "htmlUtf8Bytes": 18875,
+              "fragmentUtf8Bytes": 6949,
+              "fragmentSha256": "4bb4f2ecbf3b67078136dcbaa3216750a9c8c8d8f70144b0697ea050f376deec",
+              "projected": {
+                "fullJsonBytes": 19751,
+                "fragmentJsonBytes": 7285,
+                "fullGzipBytes": 3421,
+                "fragmentGzipBytes": 1641,
+                "gzipBytesSaved": 1780,
+                "gzipReduction": 0.5203156971645717
+              }
+            },
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 3449,
+              "decodedBodyBytes": 19751,
+              "responseHeadersMs": 620.2481299997089,
+              "totalMs": 775.9396330002346,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.0044720000005327165,
+              "extractionP95Ms": 0.006260000001930166,
+              "htmlUtf8Bytes": 18875,
+              "fragmentUtf8Bytes": 6949,
+              "fragmentSha256": "4bb4f2ecbf3b67078136dcbaa3216750a9c8c8d8f70144b0697ea050f376deec",
+              "projected": {
+                "fullJsonBytes": 19751,
+                "fragmentJsonBytes": 7285,
+                "fullGzipBytes": 3421,
+                "fragmentGzipBytes": 1641,
+                "gzipBytesSaved": 1780,
+                "gzipReduction": 0.5203156971645717
+              }
+            },
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 3449,
+              "decodedBodyBytes": 19751,
+              "responseHeadersMs": 597.2280910000336,
+              "totalMs": 753.5740989997066,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.004403999999340158,
+              "extractionP95Ms": 0.010266999997838866,
+              "htmlUtf8Bytes": 18875,
+              "fragmentUtf8Bytes": 6949,
+              "fragmentSha256": "4bb4f2ecbf3b67078136dcbaa3216750a9c8c8d8f70144b0697ea050f376deec",
+              "projected": {
+                "fullJsonBytes": 19751,
+                "fragmentJsonBytes": 7285,
+                "fullGzipBytes": 3421,
+                "fragmentGzipBytes": 1641,
+                "gzipBytesSaved": 1780,
+                "gzipReduction": 0.5203156971645717
+              }
+            }
+          ],
+          "summary": {
+            "httpTotalMs": {
+              "count": 3,
+              "median": 758.2023560007656,
+              "min": 753.5740989997066,
+              "max": 775.9396330002346
+            },
+            "httpBodyBytes": {
+              "count": 3,
+              "median": 3449,
+              "min": 3449,
+              "max": 3449
+            },
+            "extractionMedianMs": 0.004429000000527594,
+            "projectedGzipBytesSaved": 1780,
+            "projectedGzipReduction": 0.5203156971645717
+          },
+          "storedPageBytes": 1164
+        },
+        {
+          "title": "LFI a été déboutée dans ses porusuites judiciaires contre lui mais n'a pas été pour autant condamnée",
+          "skin": "vector",
+          "language": "fr",
+          "revisionAtDiscovery": 241689,
+          "sections": [
+            {
+              "anchor": "Summary",
+              "index": "",
+              "number": "1"
+            },
+            {
+              "anchor": "Citations",
+              "index": "",
+              "number": "2"
+            },
+            {
+              "anchor": "Références",
+              "index": "",
+              "number": "3"
+            },
+            {
+              "anchor": "Justifications",
+              "index": "",
+              "number": "4"
+            },
+            {
+              "anchor": "Objections",
+              "index": "",
+              "number": "5"
+            },
+            {
+              "anchor": "Parent_debates",
+              "index": "",
+              "number": "6"
+            }
+          ],
+          "displayedHeadingAnchors": [
+            "Summary",
+            "Citations",
+            "Références",
+            "Justifications",
+            "Objections"
+          ],
+          "discoveryRequest": {
+            "httpStatus": 200,
+            "contentEncoding": "gzip",
+            "bodyBytes": 2741,
+            "decodedBodyBytes": 14908,
+            "responseHeadersMs": 613.5686080006053,
+            "totalMs": 776.2392140002703,
+            "httpCache": {
+              "CF-Cache-Status": "DYNAMIC",
+              "Age": null,
+              "Cache-Control": "private, must-revalidate, max-age=0",
+              "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+            }
+          },
+          "sectionProbe": {
+            "httpStatus": 200,
+            "contentEncoding": "gzip",
+            "bodyBytes": 300,
+            "decodedBodyBytes": 449,
+            "responseHeadersMs": 333.9225340005214,
+            "totalMs": 334.04730900019786,
+            "httpCache": {
+              "CF-Cache-Status": "DYNAMIC",
+              "Age": null,
+              "Cache-Control": "private, must-revalidate, max-age=0",
+              "Vary": null
+            },
+            "requestedSection": "1",
+            "apiError": "nosuchsection",
+            "exactlyMatchesReadingFragment": false
+          },
+          "fragmentStableAcrossRepeatedReads": true,
+          "samples": [
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 2540,
+              "decodedBodyBytes": 13842,
+              "responseHeadersMs": 481.8324139996548,
+              "totalMs": 636.391244999686,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.0032030000002123415,
+              "extractionP95Ms": 0.00516099999731523,
+              "htmlUtf8Bytes": 13187,
+              "fragmentUtf8Bytes": 4925,
+              "fragmentSha256": "89102dfd53c78a8dc12c46c2baa7427a57a003188ad58ebdb5e747ffba46fcb1",
+              "projected": {
+                "fullJsonBytes": 13842,
+                "fragmentJsonBytes": 5197,
+                "fullGzipBytes": 2499,
+                "fragmentGzipBytes": 966,
+                "gzipBytesSaved": 1533,
+                "gzipReduction": 0.6134453781512605
+              }
+            },
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 2540,
+              "decodedBodyBytes": 13842,
+              "responseHeadersMs": 504.2142439997406,
+              "totalMs": 658.7582699994528,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.0032350000001315493,
+              "extractionP95Ms": 0.00503000000026077,
+              "htmlUtf8Bytes": 13187,
+              "fragmentUtf8Bytes": 4925,
+              "fragmentSha256": "89102dfd53c78a8dc12c46c2baa7427a57a003188ad58ebdb5e747ffba46fcb1",
+              "projected": {
+                "fullJsonBytes": 13842,
+                "fragmentJsonBytes": 5197,
+                "fullGzipBytes": 2499,
+                "fragmentGzipBytes": 966,
+                "gzipBytesSaved": 1533,
+                "gzipReduction": 0.6134453781512605
+              }
+            },
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 2540,
+              "decodedBodyBytes": 13842,
+              "responseHeadersMs": 476.52880199984793,
+              "totalMs": 631.1201079997772,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.002939999998488929,
+              "extractionP95Ms": 0.0049539999999979045,
+              "htmlUtf8Bytes": 13187,
+              "fragmentUtf8Bytes": 4925,
+              "fragmentSha256": "89102dfd53c78a8dc12c46c2baa7427a57a003188ad58ebdb5e747ffba46fcb1",
+              "projected": {
+                "fullJsonBytes": 13842,
+                "fragmentJsonBytes": 5197,
+                "fullGzipBytes": 2499,
+                "fragmentGzipBytes": 966,
+                "gzipBytesSaved": 1533,
+                "gzipReduction": 0.6134453781512605
+              }
+            }
+          ],
+          "summary": {
+            "httpTotalMs": {
+              "count": 3,
+              "median": 636.391244999686,
+              "min": 631.1201079997772,
+              "max": 658.7582699994528
+            },
+            "httpBodyBytes": {
+              "count": 3,
+              "median": 2540,
+              "min": 2540,
+              "max": 2540
+            },
+            "extractionMedianMs": 0.0032030000002123415,
+            "projectedGzipBytesSaved": 1533,
+            "projectedGzipReduction": 0.6134453781512605
+          },
+          "storedPageBytes": 40
+        }
+      ]
+    },
+    "en.wikidebates.org": {
+      "mediaWikiGenerator": "MediaWiki 1.43.11",
+      "selection": "Smallest, median and largest stored page among 500 latest category memberships plus arguments in the first 30 mainspace pages of at least 10000 bytes; not a representative audience sample or exhaustive largest-page search.",
+      "candidateCount": 501,
+      "largeCandidateCount": 1,
+      "requests": 33,
+      "cases": [
+        {
+          "title": "Pan-Turkism and Zionism",
+          "skin": "minerva",
+          "language": "en",
+          "revisionAtDiscovery": 18146,
+          "sections": [
+            {
+              "anchor": "Summary",
+              "index": "",
+              "number": "1"
+            },
+            {
+              "anchor": "Quotes",
+              "index": "",
+              "number": "2"
+            },
+            {
+              "anchor": "References",
+              "index": "",
+              "number": "3"
+            },
+            {
+              "anchor": "Justifications",
+              "index": "",
+              "number": "4"
+            },
+            {
+              "anchor": "Objections",
+              "index": "",
+              "number": "5"
+            },
+            {
+              "anchor": "Parent_debates",
+              "index": "",
+              "number": "6"
+            }
+          ],
+          "displayedHeadingAnchors": [
+            "Summary",
+            "Quotes",
+            "References",
+            "Justifications",
+            "Objections"
+          ],
+          "discoveryRequest": {
+            "httpStatus": 200,
+            "contentEncoding": "gzip",
+            "bodyBytes": 7128,
+            "decodedBodyBytes": 34344,
+            "responseHeadersMs": 702.7882790007425,
+            "totalMs": 866.7460980004762,
+            "httpCache": {
+              "CF-Cache-Status": "DYNAMIC",
+              "Age": null,
+              "Cache-Control": "private, must-revalidate, max-age=0",
+              "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+            }
+          },
+          "sectionProbe": {
+            "httpStatus": 200,
+            "contentEncoding": "gzip",
+            "bodyBytes": 246,
+            "decodedBodyBytes": 365,
+            "responseHeadersMs": 468.9493490004679,
+            "totalMs": 469.1654420003033,
+            "httpCache": {
+              "CF-Cache-Status": "DYNAMIC",
+              "Age": null,
+              "Cache-Control": "private, must-revalidate, max-age=0",
+              "Vary": null
+            },
+            "requestedSection": "1",
+            "apiError": "nosuchsection",
+            "exactlyMatchesReadingFragment": false
+          },
+          "fragmentStableAcrossRepeatedReads": true,
+          "samples": [
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 6917,
+              "decodedBodyBytes": 33308,
+              "responseHeadersMs": 492.58964599994215,
+              "totalMs": 657.8519099994082,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.007035000000087166,
+              "extractionP95Ms": 0.013228000000253815,
+              "htmlUtf8Bytes": 32469,
+              "fragmentUtf8Bytes": 13770,
+              "fragmentSha256": "baf351b11b40a683ffbef841254cb583efa3aa191d73374789e3239d5988f05b",
+              "projected": {
+                "fullJsonBytes": 33308,
+                "fragmentJsonBytes": 13973,
+                "fullGzipBytes": 6960,
+                "fragmentGzipBytes": 5155,
+                "gzipBytesSaved": 1805,
+                "gzipReduction": 0.25933908045977017
+              }
+            },
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 6935,
+              "decodedBodyBytes": 33308,
+              "responseHeadersMs": 506.1506889996963,
+              "totalMs": 670.588711000164,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.006679999999960273,
+              "extractionP95Ms": 0.009933999999702792,
+              "htmlUtf8Bytes": 32469,
+              "fragmentUtf8Bytes": 13770,
+              "fragmentSha256": "baf351b11b40a683ffbef841254cb583efa3aa191d73374789e3239d5988f05b",
+              "projected": {
+                "fullJsonBytes": 33308,
+                "fragmentJsonBytes": 13973,
+                "fullGzipBytes": 6960,
+                "fragmentGzipBytes": 5155,
+                "gzipBytesSaved": 1805,
+                "gzipReduction": 0.25933908045977017
+              }
+            },
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 6970,
+              "decodedBodyBytes": 33308,
+              "responseHeadersMs": 363.29552799998055,
+              "totalMs": 526.9823620001262,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.0073130000000674045,
+              "extractionP95Ms": 0.00877200000013545,
+              "htmlUtf8Bytes": 32469,
+              "fragmentUtf8Bytes": 13770,
+              "fragmentSha256": "baf351b11b40a683ffbef841254cb583efa3aa191d73374789e3239d5988f05b",
+              "projected": {
+                "fullJsonBytes": 33308,
+                "fragmentJsonBytes": 13973,
+                "fullGzipBytes": 6960,
+                "fragmentGzipBytes": 5155,
+                "gzipBytesSaved": 1805,
+                "gzipReduction": 0.25933908045977017
+              }
+            }
+          ],
+          "summary": {
+            "httpTotalMs": {
+              "count": 3,
+              "median": 657.8519099994082,
+              "min": 526.9823620001262,
+              "max": 670.588711000164
+            },
+            "httpBodyBytes": {
+              "count": 3,
+              "median": 6935,
+              "min": 6917,
+              "max": 6970
+            },
+            "extractionMedianMs": 0.007035000000087166,
+            "projectedGzipBytesSaved": 1805,
+            "projectedGzipReduction": 0.25933908045977017
+          },
+          "storedPageBytes": 10728
+        },
+        {
+          "title": "Pan-Turkism and Zionism",
+          "skin": "vector",
+          "language": "en",
+          "revisionAtDiscovery": 18146,
+          "sections": [
+            {
+              "anchor": "Summary",
+              "index": "",
+              "number": "1"
+            },
+            {
+              "anchor": "Quotes",
+              "index": "",
+              "number": "2"
+            },
+            {
+              "anchor": "References",
+              "index": "",
+              "number": "3"
+            },
+            {
+              "anchor": "Justifications",
+              "index": "",
+              "number": "4"
+            },
+            {
+              "anchor": "Objections",
+              "index": "",
+              "number": "5"
+            },
+            {
+              "anchor": "Parent_debates",
+              "index": "",
+              "number": "6"
+            }
+          ],
+          "displayedHeadingAnchors": [
+            "Summary",
+            "Quotes",
+            "References",
+            "Justifications",
+            "Objections"
+          ],
+          "discoveryRequest": {
+            "httpStatus": 200,
+            "contentEncoding": "gzip",
+            "bodyBytes": 7168,
+            "decodedBodyBytes": 34344,
+            "responseHeadersMs": 523.8773569999466,
+            "totalMs": 687.5716029999239,
+            "httpCache": {
+              "CF-Cache-Status": "DYNAMIC",
+              "Age": null,
+              "Cache-Control": "private, must-revalidate, max-age=0",
+              "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+            }
+          },
+          "sectionProbe": {
+            "httpStatus": 200,
+            "contentEncoding": "gzip",
+            "bodyBytes": 246,
+            "decodedBodyBytes": 365,
+            "responseHeadersMs": 463.32767399962904,
+            "totalMs": 463.4702389994345,
+            "httpCache": {
+              "CF-Cache-Status": "DYNAMIC",
+              "Age": null,
+              "Cache-Control": "private, must-revalidate, max-age=0",
+              "Vary": null
+            },
+            "requestedSection": "1",
+            "apiError": "nosuchsection",
+            "exactlyMatchesReadingFragment": false
+          },
+          "fragmentStableAcrossRepeatedReads": true,
+          "samples": [
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 6945,
+              "decodedBodyBytes": 33308,
+              "responseHeadersMs": 476.3139430006049,
+              "totalMs": 642.1545850007533,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.006709999999657157,
+              "extractionP95Ms": 0.009292000000641565,
+              "htmlUtf8Bytes": 32469,
+              "fragmentUtf8Bytes": 13770,
+              "fragmentSha256": "baf351b11b40a683ffbef841254cb583efa3aa191d73374789e3239d5988f05b",
+              "projected": {
+                "fullJsonBytes": 33308,
+                "fragmentJsonBytes": 13973,
+                "fullGzipBytes": 6960,
+                "fragmentGzipBytes": 5155,
+                "gzipBytesSaved": 1805,
+                "gzipReduction": 0.25933908045977017
+              }
+            },
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 6935,
+              "decodedBodyBytes": 33308,
+              "responseHeadersMs": 522.1692140003142,
+              "totalMs": 686.8546260002404,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.006695000000036089,
+              "extractionP95Ms": 0.008938999999372754,
+              "htmlUtf8Bytes": 32469,
+              "fragmentUtf8Bytes": 13770,
+              "fragmentSha256": "baf351b11b40a683ffbef841254cb583efa3aa191d73374789e3239d5988f05b",
+              "projected": {
+                "fullJsonBytes": 33308,
+                "fragmentJsonBytes": 13973,
+                "fullGzipBytes": 6960,
+                "fragmentGzipBytes": 5155,
+                "gzipBytesSaved": 1805,
+                "gzipReduction": 0.25933908045977017
+              }
+            },
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 6970,
+              "decodedBodyBytes": 33308,
+              "responseHeadersMs": 493.99614199955977,
+              "totalMs": 656.2525389999792,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.006671000001006178,
+              "extractionP95Ms": 0.008239999999204883,
+              "htmlUtf8Bytes": 32469,
+              "fragmentUtf8Bytes": 13770,
+              "fragmentSha256": "baf351b11b40a683ffbef841254cb583efa3aa191d73374789e3239d5988f05b",
+              "projected": {
+                "fullJsonBytes": 33308,
+                "fragmentJsonBytes": 13973,
+                "fullGzipBytes": 6960,
+                "fragmentGzipBytes": 5155,
+                "gzipBytesSaved": 1805,
+                "gzipReduction": 0.25933908045977017
+              }
+            }
+          ],
+          "summary": {
+            "httpTotalMs": {
+              "count": 3,
+              "median": 656.2525389999792,
+              "min": 642.1545850007533,
+              "max": 686.8546260002404
+            },
+            "httpBodyBytes": {
+              "count": 3,
+              "median": 6945,
+              "min": 6935,
+              "max": 6970
+            },
+            "extractionMedianMs": 0.006695000000036089,
+            "projectedGzipBytesSaved": 1805,
+            "projectedGzipReduction": 0.25933908045977017
+          },
+          "storedPageBytes": 10728
+        },
+        {
+          "title": "A naturalistic causal explanation does not prevent beliefs from being assessed by rational norms",
+          "skin": "minerva",
+          "language": "en",
+          "revisionAtDiscovery": 17643,
+          "sections": [
+            {
+              "anchor": "Summary",
+              "index": "",
+              "number": "1"
+            },
+            {
+              "anchor": "Summary_2",
+              "index": "",
+              "number": "2"
+            },
+            {
+              "anchor": "Quotes",
+              "index": "",
+              "number": "3"
+            },
+            {
+              "anchor": "References",
+              "index": "",
+              "number": "4"
+            },
+            {
+              "anchor": "Justifications",
+              "index": "",
+              "number": "5"
+            },
+            {
+              "anchor": "Objections",
+              "index": "",
+              "number": "6"
+            },
+            {
+              "anchor": "Parent_debates",
+              "index": "",
+              "number": "7"
+            }
+          ],
+          "displayedHeadingAnchors": [
+            "Summary",
+            "Summary_2",
+            "Quotes",
+            "References",
+            "Justifications",
+            "Objections"
+          ],
+          "discoveryRequest": {
+            "httpStatus": 200,
+            "contentEncoding": "gzip",
+            "bodyBytes": 3363,
+            "decodedBodyBytes": 17800,
+            "responseHeadersMs": 503.7611420002577,
+            "totalMs": 503.9051619996826,
+            "httpCache": {
+              "CF-Cache-Status": "DYNAMIC",
+              "Age": null,
+              "Cache-Control": "private, must-revalidate, max-age=0",
+              "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+            }
+          },
+          "sectionProbe": {
+            "httpStatus": 200,
+            "contentEncoding": "gzip",
+            "bodyBytes": 286,
+            "decodedBodyBytes": 438,
+            "responseHeadersMs": 342.6846789998308,
+            "totalMs": 344.293977000234,
+            "httpCache": {
+              "CF-Cache-Status": "DYNAMIC",
+              "Age": null,
+              "Cache-Control": "private, must-revalidate, max-age=0",
+              "Vary": null
+            },
+            "requestedSection": "1",
+            "apiError": "nosuchsection",
+            "exactlyMatchesReadingFragment": false
+          },
+          "fragmentStableAcrossRepeatedReads": true,
+          "samples": [
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 3180,
+              "decodedBodyBytes": 16585,
+              "responseHeadersMs": 494.811185000799,
+              "totalMs": 660.2347790003478,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.003756000000066706,
+              "extractionP95Ms": 0.004290999999284395,
+              "htmlUtf8Bytes": 15676,
+              "fragmentUtf8Bytes": 5817,
+              "fragmentSha256": "46d7f310d250b642898a641539489167ff69b7f665648a031e6d9667b4af5a5e",
+              "projected": {
+                "fullJsonBytes": 16585,
+                "fragmentJsonBytes": 6100,
+                "fullGzipBytes": 3157,
+                "fragmentGzipBytes": 1469,
+                "gzipBytesSaved": 1688,
+                "gzipReduction": 0.5346848273677542
+              }
+            },
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 3180,
+              "decodedBodyBytes": 16585,
+              "responseHeadersMs": 501.1254569999437,
+              "totalMs": 665.0467010003922,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.0037699999993492384,
+              "extractionP95Ms": 0.006134999999630963,
+              "htmlUtf8Bytes": 15676,
+              "fragmentUtf8Bytes": 5817,
+              "fragmentSha256": "46d7f310d250b642898a641539489167ff69b7f665648a031e6d9667b4af5a5e",
+              "projected": {
+                "fullJsonBytes": 16585,
+                "fragmentJsonBytes": 6100,
+                "fullGzipBytes": 3157,
+                "fragmentGzipBytes": 1469,
+                "gzipBytesSaved": 1688,
+                "gzipReduction": 0.5346848273677542
+              }
+            },
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 3180,
+              "decodedBodyBytes": 16585,
+              "responseHeadersMs": 518.9561919996777,
+              "totalMs": 684.2067589996077,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.0038020000010874355,
+              "extractionP95Ms": 0.004469000001336099,
+              "htmlUtf8Bytes": 15676,
+              "fragmentUtf8Bytes": 5817,
+              "fragmentSha256": "46d7f310d250b642898a641539489167ff69b7f665648a031e6d9667b4af5a5e",
+              "projected": {
+                "fullJsonBytes": 16585,
+                "fragmentJsonBytes": 6100,
+                "fullGzipBytes": 3157,
+                "fragmentGzipBytes": 1469,
+                "gzipBytesSaved": 1688,
+                "gzipReduction": 0.5346848273677542
+              }
+            }
+          ],
+          "summary": {
+            "httpTotalMs": {
+              "count": 3,
+              "median": 665.0467010003922,
+              "min": 660.2347790003478,
+              "max": 684.2067589996077
+            },
+            "httpBodyBytes": {
+              "count": 3,
+              "median": 3180,
+              "min": 3180,
+              "max": 3180
+            },
+            "extractionMedianMs": 0.0037699999993492384,
+            "projectedGzipBytesSaved": 1688,
+            "projectedGzipReduction": 0.5346848273677542
+          },
+          "storedPageBytes": 1092
+        },
+        {
+          "title": "When a law worsens the problem it was meant to solve, repealing it becomes urgent",
+          "skin": "minerva",
+          "language": "en",
+          "revisionAtDiscovery": 18626,
+          "sections": [
+            {
+              "anchor": "Summary",
+              "index": "",
+              "number": "1"
+            },
+            {
+              "anchor": "Quotes",
+              "index": "",
+              "number": "2"
+            },
+            {
+              "anchor": "References",
+              "index": "",
+              "number": "3"
+            },
+            {
+              "anchor": "Justifications",
+              "index": "",
+              "number": "4"
+            },
+            {
+              "anchor": "Objections",
+              "index": "",
+              "number": "5"
+            },
+            {
+              "anchor": "Parent_debates",
+              "index": "",
+              "number": "6"
+            }
+          ],
+          "displayedHeadingAnchors": [
+            "Summary",
+            "Quotes",
+            "References",
+            "Justifications",
+            "Objections"
+          ],
+          "discoveryRequest": {
+            "httpStatus": 200,
+            "contentEncoding": "gzip",
+            "bodyBytes": 2345,
+            "decodedBodyBytes": 12139,
+            "responseHeadersMs": 511.43012500051555,
+            "totalMs": 511.57827800034283,
+            "httpCache": {
+              "CF-Cache-Status": "DYNAMIC",
+              "Age": null,
+              "Cache-Control": "private, must-revalidate, max-age=0",
+              "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+            }
+          },
+          "sectionProbe": {
+            "httpStatus": 200,
+            "contentEncoding": "gzip",
+            "bodyBytes": 276,
+            "decodedBodyBytes": 423,
+            "responseHeadersMs": 463.88070299963147,
+            "totalMs": 464.0082480000274,
+            "httpCache": {
+              "CF-Cache-Status": "DYNAMIC",
+              "Age": null,
+              "Cache-Control": "private, must-revalidate, max-age=0",
+              "Vary": null
+            },
+            "requestedSection": "1",
+            "apiError": "nosuchsection",
+            "exactlyMatchesReadingFragment": false
+          },
+          "fragmentStableAcrossRepeatedReads": true,
+          "samples": [
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 2151,
+              "decodedBodyBytes": 11090,
+              "responseHeadersMs": 386.1278330005007,
+              "totalMs": 386.2728350004545,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.002615999999761698,
+              "extractionP95Ms": 0.004695999999967171,
+              "htmlUtf8Bytes": 10406,
+              "fragmentUtf8Bytes": 3957,
+              "fragmentSha256": "bd735a0be608eb4da2f5920aba57bf50700c4ee2a06d5193153f793859c8f4bc",
+              "projected": {
+                "fullJsonBytes": 11090,
+                "fragmentJsonBytes": 4200,
+                "fullGzipBytes": 2157,
+                "fragmentGzipBytes": 806,
+                "gzipBytesSaved": 1351,
+                "gzipReduction": 0.626332869726472
+              }
+            },
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 2151,
+              "decodedBodyBytes": 11090,
+              "responseHeadersMs": 488.86760500045057,
+              "totalMs": 489.03027800042764,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.002398999999059015,
+              "extractionP95Ms": 0.004412000000229455,
+              "htmlUtf8Bytes": 10406,
+              "fragmentUtf8Bytes": 3957,
+              "fragmentSha256": "bd735a0be608eb4da2f5920aba57bf50700c4ee2a06d5193153f793859c8f4bc",
+              "projected": {
+                "fullJsonBytes": 11090,
+                "fragmentJsonBytes": 4200,
+                "fullGzipBytes": 2157,
+                "fragmentGzipBytes": 806,
+                "gzipBytesSaved": 1351,
+                "gzipReduction": 0.626332869726472
+              }
+            },
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 2151,
+              "decodedBodyBytes": 11090,
+              "responseHeadersMs": 505.604413000583,
+              "totalMs": 505.7384460005778,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.0024099999991449295,
+              "extractionP95Ms": 0.005108000001200708,
+              "htmlUtf8Bytes": 10406,
+              "fragmentUtf8Bytes": 3957,
+              "fragmentSha256": "bd735a0be608eb4da2f5920aba57bf50700c4ee2a06d5193153f793859c8f4bc",
+              "projected": {
+                "fullJsonBytes": 11090,
+                "fragmentJsonBytes": 4200,
+                "fullGzipBytes": 2157,
+                "fragmentGzipBytes": 806,
+                "gzipBytesSaved": 1351,
+                "gzipReduction": 0.626332869726472
+              }
+            }
+          ],
+          "summary": {
+            "httpTotalMs": {
+              "count": 3,
+              "median": 489.03027800042764,
+              "min": 386.2728350004545,
+              "max": 505.7384460005778
+            },
+            "httpBodyBytes": {
+              "count": 3,
+              "median": 2151,
+              "min": 2151,
+              "max": 2151
+            },
+            "extractionMedianMs": 0.0024099999991449295,
+            "projectedGzipBytesSaved": 1351,
+            "projectedGzipReduction": 0.626332869726472
+          },
+          "storedPageBytes": 39
+        },
+        {
+          "title": "A naturalistic causal explanation does not prevent beliefs from being assessed by rational norms",
+          "skin": "vector",
+          "language": "en",
+          "revisionAtDiscovery": 17643,
+          "sections": [
+            {
+              "anchor": "Summary",
+              "index": "",
+              "number": "1"
+            },
+            {
+              "anchor": "Summary_2",
+              "index": "",
+              "number": "2"
+            },
+            {
+              "anchor": "Quotes",
+              "index": "",
+              "number": "3"
+            },
+            {
+              "anchor": "References",
+              "index": "",
+              "number": "4"
+            },
+            {
+              "anchor": "Justifications",
+              "index": "",
+              "number": "5"
+            },
+            {
+              "anchor": "Objections",
+              "index": "",
+              "number": "6"
+            },
+            {
+              "anchor": "Parent_debates",
+              "index": "",
+              "number": "7"
+            }
+          ],
+          "displayedHeadingAnchors": [
+            "Summary",
+            "Summary_2",
+            "Quotes",
+            "References",
+            "Justifications",
+            "Objections"
+          ],
+          "discoveryRequest": {
+            "httpStatus": 200,
+            "contentEncoding": "gzip",
+            "bodyBytes": 3394,
+            "decodedBodyBytes": 17800,
+            "responseHeadersMs": 477.58794099991064,
+            "totalMs": 642.8645279993361,
+            "httpCache": {
+              "CF-Cache-Status": "DYNAMIC",
+              "Age": null,
+              "Cache-Control": "private, must-revalidate, max-age=0",
+              "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+            }
+          },
+          "sectionProbe": {
+            "httpStatus": 200,
+            "contentEncoding": "gzip",
+            "bodyBytes": 286,
+            "decodedBodyBytes": 438,
+            "responseHeadersMs": 450.81389999995736,
+            "totalMs": 450.948865999635,
+            "httpCache": {
+              "CF-Cache-Status": "DYNAMIC",
+              "Age": null,
+              "Cache-Control": "private, must-revalidate, max-age=0",
+              "Vary": null
+            },
+            "requestedSection": "1",
+            "apiError": "nosuchsection",
+            "exactlyMatchesReadingFragment": false
+          },
+          "fragmentStableAcrossRepeatedReads": true,
+          "samples": [
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 3180,
+              "decodedBodyBytes": 16585,
+              "responseHeadersMs": 370.5368630007797,
+              "totalMs": 536.1500890003299,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.0037389999997685663,
+              "extractionP95Ms": 0.005384000000049127,
+              "htmlUtf8Bytes": 15676,
+              "fragmentUtf8Bytes": 5817,
+              "fragmentSha256": "46d7f310d250b642898a641539489167ff69b7f665648a031e6d9667b4af5a5e",
+              "projected": {
+                "fullJsonBytes": 16585,
+                "fragmentJsonBytes": 6100,
+                "fullGzipBytes": 3157,
+                "fragmentGzipBytes": 1469,
+                "gzipBytesSaved": 1688,
+                "gzipReduction": 0.5346848273677542
+              }
+            },
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 3180,
+              "decodedBodyBytes": 16585,
+              "responseHeadersMs": 500.6910620004419,
+              "totalMs": 665.5453250004939,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.003792999999859603,
+              "extractionP95Ms": 0.005992000002152054,
+              "htmlUtf8Bytes": 15676,
+              "fragmentUtf8Bytes": 5817,
+              "fragmentSha256": "46d7f310d250b642898a641539489167ff69b7f665648a031e6d9667b4af5a5e",
+              "projected": {
+                "fullJsonBytes": 16585,
+                "fragmentJsonBytes": 6100,
+                "fullGzipBytes": 3157,
+                "fragmentGzipBytes": 1469,
+                "gzipBytesSaved": 1688,
+                "gzipReduction": 0.5346848273677542
+              }
+            },
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 3180,
+              "decodedBodyBytes": 16585,
+              "responseHeadersMs": 502.21934799992596,
+              "totalMs": 666.7722909996883,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.0037520000005315524,
+              "extractionP95Ms": 0.009745999999722699,
+              "htmlUtf8Bytes": 15676,
+              "fragmentUtf8Bytes": 5817,
+              "fragmentSha256": "46d7f310d250b642898a641539489167ff69b7f665648a031e6d9667b4af5a5e",
+              "projected": {
+                "fullJsonBytes": 16585,
+                "fragmentJsonBytes": 6100,
+                "fullGzipBytes": 3157,
+                "fragmentGzipBytes": 1469,
+                "gzipBytesSaved": 1688,
+                "gzipReduction": 0.5346848273677542
+              }
+            }
+          ],
+          "summary": {
+            "httpTotalMs": {
+              "count": 3,
+              "median": 665.5453250004939,
+              "min": 536.1500890003299,
+              "max": 666.7722909996883
+            },
+            "httpBodyBytes": {
+              "count": 3,
+              "median": 3180,
+              "min": 3180,
+              "max": 3180
+            },
+            "extractionMedianMs": 0.0037520000005315524,
+            "projectedGzipBytesSaved": 1688,
+            "projectedGzipReduction": 0.5346848273677542
+          },
+          "storedPageBytes": 1092
+        },
+        {
+          "title": "When a law worsens the problem it was meant to solve, repealing it becomes urgent",
+          "skin": "vector",
+          "language": "en",
+          "revisionAtDiscovery": 18626,
+          "sections": [
+            {
+              "anchor": "Summary",
+              "index": "",
+              "number": "1"
+            },
+            {
+              "anchor": "Quotes",
+              "index": "",
+              "number": "2"
+            },
+            {
+              "anchor": "References",
+              "index": "",
+              "number": "3"
+            },
+            {
+              "anchor": "Justifications",
+              "index": "",
+              "number": "4"
+            },
+            {
+              "anchor": "Objections",
+              "index": "",
+              "number": "5"
+            },
+            {
+              "anchor": "Parent_debates",
+              "index": "",
+              "number": "6"
+            }
+          ],
+          "displayedHeadingAnchors": [
+            "Summary",
+            "Quotes",
+            "References",
+            "Justifications",
+            "Objections"
+          ],
+          "discoveryRequest": {
+            "httpStatus": 200,
+            "contentEncoding": "gzip",
+            "bodyBytes": 2345,
+            "decodedBodyBytes": 12139,
+            "responseHeadersMs": 505.50523699985206,
+            "totalMs": 505.6884129999162,
+            "httpCache": {
+              "CF-Cache-Status": "DYNAMIC",
+              "Age": null,
+              "Cache-Control": "private, must-revalidate, max-age=0",
+              "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+            }
+          },
+          "sectionProbe": {
+            "httpStatus": 200,
+            "contentEncoding": "gzip",
+            "bodyBytes": 276,
+            "decodedBodyBytes": 423,
+            "responseHeadersMs": 456.7967650000355,
+            "totalMs": 456.91293100026087,
+            "httpCache": {
+              "CF-Cache-Status": "DYNAMIC",
+              "Age": null,
+              "Cache-Control": "private, must-revalidate, max-age=0",
+              "Vary": null
+            },
+            "requestedSection": "1",
+            "apiError": "nosuchsection",
+            "exactlyMatchesReadingFragment": false
+          },
+          "fragmentStableAcrossRepeatedReads": true,
+          "samples": [
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 2151,
+              "decodedBodyBytes": 11090,
+              "responseHeadersMs": 495.5742520005515,
+              "totalMs": 495.7026030006091,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.0026250000009895302,
+              "extractionP95Ms": 0.004358999998657964,
+              "htmlUtf8Bytes": 10406,
+              "fragmentUtf8Bytes": 3957,
+              "fragmentSha256": "bd735a0be608eb4da2f5920aba57bf50700c4ee2a06d5193153f793859c8f4bc",
+              "projected": {
+                "fullJsonBytes": 11090,
+                "fragmentJsonBytes": 4200,
+                "fullGzipBytes": 2157,
+                "fragmentGzipBytes": 806,
+                "gzipBytesSaved": 1351,
+                "gzipReduction": 0.626332869726472
+              }
+            },
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 2151,
+              "decodedBodyBytes": 11090,
+              "responseHeadersMs": 377.76201399992715,
+              "totalMs": 377.9003260005993,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.002395999999862397,
+              "extractionP95Ms": 0.003988000000390457,
+              "htmlUtf8Bytes": 10406,
+              "fragmentUtf8Bytes": 3957,
+              "fragmentSha256": "bd735a0be608eb4da2f5920aba57bf50700c4ee2a06d5193153f793859c8f4bc",
+              "projected": {
+                "fullJsonBytes": 11090,
+                "fragmentJsonBytes": 4200,
+                "fullGzipBytes": 2157,
+                "fragmentGzipBytes": 806,
+                "gzipBytesSaved": 1351,
+                "gzipReduction": 0.626332869726472
+              }
+            },
+            {
+              "httpStatus": 200,
+              "contentEncoding": "gzip",
+              "bodyBytes": 2151,
+              "decodedBodyBytes": 11090,
+              "responseHeadersMs": 482.366099000501,
+              "totalMs": 482.48480100028246,
+              "httpCache": {
+                "CF-Cache-Status": "DYNAMIC",
+                "Age": null,
+                "Cache-Control": "private, must-revalidate, max-age=0",
+                "Vary": "Accept-Encoding,Treat-as-Untrusted,Cookie"
+              },
+              "extractionMedianMs": 0.002382999999099411,
+              "extractionP95Ms": 0.004605999998602783,
+              "htmlUtf8Bytes": 10406,
+              "fragmentUtf8Bytes": 3957,
+              "fragmentSha256": "bd735a0be608eb4da2f5920aba57bf50700c4ee2a06d5193153f793859c8f4bc",
+              "projected": {
+                "fullJsonBytes": 11090,
+                "fragmentJsonBytes": 4200,
+                "fullGzipBytes": 2157,
+                "fragmentGzipBytes": 806,
+                "gzipBytesSaved": 1351,
+                "gzipReduction": 0.626332869726472
+              }
+            }
+          ],
+          "summary": {
+            "httpTotalMs": {
+              "count": 3,
+              "median": 482.48480100028246,
+              "min": 377.9003260005993,
+              "max": 495.7026030006091
+            },
+            "httpBodyBytes": {
+              "count": 3,
+              "median": 2151,
+              "min": 2151,
+              "max": 2151
+            },
+            "extractionMedianMs": 0.002395999999862397,
+            "projectedGzipBytesSaved": 1351,
+            "projectedGzipReduction": 0.626332869726472
+          },
+          "storedPageBytes": 39
+        }
+      ]
+    }
+  }
+}

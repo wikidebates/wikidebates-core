@@ -170,3 +170,7 @@ L'[étude des caches de lecture](docs/reading-cache-study.md) décrit les clés
 partagées entre réponses et extraits, les mesures locales facultatives et la
 comparaison avant/après dans Chromium. Les extraits restent conservés sans
 limite ; les plafonds éventuels sont seulement simulés hors du parcours de lecture.
+
+L'[étude des transferts d'arguments](docs/argument-transfer-study.md) compare les
+volumes gzip sur les deux wikis et examine les chemins du parser cache MediaWiki.
+Elle conserve la requête de lecture actuelle ; aucune API d'extraits n'est activée.
