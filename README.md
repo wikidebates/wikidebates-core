@@ -178,3 +178,8 @@ Elle conserve la requête de lecture actuelle ; aucune API d'extraits n'est acti
 L'[étude du cache fichier Minerva](docs/minerva-file-cache-study.md) fournit un
 prototype isolé, ses mesures avec parser cache chaud et les tests d'invalidation.
 Ce prototype n'est pas chargé par l'extension et n'active aucun cache sur le site.
+
+L'extension autonome [MinervaFileCache](extensions/MinervaFileCache/README.md)
+fournit l'intégration installable séparément pour MediaWiki 1.43 et MobileFrontend.
+Son activation couvre toutes les vues mobiles éligibles, avec un stockage distinct
+du cache desktop ; la notice donne les réglages et la procédure de désactivation.

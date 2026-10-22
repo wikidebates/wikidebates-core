@@ -1,0 +1,29 @@
+{
+	"name": "MinervaFileCache",
+	"version": "0.1.0",
+	"author": ["Wikidebates contributors"],
+	"url": "https://github.com/wikidebates/wikidebates-core/tree/main/extensions/MinervaFileCache",
+	"descriptionmsg": "minervafilecache-desc",
+	"license-name": "MIT",
+	"type": "other",
+	"requires": {
+		"MediaWiki": ">= 1.43.0 < 1.44.0",
+		"extensions": {"MobileFrontend": ">= 2.4.0"},
+		"skins": {"MinervaNeue": "*"}
+	},
+	"AutoloadNamespaces": {"MediaWiki\\Extension\\MinervaFileCache\\": "src/"},
+	"MessagesDirs": {"MinervaFileCache": ["i18n"]},
+	"Hooks": {
+		"ArticleFromTitle": "MediaWiki\\Extension\\MinervaFileCache\\Hooks::onArticleFromTitle",
+		"TitleSquidURLs": "MediaWiki\\Extension\\MinervaFileCache\\Hooks::onTitleSquidURLs"
+	},
+	"config": {
+		"MinervaFileCacheEnabled": {"value": false},
+		"MinervaFileCacheDirectory": {"value": false},
+		"MinervaFileCacheTTL": {"value": 300},
+		"MinervaFileCacheEpoch": {"value": "1"},
+		"MinervaFileCacheDebugHeaders": {"value": true},
+		"MinervaFileCacheMaxBytes": {"value": 4194304}
+	},
+	"manifest_version": 2
+}

@@ -1,5 +1,10 @@
 # Faisabilité d'un cache fichier pour Minerva
 
+L'étude ci-dessous concerne le prototype initial. Une extension autonome
+installable, [MinervaFileCache](../extensions/MinervaFileCache/README.md), est
+maintenant disponible avec ses propres tests d'intégration et sa notice
+d'activation. Elle n'est pas chargée automatiquement par Wikidebates.
+
 ## Conclusion
 
 Un cache fichier HTML distinct pour Minerva est techniquement possible sur
