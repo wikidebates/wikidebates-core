@@ -174,3 +174,7 @@ limite ; les plafonds éventuels sont seulement simulés hors du parcours de lec
 L'[étude des transferts d'arguments](docs/argument-transfer-study.md) compare les
 volumes gzip sur les deux wikis et examine les chemins du parser cache MediaWiki.
 Elle conserve la requête de lecture actuelle ; aucune API d'extraits n'est activée.
+
+L'[étude du cache fichier Minerva](docs/minerva-file-cache-study.md) fournit un
+prototype isolé, ses mesures avec parser cache chaud et les tests d'invalidation.
+Ce prototype n'est pas chargé par l'extension et n'active aucun cache sur le site.
