@@ -51,14 +51,39 @@ for alias, canonical in mapping['browser_aliases'].items():
 	for language in ['en', 'fr']:
 		assert read('i18n/compat/' + language + '.json')[alias] == catalogs[language][canonical]
 
+def browser_keys(text):
+	return set(re.findall(r'(?:wkMsgD?|wkParam(?:Fast)?|wkTpl(?:Fast)?|wkForm(?:Fast)?|msgD|formatSectionText|formatFieldSummary)\(\s*[\'\"](wk-[^\'\"]+)', text)) | \
+		set(re.findall(r'\w*Key:\s*[\'\"](wk-[^\'\"]+)', text)) | \
+		set(re.findall(r'[\'\"](wk-summary-[^\'\"]+)', text))
+
 used = set()
 for path in (root / 'modules').rglob('*.js'):
-	text = path.read_text()
-	used.update(re.findall(r'(?:wkMsgD?|wkParam(?:Fast)?|wkTpl(?:Fast)?|wkForm(?:Fast)?|msgD|formatSectionText|formatFieldSummary)\(\s*[\'\"](wk-[^\'\"]+)', text))
-	used.update(re.findall(r'\w*Key:\s*[\'\"](wk-[^\'\"]+)', text))
-	used.update(re.findall(r'[\'\"](wk-summary-[^\'\"]+)', text))
+	used.update(browser_keys(path.read_text()))
 assert not used - keys - names['site']['en'].keys() - mapping['browser_aliases'].keys(), 'Undefined browser message'
 manifest = read('extension.json')
 expected = sorted([key for key in keys if key.startswith('wk-')] + list(mapping['browser_aliases']))
-assert manifest['ResourceModules']['ext.wikidebates.common.i18n']['messages'] == expected
-print(f'OK: {len(keys)} documented messages, {len(entries)} legacy entries, {len(used)} browser references, key/parameter parity, aliases and unique JSON keys')
+modules = manifest['ResourceModules']
+assert modules['ext.wikidebates.common.i18n']['messages'] == [key for key in expected if not key.startswith('wk-summary-')]
+assert modules['ext.wikidebates.features.editForm']['messages'] == [key for key in expected if key.startswith('wk-summary-')]
+for name in ['ext.wikidebates.common.i18n', 'ext.wikidebates.features.editForm']:
+	assert modules[name]['class'] == 'MediaWiki\\Extension\\Wikidebates\\I18nModule', name
+for language in ['en', 'fr']:
+	assert modules['ext.wikidebates.i18n.' + language]['messages'] == expected, 'Legacy module must remain complete'
+
+def available_messages(name, seen=None):
+	seen = set() if seen is None else seen
+	if name in seen or name not in modules:
+		return set()
+	seen.add(name)
+	module = modules[name]
+	result = set(module.get('messages', []))
+	for dependency in module.get('dependencies', []):
+		result.update(available_messages(dependency, seen))
+	return result
+
+for name, module in modules.items():
+	for file in module.get('scripts', []):
+		references = browser_keys((root / manifest['ResourceFileModulePaths']['localBasePath'] / file).read_text())
+		missing = references - names['site']['en'].keys() - available_messages(name)
+		assert not missing, (name, file, 'Messages unavailable when the script executes', sorted(missing))
+print(f'OK: {len(keys)} documented messages, {len(entries)} legacy entries, {len(used)} browser references, per-module availability, key/parameter parity, aliases and unique JSON keys')

@@ -31,8 +31,12 @@ $write($root . '/i18n/compat/qqq.json', $documentation);
 $browser = array_keys(array_filter($messages, static fn($key) => str_starts_with($key, 'wk-'), ARRAY_FILTER_USE_KEY));
 $browser = array_merge($browser, array_keys($map['browser_aliases']));
 sort($browser);
-$manifest['ResourceModules']['ext.wikidebates.common.i18n']['messages'] = $browser;
+$summaries = array_values(array_filter($browser, static fn($key) => str_starts_with($key, 'wk-summary-')));
+$common = array_values(array_filter($browser, static fn($key) => !str_starts_with($key, 'wk-summary-')));
+$manifest['ResourceModules']['ext.wikidebates.common.i18n']['messages'] = $common;
 $manifest['ResourceModules']['ext.wikidebates.common.i18n']['class'] = 'MediaWiki\\Extension\\Wikidebates\\I18nModule';
+$manifest['ResourceModules']['ext.wikidebates.features.editForm']['messages'] = $summaries;
+$manifest['ResourceModules']['ext.wikidebates.features.editForm']['class'] = 'MediaWiki\\Extension\\Wikidebates\\I18nModule';
 foreach (['en', 'fr'] as $language) {
 	// Keep the old module IDs as message-only compatibility modules.
 	$manifest['ResourceModules']['ext.wikidebates.i18n.' . $language] = [

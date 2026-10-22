@@ -21,13 +21,18 @@ $services = MediaWikiServices::getInstance();
 $contentLanguage = $services->getContentLanguage()->getCode();
 $loader = $services->getResourceLoader();
 $module = $loader->getModule('ext.wikidebates.common.i18n');
+$formModule = $loader->getModule('ext.wikidebates.features.editForm');
 $languageCases = 0;
 foreach (['en' => 'Edit', 'fr' => 'Modifier', 'fr-ca' => 'Modifier', 'fr-fr' => 'Modifier', 'de' => 'Edit', 'xx' => 'Edit'] as $code => $expected) {
 	$context = new \MediaWiki\ResourceLoader\Context($loader, new \MediaWiki\Request\FauxRequest(['lang' => $code]));
 	$blob = json_decode($module->getModuleContent($context)['messagesBlob'], true, 512, JSON_THROW_ON_ERROR);
+	$formBlob = json_decode($formModule->getModuleContent($context)['messagesBlob'], true, 512, JSON_THROW_ON_ERROR);
 	same($expected, $blob['wk-edit'], 'Real ResourceLoader language fallback: ' . $code);
+	check(!isset($blob['wk-summary-add-generic']), 'View module does not ship form summaries: ' . $code);
+	check(isset($formBlob['wk-summary-add-generic']), 'Form module supplies its summaries before script execution: ' . $code);
+	$allMessages = $blob + $formBlob;
 	foreach (MessageCatalog::json('resources/i18n-map.json')['browser_aliases'] as $alias => $key) {
-		same($blob[$key], $blob[$alias], 'Legacy browser message alias: ' . $alias . '/' . $code);
+		same($allMessages[$key], $allMessages[$alias], 'Legacy browser message alias: ' . $alias . '/' . $code);
 	}
 	check(!isset($blob['wk-param-display-title']), 'Technical parameters are not selected in the UI language');
 	$languageCases++;
