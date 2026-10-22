@@ -2,7 +2,8 @@
   "private": true,
   "scripts": {
     "test": "node --test js/*.test.cjs",
-    "test:browser": "node --test browser/*.test.cjs"
+    "test:browser": "node --test browser/*.test.cjs",
+    "study:reading-cache": "node readingCacheStudy.cjs"
   },
   "devDependencies": {
     "jquery": "3.7.1",

@@ -258,7 +258,20 @@
 	WK.wkParsePage = wkParsePage;
 	WK.wkPageParseCache = {
 		key: wkPageParseKey,
-		get: function ( key ) { return wkCacheGetLRU( wkPageParseCache, key ); }
+		get: function ( key ) { return wkCacheGetLRU( wkPageParseCache, key ); },
+		// Diagnostic reads must not change which response is evicted next.
+		state: function ( key ) {
+			return wkPageParseCache.has( key ) ? 'response' :
+				( wkPageParseInFlight.has( key ) ? 'pending' : 'network' );
+		},
+		stats: function () {
+			var codeUnits = 0;
+			wkPageParseCache.forEach( function ( data ) {
+				var text = data.parse.text || '';
+				codeUnits += ( typeof text === 'string' ? text : ( text[ '*' ] || '' ) ).length;
+			} );
+			return { entries: wkPageParseCache.size, htmlCodeUnits: codeUnits };
+		}
 	};
 
 	/*	Alias legacy */

@@ -9,6 +9,7 @@
 	var WK = W.Wikidebates || ( W.Wikidebates = {} );
 
 	var wkArgEmbedCache = new Map();
+	var wkReadingCacheMeasurement = null;
 
 	var WK_READING = {
 		enabled: true,
@@ -498,20 +499,46 @@
 		return wkExtractBetweenHeadingIds( html, 'Summary', 'Parent_debates' );
 	}
 
-	function wkReadingLoadFragment( argPage ) {
-		if ( wkArgEmbedCache.has( argPage ) ) return Promise.resolve( wkArgEmbedCache.get( argPage ) || '' );
+	function wkReadingLoadFragment( params, cacheKey ) {
+		var cached = wkArgEmbedCache.has( cacheKey );
+		var measurement = wkReadingCacheMeasurement;
+		var started, source;
+		if ( measurement ) {
+			started = W.performance.now();
+			source = cached ? 'fragment' : WK.wkPageParseCache.state( cacheKey );
+			measurement.opens++;
+			if ( measurement.seen.has( cacheKey ) ) measurement.reopens++;
+			measurement.seen.add( cacheKey );
+		}
 
-		return WK.wkParsePage( wkReadingBuildParseRequestParams( argPage ) ).then( function ( data ) {
-			var html = ( data && data.parse && data.parse.text ) ? data.parse.text : '';
-			if ( !html ) return '';
-			return wkReadingExtractFragment( html ) || '';
+		var load = cached ? Promise.resolve( wkArgEmbedCache.get( cacheKey ) || '' ) :
+			WK.wkParsePage( params ).then( function ( data ) {
+				var html = ( data && data.parse && data.parse.text ) ? data.parse.text : '';
+				if ( !html ) return '';
+				return wkReadingExtractFragment( html ) || '';
+			} );
+
+		if ( !measurement ) return load;
+		return load.then( function ( fragment ) {
+			var duration = W.performance.now() - started;
+			var sample = measurement.sources[ source ];
+			sample.count++;
+			sample.totalMs += duration;
+			sample.maxMs = Math.max( sample.maxMs, duration );
+			if ( !fragment ) measurement.empty++;
+			return fragment;
+		}, function ( error ) {
+			measurement.failures++;
+			throw error;
 		} );
 	}
 
-	function wkReadingInjectFragment( ui, argPage, fragment ) {
+	function wkReadingInjectFragment( ui, cacheKey, fragment ) {
 		if ( !ui || !ui.content || !fragment ) return;
 
-		wkArgEmbedCache.set( argPage, fragment );
+		// Keep the key captured when loading started, even if rendering settings
+		// change while the request is pending. Fragments remain without eviction.
+		wkArgEmbedCache.set( cacheKey, fragment );
 
 		ui.content.innerHTML = fragment;
 
@@ -811,7 +838,9 @@
 		WK_READING.state._wkOpenSeq = openSeq;
 		WK_READING.state._wkCurrentPage = argPage;
 
-		wkReadingLoadFragment( argPage )
+		var parseParams = wkReadingBuildParseRequestParams( argPage );
+		var cacheKey = WK.wkPageParseCache.key( parseParams );
+		wkReadingLoadFragment( parseParams, cacheKey )
 			.then( function ( fragment ) {
 				if ( WK_READING.state._wkOpenSeq !== openSeq ) return;
 				if ( !D.documentElement.classList.contains( 'wk-reading-active' ) ) return;
@@ -822,7 +851,7 @@
 					return;
 				}
 
-				wkReadingInjectFragment( ui, argPage, fragment );
+				wkReadingInjectFragment( ui, cacheKey, fragment );
 
 				requestAnimationFrame( function () {
 					if ( WK_READING.state._wkOpenSeq !== openSeq ) return;
@@ -969,5 +998,51 @@
 	W.wkReadingBuildParseRequestParams = wkReadingBuildParseRequestParams;
 	WK.wkReadingExtractFragment = wkReadingExtractFragment;
 	W.wkReadingExtractFragment = wkReadingExtractFragment;
+
+	// Local, opt-in measurements. No content, titles, samples or events are sent
+	// anywhere. Snapshot sizes count HTML code units, not JavaScript heap usage.
+	function wkReadingCacheSnapshot() {
+		var codeUnits = 0;
+		wkArgEmbedCache.forEach( function ( fragment ) { codeUnits += fragment.length; } );
+		var result = {
+			fragments: { entries: wkArgEmbedCache.size, htmlCodeUnits: codeUnits },
+			responses: WK.wkPageParseCache.stats(),
+			measurement: null
+		};
+		var measurement = wkReadingCacheMeasurement;
+		if ( measurement ) {
+			result.measurement = {
+				opens: measurement.opens, reopens: measurement.reopens,
+				distinctKeys: measurement.seen.size,
+				failures: measurement.failures, empty: measurement.empty, sources: {}
+			};
+			Object.keys( measurement.sources ).forEach( function ( source ) {
+				var sample = measurement.sources[ source ];
+				result.measurement.sources[ source ] = {
+					count: sample.count, meanMs: sample.count ? sample.totalMs / sample.count : 0,
+					maxMs: sample.maxMs
+				};
+			} );
+		}
+		return result;
+	}
+
+	WK.wkReadingCacheDiagnostics = {
+		start: function () {
+			wkReadingCacheMeasurement = {
+				opens: 0, reopens: 0, failures: 0, empty: 0,
+				seen: new Set(), sources: {}
+			};
+			[ 'fragment', 'response', 'pending', 'network' ].forEach( function ( source ) {
+				wkReadingCacheMeasurement.sources[ source ] = { count: 0, totalMs: 0, maxMs: 0 };
+			} );
+		},
+		snapshot: wkReadingCacheSnapshot,
+		stop: function () {
+			var result = wkReadingCacheSnapshot();
+			wkReadingCacheMeasurement = null;
+			return result;
+		}
+	};
 
 }() );

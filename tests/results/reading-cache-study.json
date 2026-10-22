@@ -1,0 +1,658 @@
+{
+  "generatedAt": "2026-10-22T10:14:38.268Z",
+  "chromium": "154.0.8037.57",
+  "node": "v24.19.0",
+  "baseline": "2a9a526dcaae2acce58e7a75bc70d8ca3a2d590f",
+  "methodology": {
+    "content": "Synthetic HTML only; no wiki access; 20ms simulated API delay; no siblings prefetched.",
+    "heap": "Total page JavaScript heap after explicit GC outside timing; not attributable solely to caches.",
+    "cacheSizes": "HTML UTF-16 code units, not actual heap bytes; strings may share backing storage.",
+    "timings": "Open to fragment DOM mutation and next animation frame; one controlled run, no HTTP/FPM measurement.",
+    "projections": "Offline LRU replay only. Real fragments remain unlimited. Response LRU stays at 50.",
+    "frequency": "Reopen ratios are prescribed by synthetic traces, not observed visitor behavior."
+  },
+  "scenarios": {
+    "short": {
+      "projections": [
+        {
+          "fragmentCapacity": 25,
+          "networkRequests": 12,
+          "responseHits": 0,
+          "fragmentHits": 12,
+          "extraNetworkRequests": 0
+        },
+        {
+          "fragmentCapacity": 50,
+          "networkRequests": 12,
+          "responseHits": 0,
+          "fragmentHits": 12,
+          "extraNetworkRequests": 0
+        },
+        {
+          "fragmentCapacity": 100,
+          "networkRequests": 12,
+          "responseHits": 0,
+          "fragmentHits": 12,
+          "extraNetworkRequests": 0
+        },
+        {
+          "fragmentCapacity": 200,
+          "networkRequests": 12,
+          "responseHits": 0,
+          "fragmentHits": 12,
+          "extraNetworkRequests": 0
+        }
+      ],
+      "skins": {
+        "vector": [
+          {
+            "revision": "2a9a526dcaae2acce58e7a75bc70d8ca3a2d590f",
+            "reads": 24,
+            "reopens": 12,
+            "reopenRatio": 0.5,
+            "networkRequests": 12,
+            "cache": null,
+            "heapAfterGcBytes": {
+              "before": 1446364,
+              "after": 3452980,
+              "difference": 2006616
+            },
+            "timings": {
+              "newPage": {
+                "fragmentReady": {
+                  "count": 12,
+                  "medianMs": 21.899999999906868,
+                  "p95Ms": 46.1999999997206
+                },
+                "nextFrame": {
+                  "count": 12,
+                  "medianMs": 31.899999999906868,
+                  "p95Ms": 46.6999999997206
+                }
+              },
+              "reread": {
+                "fragmentReady": {
+                  "count": 12,
+                  "medianMs": 1.6999999997206032,
+                  "p95Ms": 1.8000000002793968
+                },
+                "nextFrame": {
+                  "count": 12,
+                  "medianMs": 15.600000000093132,
+                  "p95Ms": 15.800000000279397
+                }
+              }
+            }
+          },
+          {
+            "revision": "working-tree",
+            "reads": 24,
+            "reopens": 12,
+            "reopenRatio": 0.5,
+            "networkRequests": 12,
+            "cache": {
+              "fragments": {
+                "entries": 12,
+                "htmlCodeUnits": 44150
+              },
+              "responses": {
+                "entries": 12,
+                "htmlCodeUnits": 1856930
+              },
+              "measurement": null
+            },
+            "heapAfterGcBytes": {
+              "before": 1447972,
+              "after": 3456508,
+              "difference": 2008536
+            },
+            "timings": {
+              "newPage": {
+                "fragmentReady": {
+                  "count": 12,
+                  "medianMs": 22,
+                  "p95Ms": 30.199999999720603
+                },
+                "nextFrame": {
+                  "count": 12,
+                  "medianMs": 32.09999999962747,
+                  "p95Ms": 34.700000000186265
+                }
+              },
+              "reread": {
+                "fragmentReady": {
+                  "count": 12,
+                  "medianMs": 1.2000000001862645,
+                  "p95Ms": 1.3999999999068677
+                },
+                "nextFrame": {
+                  "count": 12,
+                  "medianMs": 15.399999999906868,
+                  "p95Ms": 15.899999999906868
+                }
+              }
+            }
+          }
+        ],
+        "minerva": [
+          {
+            "revision": "working-tree",
+            "reads": 24,
+            "reopens": 12,
+            "reopenRatio": 0.5,
+            "networkRequests": 12,
+            "cache": {
+              "fragments": {
+                "entries": 12,
+                "htmlCodeUnits": 44150
+              },
+              "responses": {
+                "entries": 12,
+                "htmlCodeUnits": 1856930
+              },
+              "measurement": null
+            },
+            "heapAfterGcBytes": {
+              "before": 1452440,
+              "after": 3515648,
+              "difference": 2063208
+            },
+            "timings": {
+              "newPage": {
+                "fragmentReady": {
+                  "count": 12,
+                  "medianMs": 22.200000000186265,
+                  "p95Ms": 31.5
+                },
+                "nextFrame": {
+                  "count": 12,
+                  "medianMs": 31.5,
+                  "p95Ms": 32
+                }
+              },
+              "reread": {
+                "fragmentReady": {
+                  "count": 12,
+                  "medianMs": 1.5,
+                  "p95Ms": 1.7000000001862645
+                },
+                "nextFrame": {
+                  "count": 12,
+                  "medianMs": 15.300000000279397,
+                  "p95Ms": 18.200000000186265
+                }
+              }
+            }
+          },
+          {
+            "revision": "2a9a526dcaae2acce58e7a75bc70d8ca3a2d590f",
+            "reads": 24,
+            "reopens": 12,
+            "reopenRatio": 0.5,
+            "networkRequests": 12,
+            "cache": null,
+            "heapAfterGcBytes": {
+              "before": 1450832,
+              "after": 3512196,
+              "difference": 2061364
+            },
+            "timings": {
+              "newPage": {
+                "fragmentReady": {
+                  "count": 12,
+                  "medianMs": 22.40000000037253,
+                  "p95Ms": 104.5
+                },
+                "nextFrame": {
+                  "count": 12,
+                  "medianMs": 32.1999999997206,
+                  "p95Ms": 106.20000000018626
+                }
+              },
+              "reread": {
+                "fragmentReady": {
+                  "count": 12,
+                  "medianMs": 1.3000000002793968,
+                  "p95Ms": 1.6999999997206032
+                },
+                "nextFrame": {
+                  "count": 12,
+                  "medianMs": 15.800000000279397,
+                  "p95Ms": 16
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "longRecent": {
+      "projections": [
+        {
+          "fragmentCapacity": 25,
+          "networkRequests": 80,
+          "responseHits": 0,
+          "fragmentHits": 40,
+          "extraNetworkRequests": 0
+        },
+        {
+          "fragmentCapacity": 50,
+          "networkRequests": 80,
+          "responseHits": 0,
+          "fragmentHits": 40,
+          "extraNetworkRequests": 0
+        },
+        {
+          "fragmentCapacity": 100,
+          "networkRequests": 80,
+          "responseHits": 0,
+          "fragmentHits": 40,
+          "extraNetworkRequests": 0
+        },
+        {
+          "fragmentCapacity": 200,
+          "networkRequests": 80,
+          "responseHits": 0,
+          "fragmentHits": 40,
+          "extraNetworkRequests": 0
+        }
+      ],
+      "skins": {
+        "vector": [
+          {
+            "revision": "2a9a526dcaae2acce58e7a75bc70d8ca3a2d590f",
+            "reads": 120,
+            "reopens": 40,
+            "reopenRatio": 0.3333333333333333,
+            "networkRequests": 80,
+            "cache": null,
+            "heapAfterGcBytes": {
+              "before": 1446364,
+              "after": 14021236,
+              "difference": 12574872
+            },
+            "timings": {
+              "newPage": {
+                "fragmentReady": {
+                  "count": 80,
+                  "medianMs": 21.600000000093132,
+                  "p95Ms": 22.300000000279397
+                },
+                "nextFrame": {
+                  "count": 80,
+                  "medianMs": 32,
+                  "p95Ms": 32.40000000037253
+                }
+              },
+              "reread": {
+                "fragmentReady": {
+                  "count": 40,
+                  "medianMs": 1.2000000001862645,
+                  "p95Ms": 1.5
+                },
+                "nextFrame": {
+                  "count": 40,
+                  "medianMs": 15.5,
+                  "p95Ms": 15.800000000279397
+                }
+              }
+            }
+          },
+          {
+            "revision": "working-tree",
+            "reads": 120,
+            "reopens": 40,
+            "reopenRatio": 0.3333333333333333,
+            "networkRequests": 80,
+            "cache": {
+              "fragments": {
+                "entries": 80,
+                "htmlCodeUnits": 294390
+              },
+              "responses": {
+                "entries": 50,
+                "htmlCodeUnits": 7737250
+              },
+              "measurement": null
+            },
+            "heapAfterGcBytes": {
+              "before": 1447972,
+              "after": 14028308,
+              "difference": 12580336
+            },
+            "timings": {
+              "newPage": {
+                "fragmentReady": {
+                  "count": 80,
+                  "medianMs": 21.5,
+                  "p95Ms": 22.399999999906868
+                },
+                "nextFrame": {
+                  "count": 80,
+                  "medianMs": 32,
+                  "p95Ms": 32.5
+                }
+              },
+              "reread": {
+                "fragmentReady": {
+                  "count": 40,
+                  "medianMs": 1.1999999997206032,
+                  "p95Ms": 1.5
+                },
+                "nextFrame": {
+                  "count": 40,
+                  "medianMs": 15.5,
+                  "p95Ms": 15.899999999906868
+                }
+              }
+            }
+          }
+        ],
+        "minerva": [
+          {
+            "revision": "working-tree",
+            "reads": 120,
+            "reopens": 40,
+            "reopenRatio": 0.3333333333333333,
+            "networkRequests": 80,
+            "cache": {
+              "fragments": {
+                "entries": 80,
+                "htmlCodeUnits": 294390
+              },
+              "responses": {
+                "entries": 50,
+                "htmlCodeUnits": 7737250
+              },
+              "measurement": null
+            },
+            "heapAfterGcBytes": {
+              "before": 1452440,
+              "after": 14087388,
+              "difference": 12634948
+            },
+            "timings": {
+              "newPage": {
+                "fragmentReady": {
+                  "count": 80,
+                  "medianMs": 21.600000000093132,
+                  "p95Ms": 22.5
+                },
+                "nextFrame": {
+                  "count": 80,
+                  "medianMs": 32.299999999813735,
+                  "p95Ms": 32.60000000009313
+                }
+              },
+              "reread": {
+                "fragmentReady": {
+                  "count": 40,
+                  "medianMs": 1.2000000001862645,
+                  "p95Ms": 1.5
+                },
+                "nextFrame": {
+                  "count": 40,
+                  "medianMs": 15.699999999720603,
+                  "p95Ms": 15.800000000279397
+                }
+              }
+            }
+          },
+          {
+            "revision": "2a9a526dcaae2acce58e7a75bc70d8ca3a2d590f",
+            "reads": 120,
+            "reopens": 40,
+            "reopenRatio": 0.3333333333333333,
+            "networkRequests": 80,
+            "cache": null,
+            "heapAfterGcBytes": {
+              "before": 1450832,
+              "after": 14080372,
+              "difference": 12629540
+            },
+            "timings": {
+              "newPage": {
+                "fragmentReady": {
+                  "count": 80,
+                  "medianMs": 21.600000000093132,
+                  "p95Ms": 22.399999999906868
+                },
+                "nextFrame": {
+                  "count": 80,
+                  "medianMs": 32.200000000186265,
+                  "p95Ms": 32.40000000037253
+                }
+              },
+              "reread": {
+                "fragmentReady": {
+                  "count": 40,
+                  "medianMs": 1.2000000001862645,
+                  "p95Ms": 1.3999999999068677
+                },
+                "nextFrame": {
+                  "count": 40,
+                  "medianMs": 15.699999999720603,
+                  "p95Ms": 15.800000000279397
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "longReturn": {
+      "projections": [
+        {
+          "fragmentCapacity": 25,
+          "networkRequests": 90,
+          "responseHits": 0,
+          "fragmentHits": 10,
+          "extraNetworkRequests": 10
+        },
+        {
+          "fragmentCapacity": 50,
+          "networkRequests": 90,
+          "responseHits": 0,
+          "fragmentHits": 10,
+          "extraNetworkRequests": 10
+        },
+        {
+          "fragmentCapacity": 100,
+          "networkRequests": 80,
+          "responseHits": 0,
+          "fragmentHits": 20,
+          "extraNetworkRequests": 0
+        },
+        {
+          "fragmentCapacity": 200,
+          "networkRequests": 80,
+          "responseHits": 0,
+          "fragmentHits": 20,
+          "extraNetworkRequests": 0
+        }
+      ],
+      "skins": {
+        "vector": [
+          {
+            "revision": "2a9a526dcaae2acce58e7a75bc70d8ca3a2d590f",
+            "reads": 100,
+            "reopens": 20,
+            "reopenRatio": 0.2,
+            "networkRequests": 80,
+            "cache": null,
+            "heapAfterGcBytes": {
+              "before": 1446364,
+              "after": 12473660,
+              "difference": 11027296
+            },
+            "timings": {
+              "newPage": {
+                "fragmentReady": {
+                  "count": 80,
+                  "medianMs": 21.5,
+                  "p95Ms": 22.200000000186265
+                },
+                "nextFrame": {
+                  "count": 80,
+                  "medianMs": 32,
+                  "p95Ms": 32.299999999813735
+                }
+              },
+              "reread": {
+                "fragmentReady": {
+                  "count": 20,
+                  "medianMs": 1.2000000001862645,
+                  "p95Ms": 1.3999999999068677
+                },
+                "nextFrame": {
+                  "count": 20,
+                  "medianMs": 15.699999999720603,
+                  "p95Ms": 15.800000000279397
+                }
+              }
+            }
+          },
+          {
+            "revision": "working-tree",
+            "reads": 100,
+            "reopens": 20,
+            "reopenRatio": 0.2,
+            "networkRequests": 80,
+            "cache": {
+              "fragments": {
+                "entries": 80,
+                "htmlCodeUnits": 294390
+              },
+              "responses": {
+                "entries": 50,
+                "htmlCodeUnits": 7737250
+              },
+              "measurement": null
+            },
+            "heapAfterGcBytes": {
+              "before": 1447972,
+              "after": 12480748,
+              "difference": 11032776
+            },
+            "timings": {
+              "newPage": {
+                "fragmentReady": {
+                  "count": 80,
+                  "medianMs": 21.799999999813735,
+                  "p95Ms": 23.200000000186265
+                },
+                "nextFrame": {
+                  "count": 80,
+                  "medianMs": 31,
+                  "p95Ms": 33
+                }
+              },
+              "reread": {
+                "fragmentReady": {
+                  "count": 20,
+                  "medianMs": 1.7000000001862645,
+                  "p95Ms": 4.2000000001862645
+                },
+                "nextFrame": {
+                  "count": 20,
+                  "medianMs": 13.300000000279397,
+                  "p95Ms": 15.599999999627471
+                }
+              }
+            }
+          }
+        ],
+        "minerva": [
+          {
+            "revision": "working-tree",
+            "reads": 100,
+            "reopens": 20,
+            "reopenRatio": 0.2,
+            "networkRequests": 80,
+            "cache": {
+              "fragments": {
+                "entries": 80,
+                "htmlCodeUnits": 294390
+              },
+              "responses": {
+                "entries": 50,
+                "htmlCodeUnits": 7737250
+              },
+              "measurement": null
+            },
+            "heapAfterGcBytes": {
+              "before": 1452440,
+              "after": 12539824,
+              "difference": 11087384
+            },
+            "timings": {
+              "newPage": {
+                "fragmentReady": {
+                  "count": 80,
+                  "medianMs": 21.800000000279397,
+                  "p95Ms": 23.5
+                },
+                "nextFrame": {
+                  "count": 80,
+                  "medianMs": 31.699999999720603,
+                  "p95Ms": 32.5
+                }
+              },
+              "reread": {
+                "fragmentReady": {
+                  "count": 20,
+                  "medianMs": 1.3999999999068677,
+                  "p95Ms": 1.6000000000931323
+                },
+                "nextFrame": {
+                  "count": 20,
+                  "medianMs": 15.299999999813735,
+                  "p95Ms": 15.799999999813735
+                }
+              }
+            }
+          },
+          {
+            "revision": "2a9a526dcaae2acce58e7a75bc70d8ca3a2d590f",
+            "reads": 100,
+            "reopens": 20,
+            "reopenRatio": 0.2,
+            "networkRequests": 80,
+            "cache": null,
+            "heapAfterGcBytes": {
+              "before": 1450832,
+              "after": 12532752,
+              "difference": 11081920
+            },
+            "timings": {
+              "newPage": {
+                "fragmentReady": {
+                  "count": 80,
+                  "medianMs": 21.799999999813735,
+                  "p95Ms": 24
+                },
+                "nextFrame": {
+                  "count": 80,
+                  "medianMs": 31.600000000093132,
+                  "p95Ms": 32.60000000009313
+                }
+              },
+              "reread": {
+                "fragmentReady": {
+                  "count": 20,
+                  "medianMs": 1.7000000001862645,
+                  "p95Ms": 2.5
+                },
+                "nextFrame": {
+                  "count": 20,
+                  "medianMs": 14.899999999906868,
+                  "p95Ms": 15.299999999813735
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

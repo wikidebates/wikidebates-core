@@ -105,3 +105,126 @@ test( 'mobile navigation joins an actual sibling prefetch without patching the A
 	assert.match( window.document.getElementById( 'wk-reading-content' ).innerHTML, /<p>B<\/p>/ );
 	assert.equal( WK.wkGetApi().get, apiGet );
 } );
+
+async function readingEnvironment( t ) {
+	const config = { wgUserLanguage: 'fr' };
+	const env = await parseEnvironment( t, config );
+	env.window.document.body.classList.remove( 'action-view' );
+	env.run( 'modules/reading/core.js' );
+	const content = env.window.document.createElement( 'div' );
+	let skin = 'vector';
+	let extra = {};
+	env.WK.wkReadingSetAdapter( {
+		ensureUi: () => ( { content } ),
+		getParseParams: () => ( { useskin: skin, ...extra } )
+	} );
+	const open = ( page = 'Private argument' ) => env.WK.wkOpenReadingModeFromPageTitle( page, [], { history: false } );
+	const html = ( text ) => '<h2 id="Summary">Summary</h2><p>' + text + '</p><h2 id="Parent_debates">Parents</h2>';
+	async function reply( text ) {
+		env.gets.at( -1 ).request.resolve( { parse: { text: html( text ) } } );
+		await tick();
+		await tick();
+	}
+	return { ...env, config, content, open, reply,
+		setSkin: ( value ) => { skin = value; }, setExtra: ( value ) => { extra = value; } };
+}
+
+test( 'fragment keys distinguish language, skin and all other parse parameters', async ( t ) => {
+	const { config, content, gets, open, reply, setSkin, setExtra } = await readingEnvironment( t );
+	open();
+	await reply( 'French Vector' );
+	config.wgUserLanguage = 'en';
+	open();
+	assert.equal( gets.length, 2, 'a French fragment cannot satisfy an English request' );
+	await reply( 'English Vector' );
+	setSkin( 'minerva' );
+	open();
+	assert.equal( gets.length, 3, 'a Vector fragment cannot satisfy a Minerva request' );
+	await reply( 'English Minerva' );
+	setExtra( { variant: 'test' } );
+	open();
+	assert.equal( gets.length, 4 );
+	await reply( 'Variant' );
+	setExtra( {} );
+	setSkin( 'vector' );
+	config.wgUserLanguage = 'FR';
+	open();
+	await tick();
+	assert.equal( gets.length, 4, 'returning to an equivalent key reuses the original fragment' );
+	assert.match( content.textContent, /French Vector/ );
+} );
+
+test( 'a pending read stores its fragment under the parameters captured at request time', async ( t ) => {
+	const { config, content, gets, open, reply } = await readingEnvironment( t );
+	open();
+	config.wgUserLanguage = 'en';
+	await reply( 'French' );
+	open();
+	assert.equal( gets.length, 2, 'the French reply was not stored under the new English settings' );
+	await reply( 'English' );
+	config.wgUserLanguage = 'fr';
+	open();
+	await tick();
+	assert.equal( gets.length, 2 );
+	assert.match( content.textContent, /French/ );
+} );
+
+test( 'old fragments remain readable without network after the response LRU has evicted their pages', async ( t ) => {
+	const { WK, content, gets, open, reply } = await readingEnvironment( t );
+	assert.equal( WK.wkReadingCacheDiagnostics.snapshot().measurement, null, 'timing is off by default' );
+	WK.wkReadingCacheDiagnostics.start();
+	for ( let i = 0; i < 60; i++ ) {
+		open( 'Private argument ' + i );
+		await reply( 'Content ' + i );
+	}
+	const key = WK.wkPageParseCache.key( WK.wkReadingBuildParseRequestParams( 'Private argument 0' ) );
+	assert.equal( WK.wkPageParseCache.state( key ), 'network', 'the first full response has been evicted' );
+	open( 'Private argument 0' );
+	await tick();
+	assert.equal( gets.length, 60, 'the first fragment needs no new API call' );
+	assert.match( content.textContent, /Content 0/ );
+	const snapshot = WK.wkReadingCacheDiagnostics.stop();
+	assert.equal( snapshot.fragments.entries, 60, 'no fragment eviction has been introduced' );
+	assert.equal( snapshot.responses.entries, 50 );
+	assert.equal( snapshot.measurement.opens, 61 );
+	assert.equal( snapshot.measurement.reopens, 1 );
+	assert.equal( snapshot.measurement.sources.fragment.count, 1 );
+	assert.equal( snapshot.measurement.sources.network.count, 60 );
+	assert.ok( snapshot.fragments.htmlCodeUnits > 0 );
+	assert.ok( snapshot.responses.htmlCodeUnits > 0 );
+	assert.equal( JSON.stringify( snapshot ).includes( 'Private argument' ), false, 'reports contain no page titles' );
+	assert.equal( JSON.stringify( snapshot ).includes( 'Content 0' ), false, 'reports contain no content' );
+	snapshot.measurement.sources.fragment.count = 999;
+	assert.equal( WK.wkReadingCacheDiagnostics.snapshot().measurement, null, 'stop releases the measurement state' );
+} );
+
+test( 'diagnostics distinguish response-cache and pending-prefetch reads without changing LRU order', async ( t ) => {
+	const { WK, gets, open, reply } = await readingEnvironment( t );
+	for ( let i = 0; i < 50; i++ ) {
+		WK.wkParsePage( WK.wkReadingBuildParseRequestParams( 'Page ' + i ) );
+		gets.at( -1 ).request.resolve( { parse: { text: '<p>Full ' + i + '</p>' } } );
+	}
+	const oldestKey = WK.wkPageParseCache.key( WK.wkReadingBuildParseRequestParams( 'Page 0' ) );
+	assert.equal( WK.wkPageParseCache.state( oldestKey ), 'response' );
+	WK.wkReadingCacheDiagnostics.snapshot();
+	WK.wkParsePage( WK.wkReadingBuildParseRequestParams( 'Prefetched' ) );
+	assert.equal( WK.wkPageParseCache.state( oldestKey ), 'response' );
+	const prefetched = '<h2 id="Summary">Summary</h2><p>Prefetched</p><h2 id="Parent_debates">Parents</h2>';
+	gets.at( -1 ).request.resolve( { parse: { text: prefetched } } );
+	assert.equal( WK.wkPageParseCache.state( oldestKey ), 'network', 'diagnostics did not refresh the oldest entry' );
+	WK.wkReadingCacheDiagnostics.start();
+	open( 'Prefetched' );
+	await tick();
+	await tick();
+	WK.wkParsePage( WK.wkReadingBuildParseRequestParams( 'Pending' ) );
+	open( 'Pending' );
+	assert.equal( gets.length, 52, 'opening joins the existing prefetch' );
+	await reply( 'Pending' );
+	const measurement = WK.wkReadingCacheDiagnostics.snapshot().measurement;
+	assert.equal( measurement.sources.response.count, 1 );
+	assert.equal( measurement.sources.pending.count, 1 );
+	assert.equal( measurement.sources.network.count, 0 );
+	assert.equal( measurement.reopens, 0 );
+	measurement.sources.response.count = 999;
+	assert.equal( WK.wkReadingCacheDiagnostics.snapshot().measurement.sources.response.count, 1, 'snapshots are detached' );
+} );

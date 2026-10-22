@@ -103,6 +103,25 @@ fragment cache remains in the reading core. Cache keys for API responses include
 language, skin and other request parameters. This cache lasts for the current
 page session, matching the previous mobile cache behavior.
 
+Extracted fragments now use the exact same sorted request-parameter key as full
+responses. They remain unbounded for the current page session, including after
+their full response is evicted. Additional tests cover language/skin/parameter
+isolation, settings changed during a pending read, rereads after more than 50
+pages and opt-in diagnostic counters that do not affect LRU ordering.
+
+The [reading cache study](../docs/reading-cache-study.md) documents local diagnostic
+commands and a controlled Chromium comparison, including memory observations and
+an offline simulation of possible limits. Run it with an available local Git
+baseline and an installed Chromium:
+
+```sh
+npm run study:reading-cache --prefix tests -- --baseline HEAD --output /tmp/reading-cache-study.json
+```
+
+The synthetic workload supplies its own reopen frequencies and a fixed API delay;
+it cannot establish real visitor behavior or production server latency. The
+actual fragment cache is never limited by the study.
+
 Recent debate changes use the configured MediaWiki WAN cache for at most 60 seconds
 when a working backend is available. No additional parser or browser result cache
 extends that period. The currently displayed list is not automatically refreshed.

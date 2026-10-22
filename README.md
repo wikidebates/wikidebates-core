@@ -165,3 +165,8 @@ dans `debatephp/tests/fixtures/revisions.json`.
 Le partage des requêtes, le cache des modifications récentes et les commandes
 de mise à jour serveur sont décrits dans
 [la note sur les optimisations](docs/optimisations-lecture-formulaires.md).
+
+L'[étude des caches de lecture](docs/reading-cache-study.md) décrit les clés
+partagées entre réponses et extraits, les mesures locales facultatives et la
+comparaison avant/après dans Chromium. Les extraits restent conservés sans
+limite ; les plafonds éventuels sont seulement simulés hors du parcours de lecture.
