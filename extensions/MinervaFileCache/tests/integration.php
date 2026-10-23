@@ -52,9 +52,17 @@ try {
 	rename($state . '/mobile-cache', $state . '/mobile-cache-offline');
 	try {
 		$fallback = request($query);
-		ensure($fallback['status'] === 200 && cacheState($fallback) === 'BYPASS; reason=storage-error' &&
-			str_contains($fallback['body'], 'ARGUMENT_VERSION_ONE'), 'Unavailable storage falls back to complete normal rendering');
+		ensure($fallback['status'] === 200 && cacheState($fallback) === null &&
+			str_contains($fallback['body'], 'ARGUMENT_VERSION_ONE'),
+			'Unavailable storage preserves the native Article rendering');
 	} finally { rename($state . '/mobile-cache-offline', $state . '/mobile-cache'); }
+	touch($state . '/storage-unconfigured');
+	try {
+		$fallback = request($query);
+		ensure($fallback['status'] === 200 && cacheState($fallback) === null &&
+			str_contains($fallback['body'], 'ARGUMENT_VERSION_ONE'),
+			'Unset cache directory preserves the native Article rendering');
+	} finally { unlink($state . '/storage-unconfigured'); }
 	ensure(cacheStatus(request($query, true, [], null, false, 'HEAD')) !== 'HIT', 'HEAD never replays a GET body');
 	$api = request(['api' => 1, 'action' => 'parse', 'page' => 'Cache study argument', 'prop' => 'text', 'format' => 'json']);
 	ensure(cacheState($api) === null && isset(json_decode($api['body'], true)['parse']['text']), 'Parse API remains independent of the view cache');
