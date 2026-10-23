@@ -45,6 +45,11 @@ namespace MediaWiki\Registration {
 }
 namespace MediaWiki\Parser {
 	class Parser {
+		public function getOutput(): object {
+			return new class {
+				public function updateCacheExpiry(int $seconds): void {}
+			};
+		}
 		public function getPreprocessor(): self { return $this; }
 		public function newFrame(): PPFrame { return new PPFrame; }
 	}
