@@ -6,9 +6,10 @@ distinct du cache desktop. Elle ne dépend pas de Wikidebates, ne change pas le
 contenu à lire et ne demande aucune modification du code de MediaWiki ou de
 MobileFrontend.
 
-À l'activation, **toutes les pages mobiles éligibles sont couvertes**. Il n'y a
-ni liste de pages, ni paramètre de test à ajouter aux URL. L'extension est livrée
-désactivée pour permettre de préparer son répertoire avant activation.
+Dès que l'extension est chargée et que son répertoire de cache est utilisable,
+**toutes les pages mobiles éligibles sont couvertes**. Il n'y a ni liste de
+pages, ni paramètre de test à ajouter aux URL. Le cache est activé par défaut ;
+un répertoire absent ou inutilisable laisse MediaWiki afficher les pages normalement.
 
 ## Installation et activation
 
@@ -40,13 +41,16 @@ désactivée pour permettre de préparer son répertoire avant activation.
    $wgUseFileCache = true;
 
    $wgMinervaFileCacheDirectory = '/var/cache/mediawiki/minerva';
-   $wgMinervaFileCacheEnabled = true;
    ```
 
    `$wgUseFileCache` doit être actif : MediaWiki appelle le point d'intégration
    des vues à cette condition. Ne pas déplacer le cache desktop vers le nouveau
    répertoire. Aucun `update.php`, changement de base ou préchauffage n'est requis.
-   Les fichiers mobiles sont créés à la première visite éligible.
+   Les fichiers mobiles sont créés à la première visite éligible. Il n'est pas
+   nécessaire de définir `$wgMinervaFileCacheEnabled` : sa valeur par défaut
+   est `true`. Sans répertoire valide, la classe d'affichage habituelle de
+   MediaWiki est conservée. Le chemin doit aussi être autorisé par `open_basedir`
+   si PHP-FPM applique cette restriction.
 
 Les wikis français et anglais peuvent utiliser le même répertoire si le même
 processus PHP y accède : le stockage est séparé par identifiant de wiki. Sur
@@ -85,9 +89,11 @@ réponse déjà conservée par un intermédiaire ne prouve rien sur ce cache.
 | `storage-error` | Répertoire ou stockage indisponible ; détails dans le canal de log `MinervaFileCache` |
 | `busy` / `not-stored` | Remplissage concurrent, invalidation pendant le rendu ou réponse trop volumineuse |
 
-Sans en-tête, vérifier le chargement dans `Special:Version`, l'activation,
-`$wgUseFileCache`, le véritable affichage mobile et les éventuelles extensions
-qui fournissent leur propre classe `Article`. Désactiver les diagnostics en
+Sans en-tête, vérifier le chargement dans `Special:Version`, la configuration
+d'un répertoire de cache privé accessible, `$wgUseFileCache`, le véritable
+affichage mobile et les éventuelles extensions qui fournissent leur propre
+classe `Article`. Si le stockage est indisponible dès la création de l'article,
+l'extension ne remplace pas sa classe et n'ajoute aucun en-tête de diagnostic. Désactiver les diagnostics en
 mettant `$wgMinervaFileCacheDebugHeaders = false` si souhaité.
 
 ## Périmètre et conservation
@@ -143,7 +149,8 @@ verrouillage et de génération sont conservés pour éviter une course avec les
 requêtes actives. Surveiller l'espace disque et les inodes, notamment parce que
 les User-Agents ont des variantes distinctes.
 
-Pour revenir immédiatement au rendu mobile habituel :
+Le cache est actif par défaut lorsque l'extension est chargée et son stockage
+est disponible. Pour revenir immédiatement au rendu mobile habituel :
 
 ```php
 $wgMinervaFileCacheEnabled = false;
