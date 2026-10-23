@@ -6,29 +6,39 @@ use MediaWiki\MediaWikiServices;
 
 class Hooks {
 	public static function onArticleFromTitle($title, &$article, $context): void {
-		if (!$article && $context->getConfig()->get('MinervaFileCacheEnabled')) {
-			switch ($title->getNamespace()) {
-				case NS_FILE: $article = new CachedImagePage($title); break;
-				case NS_CATEGORY: $article = new CachedCategoryPage($title); break;
-				default: $article = new CachedArticle($title);
-			}
+		if ($article || !$context->getConfig()->get('MinervaFileCacheEnabled')) {
+			return;
+		}
+		// Leave the normal Article class untouched when the cache cannot be used.
+		try {
+			self::store($context->getConfig());
+		} catch (\Throwable $e) {
+			return;
+		}
+		switch ($title->getNamespace()) {
+			case NS_FILE: $article = new CachedImagePage($title); break;
+			case NS_CATEGORY: $article = new CachedCategoryPage($title); break;
+			default: $article = new CachedArticle($title);
 		}
 	}
 
-	public static function store(): Store {
-		$config = MediaWikiServices::getInstance()->getMainConfig();
+	public static function store($config = null): Store {
+		$config ??= MediaWikiServices::getInstance()->getMainConfig();
 		$directory = $config->get('MinervaFileCacheDirectory');
 		if (!is_string($directory) || $directory === '' || $directory[0] !== '/') {
 			throw new \RuntimeException('An absolute private cache directory is required');
 		}
-		$real = realpath($directory);
+		$real = @realpath($directory);
+		if ($real === false || !is_dir($real) || !is_writable($real)) {
+			throw new \RuntimeException('Cache directory is missing or not writable');
+		}
 		foreach ([MW_INSTALL_PATH, $_SERVER['DOCUMENT_ROOT'] ?? ''] as $webRoot) {
 			$base = $webRoot === '' ? false : realpath($webRoot);
-			if ($real && $base && ($real === $base || str_starts_with($real . '/', $base . '/'))) {
+			if ($base && ($real === $base || str_starts_with($real . '/', $base . '/'))) {
 				throw new \RuntimeException('Cache storage must be outside the web root');
 			}
 		}
-		return new Store($directory, \MediaWiki\WikiMap\WikiMap::getCurrentWikiId(),
+		return new Store($real, \MediaWiki\WikiMap\WikiMap::getCurrentWikiId(),
 			(int)$config->get('MinervaFileCacheTTL'), (int)$config->get('MinervaFileCacheMaxBytes'));
 	}
 

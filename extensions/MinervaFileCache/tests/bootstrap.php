@@ -7,7 +7,7 @@ if (!$root || !is_file($root . '/.wikidebates-minerva-lab')) {
 define('MW_CONFIG_CALLBACK', 'minervaExtensionTestSettings');
 function minervaExtensionTestSettings($settings): void {
 	$root = getenv('WD_MINERVA_STUDY_ROOT');
-	$settings->overrideConfigValues([
+	$overrides = [
 		'Server' => 'http://127.0.0.1:8080', 'ScriptPath' => '', 'ArticlePath' => '/index.php?title=$1',
 		'Sitename' => 'Disposable extension test', 'LanguageCode' => 'en',
 		'DBtype' => 'sqlite', 'DBname' => 'minerva_file_cache_test', 'DBserver' => '',
@@ -19,8 +19,8 @@ function minervaExtensionTestSettings($settings): void {
 		'MessageCacheType' => CACHE_DB, 'SessionCacheType' => CACHE_DB,
 		'UseDatabaseMessages' => true, 'JobRunRate' => 0, 'DefaultSkin' => 'vector',
 		'ShowExceptionDetails' => true,
-		'MinervaFileCacheEnabled' => is_file($root . '/state/extension-enabled'),
-		'MinervaFileCacheDirectory' => $root . '/state/mobile-cache',
+		'MinervaFileCacheDirectory' => is_file($root . '/state/storage-unconfigured') ?
+			false : $root . '/state/mobile-cache',
 		'MinervaFileCacheEpoch' => is_file($root . '/state/epoch-changed') ? '2' : '1',
 		'MinervaFileCacheTTL' => is_file($root . '/state/short-ttl') ? 1 : 300,
 		'MinervaFileCacheDebugHeaders' => !is_file($root . '/state/debug-off'),
@@ -43,7 +43,11 @@ function minervaExtensionTestSettings($settings): void {
 				if ($out->getTitle()->getText() === 'Uncacheable') { $out->disableClientCache(); }
 			}]
 		]
-	]);
+	];
+	if (!is_file($root . '/state/extension-enabled')) {
+		$overrides['MinervaFileCacheEnabled'] = false;
+	}
+	$settings->overrideConfigValues($overrides);
 	wfLoadSkin('Vector');
 	wfLoadSkin('MinervaNeue');
 	wfLoadExtension('MobileFrontend');
