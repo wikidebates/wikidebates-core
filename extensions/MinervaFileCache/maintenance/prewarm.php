@@ -20,6 +20,8 @@ class PrewarmMinervaFileCache extends Maintenance {
 		$this->addOption('timeout', 'HTTP request timeout in seconds (default 30).', false, true);
 		$this->addOption('device', 'Mobile User-Agent variant: android (default) or iphone.', false, true);
 		$this->addOption('namespace', 'Only warm pages in this numeric namespace ID.', false, true);
+		$this->addOption('category', 'Warm only pages directly in this category (name or Category:Title).', false, true);
+		$this->addOption('recursive', 'Include members of all subcategories (requires --category).');
 		$this->addOption('after-id', 'Resume manually after this page_id (default 0).', false, true);
 		$this->addOption('resume', 'Keep a private checkpoint for automatic resumption.');
 		$this->addOption('reset', 'Discard a previous checkpoint (only with --resume).');
@@ -38,6 +40,21 @@ class PrewarmMinervaFileCache extends Maintenance {
 				Prewarm::number($this->getOption('namespace'), '--namespace', 0, PHP_INT_MAX) : null;
 		} catch (\InvalidArgumentException $e) {
 			$this->fatalError($e->getMessage());
+			return false;
+		}
+		$recursive = $this->hasOption('recursive');
+		$category = null;
+		if ($this->hasOption('category')) {
+			$rawCategory = trim((string)$this->getOption('category'));
+			$title = $rawCategory === '' ? null : Title::newFromText($rawCategory, NS_CATEGORY);
+			if (!$title || $title->getNamespace() !== NS_CATEGORY) {
+				$this->fatalError('Invalid --category: supply a category name or localized Category:Title.');
+				return false;
+			}
+			$category = $title->getDBkey();
+		}
+		if ($recursive && $category === null) {
+			$this->fatalError('--recursive requires --category.');
 			return false;
 		}
 		$resume = $this->hasOption('resume');
@@ -83,7 +100,8 @@ class PrewarmMinervaFileCache extends Maintenance {
 		if ($resume) {
 			$checkpoint = Prewarm::checkpointPath(
 				(string)$config->get('MinervaFileCacheDirectory'), WikiMap::getCurrentWikiId(),
-				$server, (string)$config->get('LanguageCode'), $device, $namespace
+				$server, (string)$config->get('LanguageCode'), $device, $namespace,
+				$category, $recursive
 			);
 			$checkpointLock = @fopen($checkpoint . '.lock', 'c');
 			if (!$checkpointLock || !@flock($checkpointLock, LOCK_EX | LOCK_NB)) {
@@ -111,16 +129,24 @@ class PrewarmMinervaFileCache extends Maintenance {
 		$lastId = $afterId;
 		$finished = false;
 		$this->output("Starting Minerva prewarm: wiki=" . WikiMap::getCurrentWikiId() .
-			" device=$device after-id=$afterId" . ($dryRun ? ' [dry-run]' : '') . "\n");
+			" device=$device after-id=$afterId" .
+			($category === null ? '' : ' category=' . $category . ($recursive ? ' [recursive]' : '')) .
+			($dryRun ? ' [dry-run]' : '') . "\n");
 		try {
 			$dbr = $services->getConnectionProvider()->getReplicaDatabase();
+			$categories = $category === null ? null : Prewarm::categories($dbr, $category, $recursive);
+			if ($categories !== null) {
+				$this->output('Selected ' . count($categories) . " categories.\n");
+			}
 			while (true) {
 				$conditions = ['page_is_redirect' => 0, 'page_id > ' . (int)$lastId];
 				if ($namespace !== null) {
 					$conditions['page_namespace'] = $namespace;
 				}
-				$rows = $dbr->select('page', ['page_id', 'page_namespace', 'page_title'],
-					$conditions, __METHOD__, ['ORDER BY' => 'page_id ASC', 'LIMIT' => self::BATCH_SIZE]);
+				$rows = $categories === null ?
+					$dbr->select('page', ['page_id', 'page_namespace', 'page_title'],
+						$conditions, __METHOD__, ['ORDER BY' => 'page_id ASC', 'LIMIT' => self::BATCH_SIZE]) :
+					Prewarm::categoryPageBatch($dbr, $categories, $lastId, $namespace, self::BATCH_SIZE);
 				$inBatch = 0;
 				foreach ($rows as $row) {
 					$inBatch++;

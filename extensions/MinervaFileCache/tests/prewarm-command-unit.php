@@ -161,6 +161,15 @@ namespace {
 		$runner->setOptions(['resume'=>true,'delay-ms'=>'250']);
 		checkPrewarmCli($runner->execute() === true, 'Retry after rate limit');
 		checkPrewarmCli(!is_file($checkpoint), 'Recovered checkpoint removed');
+		$runner = new PrewarmMinervaFileCache();
+		$runner->setOptions(['recursive'=>true]);
+		try {
+			$runner->execute();
+			throw new RuntimeException('Recursive mode without category should fail');
+		} catch (RuntimeException $e) {
+			checkPrewarmCli(str_contains($e->getMessage(), '--recursive requires --category'),
+				'Recursive mode refuses missing category');
+		}
 		$GLOBALS['prewarmRequests'] = [];
 		$runner = new PrewarmMinervaFileCache();
 		$runner->setOptions(['namespace'=>'6','delay-ms'=>'250']);

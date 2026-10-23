@@ -29,9 +29,15 @@ class Prewarm {
 
 	/** A checkpoint is bound to a wiki, origin, language, device and namespace filter. */
 	public static function checkpointPath(
-		string $directory, string $wiki, string $origin, string $language, string $device, ?int $namespace
+		string $directory, string $wiki, string $origin, string $language, string $device, ?int $namespace,
+		?string $category = null, bool $recursive = false
 	): string {
-		$key = hash('sha256', json_encode([$wiki, $origin, $language, $device, $namespace]));
+		$identity = [$wiki, $origin, $language, $device, $namespace];
+		if ($category !== null) {
+			$identity[] = $category;
+			$identity[] = $recursive;
+		}
+		$key = hash('sha256', json_encode($identity));
 		return rtrim($directory, '/') . '/prewarm-' . $key . '.checkpoint';
 	}
 
@@ -80,4 +86,87 @@ class Prewarm {
 		$state = trim(explode(';', $header, 2)[0]);
 		return in_array($state, ['MISS', 'HIT', 'BYPASS'], true) ? $state : 'UNKNOWN_HEADER';
 	}
+
+	/**
+	 * Resolve subcategories breadth-first. A visited set prevents cycles.
+	 * The categorylinks cl_to keys and page_title values exclude the namespace.
+	 *
+	 * @return string[] Category DB keys including the root.
+	 */
+	public static function categories($dbr, string $root, bool $recursive): array {
+		$seen = [$root => true];
+		if (!$recursive) {
+			return [$root];
+		}
+		$queue = [$root];
+		for ($index = 0; $index < count($queue); $index++) {
+			$parent = $queue[$index];
+			$afterId = 0;
+			do {
+				$rows = $dbr->select(
+					['categorylinks', 'page'],
+					['page_id', 'page_title'],
+					[
+						'cl_to' => $parent,
+						'cl_type' => 'subcat',
+						'page_namespace' => NS_CATEGORY,
+						'page_id > ' . $afterId,
+					],
+					__METHOD__,
+					['ORDER BY' => 'page_id ASC', 'LIMIT' => 100],
+					['page' => ['INNER JOIN', 'page_id = cl_from']]
+				);
+				$count = 0;
+				foreach ($rows as $row) {
+					$count++;
+					$afterId = (int)$row->page_id;
+					$key = (string)$row->page_title;
+					if (!isset($seen[$key])) {
+						$seen[$key] = true;
+						$queue[] = $key;
+						if (count($queue) > 100000) {
+							throw new \RuntimeException('Too many subcategories (>100000); narrow the category selection');
+						}
+					}
+				}
+			} while ($count === 100);
+		}
+		return $queue;
+	}
+
+	/**
+	 * Return the next page-id-ordered batch, deduplicated across categories.
+	 * Chunking avoids very large SQL IN clauses in large category trees.
+	 *
+	 * @return object[] Page records
+	 */
+	public static function categoryPageBatch(
+		$dbr, array $categories, int $afterId, ?int $namespace, int $limit
+	): array {
+		$pages = [];
+		foreach (array_chunk($categories, 200) as $chunk) {
+			$conditions = [
+				'cl_to' => $chunk,
+				'page_is_redirect' => 0,
+				'page_id > ' . $afterId,
+			];
+			if ($namespace !== null) {
+				$conditions['page_namespace'] = $namespace;
+			}
+			$rows = $dbr->select(
+				['categorylinks', 'page'],
+				['page_id', 'page_namespace', 'page_title'],
+				$conditions,
+				__METHOD__,
+				['DISTINCT', 'ORDER BY' => 'page_id ASC', 'LIMIT' => $limit],
+				['page' => ['INNER JOIN', 'page_id = cl_from']]
+			);
+			foreach ($rows as $row) {
+				$pages[(int)$row->page_id] = $row;
+			}
+		}
+		ksort($pages, SORT_NUMERIC);
+		return array_slice(array_values($pages), 0, $limit);
+	}
+
 }

@@ -154,6 +154,44 @@ enregistrées dans la table `page` sont parcourues par lots de 100.
 Certaines réponses restent exclues par la politique du cache (`BYPASS`).
 Les pages protégées en lecture ne deviennent jamais publiques.
 
+### Préchauffer une catégorie
+
+La commande peut également traiter **uniquement les pages membres d'une
+catégorie** MediaWiki. Le nom est accepté avec ou sans préfixe `Category:`
+(ou son équivalent localisé) :
+
+```sh
+# Pages directement membres de la catégorie (simulation).
+php maintenance/run.php MinervaFileCache:prewarm --category="Articles" --dry-run --limit=20
+
+# Membres de la catégorie et de toutes ses sous-catégories.
+php maintenance/run.php MinervaFileCache:prewarm \
+	--category="Articles" --recursive --limit=20 --resume
+
+# Reprendre ce même préchauffage après le premier lot.
+php maintenance/run.php MinervaFileCache:prewarm \
+	--category="Articles" --recursive --resume
+```
+
+Sur une ferme, ajouter `--wiki=IDENTIFIANT`. L'option `--recursive`
+est interdite sans `--category`. Elle descend dans l'arborescence à
+tous les niveaux, sans boucle ni double visite lorsqu'une page appartient
+à plusieurs catégories. `--namespace` peut limiter les membres aux pages
+d'un espace de noms. La sélection comprend les pages de sous-catégories
+elles-mêmes si elles sont des membres éligibles et que leur espace de noms
+n'est pas exclu.
+
+Les catégories peuvent exister sans page `Category:` : les liens
+`categorylinks` suffisent à déterminer leurs membres. Une catégorie sans
+membre produit simplement zéro page. Le point de reprise est distinct pour
+chaque catégorie et pour les modes direct/récursif. Si les appartenances
+changent pendant un parcours interrompu, utiliser `--reset --resume` pour
+reprendre depuis le début et inclure les nouvelles pages anciennes.
+
+Le préchauffage ne remplace pas les invalidations ni les contrôles habituels
+de MinervaFileCache. Les très grandes arborescences peuvent occasionner des
+requêtes de base de données coûteuses : commencer par `--limit=20`.
+
 Options principales :
 
 - `--limit=N` : s'arrêter après N pages ; 0 = aucune limite (défaut).
@@ -161,6 +199,8 @@ Options principales :
 - `--timeout=N` : délai maximal HTTP en secondes (30 par défaut).
 - `--device=android|iphone` : User-Agent à préchauffer (Android par défaut).
 - `--namespace=N` : ne parcourir qu'un espace de noms numérique.
+- `--category="Nom"` : ne parcourir que les membres directs de cette catégorie.
+- `--recursive` : inclure tous les niveaux de sous-catégories (nécessite `--category`).
 - `--dry-run` : afficher les URL sans envoyer de requêtes.
 - `--resume` : sauvegarder un point de reprise privé après chaque page dans
   le répertoire de cache, et continuer automatiquement au prochain lancement.
