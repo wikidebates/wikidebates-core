@@ -2,7 +2,7 @@
 
 Extension autonome pour **MediaWiki 1.43.x**, **MobileFrontend 2.4.x** et
 **MinervaNeue**. Elle conserve le HTML complet des pages mobiles dans un stockage
-distinct du cache desktop. Elle ne dépend pas de Wikidebates, ne change pas le
+distinct du cache desktop. Elle ne dépend d'aucune extension propre à un wiki, ne change pas le
 contenu à lire et ne demande aucune modification du code de MediaWiki ou de
 MobileFrontend.
 
@@ -14,15 +14,9 @@ un répertoire absent ou inutilisable laisse MediaWiki afficher les pages normal
 ## Installation et activation
 
 1. Copier **ce dossier complet**, avec son `extension.json`, dans
-   `extensions/MinervaFileCache` de chaque installation MediaWiki. Le dossier est
-   disponible dans le [dépôt Wikidebates](https://github.com/wikidebates/wikidebates-core/tree/main/extensions/MinervaFileCache).
-   Pour l'extraire depuis un clone à jour du dépôt :
-
-   ```sh
-   git archive --format=tar HEAD:extensions/MinervaFileCache > /tmp/MinervaFileCache.tar
-   mkdir -p /chemin/mediawiki/extensions/MinervaFileCache
-   tar -xf /tmp/MinervaFileCache.tar -C /chemin/mediawiki/extensions/MinervaFileCache
-   ```
+   `extensions/MinervaFileCache` de chaque installation MediaWiki. Ne copier
+   que cette extension : aucune autre extension spécifique à un site n'est
+   nécessaire.
 
 2. Créer un répertoire **hors de la racine web**, accessible en écriture par le
    processus PHP. Adapter `www-data` à l'utilisateur réel de PHP-FPM :
@@ -66,7 +60,7 @@ connexion et sans cookies. Ne pas utiliser `curl -I`, qui envoie une requête HE
 ```sh
 curl -sS --compressed -D - -o /dev/null \
   -A 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36' \
-  'https://fr.wikidebates.org/wiki/Titre_de_la_page'
+  'https://wiki.example.org/wiki/Titre_de_la_page'
 ```
 
 Répéter exactement la commande. L'en-tête `X-Minerva-File-Cache` doit indiquer
