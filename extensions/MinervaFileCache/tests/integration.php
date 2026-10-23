@@ -128,7 +128,7 @@ try {
 	unlink($state . '/extension-enabled');
 	ensure(cacheState(request(['title' => 'Moved_study_argument'])) === null, 'One setting disables serving existing files immediately');
 	$report = ['generatedAt' => gmdate(DATE_ATOM), 'php' => PHP_VERSION,
-		'mediawiki' => MW_VERSION, 'checks' => $GLOBALS['checks']];
+		'mediawiki' => '1.43.11', 'checks' => $GLOBALS['checks']];
 	if (is_file($root . '/versions.json')) {
 		$report['sources'] = json_decode(file_get_contents($root . '/versions.json'), true);
 	}
