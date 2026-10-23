@@ -72,7 +72,7 @@ async function study( browser, skin, trace, revision ) {
 			window.studyRequests = 0;
 			const hooks = new Map();
 			window.mw = {
-				config: { get: ( key ) => ( { skin, wgUserLanguage: 'fr', wgNamespaceNumber: 0 } )[ key ] },
+				config: { get: ( key ) => ( { skin, wgUserLanguage: 'fr', wgNamespaceNumber: 0, wgWikidebatesReadingFragments: false } )[ key ] },
 				util: { getUrl: ( title ) => '/wiki/' + encodeURIComponent( title ) },
 				hook: ( name ) => {
 					if ( !hooks.has( name ) ) {

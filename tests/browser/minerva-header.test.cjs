@@ -7,7 +7,7 @@ const { resourceModuleFiles } = require( '../resourceModuleFiles.cjs' );
 const root = path.resolve( __dirname, '../..' );
 const longTitle = 'Un argument avec un titre particulièrement long qui doit rester lisible sur plusieurs lignes pendant la lecture et défiler naturellement avec son contenu sur mobile';
 
-async function fixture( t, skin = 'minerva' ) {
+async function fixture( t, skin = 'minerva', prepared = false ) {
 	const browser = await chromium.launch( {
 		executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium',
 		headless: true, args: [ '--no-sandbox' ]
@@ -22,10 +22,10 @@ async function fixture( t, skin = 'minerva' ) {
 		await page.addStyleTag( { path: path.join( root, 'modules/reading', file ) } );
 	}
 	await page.addScriptTag( { path: require.resolve( 'jquery' ) } );
-	await page.evaluate( ( skin ) => {
+	await page.evaluate( ( { skin, prepared } ) => {
 		const hooks = new Map();
 		window.mw = {
-			config: { get: ( key ) => ( { skin, wgUserLanguage: 'fr', wgNamespaceNumber: 0 } )[ key ] },
+			config: { get: ( key ) => ( { skin, wgUserLanguage: 'fr', wgNamespaceNumber: 0, wgWikidebatesReadingFragments: prepared } )[ key ] },
 			util: { getUrl: ( title ) => '/wiki/' + encodeURIComponent( title ) },
 			hook: ( key ) => {
 				if ( !hooks.has( key ) ) {
@@ -35,15 +35,17 @@ async function fixture( t, skin = 'minerva' ) {
 				return hooks.get( key );
 			},
 			Api: function () {
-				this.get = () => {
+				this.get = ( params ) => {
+					window.lastReadingAction = params.action;
 					const reply = jQuery.Deferred();
 					if ( window.deferRead ) window.pendingRead = reply;
-					else reply.resolve( { parse: { text: window.argumentHTML } } );
+					else reply.resolve( prepared ? { wikidebatesreading: { html: Wikidebates.wkReadingExtractFragment( window.argumentHTML ) } } :
+						{ parse: { text: window.argumentHTML } } );
 					return reply.promise();
 				};
 			}
 		};
-	}, skin );
+	}, { skin, prepared } );
 	for ( const file of [ 'modules/common/core.js', 'modules/common/parse.js', 'modules/reading/core.js',
 		...resourceModuleFiles( 'ext.wikidebates.reading.ui.' + ( skin === 'minerva' ? 'minerva' : 'vector' ) ) ] ) {
 		await page.addScriptTag( { path: path.join( root, file ) } );
@@ -87,6 +89,20 @@ async function fixture( t, skin = 'minerva' ) {
 	}
 	return { page, beginOpen, open, settle, metrics, scroll };
 }
+
+test( 'prepared server fragments preserve mobile content, title and scrolling', async ( t ) => {
+	const { page, open, scroll, metrics } = await fixture( t, 'minerva', true );
+	await open();
+	assert.equal( await page.evaluate( () => window.lastReadingAction ), 'wikidebatesreading' );
+	assert.equal( await page.textContent( '#body-line' ), 'Contenu de l’argument' );
+	assert.equal( await page.textContent( '.wk-reading-full-title' ), longTitle );
+	const before = await metrics();
+	await scroll( 300 );
+	const after = await metrics();
+	assert.ok( after.scroll > before.scroll );
+	assert.equal( after.headerHeight, before.headerHeight );
+	assert.equal( await page.locator( '#wk-reading-content #Parent_debates' ).count(), 0 );
+} );
 
 function assertStableFlow( before, after ) {
 	assert.equal( after.headerHeight, before.headerHeight, 'the toolbar never changes height' );

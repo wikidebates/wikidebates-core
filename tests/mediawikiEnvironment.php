@@ -71,6 +71,7 @@ function wikidebatesTestConfig($settings): void {
 		'ParserCacheType' => CACHE_NONE,
 		'UseDatabaseMessages' => defined('WD_I18N_TEST'),
 		'JobRunRate' => 0,
+		'WikidebatesReadingFragments' => false,
 		'ShowExceptionDetails' => true
 	]);
 	if (defined('WD_FULLSTACK_TEST')) {

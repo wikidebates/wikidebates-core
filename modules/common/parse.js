@@ -6,6 +6,7 @@
 	var WK = W.Wikidebates || ( W.Wikidebates = {} );
 
 	var wkApi = null;
+	var wkReadingEndpointUnavailable = false;
 
 	var WK_PARSE_CONCURRENCY = 2;
 
@@ -89,20 +90,47 @@
 		} ) );
 	}
 
-	/* Shared by foreground reads and mobile prefetches. Keep the full API
-	 * response so the swipe preview can use it without another request. */
+	/* Foreground, sibling prefetch and swipe preview share the same response. */
 	function wkParsePage( params ) {
 		var key = wkPageParseKey( params );
 		var cached = wkCacheGetLRU( wkPageParseCache, key );
 		if ( cached !== null ) return jQuery.Deferred().resolve( cached ).promise();
 		if ( wkPageParseInFlight.has( key ) ) return wkPageParseInFlight.get( key );
 
-		var request = wkGetApi().get( params );
+		var useFragment = mw.config.get( 'wgWikidebatesReadingFragments' ) !== false && !wkReadingEndpointUnavailable &&
+			params.action === 'parse' && params.page && params.prop === 'text' &&
+			params.formatversion === 2 && params.usearticle === 1 && params.redirects === 1 &&
+			( !params.useskin || params.useskin === 'vector' || params.useskin === 'minerva' ) &&
+			Object.keys( params ).every( function ( name ) {
+				return [ 'action', 'page', 'prop', 'useskin', 'uselang', 'formatversion', 'usearticle', 'redirects' ].indexOf( name ) !== -1;
+			} );
+		var requestParams = useFragment ? {
+			action: 'wikidebatesreading', page: params.page, useskin: params.useskin || 'vector',
+			uselang: params.uselang, formatversion: 2
+		} : params;
+		var request = wkGetApi().get( requestParams );
+		if ( useFragment ) {
+			request = request.then( function ( data ) {
+				if ( !data || !data.wikidebatesreading || typeof data.wikidebatesreading.html !== 'string' ) {
+					return jQuery.Deferred().reject( 'invalid-reading-response' ).promise();
+				}
+				return { reading: data.wikidebatesreading };
+			}, function ( code, details ) {
+				var error = details && details.error;
+				if ( code === 'unknown_action' || ( code === 'badvalue' && error &&
+					( error.parameter === 'action' || /action.*wikidebatesreading/.test( error.info || '' ) ) ) ) {
+					// A rolling deployment can briefly route to an older backend.
+					wkReadingEndpointUnavailable = true;
+					return wkGetApi().get( params );
+				}
+				return jQuery.Deferred().reject( code, details ).promise();
+			} );
+		}
 		wkPageParseInFlight.set( key, request );
 		request.always( function () {
 			wkPageParseInFlight.delete( key );
 		} ).done( function ( data ) {
-			if ( data && data.parse ) {
+			if ( data && ( data.parse || data.reading ) ) {
 				wkCacheSetLRU( wkPageParseCache, WK_PAGE_PARSE_CACHE_MAX, key, data );
 				mw.hook( 'wikidebates.pageParsed' ).fire( key );
 			}
@@ -267,7 +295,7 @@
 		stats: function () {
 			var codeUnits = 0;
 			wkPageParseCache.forEach( function ( data ) {
-				var text = data.parse.text || '';
+				var text = data.reading ? data.reading.html : ( data.parse.text || '' );
 				codeUnits += ( typeof text === 'string' ? text : ( text[ '*' ] || '' ) ).length;
 			} );
 			return { entries: wkPageParseCache.size, htmlCodeUnits: codeUnits };

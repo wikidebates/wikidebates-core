@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-23T06:29:07+00:00",
+  "checks": [
+    "Disposable HTTP server starts",
+    "Cite renders the actual reference: vector",
+    "Same HTML bytes as original API extraction: vector",
+    "Prepared fragment is reused: vector source=fragment-cache",
+    "A hit does not run the output pipeline: vector",
+    "Cite renders the actual reference: minerva",
+    "Same HTML bytes as original API extraction: minerva",
+    "Prepared fragment is reused: minerva source=fragment-cache",
+    "A hit does not run the output pipeline: minerva",
+    "Language variants do not share prepared HTML",
+    "Cookie-bearing requests bypass shared fragments",
+    "Unrecognized rendering parameters cannot poison a shared variant",
+    "Laboratory user authenticates",
+    "Authenticated HTML keeps its personal transforms",
+    "Personal HTML never enters the anonymous file",
+    "Parser output with expiry zero is never retained",
+    "Fragment TTL expires without extending source lifetime",
+    "Read authorization is checked before a warm file",
+    "Redirects resolve to an authorized target",
+    "Disposable operation succeeds: edit {\"operation\":\"edit\",\"mediawiki\":\"1.43.11\"}",
+    "Edit invalidates the prepared fragment immediately",
+    "Disposable operation succeeds: purge {\"operation\":\"purge\",\"mediawiki\":\"1.43.11\"}",
+    "Disposable operation succeeds: jobs {\"operation\":\"jobs\",\"mediawiki\":\"1.43.11\"}",
+    "Asynchronous job prepares the new anonymous fragment",
+    "Disposable operation succeeds: template {\"operation\":\"template\",\"mediawiki\":\"1.43.11\"}",
+    "Disposable operation succeeds: jobs {\"operation\":\"jobs\",\"mediawiki\":\"1.43.11\"}",
+    "Dependency jobs invalidate and rebuild after a template edit",
+    "Deployment epoch invalidates an existing file",
+    "Unavailable file cache falls back to the parser cache",
+    "Missing-page error remains compatible with reading notice",
+    "Disposable operation succeeds: move {\"operation\":\"move\",\"mediawiki\":\"1.43.11\"}",
+    "Moved page renders current content"
+  ],
+  "environment": {
+    "mediawiki": "1.43.11",
+    "php": "8.3.30",
+    "image": "docker-registry.wikimedia.org/dev/bookworm-php83-fpm:1.0.0-s1",
+    "cite": "3f6a8e0395112bbdbe3b53732e259cad6375aaab",
+    "sources": {
+      "mediawiki": "8c65f3e15450df456092626693350a8c729bd003",
+      "vendor": "af938940dec08d256da80447a41005a6ffa007f2",
+      "Vector": "726214f61ab790e218720592ef05f7b69f3a4565",
+      "MinervaNeue": "3e1384140e74b1c17d1286dd0f021f25819bb057",
+      "MobileFrontend": "6ad6fec0e68c585bd0a5b047bd3ab404160ea090"
+    }
+  },
+  "result": "PASS"
+}

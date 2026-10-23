@@ -1,0 +1,34 @@
+[
+  {
+    "html": "<h2 id=\"Summary\">Résumé</h2><p>Texte</p><h2 id=\"Parent_debates\">Parents</h2>",
+    "expected": "<h2 id=\"Summary\">Résumé</h2><p>Texte</p>"
+  },
+  {
+    "html": "<h2><span id=\"Summary\">Résumé</span></h2><p>🧠 Citation éè</p><h2><span id=\"Parent_debates\">Parents</span></h2>",
+    "expected": "<h2><span id=\"Summary\">Résumé</span></h2><p>🧠 Citation éè</p>"
+  },
+  {
+    "html": "<p>avant</p><h2 id=\"Summary\">S</h2><blockquote>citation</blockquote><ol class=\"references\"><li>Référence</li></ol><h2 id=\"Objections\">Objections</h2><p>O</p><h2 id=\"Parent_debates\">P</h2><footer>hors extrait</footer>",
+    "expected": "<h2 id=\"Summary\">S</h2><blockquote>citation</blockquote><ol class=\"references\"><li>Référence</li></ol><h2 id=\"Objections\">Objections</h2><p>O</p>"
+  },
+  {
+    "html": "<h2 id=\"Summary\">S</h2><section class=\"mf-section-1\"><p>Mobile</p></section><h2 id=\"Parent_debates\">P</h2>",
+    "expected": "<h2 id=\"Summary\">S</h2><section class=\"mf-section-1\"><p>Mobile</p></section>"
+  },
+  {
+    "html": "<p>Absent</p>",
+    "expected": ""
+  },
+  {
+    "html": "<h2 id=\"Summary\">Sans fin</h2>",
+    "expected": ""
+  },
+  {
+    "html": "<h2 id=\"Parent_debates\">Avant</h2><h2 id=\"Summary\">Après</h2>",
+    "expected": ""
+  },
+  {
+    "html": "<div class=\"mw-heading\"><h2 id=\"Summary\">S</h2></div><p>Contenu</p><div class=\"mw-heading\"><h2 id=\"Parent_debates\">P</h2></div>",
+    "expected": "<h2 id=\"Summary\">S</h2></div><p>Contenu</p><div class=\"mw-heading\">"
+  }
+]

@@ -26,6 +26,75 @@ test( 'prefetch and foreground share one request and the cached response', async
 	assert.equal( gets.length, 1 );
 } );
 
+test( 'prepared fragments open directly and reuse one request for foreground and prefetch', async ( t ) => {
+	const { WK, gets, run, window } = await parseEnvironment( t, { wgWikidebatesReadingFragments: true } );
+	window.document.body.classList.remove( 'action-view' );
+	run( 'modules/reading/core.js' );
+	const content = window.document.createElement( 'div' );
+	WK.wkReadingSetAdapter( { ensureUi: () => ( { content } ) } );
+	const parseParams = WK.wkReadingBuildParseRequestParams( 'Prepared argument' );
+	const pending = WK.wkParsePage( parseParams );
+	WK.wkOpenReadingModeFromPageTitle( 'Prepared argument', [], { history: false } );
+	assert.equal( gets.length, 1 );
+	assert.equal( gets[ 0 ].params.action, 'wikidebatesreading' );
+	const html = '<h2 id="Summary">Résumé</h2><blockquote>Citation</blockquote><p>Références et objections.</p>';
+	gets[ 0 ].request.resolve( { wikidebatesreading: { html, title: 'Prepared argument', revid: 42 } } );
+	await pending;
+	await tick(); await tick();
+	assert.equal( content.innerHTML, html, 'a ready fragment needs no Parent_debates boundary or second extraction' );
+	assert.equal( WK.wkReadingFragmentFromData( await WK.wkParsePage( parseParams ) ), html );
+	assert.equal( gets.length, 1 );
+	assert.equal( WK.wkPageParseCache.stats().htmlCodeUnits, html.length );
+} );
+
+test( 'mobile siblings and previews consume the same prepared-fragment response', async ( t ) => {
+	const { WK, gets, run, window } = await parseEnvironment( t, { skin: 'minerva', wgWikidebatesReadingFragments: true } );
+	run( 'modules/reading/core.js' ); run( 'modules/reading/ui.minerva.js' );
+	const chain = ( page ) => [ { page: '', title: 'Debate' }, { page, title: page, type: 'pour' } ];
+	WK.WK_READING.state.siblingsByDepth[ 1 ] = [ { page: 'A', title: 'A' }, { page: 'B', title: 'B' } ];
+	WK.wkOpenReadingModeFromPageTitle( 'A', chain( 'A' ), { history: false } );
+	gets[ 0 ].request.resolve( { wikidebatesreading: { html: '<h2 id="Summary">Résumé</h2><p>A</p>' } } );
+	await tick(); await tick(); await tick();
+	assert.equal( gets.length, 2 );
+	assert.equal( gets[ 1 ].params.action, 'wikidebatesreading' );
+	const next = '<h2 id="Summary">Résumé</h2><p>B et sa référence</p>';
+	gets[ 1 ].request.resolve( { wikidebatesreading: { html: next } } );
+	await tick(); await tick();
+	const data = WK.wkPageParseCache.get( WK.wkPageParseCache.key( WK.wkReadingBuildParseRequestParams( 'B' ) ) );
+	assert.equal( WK.wkReadingFragmentFromData( data ), next, 'preview decoder accepts the prefetched compact response' );
+	WK.wkOpenReadingModeFromPageTitle( 'B', chain( 'B' ), { history: false } );
+	await tick(); await tick();
+	assert.match( window.document.getElementById( 'wk-reading-content' ).innerHTML, /B et sa référence/ );
+	assert.equal( gets.length, 2, 'navigation does not download B again' );
+} );
+
+test( 'a failed fragment request is retryable and custom parse options keep their original route', async ( t ) => {
+	const { WK, gets } = await parseEnvironment( t, { wgWikidebatesReadingFragments: true } );
+	const readingParams = params( 'Argument', { formatversion: 2, usearticle: 1, redirects: 1 } );
+	WK.wkParsePage( readingParams ).fail( () => {} );
+	assert.equal( gets[ 0 ].params.action, 'wikidebatesreading' );
+	gets[ 0 ].request.reject( 'network' );
+	await tick();
+	WK.wkParsePage( readingParams ).fail( () => {} );
+	assert.equal( gets.length, 2 );
+	WK.wkParsePage( params( 'Argument', { section: '1' } ) ).fail( () => {} );
+	assert.equal( gets[ 2 ].params.action, 'parse' );
+} );
+
+test( 'cached older HTML can use fragments and an older backend falls back during deployment', async ( t ) => {
+	const { WK, gets } = await parseEnvironment( t, { wgWikidebatesReadingFragments: undefined } );
+	const readingParams = params( 'Argument', { formatversion: 2, usearticle: 1, redirects: 1 } );
+	const pending = WK.wkParsePage( readingParams );
+	assert.equal( gets[ 0 ].params.action, 'wikidebatesreading' );
+	gets[ 0 ].request.reject( 'badvalue', { error: { parameter: 'action' } } );
+	await tick();
+	assert.equal( gets[ 1 ].params.action, 'parse' );
+	gets[ 1 ].request.resolve( { parse: { text: 'Legacy HTML' } } );
+	assert.equal( ( await pending ).parse.text, 'Legacy HTML' );
+	WK.wkParsePage( { ...readingParams, page: 'Next argument' } );
+	assert.equal( gets[ 2 ].params.action, 'parse', 'a mixed deployment does not repeat the unavailable-endpoint probe' );
+} );
+
 test( 'failed requests retry and skin/language variants do not share results', async ( t ) => {
 	const { WK, gets } = await parseEnvironment( t );
 	WK.wkParsePage( params( 'Argument' ) ).fail( () => {} );

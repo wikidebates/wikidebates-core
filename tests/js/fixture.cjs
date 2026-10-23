@@ -17,7 +17,7 @@ async function environment( html = '', config = {} ) {
 	const loads = [];
 	window.mw = {
 		util: { getUrl: ( title ) => '/wiki/' + encodeURIComponent( title ) },
-		config: { get: ( key ) => ( { skin: 'vector-2022', wgUserLanguage: 'fr', wgNamespaceNumber: 0, ...config } )[ key ] },
+		config: { get: ( key ) => ( { skin: 'vector-2022', wgUserLanguage: 'fr', wgNamespaceNumber: 0, wgWikidebatesReadingFragments: false, ...config } )[ key ] },
 		loader: {
 			load: ( module ) => loads.push( module ),
 			using: () => $.Deferred().resolve().promise()

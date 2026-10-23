@@ -393,5 +393,8 @@
 	"wk-reading-siblings-aria-label": "Arguments connexes",
 	"wk-breadcrumb-aria-label": "Sommaire",
 	"wk-summary-delete-generic": "Suppression d’un élément",
-	"wk-interlanguage-label": "Interlangue"
+	"wk-interlanguage-label": "Interlangue",
+	"apihelp-wikidebatesreading-summary": "Renvoie l’extrait HTML préparé pour le mode lecture de Wikidébats.",
+	"apihelp-wikidebatesreading-param-page": "Titre de la page d’argument.",
+	"apihelp-wikidebatesreading-param-useskin": "Habillage utilisé pour le rendu de l’extrait."
 }

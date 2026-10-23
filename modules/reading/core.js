@@ -513,9 +513,7 @@
 
 		var load = cached ? Promise.resolve( wkArgEmbedCache.get( cacheKey ) || '' ) :
 			WK.wkParsePage( params ).then( function ( data ) {
-				var html = ( data && data.parse && data.parse.text ) ? data.parse.text : '';
-				if ( !html ) return '';
-				return wkReadingExtractFragment( html ) || '';
+				return wkReadingFragmentFromData( data );
 			} );
 
 		if ( !measurement ) return load;
@@ -531,6 +529,12 @@
 			measurement.failures++;
 			throw error;
 		} );
+	}
+
+	function wkReadingFragmentFromData( data ) {
+		if ( data && data.reading && typeof data.reading.html === 'string' ) return data.reading.html;
+		var html = data && data.parse ? data.parse.text : '';
+		return html ? ( wkReadingExtractFragment( html ) || '' ) : '';
 	}
 
 	function wkReadingInjectFragment( ui, cacheKey, fragment ) {
@@ -997,6 +1001,7 @@
 	WK.wkReadingBuildParseRequestParams = wkReadingBuildParseRequestParams;
 	W.wkReadingBuildParseRequestParams = wkReadingBuildParseRequestParams;
 	WK.wkReadingExtractFragment = wkReadingExtractFragment;
+	WK.wkReadingFragmentFromData = wkReadingFragmentFromData;
 	W.wkReadingExtractFragment = wkReadingExtractFragment;
 
 	// Local, opt-in measurements. No content, titles, samples or events are sent

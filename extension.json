@@ -22,7 +22,9 @@
 		"BeforePageDisplay": "MediaWiki\\Extension\\Wikidebates\\Hooks::onBeforePageDisplay",
 		"ParserFirstCallInit": "MediaWiki\\Extension\\Wikidebates\\Hooks::onParserFirstCallInit",
 		"PageSaveComplete": "MediaWiki\\Extension\\Wikidebates\\Hooks::onPageSaveComplete",
-		"AuthChangeFormFields": "MediaWiki\\Extension\\Wikidebates\\Hooks::onAuthChangeFormFields"
+		"AuthChangeFormFields": "MediaWiki\\Extension\\Wikidebates\\Hooks::onAuthChangeFormFields",
+		"TitleSquidURLs": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onTitleSquidURLs",
+		"LinksUpdateComplete": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onLinksUpdateComplete"
 	},
 	"ResourceFileModulePaths": {
 		"localBasePath": "modules",
@@ -582,6 +584,24 @@
 		"DebatePHPHTMLAttributes": {
 			"value": null,
 			"description": "Optional HTML Tags attribute policy; null uses wgHTMLTagsAttributes or the bundled policy."
+		},
+		"WikidebatesReadingFragments": {
+			"value": true
+		},
+		"WikidebatesReadingCacheDirectory": {
+			"value": false
+		},
+		"WikidebatesReadingCacheTTL": {
+			"value": 300
+		},
+		"WikidebatesReadingCacheEpoch": {
+			"value": "1"
+		},
+		"WikidebatesReadingPrewarm": {
+			"value": true
+		},
+		"WikidebatesReadingArgumentCategory": {
+			"value": "Arguments"
 		}
 	},
 	"manifest_version": 2,
@@ -592,5 +612,11 @@
 				"sort": 1
 			}
 		}
+	},
+	"APIModules": {
+		"wikidebatesreading": "MediaWiki\\Extension\\Wikidebates\\Reading\\ApiReadingFragment"
+	},
+	"JobClasses": {
+		"wikidebatesWarmReading": "MediaWiki\\Extension\\Wikidebates\\Reading\\WarmFragmentsJob"
 	}
 }

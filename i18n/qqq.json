@@ -393,5 +393,8 @@
 	"wk-reading-siblings-aria-label": "Interface message: wk-reading-siblings-aria-label.",
 	"wk-breadcrumb-aria-label": "Interface message: wk-breadcrumb-aria-label.",
 	"wk-summary-delete-generic": "Interface message: wk-summary-delete-generic.",
-	"wk-interlanguage-label": "Label of the Minerva link for editing interlanguage links."
+	"wk-interlanguage-label": "Label of the Minerva link for editing interlanguage links.",
+	"apihelp-wikidebatesreading-summary": "API module summary for Wikidebates reading fragments.",
+	"apihelp-wikidebatesreading-param-page": "API parameter: title of the argument page.",
+	"apihelp-wikidebatesreading-param-useskin": "API parameter: rendering skin, Vector or Minerva."
 }

@@ -219,14 +219,7 @@
 		}
 
 		function getFragmentFromParseData( data ) {
-			var html = ( data && data.parse && data.parse.text ) ? data.parse.text : '';
-			if ( !html ) return '';
-
-			try {
-				if ( typeof WK.wkReadingExtractFragment === 'function' ) return WK.wkReadingExtractFragment( html ) || '';
-			} catch ( e ) {}
-
-			return '';
+			return typeof WK.wkReadingFragmentFromData === 'function' ? WK.wkReadingFragmentFromData( data ) : '';
 		}
 
 		function setPeekContentByPage( page, dir ) {

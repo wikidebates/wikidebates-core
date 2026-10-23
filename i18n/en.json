@@ -393,5 +393,8 @@
 	"wk-reading-siblings-aria-label": "Related arguments",
 	"wk-breadcrumb-aria-label": "Contents",
 	"wk-summary-delete-generic": "Deleting an item",
-	"wk-interlanguage-label": "Interlanguage links"
+	"wk-interlanguage-label": "Interlanguage links",
+	"apihelp-wikidebatesreading-summary": "Return the prepared HTML fragment used by Wikidebates reading mode.",
+	"apihelp-wikidebatesreading-param-page": "Title of the argument page.",
+	"apihelp-wikidebatesreading-param-useskin": "Skin used to render the fragment."
 }
