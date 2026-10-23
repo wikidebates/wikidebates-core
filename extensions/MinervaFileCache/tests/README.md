@@ -1,5 +1,25 @@
 # Tests MinervaFileCache
 
+## Tests du préchauffage
+
+Sans MediaWiki ni accès réseau, les tests suivants vérifient les User-Agents,
+la validation des options, les checkpoints atomiques, les erreurs HTTP, le
+parcours paginé, la reprise après une limitation HTTP 429, et les filtres
+d'espaces de noms :
+
+```sh
+php extensions/MinervaFileCache/tests/prewarm-unit.php
+php extensions/MinervaFileCache/tests/prewarm-command-unit.php
+```
+
+Ils ne remplacent pas un essai de bout en bout sur un wiki réel : les
+requêtes HTTP internes peuvent être filtrées par un reverse proxy ou un
+service comme Cloudflare. Tester d'abord
+`php maintenance/run.php MinervaFileCache:prewarm --wiki=fr --limit=20 --resume`
+sur une ferme de préproduction ou à faible charge, puis vérifier les états
+`MISS`/`HIT` et les fichiers `.cache`.
+
+
 Validation du 22 octobre 2026 : **26 assertions unitaires**, **61 assertions
 d'intégration sans Wikidebates**, puis **61 avec Wikidebates**, toutes réussies.
 Les résultats sont conservés dans [le JSON autonome](results-standalone.json) et
