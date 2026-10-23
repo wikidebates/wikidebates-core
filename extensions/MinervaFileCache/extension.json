@@ -1,8 +1,7 @@
 {
 	"name": "MinervaFileCache",
 	"version": "0.1.0",
-	"author": ["Wikidebates contributors"],
-	"url": "https://github.com/wikidebates/wikidebates-core/tree/main/extensions/MinervaFileCache",
+	"author": ["MinervaFileCache contributors"],
 	"descriptionmsg": "minervafilecache-desc",
 	"license-name": "MIT",
 	"type": "other",
