@@ -173,6 +173,18 @@ namespace {
 			'Error report preserves MediaWiki HTTP error code');
 		checkPrewarmCli(Prewarm::readCheckpoint($checkpoint) === 1, 'Failure preserves last completed ID');
 		unset($GLOBALS['prewarmFailUrl']);
+		$GLOBALS['prewarmRequests'] = [];
+		$GLOBALS['prewarmFailUrl'] = 'https://fr.example.test/wiki/Two';
+		$GLOBALS['prewarmFailStatus'] = 404;
+		$runner = new PrewarmMinervaFileCache();
+		$runner->setOptions(['dry-run'=>true,'limit'=>'1']);
+		checkPrewarmCli($runner->execute() === true, 'Diagnostic dry-run still works after a rate limit');
+		$runner = new PrewarmMinervaFileCache();
+		$runner->setOptions(['delay-ms'=>'250']);
+		checkPrewarmCli($runner->execute() === true, 'A missing single page does not stop all other pages');
+		checkPrewarmCli(str_contains(implode('', $GLOBALS['prewarmOutput']), '"HTTP_404":1'),
+			'Reports an HTTP 404 as a page-level failure');
+		unset($GLOBALS['prewarmFailUrl'], $GLOBALS['prewarmFailStatus']);
 		$runner = new PrewarmMinervaFileCache();
 		$runner->setOptions(['resume'=>true,'delay-ms'=>'250']);
 		checkPrewarmCli($runner->execute() === true, 'Retry after rate limit');
