@@ -158,7 +158,7 @@ class Prewarm {
 				['page_id', 'page_namespace', 'page_title'],
 				$conditions,
 				__METHOD__,
-				['DISTINCT' => true, 'ORDER BY' => 'page_id ASC', 'LIMIT' => $limit],
+				['DISTINCT', 'ORDER BY' => 'page_id ASC', 'LIMIT' => $limit],
 				['page' => ['INNER JOIN', 'page_id = cl_from']]
 			);
 			foreach ($rows as $row) {
