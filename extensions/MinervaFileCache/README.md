@@ -135,6 +135,60 @@ l'habillage ou des réglages de rendu. Cela invalide les anciennes entrées
 immédiatement. Une purge de la page ou une édition ordinaire ne nécessite pas
 de changer ce réglage.
 
+## Préchauffage des pages
+
+La commande de maintenance `prewarm` visite les pages avec de **vraies requêtes
+HTTP GET mobiles anonymes**, sans cookies. Elle ne remplit pas directement
+les fichiers depuis le parseur : elle respecte donc les règles d'éligibilité,
+de sécurité et de variation de MinervaFileCache.
+
+Depuis la racine MediaWiki, avec l'identifiant de wiki de la ferme :
+
+```sh
+# Premier test limité à 20 pages, avec point de reprise.
+php maintenance/run.php MinervaFileCache:prewarm --wiki=fr --limit=20 --resume
+
+# Continuer ensuite sur toutes les pages restantes.
+php maintenance/run.php MinervaFileCache:prewarm --wiki=fr --resume
+
+# Préchauffer également le wiki anglais.
+php maintenance/run.php MinervaFileCache:prewarm --wiki=en --resume
+```
+
+Par défaut, toutes les pages non redirigées, de **tous les espaces de noms**
+enregistrées dans la table `page` sont parcourues par lots de 100.
+Certaines réponses restent exclues par la politique du cache (`BYPASS`).
+Les pages protégées en lecture ne deviennent jamais publiques.
+
+Options principales :
+
+- `--limit=N` : s'arrêter après N pages ; 0 = aucune limite (défaut).
+- `--delay-ms=N` : délai entre deux requêtes (1000 ms par défaut, minimum 250).
+- `--timeout=N` : délai maximal HTTP en secondes (30 par défaut).
+- `--device=android|iphone` : User-Agent à préchauffer (Android par défaut).
+- `--namespace=N` : ne parcourir qu'un espace de noms numérique.
+- `--dry-run` : afficher les URL sans envoyer de requêtes.
+- `--resume` : sauvegarder un point de reprise privé après chaque page dans
+  le répertoire de cache, et continuer automatiquement au prochain lancement.
+  Le point de reprise disparaît lorsque tout le wiki a été parcouru.
+- `--reset --resume` : repartir de la première page ; chaque combinaison
+  wiki/domaine/langue/appareil/namespace possède son propre point de reprise.
+- `--after-id=N` : reprendre manuellement après l'identifiant SQL `page_id`
+  N, sans `--resume`.
+
+La commande nécessite `$wgUseFileCache = true`, un stockage accessible et
+`$wgMinervaFileCacheDebugHeaders = true` pour confirmer `MISS` et `HIT`.
+Elle utilise le domaine de `$wgServer` et ne suit pas les redirections.
+Elle s'arrête sur les erreurs HTTP (403, 429, 5xx, etc.), les erreurs de
+stockage ou plusieurs réponses successives sans en-tête de diagnostic pour
+éviter de surcharger PHP-FPM et Cloudflare. En cas d'interruption, relancer
+la commande avec `--resume` ou reprendre après le dernier `page_id` affiché.
+
+**Attention :** le cache est indexé par User-Agent complet, URL et langue
+acceptée. Un préchauffage Android ne remplit pas toutes les variantes Safari
+iPhone ou toutes les versions de Chrome. Il est donc surtout utile pour les
+variantes réellement consultées et peut produire beaucoup de fichiers.
+
 ## Nettoyage et désactivation
 
 Planifier une exécution régulière du nettoyage, par exemple toutes les heures,
