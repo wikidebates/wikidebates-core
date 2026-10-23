@@ -11,6 +11,9 @@ function check($value, string $message): void {
 	if (!$value) { throw new RuntimeException($message); }
 	$assertions++;
 }
+$manifest = json_decode(file_get_contents(dirname(__DIR__) . '/extension.json'), true, 512, JSON_THROW_ON_ERROR);
+check(($manifest['config']['MinervaFileCacheEnabled']['value'] ?? null) === true,
+	'Loading the extension enables mobile file cache by default');
 $dir = sys_get_temp_dir() . '/minerva-store-unit-' . bin2hex(random_bytes(6));
 mkdir($dir, 0700);
 try {
