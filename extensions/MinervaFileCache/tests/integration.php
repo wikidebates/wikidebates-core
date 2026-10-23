@@ -1,8 +1,8 @@
 <?php
 
 require __DIR__ . '/http.php';
-$root = getenv('WD_MINERVA_STUDY_ROOT');
-if (!$root || !is_file($root . '/.wikidebates-minerva-lab')) {
+$root = getenv('MINERVA_TEST_ROOT');
+if (!$root || !is_file($root . '/.minerva-file-cache-lab')) {
 	throw new RuntimeException('A marked disposable laboratory is required');
 }
 $state = $root . '/state';
@@ -74,7 +74,7 @@ try {
 	foreach ([['uselang' => 'fr'], ['useskin' => 'minerva'], ['oldid' => '1'], ['action' => 'render'], ['printable' => 'yes']] as $extra) {
 		ensure(cacheStatus(request($query + $extra)) !== 'HIT', 'Special query never shares ordinary view: ' . key($extra));
 	}
-	foreach (['Cookie: studyPreference=custom', 'Authorization: Bearer laboratory-only', 'Range: bytes=0-100',
+	foreach (['Cookie: studyPreference=custom', 'Authorization: Bearer placeholder', 'Range: bytes=0-100',
 		'X-Test-Veto: file', 'X-Test-Veto: article', 'Accept-Language: fr', 'User-Agent: Mozilla/5.0 (Android) Mobile alternate'] as $header) {
 		ensure(cacheStatus(request($query, true, [$header])) !== 'HIT', 'Personalization, variants or veto respected: ' . explode(':', $header, 2)[0]);
 	}
@@ -83,7 +83,7 @@ try {
 	$tokens = request(['api' => 1, 'action' => 'query', 'meta' => 'tokens', 'type' => 'login', 'format' => 'json']);
 	$cookie = absorbCookies($jar, $tokens);
 	$login = request(['api' => 1], true, ['Cookie: ' . $cookie], ['action' => 'login', 'format' => 'json',
-		'lgname' => 'CacheStudyReader', 'lgpassword' => 'Disposable-cache-study-2026!',
+		'lgname' => 'CacheStudyReader', 'lgpassword' => 'MINERVA_LAB_TEST_PASSWORD_REPLACE',
 		'lgtoken' => json_decode($tokens['body'], true)['query']['tokens']['logintoken']]);
 	ensure((json_decode($login['body'], true)['login']['result'] ?? '') === 'Success', 'Laboratory account can log in');
 	$cookie = absorbCookies($jar, $login);
@@ -127,8 +127,8 @@ try {
 	ensure(cacheStatus(request(['title' => 'Moved_study_argument'])) === 'HIT', 'Renamed destination can be cached');
 	unlink($state . '/extension-enabled');
 	ensure(cacheState(request(['title' => 'Moved_study_argument'])) === null, 'One setting disables serving existing files immediately');
-	$report = ['generatedAt' => gmdate(DATE_ATOM), 'php' => PHP_VERSION, 'mediawiki' => '1.43.11',
-		'withWikidebates' => (bool)getenv('WD_MINERVA_WITH_WIKIDEBATES'), 'checks' => $GLOBALS['checks']];
+	$report = ['generatedAt' => gmdate(DATE_ATOM), 'php' => PHP_VERSION,
+		'mediawiki' => MW_VERSION, 'checks' => $GLOBALS['checks']];
 	if (is_file($root . '/versions.json')) {
 		$report['sources'] = json_decode(file_get_contents($root . '/versions.json'), true);
 	}
