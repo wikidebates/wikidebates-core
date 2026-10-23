@@ -136,18 +136,18 @@ HTTP GET mobiles anonymes**, sans cookies. Elle ne remplit pas directement
 les fichiers depuis le parseur : elle respecte donc les règles d'éligibilité,
 de sécurité et de variation de MinervaFileCache.
 
-Depuis la racine MediaWiki, avec l'identifiant de wiki de la ferme :
+Depuis la racine MediaWiki :
 
 ```sh
 # Premier test limité à 20 pages, avec point de reprise.
-php maintenance/run.php MinervaFileCache:prewarm --wiki=fr --limit=20 --resume
+php maintenance/run.php MinervaFileCache:prewarm --limit=20 --resume
 
 # Continuer ensuite sur toutes les pages restantes.
-php maintenance/run.php MinervaFileCache:prewarm --wiki=fr --resume
-
-# Préchauffer également le wiki anglais.
-php maintenance/run.php MinervaFileCache:prewarm --wiki=en --resume
+php maintenance/run.php MinervaFileCache:prewarm --resume
 ```
+
+Dans une ferme de wikis, ajouter `--wiki=IDENTIFIANT` à chaque commande,
+puis recommencer pour chacun des wikis concernés.
 
 Par défaut, toutes les pages non redirigées, de **tous les espaces de noms**
 enregistrées dans la table `page` sont parcourues par lots de 100.
