@@ -18,7 +18,7 @@
 		"TitleSquidURLs": "MediaWiki\\Extension\\MinervaFileCache\\Hooks::onTitleSquidURLs"
 	},
 	"config": {
-		"MinervaFileCacheEnabled": {"value": false},
+		"MinervaFileCacheEnabled": {"value": true},
 		"MinervaFileCacheDirectory": {"value": false},
 		"MinervaFileCacheTTL": {"value": 300},
 		"MinervaFileCacheEpoch": {"value": "1"},
