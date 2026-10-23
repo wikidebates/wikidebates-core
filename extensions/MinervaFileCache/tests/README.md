@@ -12,11 +12,13 @@ Depuis la racine de l'installation MediaWiki :
 php extensions/MinervaFileCache/tests/unit.php
 php extensions/MinervaFileCache/tests/prewarm-unit.php
 php extensions/MinervaFileCache/tests/prewarm-command-unit.php
+php extensions/MinervaFileCache/tests/prewarm-category-unit.php
 ```
 
 Les tests de préchauffage sont isolés du réseau et de la base de données :
 validation des options, User-Agents, checkpoints, pagination, reprise après
-une réponse HTTP 429, simulation et filtres d'espaces de noms.
+une réponse HTTP 429, simulation, filtres d'espaces de noms, sélection des
+catégories et sous-catégories, cycles, dédoublonnage et pagination des membres.
 
 ## Laboratoire d'intégration indépendant
 
