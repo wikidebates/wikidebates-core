@@ -1,7 +1,7 @@
 <?php
 
 require __DIR__ . '/bootstrap.php';
-$root = getenv('WD_MINERVA_STUDY_ROOT');
+$root = getenv('MINERVA_TEST_ROOT');
 $install = $root . '/mediawiki';
 $operation = $argv[1] ?? 'initialize';
 if ($operation === 'initialize') {
@@ -32,7 +32,7 @@ if (!$user->isRegistered()) {
 	$services->getUserGroupManager()->addUserToGroup($user, 'sysop');
 	$auth = new MediaWiki\Auth\PasswordAuthenticationRequest();
 	$auth->username = $user->getName();
-	$auth->password = $auth->retype = 'Disposable-cache-study-2026!';
+	$auth->password = $auth->retype = 'MINERVA_LAB_TEST_PASSWORD_REPLACE';
 	$auth->action = MediaWiki\Auth\AuthManager::ACTION_CHANGE;
 	$services->getAuthManager()->changeAuthenticationData($auth);
 }

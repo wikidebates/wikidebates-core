@@ -1,12 +1,12 @@
 <?php
 
-$root = getenv('WD_MINERVA_STUDY_ROOT');
-if (!$root || !is_file($root . '/.wikidebates-minerva-lab')) {
+$root = getenv('MINERVA_TEST_ROOT');
+if (!$root || !is_file($root . '/.minerva-file-cache-lab')) {
 	throw new RuntimeException('A marked disposable laboratory is required');
 }
 define('MW_CONFIG_CALLBACK', 'minervaExtensionTestSettings');
 function minervaExtensionTestSettings($settings): void {
-	$root = getenv('WD_MINERVA_STUDY_ROOT');
+	$root = getenv('MINERVA_TEST_ROOT');
 	$overrides = [
 		'Server' => 'http://127.0.0.1:8080', 'ScriptPath' => '', 'ArticlePath' => '/index.php?title=$1',
 		'Sitename' => 'Disposable extension test', 'LanguageCode' => 'en',
@@ -32,13 +32,13 @@ function minervaExtensionTestSettings($settings): void {
 				return $article->getContext()->getRequest()->getHeader('X-Test-Veto') !== 'article';
 			}],
 			'getUserPermissionsErrors' => [static function ($title, $user, $action, &$result) {
-				if ($action === 'read' && is_file(getenv('WD_MINERVA_STUDY_ROOT') . '/state/deny-read')) {
+				if ($action === 'read' && is_file(getenv('MINERVA_TEST_ROOT') . '/state/deny-read')) {
 					$result = 'badaccess-group0';
 					return false;
 				}
 			}],
 			'BeforePageDisplay' => [static function ($out, $skin) {
-				file_put_contents(getenv('WD_MINERVA_STUDY_ROOT') . '/state/render.log', $skin->getSkinName() . "\n", FILE_APPEND);
+				file_put_contents(getenv('MINERVA_TEST_ROOT') . '/state/render.log', $skin->getSkinName() . "\n", FILE_APPEND);
 				$out->getRequest()->response()->header('Referrer-Policy: same-origin');
 				if ($out->getTitle()->getText() === 'Uncacheable') { $out->disableClientCache(); }
 			}]
@@ -52,7 +52,4 @@ function minervaExtensionTestSettings($settings): void {
 	wfLoadSkin('MinervaNeue');
 	wfLoadExtension('MobileFrontend');
 	wfLoadExtension('MinervaFileCache', dirname(__DIR__) . '/extension.json');
-	if (getenv('WD_MINERVA_WITH_WIKIDEBATES')) {
-		wfLoadExtension('Wikidebates', dirname(__DIR__, 3) . '/extension.json');
-	}
 }

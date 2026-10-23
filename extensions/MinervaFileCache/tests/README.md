@@ -1,73 +1,87 @@
 # Tests MinervaFileCache
 
-## Tests du préchauffage
+Ce dossier contient un laboratoire autonome pour MediaWiki **1.43.11**,
+MobileFrontend **2.4.1**, MinervaNeue et Vector, avec une base SQLite
+jetable. Aucune autre extension métier n'est requise.
 
-Sans MediaWiki ni accès réseau, les tests suivants vérifient les User-Agents,
-la validation des options, les checkpoints atomiques, les erreurs HTTP, le
-parcours paginé, la reprise après une limitation HTTP 429, et les filtres
-d'espaces de noms :
+## Tests unitaires
+
+Depuis la racine de l'installation MediaWiki :
 
 ```sh
+php extensions/MinervaFileCache/tests/unit.php
 php extensions/MinervaFileCache/tests/prewarm-unit.php
 php extensions/MinervaFileCache/tests/prewarm-command-unit.php
 ```
 
-Ils ne remplacent pas un essai de bout en bout sur un wiki réel : les
-requêtes HTTP internes peuvent être filtrées par un reverse proxy ou un
-service comme Cloudflare. Tester d'abord
-`php maintenance/run.php MinervaFileCache:prewarm --wiki=fr --limit=20 --resume`
-sur une ferme de préproduction ou à faible charge, puis vérifier les états
-`MISS`/`HIT` et les fichiers `.cache`.
+Les tests de préchauffage sont isolés du réseau et de la base de données :
+validation des options, User-Agents, checkpoints, pagination, reprise après
+une réponse HTTP 429, simulation et filtres d'espaces de noms.
 
+## Laboratoire d'intégration indépendant
 
-Validation du 22 octobre 2026 : **26 assertions unitaires**, **61 assertions
-d'intégration sans Wikidebates**, puis **61 avec Wikidebates**, toutes réussies.
-Les résultats sont conservés dans [le JSON autonome](results-standalone.json) et
-[le JSON avec Wikidebates](results-with-wikidebates.json).
+Prérequis : Python 3, Git, Docker et accès aux dépôts publics Wikimedia
+pour télécharger les révisions épinglées. Le script refuse un répertoire
+existant et ne lit aucun `LocalSettings.php` de production.
 
-Le banc utilise MediaWiki 1.43.11, PHP 8.3.30, le vendor REL1_43, MobileFrontend
-2.4.1, MinervaNeue et Vector. Les révisions épinglées et l'installation des
-sources se trouvent dans `tests/minervaFileCache/prepare.py` à la racine du dépôt
-Wikidebates. Les tests ne lisent aucun `LocalSettings.php` existant et ne se
-connectent à aucun wiki de production.
-
-Depuis un clone complet du dépôt Wikidebates :
+Depuis un dossier contenant une copie de l'extension :
 
 ```sh
-python3 tests/minervaFileCache/prepare.py /tmp/minerva-extension-lab
-mkdir -m 0700 /tmp/minerva-extension-lab/state/mobile-cache
+MINERVA_EXTENSION_DIR="$(cd extensions/MinervaFileCache && pwd)"
+MINERVA_LAB_ROOT=/tmp/minerva-file-cache-lab-new
+
+python3 "$MINERVA_EXTENSION_DIR/tests/prepare.py" "$MINERVA_LAB_ROOT"
 ```
 
-Reprendre la fonction Docker `minerva_study_php` du
-[laboratoire initial](../../../tests/minervaFileCache/README.md), en utilisant
-`/tmp/minerva-extension-lab` comme racine. Puis lancer :
+L'image employée dans le laboratoire initial était
+`docker-registry.wikimedia.org/dev/bookworm-php83-fpm:1.0.0-s1`
+(PHP 8.3.30). Le conteneur est isolé du réseau extérieur, ne publie aucun
+port et monte l'extension en lecture seule. Le serveur interne écoute
+uniquement sur 127.0.0.1.
 
 ```sh
-minerva_study_php /src/extensions/MinervaFileCache/tests/unit.php
-minerva_study_php /src/extensions/MinervaFileCache/tests/manage.php initialize
-minerva_study_php /src/extensions/MinervaFileCache/tests/integration.php
+MINERVA_LAB_IMAGE=docker-registry.wikimedia.org/dev/bookworm-php83-fpm:1.0.0-s1
+
+minerva_lab_php() {
+	docker run --rm --network none \
+		--user "$(id -u):$(id -g)" \
+		--mount "type=bind,src=$MINERVA_EXTENSION_DIR,dst=/extension,readonly" \
+		--mount "type=bind,src=$MINERVA_LAB_ROOT,dst=/lab" \
+		-e MINERVA_TEST_ROOT=/lab \
+		--entrypoint php "$MINERVA_LAB_IMAGE" -d xdebug.mode=off "$@"
+}
+
+minerva_lab_php /extension/tests/manage.php initialize
+minerva_lab_php /extension/tests/integration.php
 ```
 
-Le script crée un serveur uniquement sur le loopback du conteneur sans réseau.
-Le résultat JSON est enregistré dans `state/extension-tests.json`. Utiliser une
-base neuve pour chaque série : le scénario modifie, renomme et supprime ses pages.
-Les identifiants et mots de passe du banc sont fictifs.
+Le banc crée un wiki temporaire et un compte de test fictif, puis modifie,
+renomme et supprime exclusivement ses pages de test. Il refuse la
+réinitialisation de la même base. Le résultat de chaque exécution est
+enregistré dans `$MINERVA_LAB_ROOT/state/extension-tests.json`.
+Pour refaire les tests, créer **un nouveau laboratoire** ; ne jamais
+utiliser un wiki de production.
 
-L'intégration teste d'abord l'extension sans Wikidebates. Pour vérifier également
-la cohabitation, refaire la série dans un laboratoire neuf en ajoutant
-`-e WD_MINERVA_WITH_WIKIDEBATES=1` à `docker run`.
+L'intégration contrôle les caches desktop et mobile, l'identité du HTML,
+les en-têtes, les pages et espaces de noms, les veto des autres extensions,
+les sessions authentifiées, les réponses compressées, les permissions,
+le TTL, l'époque de déploiement et les invalidations après édition,
+purge, modification d'un modèle, suppression et renommage.
 
-La configuration du banc active le gestionnaire de compression MediaWiki
-(`output_buffering=0`, `zlib.output_compression=0`, compression MediaWiki active).
-Il contrôle à la fois les restitutions `identity` et gzip, sans réglage spécial
-de compression nécessaire à l'extension.
+Ces scénarios ne simulent pas la charge réelle, un stockage partagé sur
+plusieurs serveurs, les modèles particuliers d'un site ou son proxy HTTP.
 
-Les tests couvrent les caches desktop/mobile, l'intégrité du HTML et des
-en-têtes, les namespaces, les variantes, les vetos des extensions, les sessions
-réellement connectées, l'autorisation de lecture avant un hit, l'expiration,
-l'époque de déploiement et les invalidations après édition, purge, modification
-de modèle, suppression et renommage. Les tests du stockage contrôlent aussi un
-remplissage concurrent et l'interdiction de publier après invalidation.
+## Essai du préchauffage sur un wiki réel
 
-Ces contrôles ne reproduisent pas les modèles de production, SMW, une grappe de
-serveurs PHP, un système de fichiers réseau ou une charge concurrente réelle.
+Les tests unitaires ne prouvent pas la connectivité HTTP de production :
+un reverse proxy peut refuser les requêtes internes. Sur un environnement
+de préproduction, lancer d'abord une simulation, puis un petit lot :
+
+```sh
+php maintenance/run.php MinervaFileCache:prewarm --dry-run --limit=20
+php maintenance/run.php MinervaFileCache:prewarm --limit=20 --resume
+```
+
+Sur une ferme, ajouter `--wiki=IDENTIFIANT` selon sa configuration.
+Vérifier les états `MISS`/`HIT` et les fichiers `.cache` créés avant
+un préchauffage de masse.

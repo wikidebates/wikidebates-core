@@ -31,7 +31,7 @@ function request(array $query, bool $mobile = true, array $extraHeaders = [], ?a
 	return ['status' => $status, 'headers' => $headers, 'body' => $html, 'bodyBytes' => strlen($body), 'totalMs' => $elapsed];
 }
 function countLines(string $name): int {
-	$p = getenv('WD_MINERVA_STUDY_ROOT') . '/state/' . $name;
+	$p = getenv('MINERVA_TEST_ROOT') . '/state/' . $name;
 	return is_file($p) ? count(file($p)) : 0;
 }
 function cacheState(array $response): ?string { return $response['headers']['x-minerva-file-cache'][0] ?? null; }
