@@ -37,8 +37,8 @@ namespace {
 		public function getOption(string $key, $default = null) { return $this->options[$key] ?? $default; }
 		public function hasOption(string $key): bool { return isset($this->options[$key]); }
 		public function getServiceContainer(): TestPrewarmServices { return $GLOBALS['prewarmServices']; }
-		public function output(string $text): void {}
-		public function error(string $text): void {}
+		public function output(string $text): void { $GLOBALS['prewarmOutput'][] = $text; }
+		public function error(string $text): void { $GLOBALS['prewarmErrors'][] = $text; }
 		public function fatalError(string $text): void { throw new RuntimeException($text); }
 	}
 
@@ -76,8 +76,14 @@ namespace {
 		public function execute() {
 			$GLOBALS['prewarmRequests'][] = [$this->url, $this->options, $this->headers];
 			if (($GLOBALS['prewarmFailUrl'] ?? null) === $this->url) { $this->status = 429; }
-			return new class {
-				public function isOK(): bool { return true; }
+			return new class($this->status) {
+				public function __construct(private int $status) {}
+				public function isOK(): bool { return $this->status >= 200 && $this->status < 300; }
+				public function getMessages(string $type): array {
+					return $this->status === 200 ? [] : [new class {
+						public function getKey(): string { return 'http-request-failed'; }
+					}];
+				}
 			};
 		}
 		public function getStatus(): int { return $this->status; }
@@ -131,6 +137,8 @@ namespace {
 	define('RUN_MAINTENANCE_IF_MAIN', $root . '/noop.php');
 	$GLOBALS['prewarmServices'] = new TestPrewarmServices($root);
 	$GLOBALS['prewarmRequests'] = [];
+	$GLOBALS['prewarmOutput'] = [];
+	$GLOBALS['prewarmErrors'] = [];
 	$GLOBALS['assertions'] = 0;
 	require dirname(__DIR__) . '/maintenance/prewarm.php';
 	try {
@@ -155,6 +163,14 @@ namespace {
 		$runner = new PrewarmMinervaFileCache();
 		$runner->setOptions(['resume'=>true,'reset'=>true,'delay-ms'=>'250']);
 		checkPrewarmCli($runner->execute() === false, 'Stops after HTTP 429');
+		checkPrewarmCli(str_contains(implode('', $GLOBALS['prewarmOutput']), 'state=HTTP_429'),
+			'Keeps the real HTTP 429 status instead of masking it');
+		checkPrewarmCli(str_contains(implode('', $GLOBALS['prewarmOutput']), 'URL=https://fr.example.test/wiki/Two'),
+			'Stop report identifies the failed page URL');
+		checkPrewarmCli(str_contains(implode('', $GLOBALS['prewarmErrors']), 'status=429'),
+			'Error report identifies HTTP response status');
+		checkPrewarmCli(str_contains(implode('', $GLOBALS['prewarmErrors']), 'http-request-failed'),
+			'Error report preserves MediaWiki HTTP error code');
 		checkPrewarmCli(Prewarm::readCheckpoint($checkpoint) === 1, 'Failure preserves last completed ID');
 		unset($GLOBALS['prewarmFailUrl']);
 		$runner = new PrewarmMinervaFileCache();
