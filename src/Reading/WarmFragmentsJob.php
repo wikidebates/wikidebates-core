@@ -22,7 +22,7 @@ class WarmFragmentsJob extends \Job {
 		try { FragmentService::store(); }
 		catch (\Throwable $e) { FragmentService::log($e); return true; }
 		$context = new RequestContext();
-		$context->setRequest(new class(['action' => 'parse']) extends FauxRequest {
+		$context->setRequest(new class(['action' => 'wikidebatesreading']) extends FauxRequest {
 			public function getProtocol() {
 				return parse_url(MediaWikiServices::getInstance()->getMainConfig()->get('Server'), PHP_URL_SCHEME) ?: 'http';
 			}
@@ -32,11 +32,7 @@ class WarmFragmentsJob extends \Job {
 		$context->setTitle($this->title);
 		ReadingHooks::$warming = true;
 		try {
-			foreach (['vector', 'minerva'] as $skin) {
-				if (array_key_exists($skin, $services->getSkinFactory()->getInstalledSkins())) {
-					FragmentService::read($context, $this->title->getPrefixedText(), $skin);
-				}
-			}
+			FragmentService::read($context, $this->title->getPrefixedText(), 'vector');
 		} catch (\PermissionsError $e) { return true; }
 		catch (\Throwable $e) { FragmentService::log($e); $this->setLastError(get_class($e)); return false; }
 		finally { ReadingHooks::$warming = false; }

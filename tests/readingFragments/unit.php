@@ -50,6 +50,23 @@ try {
 	$snapshot = $alias->read('A', 'canonical-path', $identity);
 	check($alias->publish('A', 'canonical-path', $identity, $snapshot['generation'], 'CANONICAL', [], time() + 300),
 		'Equivalent noncanonical directory paths still publish atomically');
+	$body = '<p>Résumé</p><blockquote>Citation</blockquote><sup class="reference"><a href="#cite_note-1">1</a></sup>' .
+		'<ol class="references"><li id="cite_note-1">Référence</li></ol>' .
+		'<h3>Justifications</h3><a class="wk-reading-link" data-page="Argument">Justification</a><h3>Objections</h3><p>Objection</p>';
+	$vector = '<h2><span id="Summary">Summary</span></h2>' . $body . '<h2><span id="Parent_debates">Parents</span></h2>';
+	$mobile = '<section id="mf-section-0"></section><h2 class="section-heading" onclick="mfTempOpenSection(1)">' .
+		'<span class="indicator mf-icon"></span><span id="Summary">Summary</span></h2><section id="mf-section-1" class="collapsible-block">' .
+		$body . '</section><h2><span id="Parent_debates">Parents</span></h2>';
+	check(FragmentExtractor::canonical($vector) === FragmentExtractor::canonical($mobile), 'Skin scaffolding normalizes without losing any reader content');
+	check(str_contains(FragmentExtractor::canonical($mobile), 'data-page="Argument"'), 'Reader interactions and attributes survive');
+	check(!str_contains(FragmentExtractor::canonical($mobile), 'collapsible-block'), 'No mobile collapsible block requires CSS masking');
+	check(FragmentExtractor::canonical(str_replace('<p>Résumé', '<p nonce="x">Résumé', $vector)) === '', 'Nonce-bearing full documents fail closed');
+	$long = new Store($dir, 'long-wiki', 99999999, 4096);
+	$snapshot = $long->read('A', 'common', $identity);
+	$long->publish('A', 'common', $identity, $snapshot['generation'], 'LONG', [], time() + 99999999);
+	$entry = $long->read('A', 'common', $identity)['entry'];
+	check($entry['expires'] <= $entry['created'] + 2592000, 'Retention never exceeds thirty days');
+
 	echo json_encode(['assertions' => $assertions, 'result' => 'PASS']) . "\n";
 } finally {
 	$iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST);

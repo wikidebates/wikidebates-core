@@ -14,7 +14,7 @@ class FragmentStore {
 			throw new \RuntimeException('Cache directory or limits are not usable');
 		}
 		$this->root = rtrim($directory, '/') . '/' . hash('sha256', $wiki);
-		$this->ttl = $ttl;
+		$this->ttl = min($ttl, 2592000);
 		$this->maxBytes = $maxBytes;
 	}
 
@@ -126,7 +126,7 @@ class FragmentStore {
 			try {
 				foreach (glob($dir . '/*.cache') as $path) {
 					$entry = $this->decode($path);
-					if (!$entry || ($entry['expires'] ?? 0) <= time()) {
+					if (!$entry || min($entry['expires'] ?? 0, ($entry['created'] ?? 0) + $this->ttl) <= time()) {
 						$count += (int)@unlink($path);
 					}
 				}

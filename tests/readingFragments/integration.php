@@ -30,14 +30,50 @@ try {
 		$full = json_decode($parse['body'], true)['parse']['text'];
 		ensure(str_contains($full, 'Une référence réelle.'), 'Cite renders the actual reference: ' . $skin);
 		$cold = fragment('Cache study argument', $skin, $mobile);
-		file_put_contents($state . '/expected-' . $skin . '.html', FragmentExtractor::extract($full));
+		file_put_contents($state . '/expected-' . $skin . '.html', FragmentExtractor::canonical($full));
 		file_put_contents($state . '/actual-' . $skin . '.html', $cold['html']);
-		ensure($cold['html'] === FragmentExtractor::extract($full), 'Same HTML bytes as original API extraction: ' . $skin);
+		ensure($cold['html'] === FragmentExtractor::canonical($full), 'Same HTML bytes as original API extraction: ' . $skin);
 		$before = countLines('pipeline.log');
 		$hit = fragment('Cache study argument', $skin, $mobile);
 		ensure($hit['source'] === 'fragment-cache', 'Prepared fragment is reused: ' . $skin . ' source=' . $hit['source']);
 		ensure($hit['html'] === $cold['html'] && $before === countLines('pipeline.log'), 'A hit does not run the output pipeline: ' . $skin);
 	}
+	$before = countLines('pipeline.log');
+	operation('daily');
+	ensure($before === countLines('pipeline.log'), 'Daily preparation skips valid shared fragments');
+	// Prime real full-page files, then remove just the derived fragment.
+	operation('clear-fragments');
+	operation('clear-vector');
+	$desktop = request(['title' => 'Cache_study_argument'], false);
+	ensure($desktop['status'] === 200, 'A real Vector view creates its native file');
+	ensure(fragment()['source'] === 'fragment-cache', 'Full Vector rendering also prepares the excerpt without a second render');
+	operation('clear-fragments');
+	$before = countLines('pipeline.log');
+	$vector = fragment('Cache study argument', 'minerva', true);
+	ensure($vector['source'] === 'vector-file', 'Mobile reader first reuses the native Vector file');
+	ensure($before === countLines('pipeline.log'), 'Vector file reuse runs no output pipeline');
+	operation('clear-fragments');
+	$before = countLines('pipeline.log');
+	operation('daily');
+	ensure($before === countLines('pipeline.log') && fragment()['source'] === 'fragment-cache', 'Daily preparation also reuses a valid Vector source without rendering');
+	$mobile = request(['title' => 'Cache_study_argument'], true);
+	ensure(cacheState($mobile) === 'MISS', 'A real mobile view creates a Minerva file');
+	operation('clear-vector');
+	operation('clear-fragments');
+	$before = countLines('pipeline.log');
+	foreach (['file', 'article'] as $veto) {
+		ensure(fragment('Cache study argument', 'vector', false, ['X-Test-Veto: ' . $veto])['source'] === 'parser', 'Full-file source respects extension veto: ' . $veto);
+		operation('clear-fragments');
+	}
+	$before = countLines('pipeline.log');
+	$minerva = fragment('Cache study argument', 'vector', false);
+	ensure($minerva['source'] === 'minerva-file', 'Desktop reader can reuse a Minerva file');
+	ensure($minerva['html'] === $vector['html'], 'Both full-page sources preserve the identical fragment including Cite');
+	ensure($before === countLines('pipeline.log'), 'Minerva file reuse runs no output pipeline');
+	operation('clear-fragments');
+	$blocked = fragment('Cache study argument', 'minerva', true, ['Cookie: custom=1']);
+	ensure($blocked['source'] === 'parser', 'Cookies bypass full files as well as fragments');
+	operation('clear-vector');
 	ensure(fragment('Cache study argument', 'vector', false, [], 'fr')['source'] === 'parser', 'Language variants do not share prepared HTML');
 	ensure(fragment('Cache study argument', 'vector', false, ['Cookie: preference=custom'])['source'] === 'parser', 'Cookie-bearing requests bypass shared fragments');
 	$variant = request(['api' => 1, 'action' => 'wikidebatesreading', 'page' => 'Cache study argument',
@@ -57,9 +93,14 @@ try {
 	ensure(!str_contains(fragment()['html'], 'EDITOR_ONLY_VERSION'), 'Personal HTML never enters the anonymous file');
 	ensure(fragment('Uncacheable')['source'] === 'parser' && fragment('Uncacheable')['source'] === 'parser',
 		'Parser output with expiry zero is never retained');
+	request(['title' => 'Short_lived'], false);
+	request(['title' => 'Short_lived'], true);
+	usleep(2100000);
+	ensure(fragment('Short lived')['source'] === 'parser', 'Dynamic parser lifetime prevents reuse of either full-file source');
+
 	touch($state . '/short-ttl');
 	usleep(1200000);
-	ensure(fragment()['source'] === 'parser', 'Fragment TTL expires without extending source lifetime');
+	ensure(fragment()['source'] !== 'fragment-cache', 'Fragment TTL expires without extending source lifetime');
 	unlink($state . '/short-ttl');
 	touch($state . '/deny-read');
 	$denied = request(['api' => 1, 'action' => 'wikidebatesreading', 'page' => 'Cache study argument', 'format' => 'json']);
@@ -70,16 +111,16 @@ try {
 	$changed = fragment();
 	ensure($changed['source'] === 'parser' && str_contains($changed['html'], 'ARGUMENT_VERSION_TWO'), 'Edit invalidates the prepared fragment immediately');
 	operation('purge');
-	operation('jobs');
+	operation('daily');
 	$prewarmed = fragment();
-	ensure($prewarmed['source'] === 'fragment-cache' && str_contains($prewarmed['html'], 'ARGUMENT_VERSION_TWO'), 'Asynchronous job prepares the new anonymous fragment');
+	ensure($prewarmed['source'] === 'fragment-cache' && str_contains($prewarmed['html'], 'ARGUMENT_VERSION_TWO'), 'Explicit preparation prepares the new anonymous fragment');
 	usleep(1200000);
 	operation('template');
 	operation('jobs');
 	$r = fragment();
 	ensure(str_contains($r['html'], 'DEPENDENCY_VERSION_TWO') && !str_contains($r['html'], 'DEPENDENCY_VERSION_ONE'), 'Dependency jobs invalidate and rebuild after a template edit');
 	touch($state . '/epoch-changed');
-	ensure(fragment()['source'] === 'parser', 'Deployment epoch invalidates an existing file');
+	ensure(fragment()['source'] !== 'fragment-cache', 'Deployment epoch invalidates an existing file');
 	rename($state . '/reading-cache', $state . '/reading-cache-offline');
 	try { ensure(str_contains(fragment()['html'], 'ARGUMENT_VERSION_TWO'), 'Unavailable file cache falls back to the parser cache'); }
 	finally { rename($state . '/reading-cache-offline', $state . '/reading-cache'); }

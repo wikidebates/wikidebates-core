@@ -19,7 +19,7 @@
 	"config": {
 		"MinervaFileCacheEnabled": {"value": true},
 		"MinervaFileCacheDirectory": {"value": false},
-		"MinervaFileCacheTTL": {"value": 300},
+		"MinervaFileCacheTTL": {"value": 2592000},
 		"MinervaFileCacheEpoch": {"value": "1"},
 		"MinervaFileCacheDebugHeaders": {"value": true},
 		"MinervaFileCacheMaxBytes": {"value": 4194304}

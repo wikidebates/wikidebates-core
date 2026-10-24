@@ -101,6 +101,13 @@ trait CacheView {
 			$request->getHeader('Host'), $request->getHeader('User-Agent'),
 			$request->getHeader('Accept-Language'), $request->getHeader('X-Subdomain')]);
 		$store = Hooks::store();
+		$expires = 0;
+		$expiryScope = MediaWikiServices::getInstance()->getHookContainer()->scopedRegister('ParserOutputPostCacheTransform',
+			static function ($output) use (&$expires, $identity) {
+				if ($output->getCacheRevisionId() === $identity['revision'] && $output->isCacheable()) {
+					$expires = (int)wfTimestamp(TS_UNIX, $output->getCacheTime()) + $output->getCacheExpiry();
+				}
+			});
 		$page = $this->getTitle()->getPrefixedDBkey();
 		$snapshot = $store->read($page, $variant, $identity);
 		if ($snapshot['entry']) {
@@ -121,18 +128,18 @@ trait CacheView {
 		$fill = $store->startFill($page);
 		if (!$fill) { return $this->bypass('busy'); }
 		$this->diagnostic('MISS');
-		ob_start(function ($html, $phase) use ($store, $page, $variant, $identity, $snapshot, $fill, $context) {
+		ob_start(function ($html, $phase) use ($store, $page, $variant, $identity, $snapshot, $fill, $context, &$expires, $expiryScope) {
 			try {
 				if (!($phase & PHP_OUTPUT_HANDLER_FINAL) || ($phase & PHP_OUTPUT_HANDLER_CLEAN)) {
 					return $html;
 				}
 				$headers = ResponsePolicy::headersForStorage($html, headers_list(), $reason);
 				if (headers_sent() || http_response_code() !== 200 || $headers === null ||
-					$context->getOutput()->getRedirect() !== '' || !$context->getOutput()->couldBePublicCached()) {
+					$expires <= time() || $context->getOutput()->getRedirect() !== '' || !$context->getOutput()->couldBePublicCached()) {
 					$this->diagnostic('BYPASS', $reason ?? 'response');
 					return $html;
 				}
-				if (!$store->publish($page, $variant, $identity, $snapshot['generation'], $html, $headers)) {
+				if (!$store->publish($page, $variant, $identity, $snapshot['generation'], $html, $headers, $expires)) {
 					$this->diagnostic('BYPASS', 'not-stored');
 				} else {
 					$this->privateResponse();

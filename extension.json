@@ -19,12 +19,15 @@
 		"MediaWiki\\Extension\\DebatePHP\\": "debatephp/src/"
 	},
 	"Hooks": {
-		"BeforePageDisplay": "MediaWiki\\Extension\\Wikidebates\\Hooks::onBeforePageDisplay",
+		"BeforePageDisplay": [
+			"MediaWiki\\Extension\\Wikidebates\\Hooks::onBeforePageDisplay",
+			"MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onBeforePageDisplay"
+		],
 		"ParserFirstCallInit": "MediaWiki\\Extension\\Wikidebates\\Hooks::onParserFirstCallInit",
 		"PageSaveComplete": "MediaWiki\\Extension\\Wikidebates\\Hooks::onPageSaveComplete",
 		"AuthChangeFormFields": "MediaWiki\\Extension\\Wikidebates\\Hooks::onAuthChangeFormFields",
 		"TitleSquidURLs": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onTitleSquidURLs",
-		"LinksUpdateComplete": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onLinksUpdateComplete"
+		"AfterFinalPageOutput": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onAfterFinalPageOutput"
 	},
 	"ResourceFileModulePaths": {
 		"localBasePath": "modules",
@@ -592,10 +595,10 @@
 			"value": false
 		},
 		"WikidebatesReadingCacheTTL": {
-			"value": 300
+			"value": 2592000
 		},
 		"WikidebatesReadingCacheEpoch": {
-			"value": "1"
+			"value": "2"
 		},
 		"WikidebatesReadingPrewarm": {
 			"value": true

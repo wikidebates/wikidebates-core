@@ -29,13 +29,7 @@ class FragmentService {
 			(int)$config->get('WikidebatesReadingCacheTTL'), 4194304);
 	}
 
-	public static function mobileMode(): bool {
-		$services = MediaWikiServices::getInstance();
-		return $services->hasService('MobileFrontend.Context') &&
-			$services->getService('MobileFrontend.Context')->shouldDisplayMobileView();
-	}
-
-	public static function read(IContextSource $context, string $pageName, string $skin): array {
+	public static function read(IContextSource $context, string $pageName, string $skin, ?array $prepared = null): array {
 		$services = MediaWikiServices::getInstance();
 		$title = Title::newFromText($pageName);
 		if (!$title || !$title->canExist()) { throw new \InvalidArgumentException('Invalid page title'); }
@@ -63,31 +57,45 @@ class FragmentService {
 		$request = $context->getRequest();
 		$eligible = $config->get('WikidebatesReadingFragments') && $request->getMethod() === 'GET' && !$context->getUser()->isRegistered() &&
 			!$request->getSession()->isPersistent() && !$request->getHeader('Cookie') &&
-			!$request->getHeader('Authorization') && empty($_SERVER['REMOTE_USER']) &&
+			!$request->getHeader('Authorization') && !$request->getHeader('Range') && !$request->getHeader('X-Requested-With') && empty($_SERVER['REMOTE_USER']) &&
 			empty($_SERVER['PHP_AUTH_USER']) &&
 			!$services->getTalkPageNotificationManager()->userHasNewMessages($context->getUser());
 		$eligible = $eligible && !array_diff(array_keys($request->getValues()), ['action', 'page', 'useskin',
 			'uselang', 'format', 'formatversion', 'maxlag', 'requestid', 'errorformat', 'errorlang', 'errorsuselocal', 'origin']) &&
 			!preg_match('/no-cache|no-store/i', (string)$request->getHeader('Cache-Control'));
 		$identity = ['pageid' => $page->getId(), 'revision' => $page->getLatest(), 'touched' => $page->getTouched(),
-			'epoch' => $config->get('WikidebatesReadingCacheEpoch'), 'coreEpoch' => $config->get('CacheEpoch'), 'format' => 2];
+			'epoch' => $config->get('WikidebatesReadingCacheEpoch'), 'coreEpoch' => $config->get('CacheEpoch'), 'format' => 3,
+			'sourceEpoch' => class_exists(\MediaWiki\Extension\MinervaFileCache\Hooks::class) ? $config->get('MinervaFileCacheEpoch') : null];
 		$server = parse_url($config->get('Server'));
 		$host = $request->getHeader('Host') ?: (($server['host'] ?? '') . (isset($server['port']) ? ':' . $server['port'] : ''));
-		$variant = json_encode([$skin, $context->getLanguage()->getCode(), self::mobileMode(),
+		$variant = json_encode([$context->getLanguage()->getCode(),
 			$config->get('Server'), $request->getProtocol(), strtolower($host), $request->getHeader('X-Subdomain') ?: '']);
 		$store = null; $snapshot = null; $fill = false;
 		if ($eligible) {
 			try {
 				$store = self::store();
 				$snapshot = $store->read($title->getPrefixedDBkey(), $variant, $identity);
+				if ($prepared && ($prepared['_generation'] !== $snapshot['generation'] ||
+					$prepared['revid'] !== (int)$identity['revision'] || $prepared['_touched'] !== $identity['touched'])) { return $prepared; }
 				if ($snapshot['entry']) {
 					return $snapshot['entry']['metadata'] + ['html' => $snapshot['entry']['body'], 'source' => 'fragment-cache'];
 				}
 				$fill = $store->startFill($title->getPrefixedDBkey());
+				// Another request may have finished between the first read and this lock.
+				if ($fill) {
+					$snapshot = $store->read($title->getPrefixedDBkey(), $variant, $identity);
+					if ($prepared && $prepared['_generation'] !== $snapshot['generation']) { fclose($fill); return $prepared; }
+					if ($snapshot['entry']) {
+						fclose($fill);
+						return $snapshot['entry']['metadata'] + ['html' => $snapshot['entry']['body'], 'source' => 'fragment-cache'];
+					}
+				} elseif (ReadingHooks::$warming) { return ['source' => 'busy']; }
 			} catch (\Throwable $e) { self::log($e); }
 		}
 		try {
-			$result = self::render($context, $title->getPrefixedText(), $skin);
+			$result = ($eligible ? FileSources::read($context, $title, $page) : null) ?? $prepared;
+			if ($result) { unset($result['_generation'], $result['_touched']); }
+			$result ??= self::render($context, $title->getPrefixedText(), $eligible ? 'vector' : $skin);
 			if ($fill && $result['_expires'] > time() && $result['html'] !== '') {
 				try {
 					$store->publish($title->getPrefixedDBkey(), $variant, $identity, $snapshot['generation'],
@@ -127,7 +135,7 @@ class FragmentService {
 		} finally { $mainContext->setRequest($originalRequest); $scope = null; $outputScope = null; }
 		$html = $data['text'] ?? '';
 		if (is_array($html)) { $html = $html['*'] ?? ''; }
-		$fragment = FragmentExtractor::extract($html);
+		$fragment = $context->getUser()->isRegistered() ? FragmentExtractor::extract($html) : FragmentExtractor::canonical($html);
 		if ($outputPage) {
 			$outputPage->considerCacheSettingsFinal();
 			if (!$outputPage->couldBePublicCached()) { $expires = 0; }
@@ -135,6 +143,21 @@ class FragmentService {
 		if (preg_match('/<[^>]+\bnonce\s*=/i', $fragment)) { $expires = 0; }
 		return ['html' => $fragment, 'title' => $data['title'] ?? $page, 'pageid' => (int)($data['pageid'] ?? 0),
 			'revid' => (int)($data['revid'] ?? 0), 'source' => 'parser', '_expires' => $expires];
+	}
+
+	/** Called only after the complete anonymous response passed public-cache checks. */
+	public static function capture($context, string $html, int $expires, int $revision, string $touched, string $generation): void {
+		if ($expires <= time() || $context->getUser()->isRegistered()) { return; }
+		$title = $context->getTitle();
+		$fragment = FragmentExtractor::canonical($html);
+		if (!$title || $fragment === '' || preg_match('/<[^>]+\\bnonce\\s*=/i', $html)) { return; }
+		$derived = new DerivativeContext($context);
+		$derived->setRequest(new DerivativeRequest($context->getRequest(), [
+			'action' => 'wikidebatesreading', 'page' => $title->getPrefixedText()]));
+		self::read($derived, $title->getPrefixedText(), 'vector', [
+			'html' => $fragment, 'title' => $title->getPrefixedText(), 'pageid' => $title->getArticleID(),
+			'revid' => $revision, 'source' => 'page-output', '_expires' => $expires,
+			'_touched' => $touched, '_generation' => $generation]);
 	}
 
 	public static function invalidate($title): void {

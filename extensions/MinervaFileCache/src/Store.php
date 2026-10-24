@@ -14,7 +14,7 @@ class Store {
 			throw new \RuntimeException('Cache directory or limits are not usable');
 		}
 		$this->root = rtrim($directory, '/') . '/' . hash('sha256', $wiki);
-		$this->ttl = $ttl;
+		$this->ttl = min($ttl, 2592000);
 		$this->maxBytes = $maxBytes;
 	}
 
@@ -61,6 +61,29 @@ class Store {
 		} finally { fclose($lock); }
 	}
 
+	/** Reuse only validated same-origin, content-language anonymous view entries. */
+	public function readForFragment(string $page, array $identity, $context): ?array {
+		$dir = $this->pageDirectory($page);
+		$server = parse_url($context->getConfig()->get('Server'));
+		$host = $context->getRequest()->getHeader('Host') ?: (($server['host'] ?? '') .
+			(isset($server['port']) ? ':' . $server['port'] : ''));
+		foreach (glob($dir . '/*.cache') as $path) {
+			// Publication is atomic; read() below repeats identity, generation and TTL checks.
+			$entry = $this->decode($path);
+			$variant = $entry['variant'] ?? null;
+			$v = is_string($variant) ? json_decode($variant, true) : null;
+			if (!is_array($v) || count($v) !== 8 ||
+				$v[1] !== $context->getRequest()->getProtocol() ||
+				$v[2] !== $context->getConfig()->get('Server') ||
+				$v[3] !== $context->getLanguage()->getCode() ||
+				strtolower((string)$v[4]) !== strtolower($host) ||
+				(string)$v[7] !== (string)$context->getRequest()->getHeader('X-Subdomain')) { continue; }
+			$valid = $this->read($page, $variant, $identity)['entry'];
+			if ($valid) { $valid['expires'] = min($valid['expires'], $valid['created'] + $this->ttl); return $valid; }
+		}
+		return null;
+	}
+
 	private function decode(string $path): ?array {
 		clearstatcache(true, $path);
 		if (!is_file($path) || filesize($path) > $this->maxBytes * 2) { return null; }
@@ -76,7 +99,7 @@ class Store {
 	}
 
 	public function publish(string $page, string $variant, array $identity, string $generation,
-		string $body, array $headers): bool {
+		string $body, array $headers, int $expires = PHP_INT_MAX): bool {
 		if (strlen($body) > $this->maxBytes) { return false; }
 		$dir = $this->pageDirectory($page);
 		$lock = $this->lock($dir, 'page.lock', LOCK_EX);
@@ -85,7 +108,7 @@ class Store {
 		try {
 			if (@file_get_contents($dir . '/generation') !== $generation) { return false; }
 			$entry = ['generation' => $generation, 'identity' => $identity, 'created' => time(),
-				'expires' => time() + $this->ttl, 'body' => $body, 'headers' => $headers];
+				'expires' => min(time() + $this->ttl, $expires), 'variant' => $variant, 'body' => $body, 'headers' => $headers];
 			$json = json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 			if ($json === false || strlen($json) > $this->maxBytes * 2) { return false; }
 			$payload = gzencode($json, 3);
@@ -121,7 +144,7 @@ class Store {
 			try {
 				foreach (glob($dir . '/*.cache') as $path) {
 					$entry = $this->decode($path);
-					if (!$entry || ($entry['expires'] ?? 0) <= time()) {
+					if (!$entry || min($entry['expires'] ?? 0, ($entry['created'] ?? 0) + $this->ttl) <= time()) {
 						$count += (int)@unlink($path);
 					}
 				}

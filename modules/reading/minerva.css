@@ -20,14 +20,10 @@
 }
 
 .wk-reading-active .pre-content.heading-holder,
-.wk-reading-active .header-container,
-.wk-reading-active .indicator {
+.wk-reading-active .header-container {
 	display: none !important;
 }
 
-.wk-reading-active .collapsible-block {
-	display: block !important;
-}
 
 #wk-reading-mode {
 	position: fixed;
