@@ -1,176 +1,128 @@
 # Extraits préparés pour le mode lecture
 
-Cette fonction fait partie de **Wikidebates**, sans nouvelle extension à charger.
-Elle conserve directement le HTML compris entre les titres `Summary` et
-`Parent_debates`, puis le renvoie au mode lecture, aux préchargements et aux
-aperçus mobiles. Citations, références, justifications et objections restent
-dans l'extrait. Le cache du navigateur et ses limites ne sont pas modifiés.
+L’API `action=wikidebatesreading` reste le point d’accès du lecteur, de ses
+préchargements et de ses aperçus. Pour une demande anonyme éligible, elle cherche,
+dans cet ordre : l’extrait valide, le fichier natif Vector valide, le fichier
+MinervaFileCache valide, puis le rendu MediaWiki par ApiParse et son parser cache.
+Elle conserve l’extrait obtenu. Un fichier absent ne déclenche jamais une requête
+HTTP destinée à construire un autre fichier complet.
 
-## Fonctionnement
+## Installation et configuration
 
-Le client utilise `action=wikidebatesreading` pour les lectures ordinaires :
-
-```text
-Vérification du titre, des redirections, des droits et de la révision
-  → extrait fichier valide : réponse immédiate avec le HTML préparé
-  → sinon : rendu par ApiParse et son parser cache, extraction puis conservation
-```
-
-Un hit ne relance ni l'extraction, ni le pipeline de rendu. Il effectue encore
-les contrôles d'accès et de fraîcheur, la lecture du fichier et le transfert.
-Le navigateur doit toujours insérer le HTML et initialiser ses interactions.
-
-La construction réutilise le **vrai pipeline `ApiParse` de MediaWiki 1.43**,
-avec `usearticle=1`, `redirects=1`, l'habillage demandé et la langue du visiteur.
-Elle ne rend pas une section de wikitexte isolée et ne contourne pas le parser
-cache. L'extracteur PHP conserve les mêmes octets que l'extracteur JavaScript,
-sans réécriture ou sérialisation du DOM.
-
-Les fichiers HTML complets de Vector et de Minerva ne sont pas lus comme des
-sources interchangeables : ils incluent un habillage et des transformations
-qui ne garantissent pas le même extrait. Le cache d'extraits est indépendant de
-`MinervaFileCache` et fonctionne également quand cette extension est absente.
-C'est l'extrait déjà prêt qui constitue ici le fichier réutilisé.
-
-## Activation et stockage
-
-La fonction est **active par défaut après mise à jour de Wikidebates**. Aucun
-`update.php` n'est nécessaire. Le code JavaScript fonctionne aussi avec une page
-HTML mise en cache avant cette mise à jour ; il ne nécessite pas une purge
-globale du parser cache pour découvrir la nouvelle fonction. En cas de serveur
-API encore ancien pendant un déploiement progressif, il revient à `action=parse`.
-
-Par défaut, le stockage est un répertoire privé, créé automatiquement sous
-`sys_get_temp_dir()`, séparé par installation et wiki. Pour un emplacement
-persistant choisi explicitement :
-
-```sh
-sudo install -d -m 0700 -o www-data -g www-data /var/cache/mediawiki/wikidebates-reading
-```
-
-Adapter l'utilisateur PHP puis ajouter à `LocalSettings.php` :
+Mettre à jour Wikidebates ; aucun `update.php` n’est nécessaire. Le cache d’extraits
+est actif par défaut et ne nécessite pas MinervaFileCache. Pour bénéficier de la
+seconde source, installer aussi [MinervaFileCache](../extensions/MinervaFileCache/README.md).
+Activer le cache natif et choisir Vector comme habillage par défaut :
 
 ```php
-$wgWikidebatesReadingCacheDirectory = '/var/cache/mediawiki/wikidebates-reading';
+$wgUseFileCache = true;
+$wgDefaultSkin = 'vector'; // ou vector-2022
+$wgFileCacheDirectory = '/var/cache/mediawiki/vector';
+$wgWikidebatesReadingCacheDirectory = '/var/cache/mediawiki/reading';
+$wgWikidebatesReadingCacheTTL = 2592000;
+$wgMinervaFileCacheTTL = 2592000; // si l’extension autonome est chargée
+$wgParserCacheExpireTime = 2592000;
 ```
 
-Le répertoire configuré doit déjà exister et être accessible en écriture par
-PHP. Sur plusieurs hôtes PHP, préférer un stockage partagé compatible avec les
-verrous `flock` et le renommage atomique pour que toutes les invalidations et
-préparations utilisent le même ensemble de fichiers.
+Créer les répertoires sous l’utilisateur PHP. Le répertoire d’extraits doit être
+privé, hors accès HTTP, accessible en écriture à PHP et à la CLI. À défaut de
+chemin explicite, un répertoire privé temporaire est créé automatiquement.
+Sur plusieurs hôtes, partager le stockage et les verrous `flock` avec renommages
+atomiques. Exemple : `install -d -m 0700 -o www-data -g www-data /var/cache/mediawiki/reading`.
+Ne pas exposer les fichiers directement : l’API vérifie toujours les droits.
 
-Un emplacement dans `w/cache/` est possible pour **ce cache d'extraits** si le
-serveur web en interdit l'accès HTTP. Les fichiers internes doivent rester servis
-par l'API, qui vérifie les droits. Exemple Nginx, à adapter au chemin public réel :
-
-```nginx
-location ^~ /w/cache/wikidebates-reading/ {
-    deny all;
-}
-```
-
-Avec Apache, utiliser une règle de répertoire `Require all denied`. La présence
-d'un fichier `.htaccess` ne suffit que si sa prise en compte est effectivement
-autorisée. Ces règles ne sont pas écrites automatiquement par l'extension.
-La restriction de répertoire de l'extension autonome `MinervaFileCache` reste
-inchangée ; ses fichiers et ceux du mode lecture sont distincts.
-
-## Préparation asynchrone et invalidation
-
-Après mise à jour des liens d'une page de la catégorie `Arguments`, un job
-`wikidebatesWarmReading` est ajouté à la file. Les pages déjà connues du cache
-sont aussi préparées à nouveau après une invalidation de dépendance. Les jobs
-identiques sont dédoublonnés et lisent la dernière révision disponible.
-
-Le job utilise un utilisateur anonyme, la langue du contenu et les habillages
-installés Vector et Minerva. Il ne doit pas fabriquer un cache partagé dans une
-requête web personnalisée : une exécution sous session connectée ou avec cookies
-ne prépare pas de fichier. Un exécuteur de jobs CLI est recommandé, par exemple
-avec la tâche habituelle de l'installation, sous le même utilisateur que PHP :
-
-```sh
-sudo -u www-data php maintenance/run.php runJobs --maxjobs=100
-```
-
-Adapter `www-data` à l'installation. Choisir un répertoire persistant explicite
-si PHP-FPM et la CLI n'ont pas le même répertoire temporaire ; les jobs et les
-requêtes web doivent lire et écrire les mêmes fichiers.
-
-Le contexte MobileFrontend est une variante distincte de l'habillage : le
-résultat peut différer selon que le formatage mobile est effectivement actif.
-Un job CLI prépare les variantes correspondant à son contexte. Les variantes
-de formatage mobile ou de langue qui ne sont pas encore présentes sont créées
-à leur première demande réelle, en réutilisant le parser cache. Une variante
-préparée en contexte desktop ne peut donc pas remplacer silencieusement la
-réponse attendue en contexte mobile.
-
-Une édition, une purge ou une invalidation HTML de dépendance retire les
-variantes de la page via le pipeline de MediaWiki. Le contrôle porte aussi sur
-la révision, `page_touched`, les époques et l'expiration. La révision seule serait
-insuffisante après une modification de modèle.
-
-Un verrou de publication et un numéro de génération empêchent un rendu commencé
-avant une invalidation de publier ensuite sa copie périmée. Les fichiers sont
-écrits dans un fichier temporaire privé, puis remplacés par renommage atomique.
-La durée de conservation est plafonnée par l'expiration restante du
-`ParserOutput` source. Une sortie non conservable, une réponse à nonce ou un
-refus de cache du `OutputPage` ne produit pas de fichier réutilisable.
-
-## Paramètres et retour au fonctionnement précédent
-
-| Paramètre | Défaut | Usage |
+| Paramètre Wikidebates | Défaut | Rôle |
 | --- | --- | --- |
-| `$wgWikidebatesReadingFragments` | `true` | Point d'accès d'extraits et cache serveur |
-| `$wgWikidebatesReadingCacheDirectory` | `false` | Répertoire privé temporaire automatique, ou chemin explicite |
-| `$wgWikidebatesReadingCacheTTL` | `300` | Plafond de conservation, en secondes |
-| `$wgWikidebatesReadingCacheEpoch` | `'1'` | À changer lors d'une modification du rendu ou de l'extracteur |
-| `$wgWikidebatesReadingPrewarm` | `true` | Préparation asynchrone par les jobs |
-| `$wgWikidebatesReadingArgumentCategory` | `'Arguments'` | Catégorie des arguments à préparer après mise à jour des liens |
+| `WikidebatesReadingFragments` | `true` | Active les extraits partagés ; `false` conserve l’API avec rendu MediaWiki |
+| `WikidebatesReadingCacheDirectory` | `false` | Répertoire privé temporaire automatique ou chemin existant |
+| `WikidebatesReadingCacheTTL` | `2592000` | Conservation maximale en secondes, plafonnée à 30 jours |
+| `WikidebatesReadingCacheEpoch` | `'2'` | Version du format d’extrait |
+| `WikidebatesReadingPrewarm` | `true` | Autorise la commande de préparation et les jobs explicites |
+| `WikidebatesReadingArgumentCategory` | `'Arguments'` | Catégorie parcourue par la commande |
 
-Pour désactiver :
+Les expirations ne sont **jamais prolongées** au-delà de celles des sources.
+Le fichier natif n’a pas d’expiration pour le contenu dynamique : son utilisation
+exige donc aussi un enregistrement valide du parser cache anonyme. L’âge du
+fichier et la durée du ParserOutput limitent la conservation ; MinervaFileCache
+conserve maintenant aussi l’échéance du ParserOutput lors de l’écriture.
+Une source ancienne conservée cinq minutes reste limitée à cinq minutes.
+La configuration du parser cache ci-dessus supprime son plafond général plus
+court, mais les réductions nécessaires aux contenus dynamiques, les sorties non
+conservables et les nonce restent respectés. Trente jours est un maximum, jamais
+une garantie de durée ni une instruction de conserver tous les contenus aussi longtemps.
 
-```php
-$wgWikidebatesReadingFragments = false;
+## Contenu commun et sécurité
+
+Les clés d’extraits distinguent la langue, l’origine, le protocole et le wiki,
+mais plus l’habillage ni le mode mobile. Un extrait Vector sert donc aussi sur
+téléphone, et un extrait Minerva sur ordinateur. La source native n’est utilisée
+que pour l’origine canonique, la langue du contenu et un habillage par défaut
+Vector. Les entrées Minerva doivent posséder une provenance compatible et passer
+les contrôles de génération, identité et expiration de leur propre stockage.
+Les anciennes entrées Minerva sans provenance restent utilisables par l’extension
+autonome ; le lecteur attend leur remplacement pour les utiliser comme source.
+
+L’adaptateur conserve la plage entre `Summary` et `Parent_debates`. Il retire les
+enveloppes `mf-section-*`, leurs commandes de repli et les contrôles d’édition
+d’habillage ; il conserve résumés, citations, références Cite, justifications,
+objections, liens et attributs des interactions du lecteur. Les contenus ne
+dépendent plus d’un masquage CSS des blocs repliables Minerva. Une transformation
+mobile différée non réversible est refusée comme source, avec repli sur ApiParse.
+Les transformations de section définies par le contenu lui-même ne sont pas supprimées.
+
+Les utilisateurs connectés gardent le rendu de leur contexte, sans fichiers
+partagés. Cookies, session persistante, authentification HTTP, messages personnels,
+paramètres de rendu inconnus, requêtes Range/AJAX et demandes sans cache empêchent
+également la réutilisation. Les droits et les révisions supprimées sont contrôlés
+avant lecture, y compris à chaque étape d’une redirection. Les veto de cache des
+extensions restent vérifiés pour les sources ; seul le veto MobileFrontend connu
+contre le cache natif mobile est ignoré dans cet adaptateur MediaWiki 1.43.
+
+## Invalidation et préparation quotidienne
+
+Éditions, purges, dépendances, `page_touched`, révisions et `CacheEpoch` invalident
+les extraits. Une modification du rendu commun doit avancer `CacheEpoch` pour
+invalider aussi les fichiers complets, et l’époque Minerva si son rendu change.
+L’époque des extraits seule invalide leurs fichiers, sans purger leurs sources.
+Les verrous et générations empêchent une publication commencée avant invalidation.
+
+Aucune édition ne programme désormais un rendu d’extrait. Les demandes réelles
+remplissent les absences ; une page complète déjà rendue peut préparer l’extrait
+dans le même passage, après les contrôles de réponse publique, sans second rendu.
+Les anciens jobs encore présents revérifient la validité avant tout travail et
+ne préparent plus deux variantes d’habillage.
+
+Planifier quotidiennement, sous le même utilisateur que PHP :
+
+```cron
+15 3 * * * www-data php /srv/mediawiki/maintenance/run.php Wikidebates:prepareReadingCache --batch-size=100 --sleep-ms=100
 ```
 
-Le serveur cesse immédiatement de servir les fichiers préparés et les jobs
-cessent de les construire. Les nouvelles pages HTML indiquent au JavaScript de
-reprendre les requêtes `action=parse`. Les clients déjà chargés peuvent continuer
-à appeler le nouveau point d'accès : celui-ci construit alors l'extrait à partir
-du parser cache sans utiliser de fichier préparé.
+Adapter chemins et utilisateur ; omettre l’utilisateur dans une crontab personnelle.
+La commande parcourt la catégorie des arguments, sans récursion, par identifiants
+croissants. Elle ignore les redirections et les extraits valides. Un seul processus
+par wiki travaille séquentiellement ; les préparations web utilisent aussi le verrou
+non bloquant de page. Options : `--limit=500`, `--after=123`, `--batch-size=100`
+(1–1000), `--sleep-ms=100`. Le curseur affiché permet une reprise manuelle. Sans
+`--after`, chaque passage quotidien recontrôle toute la catégorie, y compris les
+pages anciennes expirées. Les variantes linguistiques supplémentaires se préparent
+à la demande. `WikidebatesReadingPrewarm=false` désactive cette préparation explicite.
 
-Les visiteurs connectés, les sessions persistantes et les requêtes avec cookies
-ou paramètres de rendu non reconnus ne réutilisent pas les fichiers partagés.
-Ils gardent le rendu de leur propre contexte. Une panne du stockage laisse le
-repli sur le parser cache disponible ; le canal de log est `WikidebatesReading`.
-
-Planifier le retrait des fichiers expirés, par exemple une fois par heure :
+Planifier aussi le nettoyage :
 
 ```sh
-sudo -u www-data php maintenance/run.php Wikidebates:pruneReadingCache
+php maintenance/run.php Wikidebates:pruneReadingCache
 ```
 
-Les fichiers de verrouillage et marqueurs de génération restent présents afin
-de ne pas créer de course avec des requêtes actives.
+Les fichiers de verrouillage et de génération restent présents. Une indisponibilité
+du stockage laisse le repli MediaWiki disponible ; journal : `WikidebatesReading`.
 
-## Vérification
+## Validation et mesures
 
-```text
-/w/api.php?action=wikidebatesreading&page=Nom_de_l_argument&useskin=minerva&uselang=fr&format=json&formatversion=2
-```
-
-La réponse contient `wikidebatesreading.html`, le titre résolu, l'identifiant de
-page, la révision et `source`. `source=fragment-cache` confirme la restitution
-d'un fichier ; `source=parser` désigne le chemin de construction, qui peut lui-même
-utiliser le parser cache. Aucun diagnostic technique n'est affiché dans la lecture.
-
-Les [tests d'intégration](../tests/readingFragments/README.md) comparent les octets
-de l'extrait avec l'API existante sur Vector et Minerva, avec de vraies références
-Cite. Ils vérifient aussi les contrôles d'accès, les réponses personnalisées,
-l'expiration, les invalidations et les jobs. Un test Chromium vérifie le titre,
-le contenu et le défilement avec les nouvelles réponses compactes.
-
-Ces contrôles établissent le fonctionnement et l'absence de pipeline sur un hit.
-Ils ne constituent pas une mesure du gain de latence ou de ressources sur le
-trafic de production. Le gain de 79 % de l'étude Minerva initiale concernait un
-autre prototype et ne doit pas être attribué à ce cache d'extraits.
+`source` vaut `fragment-cache`, `vector-file`, `minerva-file` ou `parser` dans
+la réponse API. Aucun diagnostic technique n’est ajouté à l’interface du lecteur.
+Les [tests](../tests/readingFragments/README.md) forcent les deux sources réelles,
+comparent leur contenu et contrôlent droits, sessions, invalidations et navigation.
+Voir la [mesure locale comparative](reading-file-source-benchmark.md) pour les
+latences, CPU, mémoire et limites. Le gain de 79 % de l’ancienne étude Minerva
+ne s’applique pas à cette stratégie.

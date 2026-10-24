@@ -52,3 +52,27 @@ Les vrais modèles du site, SMW et une grappe de serveurs PHP ne sont pas reprod
 dans ce banc. L'identité du contenu sur les deux habillages, les références Cite,
 les droits, les sessions connectées, le repli du stockage, les jobs et les
 invalidations sont contrôlés dans MediaWiki réel.
+
+## Réutilisation des fichiers et préparation quotidienne
+
+La suite actuelle charge aussi l’extension autonome MinervaFileCache du dépôt.
+Créer `state/minerva-cache` avec les mêmes droits privés que `state/reading-cache`.
+L’API est comparée après adaptation des seules structures d’habillage ; les deux
+sources doivent produire le même extrait. Les tests forcent le cache natif Vector
+sur mobile, puis Minerva sur ordinateur en retirant le fichier Vector. Ils
+vérifient l’absence de passage du pipeline, la préparation dans un rendu complet,
+le saut des extraits valides par la commande quotidienne et la reconstruction
+explicite après purge. Les éditions ne programment plus de préparation.
+
+Les résultats de cette nouvelle série sont dans `file-source-results.json`.
+`results.json` est conservé comme référence de la stratégie précédente.
+Le conteneur doit transmettre aussi `MW_INSTALL_PATH=/lab/mediawiki` pour le test
+de la commande de maintenance. Les [mesures comparatives](../../docs/reading-file-source-benchmark.md)
+s’utilisent avec `WD_READING_BENCHMARK=1` et `benchmark.php` sur une base neuve.
+Les tests unitaires couvrent le contenu commun (résumé, citation, référence,
+justifications, objections et attributs interactifs), les nonce et le plafond de
+30 jours, en plus des générations et expirations existantes.
+
+Validation de cette livraison : 58 contrôles d’intégration MediaWiki, 28 assertions
+unitaires d’extraits, 27 assertions de stockage Minerva, 26 tests JavaScript et
+23 tests Chromium. La suite PHP générale du dépôt passe également.

@@ -1,0 +1,433 @@
+{
+    "timestamp": "2026-10-24T07:25:53+00:00",
+    "samples": {
+        "vector-file": [
+            {
+                "ms": 17.488478,
+                "cpu_us": 16806,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "vector-file"
+            },
+            {
+                "ms": 15.943285,
+                "cpu_us": 15327,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "vector-file"
+            },
+            {
+                "ms": 16.37444,
+                "cpu_us": 15634,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "vector-file"
+            },
+            {
+                "ms": 16.926178,
+                "cpu_us": 16209,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "vector-file"
+            },
+            {
+                "ms": 17.48221,
+                "cpu_us": 16667,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "vector-file"
+            },
+            {
+                "ms": 17.335561,
+                "cpu_us": 16550,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "vector-file"
+            },
+            {
+                "ms": 17.843766,
+                "cpu_us": 17265,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "vector-file"
+            },
+            {
+                "ms": 17.826593,
+                "cpu_us": 17159,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "vector-file"
+            },
+            {
+                "ms": 18.04842,
+                "cpu_us": 17314,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "vector-file"
+            },
+            {
+                "ms": 18.075134,
+                "cpu_us": 17378,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "vector-file"
+            },
+            {
+                "ms": 17.141459,
+                "cpu_us": 16541,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "vector-file"
+            },
+            {
+                "ms": 16.932098,
+                "cpu_us": 16282,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "vector-file"
+            },
+            {
+                "ms": 18.534597,
+                "cpu_us": 17887,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "vector-file"
+            },
+            {
+                "ms": 16.672213,
+                "cpu_us": 16014,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "vector-file"
+            },
+            {
+                "ms": 18.810532,
+                "cpu_us": 18144,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "vector-file"
+            }
+        ],
+        "minerva-file": [
+            {
+                "ms": 19.591824,
+                "cpu_us": 18938,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "minerva-file"
+            },
+            {
+                "ms": 18.833549,
+                "cpu_us": 17996,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "minerva-file"
+            },
+            {
+                "ms": 17.168489,
+                "cpu_us": 16521,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "minerva-file"
+            },
+            {
+                "ms": 17.824884,
+                "cpu_us": 16996,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "minerva-file"
+            },
+            {
+                "ms": 18.499712,
+                "cpu_us": 17820,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "minerva-file"
+            },
+            {
+                "ms": 18.308311,
+                "cpu_us": 17586,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "minerva-file"
+            },
+            {
+                "ms": 19.244701,
+                "cpu_us": 18426,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "minerva-file"
+            },
+            {
+                "ms": 17.313081,
+                "cpu_us": 16660,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "minerva-file"
+            },
+            {
+                "ms": 17.299804,
+                "cpu_us": 16612,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "minerva-file"
+            },
+            {
+                "ms": 18.424434,
+                "cpu_us": 17694,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "minerva-file"
+            },
+            {
+                "ms": 17.474697,
+                "cpu_us": 16860,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "minerva-file"
+            },
+            {
+                "ms": 18.731232,
+                "cpu_us": 18025,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "minerva-file"
+            },
+            {
+                "ms": 18.082241,
+                "cpu_us": 17354,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "minerva-file"
+            },
+            {
+                "ms": 17.35675,
+                "cpu_us": 16710,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "minerva-file"
+            },
+            {
+                "ms": 18.522454,
+                "cpu_us": 17962,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "minerva-file"
+            }
+        ],
+        "parser": [
+            {
+                "ms": 40.282876,
+                "cpu_us": 39507,
+                "peak_bytes": 4194304,
+                "pipelines": 1,
+                "source": "parser"
+            },
+            {
+                "ms": 41.931397,
+                "cpu_us": 41162,
+                "peak_bytes": 4194304,
+                "pipelines": 1,
+                "source": "parser"
+            },
+            {
+                "ms": 40.230274,
+                "cpu_us": 39233,
+                "peak_bytes": 4194304,
+                "pipelines": 1,
+                "source": "parser"
+            },
+            {
+                "ms": 41.237582,
+                "cpu_us": 40431,
+                "peak_bytes": 4194304,
+                "pipelines": 1,
+                "source": "parser"
+            },
+            {
+                "ms": 39.275289,
+                "cpu_us": 38488,
+                "peak_bytes": 4194304,
+                "pipelines": 1,
+                "source": "parser"
+            },
+            {
+                "ms": 39.283284,
+                "cpu_us": 38511,
+                "peak_bytes": 4194304,
+                "pipelines": 1,
+                "source": "parser"
+            },
+            {
+                "ms": 40.068724,
+                "cpu_us": 39355,
+                "peak_bytes": 4194304,
+                "pipelines": 1,
+                "source": "parser"
+            },
+            {
+                "ms": 39.722085,
+                "cpu_us": 39045,
+                "peak_bytes": 4194304,
+                "pipelines": 1,
+                "source": "parser"
+            },
+            {
+                "ms": 38.690999,
+                "cpu_us": 37986,
+                "peak_bytes": 4194304,
+                "pipelines": 1,
+                "source": "parser"
+            },
+            {
+                "ms": 39.055258,
+                "cpu_us": 38145,
+                "peak_bytes": 4194304,
+                "pipelines": 1,
+                "source": "parser"
+            },
+            {
+                "ms": 40.454696,
+                "cpu_us": 39633,
+                "peak_bytes": 4194304,
+                "pipelines": 1,
+                "source": "parser"
+            },
+            {
+                "ms": 42.468536,
+                "cpu_us": 41697,
+                "peak_bytes": 4194304,
+                "pipelines": 1,
+                "source": "parser"
+            },
+            {
+                "ms": 38.72713,
+                "cpu_us": 37987,
+                "peak_bytes": 4194304,
+                "pipelines": 1,
+                "source": "parser"
+            },
+            {
+                "ms": 38.5126,
+                "cpu_us": 37649,
+                "peak_bytes": 4194304,
+                "pipelines": 1,
+                "source": "parser"
+            },
+            {
+                "ms": 40.528622,
+                "cpu_us": 39789,
+                "peak_bytes": 4194304,
+                "pipelines": 1,
+                "source": "parser"
+            }
+        ],
+        "fragment-cache": [
+            {
+                "ms": 8.024447,
+                "cpu_us": 7666,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "fragment-cache"
+            },
+            {
+                "ms": 7.605211,
+                "cpu_us": 7206,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "fragment-cache"
+            },
+            {
+                "ms": 7.688381,
+                "cpu_us": 7243,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "fragment-cache"
+            },
+            {
+                "ms": 8.101668,
+                "cpu_us": 7655,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "fragment-cache"
+            },
+            {
+                "ms": 7.986871,
+                "cpu_us": 7517,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "fragment-cache"
+            },
+            {
+                "ms": 8.203082,
+                "cpu_us": 7762,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "fragment-cache"
+            },
+            {
+                "ms": 8.278832,
+                "cpu_us": 7800,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "fragment-cache"
+            },
+            {
+                "ms": 7.294253,
+                "cpu_us": 6886,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "fragment-cache"
+            },
+            {
+                "ms": 7.287831,
+                "cpu_us": 6862,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "fragment-cache"
+            },
+            {
+                "ms": 8.023535,
+                "cpu_us": 7696,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "fragment-cache"
+            },
+            {
+                "ms": 7.731545,
+                "cpu_us": 7297,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "fragment-cache"
+            },
+            {
+                "ms": 7.903284,
+                "cpu_us": 7413,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "fragment-cache"
+            },
+            {
+                "ms": 7.988672,
+                "cpu_us": 7663,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "fragment-cache"
+            },
+            {
+                "ms": 7.466081,
+                "cpu_us": 7039,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "fragment-cache"
+            },
+            {
+                "ms": 7.774956,
+                "cpu_us": 7385,
+                "peak_bytes": 4194304,
+                "pipelines": 0,
+                "source": "fragment-cache"
+            }
+        ]
+    }
+}

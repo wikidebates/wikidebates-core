@@ -118,7 +118,7 @@ fonctionner, comme pour les autres caches MediaWiki.
 Les paramètres facultatifs sont :
 
 ```php
-$wgMinervaFileCacheTTL = 300;
+$wgMinervaFileCacheTTL = 2592000; // Maximum 30 jours, limité aussi par le ParserOutput.
 $wgMinervaFileCacheMaxBytes = 4194304; // Taille maximale du HTML par fichier.
 $wgMinervaFileCacheDebugHeaders = true;
 $wgMinervaFileCacheEpoch = '1';
@@ -270,3 +270,14 @@ les commandes et les limites des contrôles. La mesure de 79 % de l'étude initi
 porte sur le prototype et une page synthétique, pas sur le trafic de production
 ni sur une garantie de gain de cette extension. Les appels `action=parse` du
 mode lecture continuent de suivre leur chemin actuel et leur parser cache.
+
+
+### Durée des sources du lecteur
+
+La durée par défaut est maintenant de 30 jours maximum. Une écriture conserve
+également l’expiration restante du ParserOutput ; les contenus dynamiques gardent
+leurs durées réduites. Pour les pages stables, vérifier aussi
+`$wgParserCacheExpireTime = 2592000` : conserver son plafond plus court empêcherait
+d’atteindre cette durée. Les anciennes entrées ne voient pas leur échéance prolongée.
+Quand Wikidebates est chargé, le lecteur peut réutiliser ces fichiers après le
+cache natif Vector ; l’extension reste installable et utilisable seule.

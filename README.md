@@ -186,5 +186,6 @@ du cache desktop ; la notice donne les réglages et la procédure de désactivat
 
 Le [cache d'extraits du mode lecture](docs/reading-fragment-cache.md) est intégré
 à Wikidebates et actif par défaut. Il prépare le HTML utile, partage sa réponse
-entre navigation, préchargement et aperçus, puis utilise le parser cache en cas
-d'absence. La note décrit les jobs, le stockage et les paramètres de désactivation.
+entre ordinateur et téléphone, navigation, préchargement et aperçus. En cas
+d’absence, il réutilise d’abord les fichiers Vector, puis Minerva, avant le rendu
+MediaWiki. La notice décrit les durées, les invalidations et la commande quotidienne.
