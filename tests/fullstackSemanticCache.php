@@ -62,8 +62,8 @@ fsSave('WD Cache query B', 'Initial stub');
 fsFlush();
 
 // The query pages must exist before their query profiles are written.
-fsSave('WD Cache query A', '<wd-cache-parents>WD Cache A</wd-cache-parents>');
-fsSave('WD Cache query B', '<wd-cache-parents>WD Cache B</wd-cache-parents>');
+fsSave('WD Cache query A', "== Summary ==\n<wd-cache-parents>WD Cache A</wd-cache-parents>\n== Parent debates ==\nParent A");
+fsSave('WD Cache query B', "== Summary ==\n<wd-cache-parents>WD Cache B</wd-cache-parents>\n== Parent debates ==\nParent B");
 fsFlush();
 
 $links = (new QueryDependencyLinksStoreFactory())->newQueryDependencyLinksStore($store);
