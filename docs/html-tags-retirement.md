@@ -25,10 +25,10 @@ Pour limiter un premier passage et reprendre ensuite :
 
 ```sh
 php maintenance/run.php extensions/Wikidebates/maintenance/FindHtmlTags.php --wiki=fr --limit=1000
-php maintenance/run.php extensions/Wikidebates/maintenance/FindHtmlTags.php --wiki=fr --after=1000
+php maintenance/run.php extensions/Wikidebates/maintenance/FindHtmlTags.php --wiki=fr --after=12345
 ```
 
-**Attention :** l'option `--after` attend le dernier `page_id` affiché comme `resume_after`, **pas** le nombre de pages inspectées. Les résultats sur une réplique peuvent être légèrement en retard. Le script n'explore que les **versions courantes**, et une recherche littérale peut trouver des commentaires ou des exemples non exécutés. Inspecter chaque correspondance pour décider de sa migration. Un résultat à zéro ne valide pas les usages dynamiques construits par des modules ou d'autres extensions ni les anciens historiques.
+**Attention :** remplacer `12345` par le dernier `resume_after` affiché. L'option `--after` attend le dernier `page_id` affiché comme `resume_after`, **pas** le nombre de pages inspectées. Les résultats sur une réplique peuvent être légèrement en retard. Le script n'explore que les **versions courantes**, et une recherche littérale peut trouver des commentaires ou des exemples non exécutés. Inspecter chaque correspondance pour décider de sa migration. Un résultat à zéro ne valide pas les usages dynamiques construits par des modules ou d'autres extensions ni les anciens historiques.
 
 Après migration, refaire l'inventaire, puis vérifier les rendus français et anglais, les boutons RunQuery et les métadonnées JSON-LD **sans** HTML Tags avant de déployer l'abandon en production.
 
