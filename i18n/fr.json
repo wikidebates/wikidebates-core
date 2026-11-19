@@ -383,8 +383,6 @@
 	"wk-menu-all-debates": "Tous les débats",
 	"wk-menu-contributions-portal": "Portail des contributions",
 	"wk-menu-bistro": "Bistro",
-	"htmltags-notagname": "L’attribut « tagname » doit être positionné pour cette balise.",
-	"htmltags-unsupportedtag": "Le nom de la balise « $1 » n’est pas pris en charge pour <htmltag>.",
 	"wikidebates-email-required": "Une adresse électronique est obligatoire.",
 	"wikidebates-autoparent-pro": "/* Arguments « pour » */ Ajout de l’argument : « $1 »",
 	"wikidebates-autoparent-con": "/* Arguments « contre » */ Ajout de l’argument : « $1 »",
