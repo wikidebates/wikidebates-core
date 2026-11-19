@@ -4,7 +4,7 @@ Le moteur DebatePHP n'utilise plus l'extension HTML Tags : les deux appels inter
 
 ## Avant un déploiement
 
-La migration PHP ne réécrit pas les modèles et modules Lua des deux wikis. **Vérifier sur les wikis français et anglais** les usages actifs de `<htmltag>`, `#tag:htmltag` et des autres fonctions fournies par HTML Tags, puis les migrer. La seule consultation du dépôt ne permet pas de certifier l'absence de tels usages dans la base de données. Une extension tierce HTML Tags éventuellement chargée reste indépendante.
+La migration PHP ne réécrit pas les modèles et modules Lua des deux wikis. Selon la configuration actuelle indiquée par l'exploitant, `Module:Debate` et `Module:Argument` ne servent plus à construire le rendu des débats et des arguments : leurs anciennes références à `htmltag` n'imposent **aucune migration pour le moteur PHP**. Il faut distinguer la fusion de ce correctif (indépendant des anciens modules) de la désactivation de l'extension HTML Tags sur l'ensemble du site. Avant cette dernière opération, vérifier quelles pages utilisent réellement les modèles de bannière, SEO, FAQ et fil d'Ariane, et migrer leurs éventuels appels actifs à `<htmltag>` ou `#tag:htmltag`. La seule consultation du dépôt ne permet pas de déterminer les transclusions actives en base. Une extension HTML Tags chargée indépendamment de Wikidebates continue de fonctionner tant qu'elle reste installée.
 
 Les liens internes n'admettent que `href`, `data-href`, `class` et `title`. Les URL utilisant des protocoles exécutables sont exclues, hormis le `javascript:void(0)` littéral de l'ancien bouton RunQuery, conservé uniquement pour l'attribut `href`. Les scripts JSON-LD ne passent pas par ce mécanisme.
 
