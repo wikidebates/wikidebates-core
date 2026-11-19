@@ -71,7 +71,7 @@ function wikidebatesTestConfig($settings): void {
 		'ParserCacheType' => getenv('WD_TEST_SEMANTIC_TRACKING') === '1' ? CACHE_DB : CACHE_NONE,
 		'UseDatabaseMessages' => defined('WD_I18N_TEST'),
 		'JobRunRate' => 0,
-		'WikidebatesReadingFragments' => false,
+		'WikidebatesReadingFragments' => getenv('WD_TEST_SEMANTIC_TRACKING') === '1',
 		'WikidebatesSemanticCacheTracking' => getenv('WD_TEST_SEMANTIC_TRACKING') === '1',
 		'WikidebatesReadingCacheDirectory' => getenv('WD_TEST_SEMANTIC_TRACKING') === '1' ? $temporary : false,
 		'ShowExceptionDetails' => true
