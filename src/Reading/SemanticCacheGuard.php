@@ -49,6 +49,7 @@ final class SemanticCacheGuard {
 			// fragment generations (including MinervaFileCache).
 			FragmentService::invalidate($title);
 			$page->doPurge();
+			MediaWikiServices::getInstance()->getParserCache()->deleteOptionsKey($page);
 			return false;
 		} catch (\Throwable $e) {
 			FragmentService::log($e);
