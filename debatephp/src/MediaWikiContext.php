@@ -277,7 +277,8 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 			$queryFailed = true;
 			try {
 				$factory = new \SMW\Scribunto\LibraryFactory(\SMW\Services\ServicesFactory::getInstance()->getStore());
-				$enabled = (bool)MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesSemanticCacheTracking');
+				$enabled = class_exists(MediaWikiServices::class) &&
+					(bool)MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesSemanticCacheTracking');
 				$result = $enabled
 					? TrackedSemanticQuery::execute($this->parser, array_values(Table::unwrap($query)),
 						\SMW\Services\ServicesFactory::getInstance()->getStore())
