@@ -87,6 +87,13 @@ foreach (array_keys($queries) as $queryTitle) {
 // Exercise the actual reading service in a synthetic anonymous API context,
 // including its ParserOutput freshness check and private fragment store.
 $read = static function(string $name) use ($services): array {
+	// This test executes several synthetic HTTP requests in ONE CLI
+	// process. MediaWiki's ParserOutputAccess otherwise keeps an in-memory
+	// ParserOutput for the entire CLI process even after an external purge.
+	// Real PHP web requests start with a fresh request-local L1 cache.
+	$access = $services->getParserOutputAccess();
+	$local = (new \ReflectionObject($access))->getProperty('localCache');
+	$local->setValue($access, new \MapCacheLRU(10));
 	$context = new RequestContext();
 	$context->setRequest(new FauxRequest([
 		'action' => 'wikidebatesreading', 'page' => $name, 'useskin' => 'vector',
