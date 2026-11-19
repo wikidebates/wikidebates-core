@@ -65,8 +65,13 @@ class FragmentService {
 		$eligible = $eligible && !array_diff(array_keys($request->getValues()), ['action', 'page', 'useskin',
 			'uselang', 'format', 'formatversion', 'maxlag', 'requestid', 'errorformat', 'errorlang', 'errorsuselocal', 'origin']) &&
 			!preg_match('/no-cache|no-store/i', (string)$request->getHeader('Cache-Control'));
+		if ($eligible && $config->get('WikidebatesSemanticCacheTracking')) {
+			// The reading API bypasses SMW's ArticleViewHeader dependency check.
+			$eligible = SemanticCacheGuard::safeForRead($title, $page);
+		}
 		$identity = ['pageid' => $page->getId(), 'revision' => $page->getLatest(), 'touched' => $page->getTouched(),
 			'epoch' => $config->get('WikidebatesReadingCacheEpoch'), 'coreEpoch' => $config->get('CacheEpoch'), 'format' => 3,
+			'semanticTracking' => (bool)$config->get('WikidebatesSemanticCacheTracking'),
 			'sourceEpoch' => class_exists(\MediaWiki\Extension\MinervaFileCache\Hooks::class) ? $config->get('MinervaFileCacheEpoch') : null];
 		$server = parse_url($config->get('Server'));
 		$host = $request->getHeader('Host') ?: (($server['host'] ?? '') . (isset($server['port']) ? ':' . $server['port'] : ''));
