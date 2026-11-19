@@ -65,9 +65,13 @@ class FragmentService {
 		$eligible = $eligible && !array_diff(array_keys($request->getValues()), ['action', 'page', 'useskin',
 			'uselang', 'format', 'formatversion', 'maxlag', 'requestid', 'errorformat', 'errorlang', 'errorsuselocal', 'origin']) &&
 			!preg_match('/no-cache|no-store/i', (string)$request->getHeader('Cache-Control'));
+		$forceFreshSemanticParse = false;
 		if ($eligible && $config->get('WikidebatesSemanticCacheTracking')) {
 			// The reading API bypasses SMW's ArticleViewHeader dependency check.
 			$eligible = SemanticCacheGuard::safeForRead($title, $page);
+			// A failed check must also bypass ApiParse's parser cache. Simply
+			// skipping fragment-cache would allow old parser HTML to resurface.
+			$forceFreshSemanticParse = !$eligible;
 		}
 		$identity = ['pageid' => $page->getId(), 'revision' => $page->getLatest(), 'touched' => $page->getTouched(),
 			'epoch' => $config->get('WikidebatesReadingCacheEpoch'), 'coreEpoch' => $config->get('CacheEpoch'), 'format' => 3,
@@ -102,7 +106,8 @@ class FragmentService {
 		try {
 			$result = ($eligible ? FileSources::read($context, $title, $page) : null) ?? $prepared;
 			if ($result) { unset($result['_generation'], $result['_touched']); }
-			$result ??= self::render($context, $title->getPrefixedText(), $eligible ? 'vector' : $skin);
+			$result ??= self::render($context, $title->getPrefixedText(), $eligible ? 'vector' : $skin,
+				$forceFreshSemanticParse);
 			if ($fill && $result['_expires'] > time() && $result['html'] !== '') {
 				try {
 					$store->publish($title->getPrefixedDBkey(), $variant, $identity, $snapshot['generation'],
@@ -114,7 +119,7 @@ class FragmentService {
 	}
 
 	/** Run the actual ApiParse pipeline, including parser cache and third-party transforms. */
-	private static function render(IContextSource $context, string $page, string $skin): array {
+	private static function render(IContextSource $context, string $page, string $skin, bool $forceFresh = false): array {
 		$derived = new DerivativeContext($context);
 		$derived->setRequest(new DerivativeRequest($context->getRequest(), ['action' => 'parse', 'page' => $page,
 			'prop' => 'text|revid', 'usearticle' => 1, 'redirects' => 1, 'useskin' => $skin,
@@ -130,6 +135,17 @@ class FragmentService {
 			});
 		$outputScope = MediaWikiServices::getInstance()->getHookContainer()->scopedRegister('ApiParseMakeOutputPage',
 			static function ($module, $output) use (&$outputPage) { $outputPage = $output; });
+		// MediaWiki 1.43's ApiParse honors the 'ApiMakeParserOptions' hook for
+		// $suppressCache. A failed SMW freshness check must never reuse an
+		// existing ParserOutput, even when page_touched has second resolution.
+		$parseScope = $forceFresh ? MediaWikiServices::getInstance()->getHookContainer()->scopedRegister(
+			'ApiMakeParserOptions',
+			static function ($options, $title, $params, $api, &$reset, &$suppressCache) use ($page): void {
+				if ($title->getPrefixedDBkey() === Title::newFromText($page)->getPrefixedDBkey()) {
+					$suppressCache = true;
+				}
+			}
+		) : null;
 		// MobileFrontend consults the main request's action while formatting HTML.
 		// Expose the same parse request for this synchronous call, then restore it.
 		$mainContext = RequestContext::getMain();
@@ -139,7 +155,7 @@ class FragmentService {
 			$api = new ApiMain($derived, false, true);
 			$api->execute();
 			$data = $api->getResult()->getResultData(['parse'], ['Strip' => 'all']);
-		} finally { $mainContext->setRequest($originalRequest); $scope = null; $outputScope = null; }
+		} finally { $mainContext->setRequest($originalRequest); $scope = null; $outputScope = null; $parseScope = null; }
 		$html = $data['text'] ?? '';
 		if (is_array($html)) { $html = $html['*'] ?? ''; }
 		$fragment = $context->getUser()->isRegistered() ? FragmentExtractor::extract($html) : FragmentExtractor::canonical($html);
