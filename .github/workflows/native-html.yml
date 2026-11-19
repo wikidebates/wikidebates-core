@@ -29,3 +29,27 @@ jobs:
           tail -n 5 /tmp/php-lint.log
       - name: Standalone regression tests
         run: php tests/run.php
+  mediawiki-143:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, xml, pdo_sqlite, sqlite3
+          coverage: none
+          tools: composer
+      - name: MediaWiki 1.43.11 checkout
+        uses: actions/checkout@v4
+        with:
+          repository: wikimedia/mediawiki
+          ref: '1.43.11'
+          path: .mw-lab
+      - name: MediaWiki vendor dependencies
+        working-directory: .mw-lab
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: MediaWiki 1.43 isolated integration
+        env:
+          MW_INSTALL_PATH: ${{ github.workspace }}/.mw-lab
+        run: php tests/mediawiki.php
