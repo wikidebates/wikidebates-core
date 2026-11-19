@@ -55,9 +55,11 @@ class FragmentService {
 		if ($title->isRedirect()) { return self::render($context, $pageName, $skin); }
 		$config = $context->getConfig();
 		$request = $context->getRequest();
+		// Same-origin mw.Api AJAX requests may include X-Requested-With; that header
+		// does not indicate personalization. Keep the cookie/session/rights guards.
 		$eligible = $config->get('WikidebatesReadingFragments') && $request->getMethod() === 'GET' && !$context->getUser()->isRegistered() &&
 			!$request->getSession()->isPersistent() && !$request->getHeader('Cookie') &&
-			!$request->getHeader('Authorization') && !$request->getHeader('Range') && !$request->getHeader('X-Requested-With') && empty($_SERVER['REMOTE_USER']) &&
+			!$request->getHeader('Authorization') && !$request->getHeader('Range') && empty($_SERVER['REMOTE_USER']) &&
 			empty($_SERVER['PHP_AUTH_USER']) &&
 			!$services->getTalkPageNotificationManager()->userHasNewMessages($context->getUser());
 		$eligible = $eligible && !array_diff(array_keys($request->getValues()), ['action', 'page', 'useskin',
