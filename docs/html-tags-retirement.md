@@ -12,25 +12,34 @@ Les liens internes n'admettent que `href`, `data-href`, `class` et `title`. Les 
 
 Les API publiques de `fr.wikidebates.org` et `en.wikidebates.org` ont renvoyé **HTTP 403 / Cloudflare challenge** aux agents GitHub Actions le 19 novembre 2026. Ces réponses ne constituent **pas** un inventaire des pages. Une absence de résultat sur l'API publique ne prouve pas l'absence d'usage.
 
-Le script `maintenance/FindHtmlTags.php` est **en lecture seule** : il parcourt la table `page` par lots, consulte le contenu principal de la dernière révision, puis signale les invocations littérales `<htmltag>` (ou `</htmltag>`) et `#tag:htmltag`. Il couvre **tous les espaces de noms** et signale les textes non inspectables, les révisions absentes et les erreurs. Les modèles transclus, modules Lua et pages ordinaires peuvent donc être identifiés sans passer par le réseau public.
+Le script `maintenance/FindHtmlTags.php` est **en lecture seule** : il parcourt la table `page` par lots, consulte le contenu principal de la dernière révision, puis signale les invocations littérales `<htmltag>` (ou `</htmltag>`) et `#tag:htmltag`. Il couvre **tous les espaces de noms** et signale les textes non inspectables, les révisions absentes et les erreurs. Les modèles transclus, modules Lua et pages ordinaires peuvent donc être identifiés sans passer par le réseau public. Les contenus non textuels sont désormais analysés par leur sérialisation (et comptabilisés comme `other_models`).
 
 Depuis la racine MediaWiki 1.43, sur une copie de la branche contenant le script :
 
 ```sh
-php maintenance/run.php extensions/Wikidebates/maintenance/FindHtmlTags.php --wiki=fr
-php maintenance/run.php extensions/Wikidebates/maintenance/FindHtmlTags.php --wiki=en
+php extensions/Wikidebates/maintenance/FindHtmlTags.php --wiki=fr
+php extensions/Wikidebates/maintenance/FindHtmlTags.php --wiki=en
 ```
 
 Pour limiter un premier passage et reprendre ensuite :
 
 ```sh
-php maintenance/run.php extensions/Wikidebates/maintenance/FindHtmlTags.php --wiki=fr --limit=1000
-php maintenance/run.php extensions/Wikidebates/maintenance/FindHtmlTags.php --wiki=fr --after=12345
+php extensions/Wikidebates/maintenance/FindHtmlTags.php --wiki=fr --limit=1000
+php extensions/Wikidebates/maintenance/FindHtmlTags.php --wiki=fr --after=12345
 ```
 
 **Attention :** remplacer `12345` par le dernier `resume_after` affiché. L'option `--after` attend le dernier `page_id` affiché comme `resume_after`, **pas** le nombre de pages inspectées. Les résultats sur une réplique peuvent être légèrement en retard. Le script n'explore que les **versions courantes**, et une recherche littérale peut trouver des commentaires ou des exemples non exécutés. Inspecter chaque correspondance pour décider de sa migration. Un résultat à zéro ne valide pas les usages dynamiques construits par des modules ou d'autres extensions ni les anciens historiques.
 
 Après migration, refaire l'inventaire, puis vérifier les rendus français et anglais, les boutons RunQuery et les métadonnées JSON-LD **sans** HTML Tags avant de déployer l'abandon en production.
+
+Pour examiner seulement les pages identifiées dans les premiers inventaires, sans reparcourir toutes les pages :
+
+```sh
+php extensions/Wikidebates/maintenance/FindHtmlTags.php --wiki=fr --ids=398,676,15627,15628,19699,32805,34192
+php extensions/Wikidebates/maintenance/FindHtmlTags.php --wiki=en --ids=43,149,511,1697,1698
+```
+
+La nouvelle option `--ids` affiche le numéro de ligne et un court extrait autour de chaque occurrence. L'exécution directe du script produit sur MediaWiki 1.43 un avertissement de dépréciation sans empêcher l'audit. Les anciennes commandes `maintenance/run.php extensions/...` ne sont pas reconnues par cette installation. La recherche vise les occurrences littérales ; une revue du contexte est toujours nécessaire.
 
 ## Tests
 
