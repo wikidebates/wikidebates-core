@@ -72,6 +72,8 @@ function wikidebatesTestConfig($settings): void {
 		'UseDatabaseMessages' => defined('WD_I18N_TEST'),
 		'JobRunRate' => 0,
 		'WikidebatesReadingFragments' => false,
+		'WikidebatesSemanticCacheTracking' => getenv('WD_TEST_SEMANTIC_TRACKING') === '1',
+		'WikidebatesReadingCacheDirectory' => getenv('WD_TEST_SEMANTIC_TRACKING') === '1' ? $temporary : false,
 		'ShowExceptionDetails' => true
 	]);
 	if (defined('WD_FULLSTACK_TEST')) {
@@ -79,6 +81,10 @@ function wikidebatesTestConfig($settings): void {
 		$GLOBALS['smwgConfigFileDir'] = $temporary;
 		$GLOBALS['smwgEnabledDeferredUpdate'] = true;
 		$GLOBALS['smwgEnableUpdateJobs'] = true;
+		if (getenv('WD_TEST_SEMANTIC_TRACKING') === '1') {
+			$GLOBALS['smwgEnabledQueryDependencyLinksStore'] = true;
+			$GLOBALS['smwgQueryProfiler'] = 0;
+		}
 		$GLOBALS['wgScribuntoDefaultEngine'] = 'luastandalone';
 	}
 	foreach (array_filter(explode(',', getenv('WD_TEST_EXTENSIONS') ?: '')) as $extension) {
