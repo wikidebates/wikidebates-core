@@ -72,6 +72,31 @@ class RecentDebateChangesTest extends Maintenance {
 		$this->check( !in_array( 'Wikirobot', $names, true ) && !in_array( 'ChatGPT', $names, true ), 'both named accounts excluded' );
 		$this->check( in_array( 'Other bot', $names, true ) && in_array( '192.0.2.1', $names, true ), 'other accounts and anonymous edits retained' );
 		$this->output( "PASS SQL filtering and LIMIT\n" );
+		// The WAN entry can outlive an administrative RevisionDelete action.
+		// This must never make the now-hidden name or summary public.
+		$visibility = new ReflectionMethod( RecentDebateChanges::class, 'applyPublicRevisionVisibility' );
+		$revisionId = (int)( $first[0]['revision_id'] ?? 0 );
+		$this->check( $revisionId > 0, 'cached rows track their current revision IDs' );
+		$public = $visibility->invoke( null, $first );
+		$this->check( $public[0]['summary'] === 'Fixture' && $public[0]['user_page'] !== '', 'public fields remain visible' );
+		$updateFlags = static function ( int $flags ) use ( $db, $revisionId ): void {
+			$db->newUpdateQueryBuilder()->update( 'revision' )
+				->set( [ 'rev_deleted' => $flags ] )
+				->where( [ 'rev_id' => $revisionId ] )->caller( __METHOD__ )->execute();
+		};
+		$updateFlags( \MediaWiki\Revision\RevisionRecord::DELETED_USER |
+			\MediaWiki\Revision\RevisionRecord::DELETED_COMMENT );
+		$this->check( $fetch->invoke( null, 'Performance debate', 3 ) === $first,
+			'cached rows remain unchanged during a visibility update' );
+		$hidden = $visibility->invoke( null, $first );
+		$this->check( $hidden[0]['summary'] === '' && $hidden[0]['user_page'] === '',
+			'fresh primary visibility masks cached private fields' );
+		$updateFlags( 0 );
+		$this->check( $visibility->invoke( null, $first )[0]['summary'] === 'Fixture',
+			'unsuppressed fields resume normal public display' );
+		$this->output( "PASS cached revision visibility is rechecked after RevDel\n" );
+
+
 
 		$db->newDeleteQueryBuilder()->deleteFrom( 'smw_di_wikipage' )->where( [ 'o_id' => 1 ] )->caller( __METHOD__ )->execute();
 		$this->check( $fetch->invoke( null, 'Performance debate', 3 ) === $first, 'warm cache reuses data' );
