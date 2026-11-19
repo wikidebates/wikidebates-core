@@ -14,6 +14,8 @@ use MediaWiki\Extension\DebatePHP\MediaWikiContext;
 use MediaWiki\Extension\DebatePHP\Table;
 use MediaWiki\Extension\DebatePHP\TrackedSemanticQuery;
 use MediaWiki\Extension\Wikidebates\Reading\FragmentService;
+use MediaWiki\Context\RequestContext;
+use MediaWiki\Request\FauxRequest;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Parser\ParserOptions;
 use MediaWiki\Title\Title;
@@ -82,6 +84,28 @@ foreach (array_keys($queries) as $queryTitle) {
 		'Profile IDs are discoverable for dependency validation: ' . $queryTitle);
 }
 
+// Exercise the actual reading service in a synthetic anonymous API context,
+// including its ParserOutput freshness check and private fragment store.
+$read = static function(string $name) use ($services): array {
+	$context = new RequestContext();
+	$context->setRequest(new FauxRequest([
+		'action' => 'wikidebatesreading', 'page' => $name, 'useskin' => 'vector',
+		'format' => 'json', 'formatversion' => 2
+	], false));
+	$context->setUser($services->getUserFactory()->newAnonymous());
+	$context->setLanguage($services->getContentLanguage());
+	$context->setTitle(Title::newFromText($name));
+	return FragmentService::read($context, $name, 'vector');
+};
+$first = $read('WD Cache query A');
+check(str_contains($first['html'], 'WD_MATCHES=0'),
+	'First reading API render includes the empty parent list');
+check($first['source'] !== 'fragment-cache',
+	'A first request does not reuse a fragment that did not exist');
+$second = $read('WD Cache query A');
+check($second['source'] === 'fragment-cache',
+	'Second identical anonymous reading request hits fragment-cache');
+
 // Check the exact empty-query case: the two queries currently match no subjects.
 // Their query dependency records must nonetheless exist before any child link.
 $subjectA = SemanticWikiPage::newFromTitle(Title::newFromText('WD Cache query A'));
@@ -94,6 +118,12 @@ fsFlush();
 check($generation('WD Cache query A') !== $queries['WD Cache query A'],
 	'Empty -> nonempty invalidates the already existing dependent page');
 $queries['WD Cache query A'] = $generation('WD Cache query A');
+$added = $read('WD Cache query A');
+check($added['source'] !== 'fragment-cache' && str_contains($added['html'], 'WD_MATCHES=1'),
+	'After a distant relation appears, the API reconstructs a non-stale fragment');
+check($read('WD Cache query A')['source'] === 'fragment-cache',
+	'The new semantic HTML becomes reusable by fragment-cache');
+
 
 fsSave('WD Cache child', '{{#set:WD Cache Parent=WD Cache B}}');
 fsFlush();
@@ -102,6 +132,11 @@ check($generation('WD Cache query A') !== $queries['WD Cache query A'],
 check($generation('WD Cache query B') !== $queries['WD Cache query B'],
 	'Adding a relation invalidates the new parent query');
 $queries['WD Cache query B'] = $generation('WD Cache query B');
+check(str_contains($read('WD Cache query A')['html'], 'WD_MATCHES=0'),
+	'Removing a parent removes it from the formerly cached API response');
+check(str_contains($read('WD Cache query B')['html'], 'WD_MATCHES=1'),
+	'Moving a child updates the new parent in the API response');
+
 
 fsSave('WD Cache child', 'No parent');
 fsFlush();
