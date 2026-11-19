@@ -1,0 +1,130 @@
+<?php
+
+/**
+ * Integration regression for SMW 7.3.1 on a new, disposable SQLite wiki.
+ * Run only after installing the genuine SMW and SemanticScribunto extensions.
+ */
+define('WD_FULLSTACK_TEST', true);
+putenv('WD_TEST_LANGUAGE=en');
+putenv('WD_TEST_SEMANTIC_TRACKING=1');
+putenv('WD_TEST_EXTENSIONS=Scribunto,SemanticMediaWiki,SemanticScribunto');
+require __DIR__ . '/mediawikiEnvironment.php';
+
+use MediaWiki\Extension\DebatePHP\MediaWikiContext;
+use MediaWiki\Extension\DebatePHP\Table;
+use MediaWiki\Extension\DebatePHP\TrackedSemanticQuery;
+use MediaWiki\Extension\Wikidebates\Reading\FragmentService;
+use MediaWiki\MediaWikiServices;
+use MediaWiki\Parser\ParserOptions;
+use MediaWiki\Title\Title;
+use SMW\DataItems\Property;
+use SMW\DataItems\WikiPage as SemanticWikiPage;
+use SMW\Services\ServicesFactory;
+use SMW\SQLStore\QueryDependencyLinksStoreFactory;
+
+check(str_starts_with(MW_VERSION, '1.43.'), 'Only MediaWiki 1.43 is supported');
+check(SMW_VERSION === '7.3.1', 'Exact SMW 7.3.1 integration regression');
+check(SMW_SCRIBUNTO_VERSION === '2.3.3', 'Exact SemanticScribunto 2.3.3 semantics');
+
+$services = MediaWikiServices::getInstance();
+$store = ServicesFactory::getInstance()->getStore();
+check($store instanceof \SMW\SQLStore\SQLStore, 'Real SMW SQLStore');
+check($store->setup(false), 'Disposable SMW tables initialized');
+$schema = $GLOBALS;
+(new \SMW\SetupFile())->loadSchema($schema);
+\SMW\Globals::replace($schema);
+check(\SMW\Site::isReady(), 'SMW ready after isolated schema setup');
+require __DIR__ . '/fullstackSupport.php';
+$fsUser = \MediaWiki\User\User::newSystemUser('Wikidebates semantic cache lab', ['steal' => false]);
+check($fsUser !== null, 'Disposable test writer');
+
+$register = static function($parser): void {
+	$parser->setHook('wd-cache-parents', static function($input, $args, $parser, $frame): string {
+		$ctx = new MediaWikiContext($parser, $frame, [], false);
+		$rows = $ctx->readSemantic(Table::wrap([
+			'[[WD Cache Parent::' . trim($input) . ']]',
+			'limit=200', 'link=none'
+		]), 'cache-tracking');
+		return 'WD_MATCHES=' . count($rows->rows ?? []);
+	});
+};
+$services->getHookContainer()->register('ParserFirstCallInit', $register);
+$register($services->getParser());
+
+fsSave('Property:WD Cache Parent', '[[Has type::Page]]');
+fsSave('WD Cache A', 'Parent A');
+fsSave('WD Cache B', 'Parent B');
+fsSave('WD Cache child', 'No parents yet');
+fsSave('WD Cache query A', 'Initial stub');
+fsSave('WD Cache query B', 'Initial stub');
+fsFlush();
+
+// The query pages must exist before their query profiles are written.
+fsSave('WD Cache query A', '<wd-cache-parents>WD Cache A</wd-cache-parents>');
+fsSave('WD Cache query B', '<wd-cache-parents>WD Cache B</wd-cache-parents>');
+fsFlush();
+
+$links = (new QueryDependencyLinksStoreFactory())->newQueryDependencyLinksStore($store);
+$fragmentStore = FragmentService::store();
+$generation = static function(string $name) use ($fragmentStore): string {
+	return $fragmentStore->read(Title::newFromText($name)->getPrefixedDBkey(), 'semantic-test', [])['generation'];
+};
+$queries = ['WD Cache query A' => $generation('WD Cache query A'),
+	'WD Cache query B' => $generation('WD Cache query B')];
+
+foreach (array_keys($queries) as $queryTitle) {
+	$title = Title::newFromText($queryTitle);
+	$subject = SemanticWikiPage::newFromTitle($title);
+	$store->clear();
+	check($store->getPropertyValues($subject, new Property('_ASK')) !== [],
+		'Native PHP query persists a genuine _ASK profile: ' . $queryTitle);
+	check($links->findEmbeddedQueryIdListBySubject($subject) !== [],
+		'Profile IDs are discoverable for dependency validation: ' . $queryTitle);
+}
+
+// Check the exact empty-query case: the two queries currently match no subjects.
+// Their query dependency records must nonetheless exist before any child link.
+$subjectA = SemanticWikiPage::newFromTitle(Title::newFromText('WD Cache query A'));
+$validator = (new QueryDependencyLinksStoreFactory())->newDependencyLinksValidator();
+check($validator->canCheckDependencies(), 'SMW dependency checks are enabled');
+check(!$validator->hasArchaicDependencies($subjectA), 'A stable empty query is not archaic');
+
+fsSave('WD Cache child', '{{#set:WD Cache Parent=WD Cache A}}');
+fsFlush();
+check($generation('WD Cache query A') !== $queries['WD Cache query A'],
+	'Empty -> nonempty invalidates the already existing dependent page');
+$queries['WD Cache query A'] = $generation('WD Cache query A');
+
+fsSave('WD Cache child', '{{#set:WD Cache Parent=WD Cache B}}');
+fsFlush();
+check($generation('WD Cache query A') !== $queries['WD Cache query A'],
+	'Removing a relation invalidates the former parent query');
+check($generation('WD Cache query B') !== $queries['WD Cache query B'],
+	'Adding a relation invalidates the new parent query');
+$queries['WD Cache query B'] = $generation('WD Cache query B');
+
+fsSave('WD Cache child', 'No parent');
+fsFlush();
+check($generation('WD Cache query B') !== $queries['WD Cache query B'],
+	'Deleting the last relation invalidates the parent query');
+$queries['WD Cache query B'] = $generation('WD Cache query B');
+
+// Unchanged semantic values must not cause another cross-page invalidation.
+fsSave('WD Cache child', 'No parent<!-- changed prose only -->');
+fsFlush();
+check($generation('WD Cache query B') === $queries['WD Cache query B'],
+	'Unchanged semantic relations retain the dependent fragment generation');
+
+$parser = $services->getParserFactory()->create();
+$parser->startExternalParse(Title::newFromText('WD Cache query A'),
+	ParserOptions::newFromAnon(), $parser::OT_HTML);
+$context = new MediaWikiContext($parser, $parser->getPreprocessor()->newFrame(), [], false);
+$context->readSemantic(Table::wrap(['[[WD Cache Parent::WD Cache A]]',
+	'limit=200', 'link=none']), 'cache-tracking');
+check($parser->getOutput()->getExtensionData(TrackedSemanticQuery::OUTPUT_MARKER) === true,
+	'Native read marks the ParserOutput when the dependency profile is recorded');
+check($parser->getOutput()->getExtensionData(\SMW\ParserData::DATA_ID) instanceof \SMW\SemanticData,
+	'Native _ASK annotation is written to the same SMW ParserOutput as #ask');
+
+check(!$services->getJobQueueGroup()->queuesHaveJobs(), 'Invalidation jobs drained');
+echo "OK: SMW 7.3.1 native profiles, empty results, inserts, moves, deletes and fragment invalidation\n";
