@@ -66,7 +66,8 @@ final class SemanticCacheGuard {
 	 * within the same second as a query may therefore return stale HTML until
 	 * the eventual purge job runs (or forever if that job fails).
 	 *
-	 * Treat equality as ambiguous and force a cache-free parse instead. This
+	 * Treat equality and missing query-link registrations as ambiguous and
+	 * force a cache-free parse instead. This
 	 * deliberately errs on the side of extra work until SMW re-registers the
 	 * query at a later timestamp. It does not modify SMW's own database rows.
 	 */
@@ -87,13 +88,13 @@ final class SemanticCacheGuard {
 			->from($tables[$tableId]->getName(), 'ask_profile')
 			->join(SQLStore::ID_TABLE, 'page', ['ask_profile.s_id=page.smw_id'])
 			->join(SQLStore::ID_TABLE, 'query', ['ask_profile.o_id=query.smw_id'])
-			->join(SQLStore::QUERY_LINKS_TABLE, 'links', ['links.s_id=query.smw_id'])
-			->join(SQLStore::ID_TABLE, 'dependency', ['links.o_id=dependency.smw_id'])
+			->leftJoin(SQLStore::QUERY_LINKS_TABLE, 'links', ['links.s_id=query.smw_id'])
+			->leftJoin(SQLStore::ID_TABLE, 'dependency', ['links.o_id=dependency.smw_id'])
 			->where([
 				'page.smw_hash' => $db->escape_bytea($subject->getSha1()),
 				$db->expr('page.smw_iw', '!=', SMW_SQL3_SMWIW_OUTDATED),
 				$db->expr('page.smw_iw', '!=', SMW_SQL3_SMWDELETEIW),
-				'dependency.smw_touched = query.smw_touched'
+				'(links.s_id IS NULL OR dependency.smw_id IS NULL OR dependency.smw_touched >= query.smw_touched)'
 			])
 			->limit(1)
 			->caller(__METHOD__)
