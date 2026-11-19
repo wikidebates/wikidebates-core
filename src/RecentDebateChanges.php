@@ -107,8 +107,14 @@ class RecentDebateChanges {
 
 		} catch ( \Throwable $e ) {
 			DatabaseFailure::rethrow( $e );
-			wfDebugLog( 'Wikidebates', 'Recent contributions error: ' . get_class( $e ) . ': ' . $e->getMessage() );
-			return self::makeError( 'wikidebates-recent-changes-error-internal' );
+			if ( function_exists( 'wfDebugLog' ) ) {
+				wfDebugLog( 'Wikidebates', 'Recent contributions error: ' . get_class( $e ) );
+			}
+			// In normal MediaWiki execution a localized public message is available.
+			// Isolated PHP doubles do not load Message or MediaWikiServices.
+			return function_exists( 'wfMessage' )
+				? self::makeError( 'wikidebates-recent-changes-error-internal' )
+				: '<div class="error">Recent contributions unavailable.</div>';
 		}
 	}
 
