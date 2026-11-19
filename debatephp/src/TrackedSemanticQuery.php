@@ -34,7 +34,10 @@ final class TrackedSemanticQuery {
 		// A preview is not a stored revision: never register its transient
 		// queries against the published page in smw_query_links.
 		$preview = in_array($action, ['edit', 'submit', 'stashedit'], true) ||
-			($action === 'parse' && $request->getVal('text') !== null);
+			($action === 'parse' && $request->getVal('text') !== null) ||
+			$request->getVal('oldid') !== null || $request->getVal('revid') !== null;
+		// Historical revisions and text supplied to action=parse are not the
+		// canonical page version and must not write _ASK to its semantic store.
 		$canTrace = !$preview && $title !== null && $title->canExist() &&
 			$title->exists() && $services->getNamespaceExaminer()->isSemanticEnabled($title->getNamespace()) &&
 			$settings->get('smwgEnabledQueryDependencyLinksStore') &&
