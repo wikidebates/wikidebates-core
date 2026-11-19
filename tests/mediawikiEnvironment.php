@@ -93,6 +93,9 @@ function wikidebatesTestConfig($settings): void {
 		}
 		wfLoadExtension($extension);
 	}
+	if (getenv('WD_TEST_SEMANTIC_TRACKING') === '1') {
+		wfLoadSkin('Vector');
+	}
 	wfLoadExtension('Wikidebates', dirname(__DIR__) . '/extension.json');
 }
 if (defined('WD_FULLSTACK_TEST') && getenv('WD_FULLSTACK_AUTOLOAD')) {
