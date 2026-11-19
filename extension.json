@@ -27,7 +27,8 @@
 		"PageSaveComplete": "MediaWiki\\Extension\\Wikidebates\\Hooks::onPageSaveComplete",
 		"AuthChangeFormFields": "MediaWiki\\Extension\\Wikidebates\\Hooks::onAuthChangeFormFields",
 		"TitleSquidURLs": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onTitleSquidURLs",
-		"AfterFinalPageOutput": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onAfterFinalPageOutput"
+		"AfterFinalPageOutput": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onAfterFinalPageOutput",
+		"SMW::SQLStore::AfterDataUpdateComplete": "MediaWiki\\Extension\\Wikidebates\\Reading\\SemanticCacheHooks::onSMW__SQLStore__AfterDataUpdateComplete"
 	},
 	"ResourceFileModulePaths": {
 		"localBasePath": "modules",
@@ -596,6 +597,10 @@
 		"WikidebatesReadingCacheEpoch": {
 			"value": "2"
 		},
+		"WikidebatesSemanticCacheTracking": {
+			"value": false,
+			"description": "Opt-in tracking of native SMW queries and targeted cache invalidation; keep disabled until isolated integration validation."
+		},
 		"WikidebatesReadingPrewarm": {
 			"value": true
 		},
@@ -616,6 +621,7 @@
 		"wikidebatesreading": "MediaWiki\\Extension\\Wikidebates\\Reading\\ApiReadingFragment"
 	},
 	"JobClasses": {
-		"wikidebatesWarmReading": "MediaWiki\\Extension\\Wikidebates\\Reading\\WarmFragmentsJob"
+		"wikidebatesWarmReading": "MediaWiki\\Extension\\Wikidebates\\Reading\\WarmFragmentsJob",
+		"wikidebatesSemanticCachePurge": "MediaWiki\\Extension\\Wikidebates\\Reading\\SemanticCachePurgeJob"
 	}
 }
