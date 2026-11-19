@@ -66,6 +66,9 @@ final class SemanticCacheGuard {
 	 * within the same second as a query may therefore return stale HTML until
 	 * the eventual purge job runs (or forever if that job fails).
 	 *
+	 * The embedding page itself is an implicit SMW dependency: its new revision
+	 * is already part of the fragment identity, so exclude only that single ID
+	 * from equality checks (not other subjects or referenced properties).
 	 * Treat equality and missing query-link registrations as ambiguous and
 	 * force a cache-free parse instead. This
 	 * deliberately errs on the side of extra work until SMW re-registers the
@@ -94,7 +97,7 @@ final class SemanticCacheGuard {
 				'page.smw_hash' => $db->escape_bytea($subject->getSha1()),
 				$db->expr('page.smw_iw', '!=', SMW_SQL3_SMWIW_OUTDATED),
 				$db->expr('page.smw_iw', '!=', SMW_SQL3_SMWDELETEIW),
-				'(links.s_id IS NULL OR dependency.smw_id IS NULL OR dependency.smw_touched >= query.smw_touched)'
+				'(links.s_id IS NULL OR dependency.smw_id IS NULL OR (dependency.smw_id != page.smw_id AND dependency.smw_touched >= query.smw_touched))'
 			])
 			->limit(1)
 			->caller(__METHOD__)
