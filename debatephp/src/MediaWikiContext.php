@@ -305,7 +305,8 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 				return $converted;
 			} finally { $this->telemetry?->semanticFinish($this->semanticOrigin, 'result', $resultStarted, $failed); }
 		} catch (\Throwable $e) {
-			if (MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesSemanticCacheTracking')) {
+			if (class_exists(MediaWikiServices::class) &&
+				MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesSemanticCacheTracking')) {
 				// Never cache a partial render after a failed tracked query.
 				$this->parser->getOutput()->updateCacheExpiry(0);
 			}
