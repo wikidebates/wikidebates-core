@@ -84,6 +84,8 @@ function wikidebatesTestConfig($settings): void {
 		if (getenv('WD_TEST_SEMANTIC_TRACKING') === '1') {
 			$GLOBALS['smwgEnabledQueryDependencyLinksStore'] = true;
 			$GLOBALS['smwgQueryProfiler'] = 0;
+			// Production disables SMW's independent query-result cache.
+			$GLOBALS['smwgQueryResultCacheType'] = 0;
 		}
 		$GLOBALS['wgScribuntoDefaultEngine'] = 'luastandalone';
 	}
