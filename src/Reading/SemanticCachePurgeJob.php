@@ -27,12 +27,12 @@ final class SemanticCachePurgeJob extends \Job {
 			return true;
 		}
 		$ids = SemanticCacheHooks::changedIds(
-			$this->hasParameter('dependencyIds') ? (array)$this->getParameter('dependencyIds') : []
+			(array)($this->params['dependencyIds'] ?? [])
 		);
 		if ($ids === []) {
 			return true;
 		}
-		$cursor = $this->hasParameter('cursor') ? max(0, (int)$this->getParameter('cursor')) : 0;
+		$cursor = max(0, (int)($this->params['cursor'] ?? 0));
 
 		try {
 			$store = SemanticServices::getInstance()->getStore();
