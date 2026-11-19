@@ -121,7 +121,23 @@ check($validator->canCheckDependencies(), 'SMW dependency checks are enabled');
 check(!$validator->hasArchaicDependencies($subjectA), 'A stable empty query is not archaic');
 
 fsSave('WD Cache child', '{{#set:WD Cache Parent=WD Cache A}}');
+// Persist the SMW edit but deliberately hold the targeted purge job in queue.
+fsFlush(['wikidebatesSemanticCachePurge']);
+check($services->getJobQueueGroup()->queuesHaveJobs(),
+	'Semantic purge is genuinely still pending after the data update');
+check($generation('WD Cache query A') === $queries['WD Cache query A'],
+	'Neither the background purge nor a guard has invalidated the fragment yet');
+
+$beforePurge = $read('WD Cache query A');
+check($beforePurge['source'] !== 'fragment-cache',
+	'A pending semantic purge must bypass the old fragment');
+check(str_contains($beforePurge['html'], 'WD_MATCHES=1'),
+	'Before any targeted purge runs, the reading API must show the new relation');
+check($services->getJobQueueGroup()->queuesHaveJobs(),
+	'The freshness check works without draining or relying on the queued purge');
+
 fsFlush();
+
 $valuesAfterInsert = fsValues('WD Cache child', 'WD Cache Parent');
 check(count($valuesAfterInsert) === 1, 'The changed relation is persisted in the real SMW store');
 $store->clear();
