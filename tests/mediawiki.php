@@ -181,5 +181,7 @@ rejects(static fn() => $parse('{{#debate:render}}', 'invalid'), 'Invalid mode re
 same([], array_values(array_filter($sourceReads, static fn(string $name): bool => str_starts_with($name, 'Module:'))), 'No module source read in either mode');
 check(!class_exists(\MediaWiki\Extension\DebatePHP\LiteralData::class, false), 'Runtime never loads the offline Lua reader');
 require __DIR__ . '/mediawikiOperations.php';
+require __DIR__ . '/mediawikiRevisionVisibility.php';
+require __DIR__ . '/mediawikiParentCAS.php';
 
 echo "OK: MediaWiki " . MW_VERSION . ", $count render fixtures in both modes, single extension load, hooks, policy and no runtime Lua dependencies\n";

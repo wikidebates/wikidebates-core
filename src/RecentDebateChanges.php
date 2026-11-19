@@ -3,6 +3,7 @@
 namespace MediaWiki\Extension\Wikidebates;
 
 use MediaWiki\MediaWikiServices;
+use MediaWiki\Revision\RevisionRecord;
 use MediaWiki\Extension\DebatePHP\DatabaseFailure;
 use Parser;
 use PPFrame;
@@ -62,6 +63,9 @@ class RecentDebateChanges {
 					. '</div>';
 			}
 
+			// Recheck visible revision fields even when data was cached before RevDel.
+			$items = self::applyPublicRevisionVisibility( $items );
+
 			$out = [];
 			$out[] = '<ul class="onglet-externe">';
 
@@ -75,7 +79,9 @@ class RecentDebateChanges {
 
 				$authorDate = self::msg(
 					'wikidebates-recent-changes-author-date',
-					self::makeWikiLink( $item['user_page'], $item['user_label'] ),
+					$item['user_page'] === ''
+						? htmlspecialchars( $item['user_label'] )
+						: self::makeWikiLink( $item['user_page'], $item['user_label'] ),
 					$item['date_text']
 				);
 				$line .= ' (' . $authorDate . ')';
@@ -101,9 +107,14 @@ class RecentDebateChanges {
 
 		} catch ( \Throwable $e ) {
 			DatabaseFailure::rethrow( $e );
-			return '<pre style="color:red;">'
-				. htmlspecialchars( get_class( $e ) . ': ' . $e->getMessage() )
-				. '</pre>';
+			if ( function_exists( 'wfDebugLog' ) ) {
+				wfDebugLog( 'Wikidebates', 'Recent contributions error: ' . get_class( $e ) );
+			}
+			// In normal MediaWiki execution a localized public message is available.
+			// Isolated PHP doubles do not load Message or MediaWikiServices.
+			return function_exists( 'wfMessage' )
+				? self::makeError( 'wikidebates-recent-changes-error-internal' )
+				: '<div class="error">Recent contributions unavailable.</div>';
 		}
 	}
 
@@ -152,7 +163,7 @@ class RecentDebateChanges {
 		$services = MediaWikiServices::getInstance();
 		$cache = $services->getMainWANObjectCache();
 		$key = $cache->makeKey(
-			'wikidebates', 'recent-debate-changes', 'v1',
+			'wikidebates', 'recent-debate-changes', 'v2',
 			$title->getPrefixedDBkey(), $services->getContentLanguage()->getCode(), $limit
 		);
 
@@ -216,6 +227,8 @@ class RecentDebateChanges {
 				'child_title'	=> 'child_ids.smw_title',
 				'child_ns'		=> 'child_ids.smw_namespace',
 				'rev_timestamp'	=> 'rev.rev_timestamp',
+				'rev_id'		=> 'rev.rev_id',
+				'rev_deleted'	=> 'rev.rev_deleted',
 				'actor_name'	=> 'actor.actor_name',
 				'comment_text'	=> 'comment_store.comment_text'
 			] )
@@ -292,7 +305,10 @@ class RecentDebateChanges {
 				continue;
 			}
 
-			$userName = trim( (string)( $row->actor_name ?? '' ) );
+			// Never store already-hidden user names or comments in the shared cache.
+			$deleted = (int)( $row->rev_deleted ?? ( RevisionRecord::DELETED_USER | RevisionRecord::DELETED_COMMENT ) );
+			$userName = ( $deleted & RevisionRecord::DELETED_USER ) === 0
+				? trim( (string)( $row->actor_name ?? '' ) ) : '';
 
 			$timestamp = (string)( $row->rev_timestamp ?? '' );
 			$dateText = $timestamp !== ''
@@ -305,10 +321,12 @@ class RecentDebateChanges {
 
 			$items[] = [
 				'title'				=> $childTitle->getPrefixedText(),
-				'user_page'			=> self::normalizeUserPage( $userName ),
-				'user_label'		=> self::normalizeUserLabel( $userName ),
+				'revision_id'		=> (int)( $row->rev_id ?? 0 ),
+				'user_page'			=> $userName !== '' ? self::normalizeUserPage( $userName ) : '',
+				'user_label'		=> $userName !== '' ? self::normalizeUserLabel( $userName ) : self::msg( 'wikidebates-recent-changes-hidden-author' ),
 				'date_text'			=> $dateText,
-				'summary'			=> trim( (string)( $row->comment_text ?? '' ) ),
+				'summary'			=> ( $deleted & RevisionRecord::DELETED_COMMENT ) === 0
+					? trim( (string)( $row->comment_text ?? '' ) ) : '',
 				'argument_concerne'	=> $argumentConcerne
 			];
 
@@ -317,6 +335,49 @@ class RecentDebateChanges {
 			}
 		}
 
+		return $items;
+	}
+
+	/**
+	 * A non-cacheable primary DB read prevents an already-cached author or
+	 * edit summary from leaking after RevisionDelete (including suppression).
+	 * Apply PUBLIC visibility even for admins because the output is shared.
+	 * Missing rows and DB errors must fail closed.
+	 */
+	private static function applyPublicRevisionVisibility( array $items ): array {
+		$revisionIds = array_values( array_unique( array_filter( array_map(
+			static fn( array $item ): int => (int)( $item['revision_id'] ?? 0 ), $items
+		) ) ) );
+		$visibility = [];
+		try {
+			if ( $revisionIds ) {
+				$dbw = MediaWikiServices::getInstance()->getConnectionProvider()->getPrimaryDatabase();
+				$res = $dbw->newSelectQueryBuilder()
+					->select( [ 'rev_id', 'rev_deleted' ] )
+					->from( 'revision' )
+					->where( [ 'rev_id' => $revisionIds ] )
+					->caller( __METHOD__ )
+					->fetchResultSet();
+				foreach ( $res as $row ) {
+					$visibility[(int)$row->rev_id] = (int)$row->rev_deleted;
+				}
+			}
+		} catch ( \Throwable $e ) {
+			wfDebugLog( 'Wikidebates', 'Revision visibility lookup failed: ' . get_class( $e ) );
+		}
+
+		foreach ( $items as &$item ) {
+			$revisionId = (int)( $item['revision_id'] ?? 0 );
+			$flags = $visibility[$revisionId] ?? ( RevisionRecord::DELETED_USER | RevisionRecord::DELETED_COMMENT );
+			if ( $flags & RevisionRecord::DELETED_USER ) {
+				$item['user_page'] = '';
+				$item['user_label'] = self::msg( 'wikidebates-recent-changes-hidden-author' );
+			}
+			if ( $flags & RevisionRecord::DELETED_COMMENT ) {
+				$item['summary'] = '';
+			}
+		}
+		unset( $item );
 		return $items;
 	}
 

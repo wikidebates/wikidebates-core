@@ -37,6 +37,10 @@ try {
 		$hit = fragment('Cache study argument', $skin, $mobile);
 		ensure($hit['source'] === 'fragment-cache', 'Prepared fragment is reused: ' . $skin . ' source=' . $hit['source']);
 		ensure($hit['html'] === $cold['html'] && $before === countLines('pipeline.log'), 'A hit does not run the output pipeline: ' . $skin);
+		$ajax = fragment('Cache study argument', $skin, $mobile, ['X-Requested-With: XMLHttpRequest']);
+		ensure($ajax['source'] === 'fragment-cache' && $ajax['html'] === $cold['html'],
+			'Ordinary anonymous mw.Api AJAX reuses the same safe prepared HTML: ' . $skin);
+		ensure($before === countLines('pipeline.log'), 'AJAX cache hit does not parse the page: ' . $skin);
 	}
 	$before = countLines('pipeline.log');
 	operation('daily');
@@ -73,6 +77,8 @@ try {
 	operation('clear-fragments');
 	$blocked = fragment('Cache study argument', 'minerva', true, ['Cookie: custom=1']);
 	ensure($blocked['source'] === 'parser', 'Cookies bypass full files as well as fragments');
+	$blockedAjax = fragment('Cache study argument', 'minerva', true, ['X-Requested-With: XMLHttpRequest', 'Cookie: custom=1']);
+	ensure($blockedAjax['source'] === 'parser', 'AJAX with a cookie still bypasses shared fragments');
 	operation('clear-vector');
 	ensure(fragment('Cache study argument', 'vector', false, [], 'fr')['source'] === 'parser', 'Language variants do not share prepared HTML');
 	ensure(fragment('Cache study argument', 'vector', false, ['Cookie: preference=custom'])['source'] === 'parser', 'Cookie-bearing requests bypass shared fragments');

@@ -1,9 +1,9 @@
-name: Native HTML PHP checks
+name: Wikidebates 1.43 regression checks
 
 on:
   push:
     branches:
-      - fix/remove-html-tags-dependency
+      - main
   pull_request:
 
 permissions:
@@ -53,3 +53,16 @@ jobs:
         env:
           MW_INSTALL_PATH: ${{ github.workspace }}/.mw-lab
         run: php tests/mediawiki.php
+  javascript:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+      - name: Install isolated JavaScript test dependencies
+        run: npm ci --prefix tests --ignore-scripts
+      - name: JavaScript unit tests (including the AJAX client)
+        run: npm test --prefix tests
