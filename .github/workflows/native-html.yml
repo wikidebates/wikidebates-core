@@ -109,7 +109,8 @@ jobs:
           # linters; keep Composer security-advisory blocking enabled.
           php -r '$p=".mw-lab/extensions/SemanticMediaWiki/composer.json"; $data=json_decode(file_get_contents($p), true, 512, JSON_THROW_ON_ERROR); unset($data["require-dev"]); file_put_contents($p, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n");'
           composer install --working-dir=.mw-lab/extensions/SemanticMediaWiki --no-dev --no-interaction --prefer-dist --no-progress
-          composer install --working-dir=.mw-lab/extensions/SemanticScribunto --no-dev --no-interaction --prefer-dist --no-progress
+          # SemanticScribunto only needs its ExtensionRegistry autoloader here;
+          # its Composer dev requirements are not needed by this lab.
       - name: Real SMW query dependency and purge tests on SQLite
         env:
           MW_INSTALL_PATH: ${{ github.workspace }}/.mw-lab
