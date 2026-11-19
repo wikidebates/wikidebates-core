@@ -19,6 +19,7 @@ class FindHtmlTags extends Maintenance {
 		$this->addOption('after', 'Resume after this page ID (default 0)', false, true);
 		$this->addOption('limit', 'Maximum number of pages to scan (default: all)', false, true);
 		$this->addOption('batch-size', 'Pages per database batch (1-1000, default 200)', false, true);
+		$this->addOption('ids', 'Comma-separated page IDs to inspect (for targeted inspection)', false, true);
 	}
 
 	public function execute() {
@@ -27,6 +28,17 @@ class FindHtmlTags extends Maintenance {
 		$batch = (int)$this->getOption('batch-size', 200);
 		if ($after < 0 || $limit < 1 || $batch < 1 || $batch > 1000) {
 			$this->fatalError('Invalid cursor, limit or batch-size.');
+		}
+		$idArg = trim((string)$this->getOption('ids', ''));
+		$ids = [];
+		if ($idArg !== '') {
+			if (!preg_match('/^[0-9]+(?:,[0-9]+)*$/', $idArg)) {
+				$this->fatalError('Invalid --ids: use comma-separated positive page IDs.');
+			}
+			$ids = array_values(array_unique(array_map('intval', explode(',', $idArg))));
+			if (in_array(0, $ids, true)) {
+				$this->fatalError('Invalid --ids: page IDs must be positive.');
+			}
 		}
 		$services = MediaWikiServices::getInstance();
 		$db = $services->getConnectionProvider()->getReplicaDatabase();
@@ -41,7 +53,7 @@ class FindHtmlTags extends Maintenance {
 			$rows = $db->newSelectQueryBuilder()
 				->select(['page_id', 'page_namespace', 'page_title'])
 				->from('page')
-				->where([$db->expr('page_id', '>', $after)])
+				->where($ids ? ['page_id' => $ids, $db->expr('page_id', '>', $after)] : [$db->expr('page_id', '>', $after)])
 				->orderBy('page_id')
 				->limit(min($batch, $limit - $scanned))
 				->caller(__METHOD__)
@@ -57,12 +69,23 @@ class FindHtmlTags extends Maintenance {
 					if (!$revision) { $missing++; continue; }
 					$content = $revision->getContent(SlotRecord::MAIN);
 					if (!$content) { $missing++; continue; }
-					if (!$content instanceof TextContent) { $nontext++; continue; }
-					$text = $content->getText();
-					if (preg_match('~<\s*/?\s*htmltag\b|\#\s*tag\s*:\s*htmltag\b~i', $text)) {
+					// Scribunto Lua modules and other content models are not necessarily TextContent.
+					// Serialization is the model-independent representation of the current main slot.
+					if (!$content instanceof TextContent) { $nontext++; }
+					$text = $content instanceof TextContent ? $content->getText() : $content->serialize();
+					if (!is_string($text)) { $errors++; continue; }
+					if (preg_match_all('~<\s*/?\s*htmltag\b|\#\s*tag\s*:\s*htmltag\b~i', $text, $matches, PREG_OFFSET_CAPTURE)) {
 						$hits++;
 						$this->output('MATCH page_id=' . $after . ' namespace=' . $row->page_namespace .
+							' model=' . $content->getModel() .
 							' title=' . $title->getPrefixedText() . "\n");
+						foreach (array_slice($matches[0], 0, 10) as $match) {
+							$offset = $match[1];
+							$line = substr_count(substr($text, 0, $offset), "\n") + 1;
+							$snippet = substr($text, max(0, $offset - 90), strlen($match[0]) + 180);
+							$snippet = preg_replace('/[\r\n\t ]+/', ' ', $snippet);
+							$this->output('  line=' . $line . ' excerpt=' . $snippet . "\n");
+						}
 					}
 				} catch (\Throwable $e) {
 					$errors++;
@@ -70,12 +93,12 @@ class FindHtmlTags extends Maintenance {
 						' exception=' . get_class($e) . "\n");
 				}
 			}
-			$this->output("Checked=$scanned matches=$hits nontext=$nontext missing=$missing errors=$errors resume_after=$after\n");
+			$this->output("Checked=$scanned matches=$hits other_models=$nontext missing=$missing errors=$errors resume_after=$after\n");
 		} while ($found > 0 && $scanned < $limit);
 		if ($errors || $missing) {
 			$this->fatalError('Inventory incomplete: some revisions could not be read; do not disable HTML Tags.');
 		}
-		$this->output("DONE. Pages checked=$scanned, matches=$hits, nontext=$nontext; last_page_id=$after\n");
+		$this->output("DONE. Pages checked=$scanned, matches=$hits, other_models=$nontext; last_page_id=$after\n");
 	}
 }
 
