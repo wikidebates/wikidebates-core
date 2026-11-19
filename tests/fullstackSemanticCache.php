@@ -115,6 +115,15 @@ check(!$validator->hasArchaicDependencies($subjectA), 'A stable empty query is n
 
 fsSave('WD Cache child', '{{#set:WD Cache Parent=WD Cache A}}');
 fsFlush();
+$valuesAfterInsert = fsValues('WD Cache child', 'WD Cache Parent');
+check(count($valuesAfterInsert) === 1, 'The changed relation is persisted in the real SMW store');
+$store->clear();
+$directAfterInsert = (new \SMW\Scribunto\LibraryFactory($store))->newQueryResultFrom([
+	'[[WD Cache Parent::WD Cache A]]', 'limit=200', 'link=none'
+]);
+check($directAfterInsert instanceof \SMW\Query\QueryResult && $directAfterInsert->getCount() === 1,
+	'SMW query directly returns the newly added relation');
+
 check($generation('WD Cache query A') !== $queries['WD Cache query A'],
 	'Empty -> nonempty invalidates the already existing dependent page');
 $queries['WD Cache query A'] = $generation('WD Cache query A');
