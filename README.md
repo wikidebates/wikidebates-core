@@ -44,11 +44,12 @@ paquet et peut retirer la fonction tierce correspondante.
 | `$wgDebatePHPMode` | `reference` | `reference` ou `optimized`, pour les deux moteurs |
 | `$wgDebatePHPProfiling` | `false` | Durées et compteurs, canal privé `DebatePHP` |
 | `$wgDebatePHPDiagnostics` | `false` | Erreurs d’intégration sans leurs valeurs sensibles |
-| `$wgDebatePHPHTMLAttributes` | `null` | Politique d’attributs des balises natives |
 
-Une politique HTML nulle hérite de `$wgHTMLTagsAttributes` lorsqu’il existe,
-sinon des règles embarquées pour `a` et `script`. Un hook `htmltag` tiers
-déjà enregistré est conservé.
+Le moteur PHP construit directement les liens de navigation et les scripts
+JSON-LD non exécutables. Wikidebates ne déclare plus le hook `htmltag` et
+n'hérite plus de `$wgHTMLTagsAttributes`. Les anciens usages de cette balise
+présents dans les pages wiki doivent être vérifiés et migrés avant de désactiver
+HTML Tags sur le serveur (voir `docs/html-tags-retirement.md`).
 
 Les deux modes exécutent du PHP ; `optimized` active notamment la mémorisation
 des traductions. Les lectures de marqueurs sont désormais partagées. Une valeur
