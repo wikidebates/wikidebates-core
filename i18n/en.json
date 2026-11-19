@@ -383,8 +383,6 @@
 	"wk-menu-all-debates": "All debates",
 	"wk-menu-contributions-portal": "Contributions portal",
 	"wk-menu-bistro": "Village pump",
-	"htmltags-notagname": "The attribute \"tagname\" must be set for this tag.",
-	"htmltags-unsupportedtag": "The tag name \"$1\" is not supported for <htmltag>.",
 	"wikidebates-email-required": "Email address is required.",
 	"wikidebates-autoparent-pro": "/* Pro arguments */ Added argument: “$1”",
 	"wikidebates-autoparent-con": "/* Con arguments */ Added argument: “$1”",
