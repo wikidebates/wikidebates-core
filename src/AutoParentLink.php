@@ -282,97 +282,118 @@ class AutoParentLink {
 			return;
 		}
 
-		$parentContent = $parentPage->getContent( SlotRecord::MAIN );
-		if ( !$parentContent ) {
-			self::logProblem( 'Contenu parent absent pour parent=' . $parentTitle->getPrefixedText() );
-			return;
-		}
+		// A bounded retry prevents concurrent additions from silently replacing each other.
+		for ( $attempt = 0; $attempt < 2; $attempt++ ) {
+			// Use the revision remembered by PageUpdater as the transformation base.
+			// The compare-and-swap check prevents overwriting concurrent parent edits.
+			$pageUpdater = $parentPage->newPageUpdater( $user );
+			$parentRevision = $pageUpdater->grabParentRevision();
+			$parentContent = $parentRevision ? $parentRevision->getContent( SlotRecord::MAIN ) : null;
+			if ( !$parentContent ) {
+				self::logProblem( 'Contenu parent absent pour parent=' . $parentTitle->getPrefixedText() );
+				return;
+			}
 
-		$parentText = $parentContent instanceof TextContent ? $parentContent->getText() : null;
-		if ( $parentText === null || $parentText === '' ) {
-			self::logProblem( 'Texte parent vide pour parent=' . $parentTitle->getPrefixedText() );
-			return;
-		}
+			$parentText = $parentContent instanceof TextContent ? $parentContent->getText() : null;
+			if ( $parentText === null || $parentText === '' ) {
+				self::logProblem( 'Texte parent vide pour parent=' . $parentTitle->getPrefixedText() );
+				return;
+			}
 
-		$expectedParentTemplate = $map['parentTemplate'];
+			$expectedParentTemplate = $map['parentTemplate'];
 
-		if ( !preg_match( '/^\{\{' . preg_quote( $expectedParentTemplate, '/' ) . '\b/u', $parentText ) ) {
+			if ( !preg_match( '/^\{\{' . preg_quote( $expectedParentTemplate, '/' ) . '\b/u', $parentText ) ) {
+				self::logProblem(
+					'La page parent ne commence pas par le modèle attendu; parent='
+					. $parentTitle->getPrefixedText()
+					. '; attendu=' . $expectedParentTemplate
+				);
+				return;
+			}
+
+			$parentTemplate = self::parseTopLevelTemplate( $parentText );
+			if ( $parentTemplate === null ) {
+				self::logProblem( 'Impossible de parser le modèle parent=' . $parentTitle->getPrefixedText() );
+				return;
+			}
+
+			if ( $parentTemplate['name'] !== $expectedParentTemplate ) {
+				self::logProblem(
+					'Le modèle principal parent est inattendu; parent='
+					. $parentTitle->getPrefixedText()
+					. '; attendu=' . $expectedParentTemplate
+					. '; trouvé=' . $parentTemplate['name']
+				);
+				return;
+			}
+
+			$parameterName = $map['parameter'];
+			$templateName = $map['template'];
+			$order = $map['order'] === 'debate' ? $config['orderDebate'] : $config['orderArgument'];
+			$childPageName = $title->getText();
+
+			$currentValue = self::getParameterValue( $parentTemplate['parts'], $parameterName );
+			if ( $currentValue !== null && self::parameterContainsChild( $currentValue, $templateName, $childPageName, $config ) ) {
+				return;
+			}
+
+			$childBlock = self::buildChildBlock( $templateName, $childPageName, $config );
+
+			$updatedParts = self::upsertParameterInParts(
+				$parentTemplate['parts'],
+				$parameterName,
+				$childBlock,
+				$order
+			);
+
+			if ( $updatedParts === null ) {
+				self::logProblem(
+					'Échec d’insertion dans le paramètre=' . $parameterName
+					. '; parent=' . $parentTitle->getPrefixedText()
+					. '; enfant=' . $childPageName
+				);
+				return;
+			}
+
+			$newTemplateText = self::joinTemplateParts( $updatedParts );
+			$newParentText =
+				substr( $parentText, 0, $parentTemplate['start'] ) .
+				$newTemplateText .
+				substr( $parentText, $parentTemplate['end'] );
+
+			if ( $newParentText === $parentText ) {
+				self::logProblem(
+					'Aucun changement effectif après modification; parent=' . $parentTitle->getPrefixedText()
+					. '; enfant=' . $childPageName
+				);
+				return;
+			}
+
+			$newContent = ContentHandler::makeContent( $newParentText, $parentTitle );
+
+			$pageUpdater->setContent( SlotRecord::MAIN, $newContent );
+			$pageUpdater->addTag( 'argument added' );
+			$pageUpdater->saveRevision(
+				CommentStoreComment::newUnsavedComment(
+					self::buildEditSummary( $type, $childPageName, $config )
+				)
+			);
+			if ( $pageUpdater->wasSuccessful() && $pageUpdater->wasRevisionCreated() ) {
+				return;
+			}
+			$status = $pageUpdater->getStatus();
+			if ( $status->failedBecauseOfConflict() && $attempt === 0 ) {
+				// A different argument may have modified the same parent. Re-read,
+				// check whether this child is already present and retry only once.
+				self::logProblem( 'Conflit sur le parent, nouvelle tentative : ' . $parentTitle->getPrefixedText() );
+				continue;
+			}
 			self::logProblem(
-				'La page parent ne commence pas par le modèle attendu; parent='
-				. $parentTitle->getPrefixedText()
-				. '; attendu=' . $expectedParentTemplate
+				'Échec de liaison parent=' . $parentTitle->getPrefixedText()
+				. '; enfant=' . $childPageName . '; statut=' . $status->getWikiText()
 			);
 			return;
 		}
-
-		$parentTemplate = self::parseTopLevelTemplate( $parentText );
-		if ( $parentTemplate === null ) {
-			self::logProblem( 'Impossible de parser le modèle parent=' . $parentTitle->getPrefixedText() );
-			return;
-		}
-
-		if ( $parentTemplate['name'] !== $expectedParentTemplate ) {
-			self::logProblem(
-				'Le modèle principal parent est inattendu; parent='
-				. $parentTitle->getPrefixedText()
-				. '; attendu=' . $expectedParentTemplate
-				. '; trouvé=' . $parentTemplate['name']
-			);
-			return;
-		}
-
-		$parameterName = $map['parameter'];
-		$templateName = $map['template'];
-		$order = $map['order'] === 'debate' ? $config['orderDebate'] : $config['orderArgument'];
-		$childPageName = $title->getText();
-
-		$currentValue = self::getParameterValue( $parentTemplate['parts'], $parameterName );
-		if ( $currentValue !== null && self::parameterContainsChild( $currentValue, $templateName, $childPageName, $config ) ) {
-			return;
-		}
-
-		$childBlock = self::buildChildBlock( $templateName, $childPageName, $config );
-
-		$updatedParts = self::upsertParameterInParts(
-			$parentTemplate['parts'],
-			$parameterName,
-			$childBlock,
-			$order
-		);
-
-		if ( $updatedParts === null ) {
-			self::logProblem(
-				'Échec d’insertion dans le paramètre=' . $parameterName
-				. '; parent=' . $parentTitle->getPrefixedText()
-				. '; enfant=' . $childPageName
-			);
-			return;
-		}
-
-		$newTemplateText = self::joinTemplateParts( $updatedParts );
-		$newParentText =
-			substr( $parentText, 0, $parentTemplate['start'] ) .
-			$newTemplateText .
-			substr( $parentText, $parentTemplate['end'] );
-
-		if ( $newParentText === $parentText ) {
-			self::logProblem(
-				'Aucun changement effectif après modification; parent=' . $parentTitle->getPrefixedText()
-				. '; enfant=' . $childPageName
-			);
-			return;
-		}
-
-		$newContent = ContentHandler::makeContent( $newParentText, $parentTitle );
-
-		$pageUpdater = $parentPage->newPageUpdater( $user );
-		$pageUpdater->setContent( SlotRecord::MAIN, $newContent );
-      	$pageUpdater->addTag( 'argument added' );
-		$pageUpdater->saveRevision(
-			CommentStoreComment::newUnsavedComment(
-				self::buildEditSummary( $type, $childPageName, $config )
-			)
-		);
 	}
 
 	private static function getWikiConfig(): array {
