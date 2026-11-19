@@ -383,8 +383,6 @@
 	"wk-menu-all-debates": "Browser interface message: wk-menu-all-debates. $1, if present, is the affected title, value or label.",
 	"wk-menu-contributions-portal": "Browser interface message: wk-menu-contributions-portal. $1, if present, is the affected title, value or label.",
 	"wk-menu-bistro": "Browser interface message: wk-menu-bistro. $1, if present, is the affected title, value or label.",
-	"htmltags-notagname": "Error for an htmltag invocation without the required tagname attribute. Compatibility message from HTML Tags 0.3.",
-	"htmltags-unsupportedtag": "Error for a tag name absent from the configured HTML Tags policy. $1 is the requested tag name. Compatibility message from HTML Tags 0.3.",
 	"wikidebates-email-required": "Interface message: wikidebates-email-required.",
 	"wikidebates-autoparent-pro": "Automatic parent-link edit summary. $1 is the new child page title.",
 	"wikidebates-autoparent-con": "Automatic parent-link edit summary. $1 is the new child page title.",
