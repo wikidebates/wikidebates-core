@@ -14,6 +14,7 @@ use MediaWiki\Extension\DebatePHP\MediaWikiContext;
 use MediaWiki\Extension\DebatePHP\Table;
 use MediaWiki\Extension\DebatePHP\TrackedSemanticQuery;
 use MediaWiki\Extension\Wikidebates\Reading\FragmentService;
+use MediaWiki\Extension\Wikidebates\Reading\SemanticCacheGuard;
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Request\FauxRequest;
 use MediaWiki\MediaWikiServices;
@@ -198,4 +199,25 @@ check($parser->getOutput()->getExtensionData(\SMW\ParserData::DATA_ID) instanceo
 	'Native _ASK annotation is written to the same SMW ParserOutput as #ask');
 
 check(!$services->getJobQueueGroup()->queuesHaveJobs(), 'Invalidation jobs drained');
+
+// A dropped query-link registration must fail closed, even when the
+// corresponding _ASK profile still exists. This simulates a failed SMW
+// dependency flush without introducing any persistent production changes.
+$subjectForMissingLinks = SemanticWikiPage::newFromTitle(Title::newFromText('WD Cache query A'));
+$storedQueries = array_values($links->findEmbeddedQueryIdListBySubject($subjectForMissingLinks));
+check($storedQueries !== [], 'The query still has persisted _ASK profiles before simulated link loss');
+$db = $store->getConnection('mw.db');
+$db->newDeleteQueryBuilder()
+	->deleteFrom(\SMW\SQLStore\SQLStore::QUERY_LINKS_TABLE)
+	->where(['s_id' => $storedQueries])
+	->caller(__METHOD__)
+	->execute();
+$missingLinks = new \ReflectionMethod(SemanticCacheGuard::class, 'hasAmbiguousTimestampDependencies');
+check($missingLinks->invoke(null, $store, $subjectForMissingLinks) === true,
+	'Missing SMW query links are an unsafe, non-cacheable dependency state');
+$missingResponse = $read('WD Cache query A');
+check($missingResponse['source'] !== 'fragment-cache',
+	'Reading API refuses a fragment with an _ASK profile but lost query links');
+
+
 echo "OK: SMW 7.3.1 native profiles, empty results, inserts, moves, deletes and fragment invalidation\n";
