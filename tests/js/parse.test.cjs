@@ -74,7 +74,13 @@ test( 'a failed fragment request is retryable and custom parse options keep thei
 	WK.wkParsePage( readingParams ).fail( () => {} );
 	assert.equal( gets[ 0 ].params.action, 'wikidebatesreading' );
 	gets[ 0 ].request.reject( 'network' );
-	await tick();
+	// jQuery's chained rejection and .always cleanup may take more than one
+	// event-loop turn under CI load. Wait for the observable retryable state.
+	const cacheKey = WK.wkPageParseCache.key( readingParams );
+	for ( let attempt = 0; attempt < 20 && WK.wkPageParseCache.state( cacheKey ) === 'pending'; attempt++ ) {
+		await tick();
+	}
+	assert.equal( WK.wkPageParseCache.state( cacheKey ), 'network', 'failed request is released before retry' );
 	WK.wkParsePage( readingParams ).fail( () => {} );
 	assert.equal( gets.length, 2 );
 	WK.wkParsePage( params( 'Argument', { section: '1' } ) ).fail( () => {} );
