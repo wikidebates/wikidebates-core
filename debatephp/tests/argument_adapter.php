@@ -57,8 +57,7 @@ namespace MediaWiki\Title {
 namespace MediaWiki\Extension\DebatePHP {
 	final class NativeTags {
 	public static function observe($telemetry, $operation): string { return $operation(); }
-	public static function policy(): array { return ['a'=>['href','data-href','class','title'],'script'=>['type','class']]; }
-	public static function render($parser,$frame,$name,$content,$attrs,$xml,$policy): string { return '<'.$name.'>'.$content.'</'.$name.'>'; }
+	public static function renderLink($parser, $frame, $content, $attrs): string { return '<a>'.$content.'</a>'; }
 	}
 }
 namespace MediaWiki\Parser {

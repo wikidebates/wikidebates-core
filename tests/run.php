@@ -5,6 +5,7 @@ require __DIR__ . '/bootstrap.php';
 use MediaWiki\Extension\DebatePHP\HtmlBuilder;
 use MediaWiki\Extension\DebatePHP\I18n;
 use MediaWiki\Extension\DebatePHP\LiteralData;
+use MediaWiki\Extension\DebatePHP\NativeTags;
 use MediaWiki\Extension\DebatePHP\Lua;
 use MediaWiki\Extension\DebatePHP\Table;
 use MediaWiki\Extension\DebatePHP\Telemetry;
@@ -67,10 +68,19 @@ check(!str_contains(json_encode($events), 'private text'), 'Diagnostics never lo
 $telemetry = new Telemetry(false, true, [], static function(): void { throw new RuntimeException('sink failure'); });
 $telemetry->problem('render', 'test');
 
+check(NativeTags::isSafeLinkTarget('/wiki/Topic?x=1&y=2'), 'Safe local link');
+check(NativeTags::isSafeLinkTarget('https://example.test/wiki/Topic'), 'Safe HTTPS link');
+check(NativeTags::isSafeLinkTarget('javascript:void(0)', true), 'Legacy internal navigation no-op retained');
+check(!NativeTags::isSafeLinkTarget('javascript:void(0)'), 'No script URL in data-href');
+check(!NativeTags::isSafeLinkTarget('javascript:alert(1)'), 'Executable protocol rejected');
+check(!NativeTags::isSafeLinkTarget('java&#x73;cript:alert(1)'), 'Encoded script protocol rejected');
+check(!NativeTags::isSafeLinkTarget('java&#x09;script:alert(1)'), 'Control character rejected');
+check(!NativeTags::isSafeLinkTarget('data:text/html,unsafe'), 'Data URLs rejected');
 foreach (['en', 'fr'] as $language) {
 	$messagesFile = json_decode(file_get_contents(__DIR__ . '/../i18n/' . $language . '.json'), true, 512, JSON_THROW_ON_ERROR);
-	check(isset($messagesFile['htmltags-notagname'], $messagesFile['htmltags-unsupportedtag']), 'HTML Tags translations loaded');
+	check(!isset($messagesFile['htmltags-notagname']) && !isset($messagesFile['htmltags-unsupportedtag']), 'Obsolete HTML Tags messages removed');
 }
+
 echo "OK: $messages translation comparisons, offline snapshot checks, Lua semantics, escaping and telemetry\n";
 (static function(): void { require __DIR__ . '/i18n.php'; })();
 

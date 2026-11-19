@@ -584,10 +584,6 @@
 			"value": false,
 			"description": "Log renderer integration diagnostics to the DebatePHP debug channel."
 		},
-		"DebatePHPHTMLAttributes": {
-			"value": null,
-			"description": "Optional HTML Tags attribute policy; null uses wgHTMLTagsAttributes or the bundled policy."
-		},
 		"WikidebatesReadingFragments": {
 			"value": true
 		},

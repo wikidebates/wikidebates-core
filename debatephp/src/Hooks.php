@@ -8,7 +8,6 @@ use UtfNormal\Validator;
 
 final class Hooks {
 	public static function onParserFirstCallInit(Parser $parser): void {
-		if (!in_array('htmltag', $parser->getTags(), true)) { $parser->setHook('htmltag', [NativeTags::class, 'hook']); }
 		$parser->setFunctionHook('argument', [self::class, 'argument'], Parser::SFH_OBJECT_ARGS);
 		$parser->setFunctionHook('debate', [self::class, 'debate'], Parser::SFH_OBJECT_ARGS);
 	}

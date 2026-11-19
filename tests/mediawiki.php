@@ -146,25 +146,36 @@ if (!\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('Semanti
 $config = $services->getMainConfig();
 same(false, $config->get('DebatePHPProfiling'), 'Profiling defaults to off');
 same(false, $config->get('DebatePHPDiagnostics'), 'Diagnostics default to off');
-$GLOBALS['wgDebatePHPHTMLAttributes'] = ['a' => ['href']];
-same(['a' => ['href']], NativeTags::policy(), 'Explicit HTML attribute policy');
-$GLOBALS['wgDebatePHPHTMLAttributes'] = null;
-$GLOBALS['wgHTMLTagsAttributes'] = ['a' => ['class']];
-same(['a' => ['class']], NativeTags::policy(), 'Legacy HTML Tags policy');
-unset($GLOBALS['wgHTMLTagsAttributes']);
-$native = $parse('<htmltag tagname="a" href="/test" class="allowed" onclick="bad()">body &amp; text</htmltag>', 'reference');
-check(str_contains($native[0], 'class="allowed"'), 'Native HTML Tags retains allowed attributes');
-check(!str_contains($native[0], 'onclick'), 'Native HTML Tags filters unsupported attributes');
-check(str_contains($parse('<htmltag tagname="unknown">body</htmltag>', 'reference')[0], 'not supported'), 'Unsupported HTML tag message');
-check(str_contains($parse('<htmltag>body</htmltag>', 'reference')[0], 'must be set'), 'Missing HTML tag name message');
-
-// Registering DebatePHP must leave an already registered htmltag handler intact.
+// Wikidebates does not install a public htmltag hook; any external hook is independent.
 $parser = $services->getParserFactory()->create();
 $parser->firstCallInit();
-$parser->setHook('htmltag', static fn() => 'existing HTML Tags handler');
-DebateHooks::onParserFirstCallInit($parser);
-$output = $parser->parse('<htmltag tagname="a">body</htmltag>', Title::newFromText('Integration test'), ParserOptions::newFromAnon());
-check(str_contains($output->getText(), 'existing HTML Tags handler'), 'Preserve external HTML Tags hook');
+if (!\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('HTMLTags')) {
+	check(!in_array('htmltag', $parser->getTags(), true), 'No public htmltag hook registered');
+}
+$parser->startExternalParse(Title::newFromText('Integration test'), ParserOptions::newFromAnon(), $parser::OT_HTML);
+$context = new \MediaWiki\Extension\DebatePHP\MediaWikiContext(
+	$parser, $parser->getPreprocessor()->newFrame(), [], true
+);
+$link = $context->htmlTag('a', 'Open A=B | C', new \MediaWiki\Extension\DebatePHP\Table([
+	'href' => 'javascript:void(0)',
+	'data-href' => '/wiki/Test?x=1&amp;y=2',
+	'class' => 'wk-btn__a wk-js-nav',
+	'onclick' => 'alert(1)'
+]), true);
+$html = $parser->getStripState()->unstripBoth($link);
+check(str_contains($html, 'href="javascript:void(0)"'), 'Legacy inert RunQuery href retained');
+check(str_contains($html, 'data-href="/wiki/Test?x=1&amp;y=2"'), 'Encoded query URL retained');
+check(str_contains($html, 'Open A=B | C'), 'Link label keeps delimiters');
+check(!str_contains($html, 'onclick'), 'Unsupported attributes filtered');
+$link = $context->htmlTag('a', 'Safe label', new \MediaWiki\Extension\DebatePHP\Table([
+	'href' => 'javascript:alert(1)', 'data-href' => 'java&#x73;cript:alert(1)', 'class' => 'wk-js-nav'
+]), true);
+$html = $parser->getStripState()->unstripBoth($link);
+check(!str_contains($html, 'javascript:alert'), 'Unsafe link targets excluded');
+rejects(static fn() => $context->htmlTag('script', 'alert(1)',
+	new \MediaWiki\Extension\DebatePHP\Table, true), 'Arbitrary script rendering disabled');
+rejects(static fn() => $context->htmlTag('a', 'body',
+	new \MediaWiki\Extension\DebatePHP\Table, false), 'Generic tag fallback disabled');
 
 rejects(static fn() => $parse('{{#debate:render}}', 'invalid'), 'Invalid mode rejected');
 same([], array_values(array_filter($sourceReads, static fn(string $name): bool => str_starts_with($name, 'Module:'))), 'No module source read in either mode');
