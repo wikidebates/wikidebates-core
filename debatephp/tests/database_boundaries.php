@@ -119,7 +119,10 @@ namespace {
 	foreach ($operations as $name => $operation) {
 		$value = $operation();
 		if ($name === 'pcall') { same([false, 'Recoverable'], $value, 'pcall fallback'); }
-		elseif ($name === 'recent changes') { check(str_contains($value, 'Recoverable'), 'Existing non SQL fallback'); }
+		elseif ($name === 'recent changes') {
+			check(str_contains($value, 'class="error"') && !str_contains($value, 'Recoverable'),
+				'Recoverable error is generic and does not reveal exception text');
+		}
 		elseif ($name === 'native read' || $name === 'cached native read') {
 			same(null, $value->rows, 'Recoverable native read retains null rows');
 			same(false, $value->completeEmpty, 'An exception never certifies empty parents');
