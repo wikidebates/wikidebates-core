@@ -120,7 +120,7 @@ check($generation('WD Cache query A') !== $queries['WD Cache query A'],
 $queries['WD Cache query A'] = $generation('WD Cache query A');
 $added = $read('WD Cache query A');
 check($added['source'] !== 'fragment-cache' && str_contains($added['html'], 'WD_MATCHES=1'),
-	'After a distant relation appears, the API reconstructs a non-stale fragment');
+	'After a distant relation appears, the API reconstructs a non-stale fragment' . ' [source=' . ($added['source'] ?? '?') . ', expires=' . ($added['_expires'] ?? '?') . ', html=' . substr($added['html'] ?? '', 0, 300) . ']');
 check($read('WD Cache query A')['source'] === 'fragment-cache',
 	'The new semantic HTML becomes reusable by fragment-cache');
 
