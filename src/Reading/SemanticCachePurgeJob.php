@@ -86,7 +86,11 @@ final class SemanticCachePurgeJob extends \Job {
 				// Purges parser and normal HTML file caches. TitleSquidURLs
 				// also invalidates Wikidebates fragments and MinervaFileCache.
 				FragmentService::invalidate($title);
-				$factory->newFromTitle($title)->doPurge();
+				$page = $factory->newFromTitle($title);
+				$page->doPurge();
+				// page_touched is second-resolution; a same-second purge may
+				// leave the parser cache key unchanged. Evict its metadata too.
+				MediaWikiServices::getInstance()->getParserCache()->deleteOptionsKey($page);
 			}
 			return true;
 		} catch (\Throwable $e) {
