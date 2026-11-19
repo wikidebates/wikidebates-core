@@ -6,29 +6,25 @@ use MediaWiki\Parser\Parser;
 use MediaWiki\Parser\PPFrame;
 use MediaWiki\Parser\Sanitizer;
 
-/** HTML Tags 0.3-compatible pipeline, without its hook or a constructed tag invocation. */
+/**
+ * PHP-only internal navigation markup. No public htmltag parser hook or
+ * configurable arbitrary tag policy is installed by Wikidebates.
+ */
 final class NativeTags {
 	private static ?Telemetry $telemetry = null;
-	/** Scoped observation also covers our htmltag hook during a fallback expansion. */
+
 	public static function observe(?Telemetry $telemetry, callable $operation): string {
-		$previous = self::$telemetry; self::$telemetry = $telemetry;
+		$previous = self::$telemetry;
+		self::$telemetry = $telemetry;
 		try { return $operation(); }
 		finally { self::$telemetry = $previous; }
 	}
+
 	private static function expand(string $reason, callable $operation): string {
 		return self::$telemetry ? self::$telemetry->preprocess($reason, $operation) : $operation();
 	}
-	public static function policy(): array {
-		return \MediaWiki\MediaWikiServices::getInstance()->getMainConfig()->get('DebatePHPHTMLAttributes')
-			?? ($GLOBALS['wgHTMLTagsAttributes'] ?? ['a'=>['href','data-href','class','title'], 'script'=>['class','type']]);
-	}
-	/** Compatibility hook for unusual syntax and remaining legacy wikitext. No external extension. */
-	public static function hook($input, array $attributes, Parser $parser, PPFrame $frame): string {
-		if (!array_key_exists('tagname', $attributes)) { return wfMessage('htmltags-notagname')->text(); }
-		$name = $attributes['tagname']; unset($attributes['tagname']);
-		return self::body($parser, $frame, $name, $input ?? '', $attributes, self::policy());
-	}
-	public static function argument(Parser $parser, PPFrame $frame, string $text, string $reason = 'htmltag.argument'): string {
+
+	public static function argument(Parser $parser, PPFrame $frame, string $text, string $reason = 'native-markup.argument'): string {
 		$text = str_replace(["\r\n", "\r"], "\n", $text);
 		if (!str_contains($text, '{{') && !str_contains($text, '<')) { return $text; }
 		return self::expand($reason, static function() use ($parser, $frame, $text): string {
@@ -36,52 +32,48 @@ final class NativeTags {
 			return $frame->expand($node);
 		});
 	}
-	public static function render(Parser $parser, PPFrame $frame, string $name, string $content, array $attributes, bool $xml, array $policy): string {
-		$content = str_replace(["\r\n", "\r"], "\n", $content);
-		if (!$xml) {
-			// Core #tag expands its body and ALL parameters before calling the hook.
-			$content = self::argument($parser, $frame, $content);
-			$prepared = [];
-			foreach ($attributes as $key => $value) {
-				$value = trim(self::argument($parser, $frame, (string)$value));
-				if (preg_match('/^(?:["\'](.+)["\']|""|\'\')$/s', $value, $m)) { $value = $m[1] ?? ''; }
-				$prepared[trim(str_replace(["\r\n", "\r"], "\n", (string)$key))] = $value;
-			} $attributes = $prepared;
-		}
-		// Reserve the outer marker BEFORE hook-side expansions, as extensionSubstitution does.
-		$marker = $parser->insertStripItem('');
-		if ($parser->getOutputType() !== Parser::OT_HTML) {
-			$raw = '<htmltag tagname="' . htmlspecialchars($name, ENT_COMPAT) . '"';
-			foreach ($attributes as $key => $value) {
-				$raw .= ' ' . $key . '="' . ($xml ? $value : htmlspecialchars($parser->getStripState()->unstripBoth($value), ENT_COMPAT)) . '"';
-			}
-			$html = $raw . '>' . $content . '</htmltag>';
-		} else {
-			if ($xml) {
-				$decoded = [];
-				foreach ($attributes as $key => $value) { $decoded[strtolower($key)] = Sanitizer::decodeCharReferences(trim(preg_replace('/[\t\r\n ]+/', ' ', $value))); }
-				$attributes = $decoded;
-			}
-			$html = self::body($parser, $frame, $name, $content, $attributes, $policy);
-		}
-		$parser->getStripState()->addGeneral($marker, $html);
-		return $marker;
+
+	/**
+	 * Reject script/obfuscated URI schemes. Only the literal historical RunQuery
+	 * no-op may be used for an anchor href; data-href cannot use that exception.
+	 */
+	public static function isSafeLinkTarget(string $value, bool $allowInert = false): bool {
+		$decoded = html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+		$decoded = html_entity_decode($decoded, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+		if ($allowInert && $decoded === 'javascript:void(0)') { return true; }
+		if ($decoded === '' || preg_match('/[\x00-\x20\x7f\\\\]/', $decoded)) { return false; }
+		if (!preg_match('/^[a-z][a-z0-9+.-]*:/i', $decoded)) { return true; }
+		return (bool)preg_match('/^(?:https?|mailto):/i', $decoded);
 	}
-	private static function body(Parser $parser, PPFrame $frame, string $name, string $content, array $attributes, array $policy): string {
-		if (!array_key_exists($name, $policy)) { return wfMessage('htmltags-unsupportedtag', $name)->escaped(); }
-		// HTMLTags::render expands the body before its allowed attributes, then Html::element
-		// deliberately escapes content (including script content). Preserve that behavior.
+
+	/** Render the single internal link type used by both PHP renderers. */
+	public static function renderLink(Parser $parser, PPFrame $frame, string $content, array $attributes): string {
+		$content = str_replace(["\r\n", "\r"], "\n", $content);
+		$decoded = [];
+		foreach ($attributes as $key => $value) {
+			$decoded[strtolower((string)$key)] = Sanitizer::decodeCharReferences(
+				trim(preg_replace('/[\t\r\n ]+/', ' ', (string)$value))
+			);
+		}
+		// Reserve the strip marker before nested expansions, as previously.
+		$marker = $parser->insertStripItem('');
 		if (str_contains($content, '{{') || str_contains($content, '<')) {
-			$content = self::expand('htmltag.body', static fn() => $parser->replaceVariables($content, $frame));
+			$content = self::expand('native-link.body', static fn() => $parser->replaceVariables($content, $frame));
 		}
 		$filtered = [];
-		foreach ($attributes as $key => $value) {
-			if (!in_array($key, $policy[$name])) { continue; }
+		foreach ($decoded as $key => $value) {
+			if (!in_array($key, ['href', 'data-href', 'class', 'title'], true)) { continue; }
 			if (str_contains($value, '{{') || str_contains($value, '<')) {
-				$value = self::expand('htmltag.attribute', static fn() => $parser->replaceVariables($value, $frame));
+				$value = self::expand('native-link.attribute', static fn() => $parser->replaceVariables($value, $frame));
 			}
+			if (($key === 'href' || $key === 'data-href') &&
+				!self::isSafeLinkTarget($value, $key === 'href')) {
+				continue;
+			}
+			// Retain the old native anchor's entity treatment for output parity.
 			$filtered[$key] = str_replace('&amp;', '&', htmlspecialchars($value, ENT_QUOTES));
 		}
-		return Html::element($name, $filtered, $content);
+		$parser->getStripState()->addGeneral($marker, Html::element('a', $filtered, $content));
+		return $marker;
 	}
 }
