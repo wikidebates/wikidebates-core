@@ -284,6 +284,14 @@ class AutoParentLink {
 
 		// A bounded retry prevents concurrent additions from silently replacing each other.
 		for ( $attempt = 0; $attempt < 2; $attempt++ ) {
+			if ( $attempt > 0 ) {
+				// Do not reuse a WikiPage instance that may cache a stale revision.
+				$parentPage = $wikiPageFactory->newFromID( $parentId );
+				if ( !$parentPage || !$parentPage->getTitle()->equals( $parentTitle ) ) {
+					self::logProblem( 'Parent disparu ou renommé pendant le conflit : ' . $parentId );
+					return;
+				}
+			}
 			// Use the revision remembered by PageUpdater as the transformation base.
 			// The compare-and-swap check prevents overwriting concurrent parent edits.
 			$pageUpdater = $parentPage->newPageUpdater( $user );
