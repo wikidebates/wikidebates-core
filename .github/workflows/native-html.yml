@@ -66,3 +66,48 @@ jobs:
         run: npm ci --prefix tests --ignore-scripts
       - name: JavaScript unit tests (including the AJAX client)
         run: npm test --prefix tests
+
+  smw-143:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, xml, pdo_sqlite, sqlite3
+          coverage: none
+          tools: composer
+      - name: MediaWiki 1.43.11 checkout
+        uses: actions/checkout@v4
+        with:
+          repository: wikimedia/mediawiki
+          ref: '1.43.11'
+          path: .mw-lab
+      - name: Scribunto for MediaWiki 1.43
+        uses: actions/checkout@v4
+        with:
+          repository: wikimedia/mediawiki-extensions-Scribunto
+          ref: REL1_43
+          path: .mw-lab/extensions/Scribunto
+      - name: Exact SMW 7.3.1
+        uses: actions/checkout@v4
+        with:
+          repository: SemanticMediaWiki/SemanticMediaWiki
+          ref: 7.3.1
+          path: .mw-lab/extensions/SemanticMediaWiki
+      - name: Exact SemanticScribunto 2.3.3
+        uses: actions/checkout@v4
+        with:
+          repository: SemanticMediaWiki/SemanticScribunto
+          ref: 2.3.3
+          path: .mw-lab/extensions/SemanticScribunto
+      - name: Isolated dependency installs
+        run: |
+          composer install --working-dir=.mw-lab --no-interaction --prefer-dist --no-progress
+          composer install --working-dir=.mw-lab/extensions/SemanticMediaWiki --no-dev --no-interaction --prefer-dist --no-progress
+          composer install --working-dir=.mw-lab/extensions/SemanticScribunto --no-dev --no-interaction --prefer-dist --no-progress
+      - name: Real SMW query dependency and purge tests on SQLite
+        env:
+          MW_INSTALL_PATH: ${{ github.workspace }}/.mw-lab
+        run: php -d memory_limit=768M tests/fullstackSemanticCache.php
