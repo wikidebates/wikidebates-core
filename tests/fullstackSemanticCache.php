@@ -62,6 +62,10 @@ fsSave('WD Cache query B', 'Initial stub');
 fsFlush();
 
 // The query pages must exist before their query profiles are written.
+// SMW timestamps have second resolution. Register the query profiles after
+// their dependencies to ensure a stable, non-ambiguous baseline; subsequent
+// same-second edits must still be detected without the purge job.
+sleep(2);
 fsSave('WD Cache query A', "== Summary ==\n<wd-cache-parents>WD Cache A</wd-cache-parents>\n== Parent debates ==\nParent A");
 fsSave('WD Cache query B', "== Summary ==\n<wd-cache-parents>WD Cache B</wd-cache-parents>\n== Parent debates ==\nParent B");
 fsFlush();
