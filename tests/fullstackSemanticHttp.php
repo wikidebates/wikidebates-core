@@ -89,7 +89,7 @@ check($store->getPropertyValues($subjectA, new Property('_ASK')) !== [],
 
 $marker = $temporary . '/.semantic-http-disposable';
 file_put_contents($marker, "Isolated CI semantic HTTP lab\n");
-foreach (['semantic-http-full-pages', 'semantic-http-fragments'] as $dir) {
+foreach (['semantic-http-full-pages', 'semantic-http-fragments', 'semantic-http-minerva-files'] as $dir) {
 	check(mkdir($temporary . '/' . $dir, 0700), 'Private HTTP cache directory: ' . $dir);
 }
 
@@ -126,7 +126,10 @@ $http = static function (
 ) use ($port): array {
 	$url = 'http://127.0.0.1:' . $port . '/' . $path . ($params !== [] ?
 		'?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986) : '');
-	$headers = ['Accept-Encoding: identity', 'Connection: close', 'User-Agent: Wikidebates-Semantic-HTTP-Lab/1'];
+	$headers = ['Accept-Encoding: identity', 'Connection: close'];
+	if (!array_filter($extraHeaders, static fn($h) => str_starts_with(strtolower($h), 'user-agent:'))) {
+		$headers[] = 'User-Agent: Wikidebates-Semantic-HTTP-Lab/1';
+	}
 	$headers = array_merge($headers, $extraHeaders);
 	$settings = ['method' => $post === null ? 'GET' : 'POST', 'ignore_errors' => true,
 		'follow_location' => 0, 'timeout' => 18, 'header' => $headers];
@@ -288,6 +291,22 @@ try {
 	check(str_contains($cacheControl, 'no-cache') || str_contains($cacheControl, 'no-store') ||
 		str_contains($cacheControl, 'private'),
 		'Semantic full-page HTML is not publicly cacheable through HTTP');
+
+	// A genuinely mobile Article::view must also bypass the MinervaFileCache
+	// full-page file and contain the updated semantic result before purge.
+	$mobileUA = 'User-Agent: Mozilla/5.0 (Linux; Android 14; Pixel 8) ' .
+		'AppleWebKit/537.36 Chrome/130.0.0.0 Mobile Safari/537.36';
+	$mobile = $http('index.php', ['title' => 'WD_HTTP_query_A'], [$mobileUA]);
+	check($mobile['status'] === 200 && str_contains($mobile['body'], 'WD_HTTP_MATCHES=1'),
+		'Real mobile HTML page is current with semantic purge still pending');
+	$mobileCache = $mobile['headers']['x-minerva-file-cache'][0] ?? '';
+	check(str_starts_with($mobileCache, 'BYPASS'),
+		'Tracked mobile page bypasses Minerva full-page file cache');
+	$mobileControl = strtolower(implode(', ', $mobile['headers']['cache-control'] ?? []));
+	check(str_contains($mobileControl, 'no-cache') ||
+		str_contains($mobileControl, 'no-store') || str_contains($mobileControl, 'private'),
+		'Tracked mobile HTML cannot be stored in public HTTP caches');
+
 	check($services->getJobQueueGroup()->queuesHaveJobs(),
 		'Neither the HTTP fragment nor the full-page view drains queued purge jobs');
 	fsFlush();
