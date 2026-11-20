@@ -15,7 +15,6 @@ use MediaWiki\Extension\DebatePHP\Table;
 use MediaWiki\Extension\DebatePHP\TrackedSemanticQuery;
 use MediaWiki\Extension\Wikidebates\Reading\FragmentService;
 use MediaWiki\Extension\Wikidebates\Reading\SemanticRevisionStore;
-use MediaWiki\Extension\Wikidebates\Reading\SemanticRevisionStore;
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Request\FauxRequest;
 use MediaWiki\MediaWikiServices;
