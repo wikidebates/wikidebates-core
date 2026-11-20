@@ -480,11 +480,26 @@ foreach ($combined as $kind => $case) {
 	fsFlush(['wikidebatesSemanticCachePurge']);
 	check(SemanticRevisionStore::fingerprint($store, $subject) !== $previous,
 		'Same-cardinality ' . $kind . ' relation switch changes the revision');
+	$storedAfterSwitch = [
+		'left' => fsValues($parentTitle, $case['properties'][0]),
+		'right' => fsValues($parentTitle, $case['properties'][1]),
+	];
+	$directQuery = (new \SMW\Scribunto\LibraryFactory($store))->newQueryResultFrom([
+		'([[' . $case['properties'][0] . '::WD Cache searched argument]] OR [[' .
+			$case['properties'][1] . '::WD Cache searched argument]] )',
+		'?' . $case['properties'][0] . '=a',
+		'?' . $case['properties'][1] . '=b',
+		'limit=200', 'link=none',
+	]);
+	$directRows = $directQuery instanceof \SMW\Query\QueryResult
+		? (new \SMW\Scribunto\LibraryFactory($store))->newLuaAskResultProcessor($directQuery)->getProcessedResult()
+		: 'no-query-result';
 	$switched = $read($queryTitle);
 	check($switched['source'] !== 'fragment-cache' &&
 		str_contains($switched['html'], 'WD_OR_A=0;WD_OR_B=1;WD_OR_TOTAL=1'),
 		'Combined ' . $kind . ' parent switches its printout without stale HTML; source=' .
-		($switched['source'] ?? '?') . '; html=' . substr($switched['html'] ?? '', 0, 1200));
+		($switched['source'] ?? '?') . '; html=' . substr($switched['html'] ?? '', 0, 1200) .
+		'; stored=' . json_encode($storedAfterSwitch) . '; direct=' . json_encode($directRows));
 	fsFlush();
 
 	$previous = SemanticRevisionStore::fingerprint($store, $subject);
