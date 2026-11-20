@@ -145,6 +145,16 @@ class FragmentService {
 			if ($result) { unset($result['_generation'], $result['_touched']); }
 			$result ??= self::render($context, $title->getPrefixedText(), $eligible ? 'vector' : $skin,
 				$forceFreshSemanticParse);
+			if (getenv('WD_SEMANTIC_HTTP_DISPOSABLE') === '1') {
+				@file_put_contents((string)getenv('WD_SEMANTIC_HTTP_ROOT') . '/semantic-http-publication.jsonl',
+					json_encode(['event' => 'render-complete', 'pid' => getmypid(),
+						'eligible' => $eligible, 'fill' => is_resource($fill),
+						'forceFresh' => $forceFreshSemanticParse,
+						'source' => $result['source'] ?? null,
+						'expires' => $result['_expires'] ?? null, 'now' => time(),
+						'htmlBytes' => strlen($result['html'] ?? '')]) . "\n",
+					FILE_APPEND | LOCK_EX);
+			}
 			if ($fill && $result['_expires'] > time() && $result['html'] !== '') {
 				try {
 					if ($semanticTracking && SemanticRevisionStore::fingerprint(
@@ -154,8 +164,13 @@ class FragmentService {
 						// The graph changed while this HTML was being rendered.
 						return $result;
 					}
-					$store->publish($title->getPrefixedDBkey(), $variant, $identity, $snapshot['generation'],
+					$published = $store->publish($title->getPrefixedDBkey(), $variant, $identity, $snapshot['generation'],
 						$result['html'], array_diff_key($result, array_flip(['html', 'source', '_expires'])), $result['_expires']);
+					if (getenv('WD_SEMANTIC_HTTP_DISPOSABLE') === '1') {
+						@file_put_contents((string)getenv('WD_SEMANTIC_HTTP_ROOT') . '/semantic-http-publication.jsonl',
+							json_encode(['event' => 'publish', 'pid' => getmypid(), 'published' => $published]) . "\n",
+							FILE_APPEND | LOCK_EX);
+					}
 				} catch (\Throwable $e) { self::log($e); }
 			}
 			return $result;
