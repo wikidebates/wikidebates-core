@@ -17,13 +17,20 @@ final class SemanticCachePurgeJob extends \Job {
 	private const BATCH_SIZE = 150;
 
 	public function __construct($title, array $params = []) {
+		// A canonical set makes exactly equivalent jobs deduplicable without
+		// dropping distinct chunks or distinct cursor continuations.
+		if (isset($params['dependencyIds'])) {
+			$params['dependencyIds'] = SemanticCacheHooks::changedIds((array)$params['dependencyIds']);
+			sort($params['dependencyIds'], SORT_NUMERIC);
+		}
 		parent::__construct('wikidebatesSemanticCachePurge', $title, $params);
-		// Several chunks of changed entities can share the same origin title.
-		$this->removeDuplicates = false;
+		$this->removeDuplicates = true;
 	}
 
 	public function run(): bool {
-		if (!MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesSemanticCacheTracking')) {
+		$config = MediaWikiServices::getInstance()->getMainConfig();
+		if (!$config->get('WikidebatesSemanticCacheTracking') ||
+			!$config->get('WikidebatesSemanticCacheEagerPurge')) {
 			return true;
 		}
 		$ids = SemanticCacheHooks::changedIds(
@@ -85,13 +92,18 @@ final class SemanticCachePurgeJob extends \Job {
 
 			$factory = MediaWikiServices::getInstance()->getWikiPageFactory();
 			foreach ($titles as $title) {
-				// Purges parser and normal HTML file caches. TitleSquidURLs
-				// also invalidates Wikidebates fragments and MinervaFileCache.
+				// Invalidate HTML/file/CDN caches without ArticlePurge: SMW's
+				// ArticlePurge hook otherwise marks this page for a forced semantic
+				// rewrite at its next parse, creating a purge-refresh feedback loop.
+				// HTMLCacheUpdater still fires TitleSquidURLs (reading fragments
+				// and MinervaFileCache). Do not mutate semantic data here.
 				FragmentService::invalidate($title);
 				$page = $factory->newFromTitle($title);
-				$page->doPurge();
-				// page_touched is second-resolution; a same-second purge may
-				// leave the parser cache key unchanged. Evict its metadata too.
+				$title->invalidateCache();
+				$htmlCache = MediaWikiServices::getInstance()->getHtmlCacheUpdater();
+				$htmlCache->purgeTitleUrls($title, $htmlCache::PURGE_PRESEND);
+				// page_touched is second-resolution; evict the parser cache key
+				// even for multiple purges in the same second.
 				MediaWikiServices::getInstance()->getParserCache()->deleteOptionsKey($page);
 			}
 			return true;
