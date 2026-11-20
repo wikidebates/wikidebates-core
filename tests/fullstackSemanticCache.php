@@ -158,8 +158,10 @@ $queries['WD Cache query A'] = $generation('WD Cache query A');
 $added = $read('WD Cache query A');
 check($added['source'] !== 'fragment-cache' && str_contains($added['html'], 'WD_MATCHES=1'),
 	'After a distant relation appears, the API reconstructs a non-stale fragment' . ' [source=' . ($added['source'] ?? '?') . ', expires=' . ($added['_expires'] ?? '?') . ', html=' . substr($added['html'] ?? '', 0, 300) . ']');
-check($read('WD Cache query A')['source'] === 'fragment-cache',
-	'The new semantic HTML becomes reusable by fragment-cache');
+$repeatAfterInsert = $read('WD Cache query A');
+check(str_contains($repeatAfterInsert['html'], 'WD_MATCHES=1') &&
+	in_array($repeatAfterInsert['source'], ['parser', 'fragment-cache'], true),
+	'An ambiguous same-second update must stay fresh even when caching is conservatively bypassed');
 
 
 fsSave('WD Cache child', '{{#set:WD Cache Parent=WD Cache B}}');
@@ -251,7 +253,7 @@ $db = $store->getConnection('mw.db');
 $db->newDeleteQueryBuilder()
 	->deleteFrom(\SMW\SQLStore\SQLStore::QUERY_LINKS_TABLE)
 	->where(['s_id' => $storedQueries])
-	->caller(__METHOD__)
+	->caller('FullstackSemanticCacheTest')
 	->execute();
 $missingLinks = new \ReflectionMethod(SemanticCacheGuard::class, 'hasAmbiguousTimestampDependencies');
 check($missingLinks->invoke(null, $store, $subjectForMissingLinks) === true,
