@@ -69,7 +69,11 @@ jobs:
 
   smw-143:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        database: ['sqlite', 'mariadb']
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
@@ -117,7 +121,31 @@ jobs:
           composer install --working-dir=.mw-lab/extensions/SemanticMediaWiki --no-dev --no-interaction --prefer-dist --no-progress
           # SemanticScribunto only needs its ExtensionRegistry autoloader here;
           # its Composer dev requirements are not needed by this lab.
-      - name: Real SMW query dependency and purge tests on SQLite
+      - name: Disposable local MariaDB via Unix socket
+        if: matrix.database == 'mariadb'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq mariadb-server
+          LAB="$(mktemp -d /tmp/wikidebates-lab-XXXXXXXX)"
+          mkdir "$LAB/data"
+          mariadb-install-db --no-defaults --datadir="$LAB/data" \
+            --auth-root-authentication-method=normal --skip-test-db >"$LAB/install.log" 2>&1
+          mariadbd --no-defaults --datadir="$LAB/data" \
+            --socket="$LAB/mariadb.sock" --pid-file="$LAB/server.pid" \
+            --skip-networking --user="$(id -un)" >"$LAB/server.log" 2>&1 &
+          ready=0
+          for i in $(seq 1 90); do
+            if mariadb --no-defaults --protocol=socket \
+              --socket="$LAB/mariadb.sock" -u root -e 'SELECT 1' >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then cat "$LAB/server.log"; exit 1; fi
+          echo "WD_TEST_MARIADB_SOCKET=$LAB/mariadb.sock" >> "$GITHUB_ENV"
+          echo "WD_TEST_DISPOSABLE_MARIADB=1" >> "$GITHUB_ENV"
+      - name: Real SMW 7.3.1 query and cache tests on ${{ matrix.database }}
         env:
           MW_INSTALL_PATH: ${{ github.workspace }}/.mw-lab
         run: php -d memory_limit=768M tests/fullstackSemanticCache.php
