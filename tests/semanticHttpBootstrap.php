@@ -15,6 +15,12 @@ if (!$wdHttpRoot || !str_starts_with($wdHttpRoot . '/', rtrim(sys_get_temp_dir()
 }
 
 header('X-WD-Semantic-Lab-Worker: ' . getmypid());
+
+// The runner uses this diagnostic hold ONLY for concurrent loopback requests.
+// It occupies a worker without holding any SQL transaction or cache lock.
+if (($_SERVER['HTTP_X_WD_SEMANTIC_LAB_HOLD'] ?? '') === '1') {
+	usleep(700000);
+}
 define('MW_CONFIG_CALLBACK', 'wdSemanticHttpTestSettings');
 
 function wdSemanticHttpTestSettings($settings): void {
