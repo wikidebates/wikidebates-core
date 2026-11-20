@@ -104,6 +104,18 @@ jobs:
           repository: wikimedia/mediawiki-skins-Vector
           ref: REL1_43
           path: .mw-lab/skins/Vector
+      - name: MobileFrontend for MediaWiki 1.43
+        uses: actions/checkout@v4
+        with:
+          repository: wikimedia/mediawiki-extensions-MobileFrontend
+          ref: REL1_43
+          path: .mw-lab/extensions/MobileFrontend
+      - name: MinervaNeue for MediaWiki 1.43
+        uses: actions/checkout@v4
+        with:
+          repository: wikimedia/mediawiki-skins-MinervaNeue
+          ref: REL1_43
+          path: .mw-lab/skins/MinervaNeue
       - name: Exact SMW 7.3.1
         uses: actions/checkout@v4
         with:
