@@ -71,37 +71,9 @@ class FragmentService {
 		if ($semanticTracking) {
 			// Check the semantic graph even on a cookie-bearing fallback.
 			// When the guard fails, no parser HTML cache may be consulted.
-			$safe = SemanticCacheGuard::safeForRead($title, $page);
-			if ($safe) {
-				try {
-					$semanticRevision = SemanticRevisionStore::fingerprint(
-						\SMW\Services\ServicesFactory::getInstance()->getStore(),
-						\SMW\DataItems\WikiPage::newFromTitle($title)
-					);
-				} catch (\Throwable $e) {
-					self::log($e);
-					$safe = false;
-				}
-			}
+			$safe = SemanticCacheGuard::safeForRead($title, $page, $semanticRevision);
 			$eligible = $eligible && $safe;
 			$forceFreshSemanticParse = $forceFreshSemanticParse || !$safe;
-		}
-		// Temporary isolated HTTP-lab diagnostics. Not enabled in production.
-		if (getenv('WD_SEMANTIC_HTTP_DISPOSABLE') === '1') {
-			$root = (string)getenv('WD_SEMANTIC_HTTP_ROOT');
-			@file_put_contents($root . '/semantic-http-eligibility.jsonl',
-				json_encode([
-					'pid' => getmypid(),
-					'registered' => $context->getUser()->isRegistered(),
-					'persistentSession' => $request->getSession()->isPersistent(),
-					'cookie' => $request->getHeader('Cookie') !== '',
-					'method' => $request->getMethod(),
-					'params' => array_keys($request->getValues()),
-					'tracking' => $semanticTracking,
-					'safe' => $safe ?? null,
-					'eligible' => $eligible,
-					'semanticRevision' => $semanticRevision
-				]) . "\n", FILE_APPEND | LOCK_EX);
 		}
 		$identity = ['pageid' => $page->getId(), 'revision' => $page->getLatest(), 'touched' => $page->getTouched(),
 			'epoch' => $config->get('WikidebatesReadingCacheEpoch'), 'coreEpoch' => $config->get('CacheEpoch'), 'format' => 4,
@@ -116,15 +88,6 @@ class FragmentService {
 			try {
 				$store = self::store();
 				$snapshot = $store->read($title->getPrefixedDBkey(), $variant, $identity);
-				if (getenv('WD_SEMANTIC_HTTP_DISPOSABLE') === '1') {
-					@file_put_contents((string)getenv('WD_SEMANTIC_HTTP_ROOT') . '/semantic-http-publication.jsonl',
-						json_encode(['event' => 'snapshot', 'pid' => getmypid(),
-							'wikiId' => \MediaWiki\WikiMap\WikiMap::getCurrentWikiId(),
-							'variant' => $variant, 'identity' => $identity,
-							'entry' => $snapshot['entry'] !== null,
-							'generation' => $snapshot['generation']]) . "\n",
-						FILE_APPEND | LOCK_EX);
-				}
 				if ($prepared && ($prepared['_generation'] !== $snapshot['generation'] ||
 					$prepared['revid'] !== (int)$identity['revision'] || $prepared['_touched'] !== $identity['touched'])) { return $prepared; }
 				if ($snapshot['entry']) {
@@ -154,16 +117,6 @@ class FragmentService {
 			if ($result) { unset($result['_generation'], $result['_touched']); }
 			$result ??= self::render($context, $title->getPrefixedText(), $eligible ? 'vector' : $skin,
 				$forceFreshSemanticParse);
-			if (getenv('WD_SEMANTIC_HTTP_DISPOSABLE') === '1') {
-				@file_put_contents((string)getenv('WD_SEMANTIC_HTTP_ROOT') . '/semantic-http-publication.jsonl',
-					json_encode(['event' => 'render-complete', 'pid' => getmypid(),
-						'eligible' => $eligible, 'fill' => is_resource($fill),
-						'forceFresh' => $forceFreshSemanticParse,
-						'source' => $result['source'] ?? null,
-						'expires' => $result['_expires'] ?? null, 'now' => time(),
-						'htmlBytes' => strlen($result['html'] ?? '')]) . "\n",
-					FILE_APPEND | LOCK_EX);
-			}
 			if ($fill && $result['_expires'] > time() && $result['html'] !== '') {
 				try {
 					if ($semanticTracking && SemanticRevisionStore::fingerprint(
@@ -173,13 +126,8 @@ class FragmentService {
 						// The graph changed while this HTML was being rendered.
 						return $result;
 					}
-					$published = $store->publish($title->getPrefixedDBkey(), $variant, $identity, $snapshot['generation'],
+					$store->publish($title->getPrefixedDBkey(), $variant, $identity, $snapshot['generation'],
 						$result['html'], array_diff_key($result, array_flip(['html', 'source', '_expires'])), $result['_expires']);
-					if (getenv('WD_SEMANTIC_HTTP_DISPOSABLE') === '1') {
-						@file_put_contents((string)getenv('WD_SEMANTIC_HTTP_ROOT') . '/semantic-http-publication.jsonl',
-							json_encode(['event' => 'publish', 'pid' => getmypid(), 'published' => $published]) . "\n",
-							FILE_APPEND | LOCK_EX);
-					}
 				} catch (\Throwable $e) { self::log($e); }
 			}
 			return $result;
