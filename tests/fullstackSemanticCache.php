@@ -187,6 +187,47 @@ fsFlush();
 check($generation('WD Cache query B') === $queries['WD Cache query B'],
 	'Unchanged semantic relations retain the dependent fragment generation');
 
+// Moving and deleting a matching subject must purge the containing page,
+// including a page with the same count but different matching subject titles.
+$queryMembers = static function() use ($store): array {
+	$store->clear();
+	$result = (new \SMW\Scribunto\LibraryFactory($store))->newQueryResultFrom([
+		'[[WD Cache Parent::WD Cache A]]', 'limit=200', 'link=none'
+	]);
+	check($result instanceof \SMW\Query\QueryResult, 'Real SQLStore returns a query result');
+	$names = [];
+	foreach ($result->getResults() as $item) {
+		if ($item instanceof SemanticWikiPage && $item->getTitle()) {
+			$names[] = $item->getTitle()->getPrefixedText();
+		}
+	}
+	sort($names);
+	return $names;
+};
+fsSave('WD Cache child', '{{#set:WD Cache Parent=WD Cache A}}');
+fsFlush();
+same(['WD Cache child'], $queryMembers(), 'Original subject is the only result before its move');
+$priorMoveGeneration = $generation('WD Cache query A');
+$move = $services->getMovePageFactory()->newMovePage(
+	Title::newFromText('WD Cache child'), Title::newFromText('WD Cache child moved')
+)->moveIfAllowed($fsUser, 'Disposable semantic move regression');
+check($move->isOK(), 'Disposable subject page moves to another title');
+fsFlush();
+same(['WD Cache child moved'], $queryMembers(),
+	'Move replaces the old query-result subject rather than duplicating it');
+check($generation('WD Cache query A') !== $priorMoveGeneration,
+	'Moving a matching subject purges the parent query despite an unchanged result count');
+$priorDeleteGeneration = $generation('WD Cache query A');
+$services->getUserGroupManager()->addUserToGroup($fsUser, 'sysop');
+$deletedPage = $services->getWikiPageFactory()->newFromTitle(Title::newFromText('WD Cache child moved'));
+$deleted = $services->getDeletePageFactory()->newDeletePage($deletedPage, $fsUser)
+	->deleteIfAllowed('Disposable semantic deletion regression');
+check($deleted->isOK(), 'Synthetic matching page can be deleted');
+fsFlush();
+same([], $queryMembers(), 'Deleting a matching page removes it from the SMW result');
+check($generation('WD Cache query A') !== $priorDeleteGeneration,
+	'Deleting a matching subject purges the dependent query page');
+
 $parser = $services->getParserFactory()->create();
 $parser->startExternalParse(Title::newFromText('WD Cache query A'),
 	ParserOptions::newFromAnon(), $parser::OT_HTML);
