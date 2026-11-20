@@ -154,9 +154,23 @@ $fullPageContext = new RequestContext();
 $fullPageContext->setTitle(Title::newFromText('WD Cache query A'));
 check(!SemanticPageCacheHooks::onHTMLFileCache__useFileCache($fullPageContext),
 	'Query-containing full HTML pages bypass unsafe file-cache hits');
+
+$publicOutput = new \MediaWiki\Output\OutputPage($fullPageContext);
+SemanticPageCacheHooks::onBeforePageDisplay($publicOutput, null);
+$publicOutput->considerCacheSettingsFinal();
+check(!$publicOutput->couldBePublicCached(),
+	'Query-containing full HTML pages cannot enter public HTTP/CDN caches');
+
 $fullPageContext->setTitle(Title::newFromText('WD Cache A'));
 check(SemanticPageCacheHooks::onHTMLFileCache__useFileCache($fullPageContext),
 	'An unrelated ordinary page retains its normal file cache');
+
+$ordinaryOutput = new \MediaWiki\Output\OutputPage($fullPageContext);
+SemanticPageCacheHooks::onBeforePageDisplay($ordinaryOutput, null);
+$ordinaryOutput->considerCacheSettingsFinal();
+check($ordinaryOutput->couldBePublicCached(),
+	'Public caching stays available for pages without tracked semantic queries');
+
 
 $dependentPage = $services->getWikiPageFactory()->newFromTitle(Title::newFromText('WD Cache query A'));
 $cachedOutput = new \MediaWiki\Parser\ParserOutput();
