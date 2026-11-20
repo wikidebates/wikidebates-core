@@ -97,6 +97,30 @@ function wdSemanticHttpTestSettings($settings): void {
 						return 'WD_HTTP_MATCHES=' . count($rows->rows ?? []);
 					}
 				);
+				$parser->setHook('wd-http-combined',
+					static function($input, $args, $parser, $frame): string {
+						$context = new \MediaWiki\Extension\DebatePHP\MediaWikiContext(
+							$parser, $frame, [], false
+						);
+						$rows = $context->readSemantic(
+							\MediaWiki\Extension\DebatePHP\Table::wrap([
+								'([[WD HTTP Pro::' . trim($input) . ']] OR [[WD HTTP Con::' . trim($input) . ']] )',
+								'?WD HTTP Pro=a', '?WD HTTP Con=b',
+								'limit=200', 'link=none',
+							]), 'debate-parents'
+						);
+						$a = $b = 0;
+						foreach (\MediaWiki\Extension\DebatePHP\SemanticReadResult::sequence(
+							$rows->rows ?? []
+						) as $row) {
+							if (!is_array($row)) { continue; }
+							if (($row['a'] ?? null) !== null && ($row['a'] ?? null) !== '') { $a++; }
+							if (($row['b'] ?? null) !== null && ($row['b'] ?? null) !== '') { $b++; }
+						}
+						return 'WD_HTTP_OR_A=' . $a . ';WD_HTTP_OR_B=' . $b .
+							';WD_HTTP_OR_TOTAL=' . count($rows->rows ?? []);
+					}
+				);
 			}],
 			'getUserPermissionsErrors' => [static function ($title, $user, $action, &$result) use ($root) {
 				if ($action === 'read' && $title->getPrefixedText() === 'WD HTTP query A' &&

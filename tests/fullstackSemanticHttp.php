@@ -16,6 +16,7 @@ require __DIR__ . '/mediawikiEnvironment.php';
 require __DIR__ . '/fullstackSupport.php';
 
 use MediaWiki\Extension\DebatePHP\MediaWikiContext;
+use MediaWiki\Extension\DebatePHP\SemanticReadResult;
 use MediaWiki\Extension\DebatePHP\Table;
 use MediaWiki\Extension\Wikidebates\Reading\SemanticRevisionStore;
 use MediaWiki\MediaWikiServices;
@@ -59,11 +60,36 @@ $register = static function ($parser): void {
 		]), 'cache-tracking');
 		return 'WD_HTTP_MATCHES=' . count($rows->rows ?? []);
 	});
+	// The actual Argument renderer combines two parent properties with OR
+	// and requests both values as printouts. Test that exact query shape.
+	$parser->setHook('wd-http-combined', static function($input, $args, $parser, $frame): string {
+		$context = new MediaWikiContext($parser, $frame, [], false);
+		$rows = $context->readSemantic(Table::wrap([
+			'([[WD HTTP Pro::' . trim($input) . ']] OR [[WD HTTP Con::' . trim($input) . ']] )',
+			'?WD HTTP Pro=a',
+			'?WD HTTP Con=b',
+			'limit=200',
+			'link=none',
+		]), 'debate-parents');
+		$a = $b = 0;
+		foreach (SemanticReadResult::sequence($rows->rows ?? []) as $row) {
+			if (!is_array($row)) { continue; }
+			if (($row['a'] ?? null) !== null && ($row['a'] ?? null) !== '') { $a++; }
+			if (($row['b'] ?? null) !== null && ($row['b'] ?? null) !== '') { $b++; }
+		}
+		return 'WD_HTTP_OR_A=' . $a . ';WD_HTTP_OR_B=' . $b .
+			';WD_HTTP_OR_TOTAL=' . count($rows->rows ?? []);
+	});
 };
 $services->getHookContainer()->register('ParserFirstCallInit', $register);
 $register($services->getParser());
 
 fsSave('Property:WD HTTP Parent', '[[Has type::Page]]');
+fsSave('Property:WD HTTP Pro', '[[Has type::Page]]');
+fsSave('Property:WD HTTP Con', '[[Has type::Page]]');
+fsSave('WD HTTP OR parent', 'No semantic relation yet');
+fsSave('WD HTTP OR target', 'Combined query target');
+fsSave('WD HTTP OR query', 'Initial stub');
 fsSave('WD HTTP parent A', 'Parent A');
 fsSave('WD HTTP parent B', 'Parent B');
 fsSave('WD HTTP child', 'No parent');
@@ -80,12 +106,17 @@ fsSave('WD HTTP query A',
 	"== Summary ==\n<wd-http-parents>WD HTTP parent A</wd-http-parents>\n== Parent debates ==\nA");
 fsSave('WD HTTP query B',
 	"== Summary ==\n<wd-http-parents>WD HTTP parent B</wd-http-parents>\n== Parent debates ==\nB");
+fsSave('WD HTTP OR query',
+	"== Summary ==\n<wd-http-combined>WD HTTP OR target</wd-http-combined>\n== Parent debates ==\nOR");
 fsSave('WD HTTP redirect', '#REDIRECT [[WD HTTP query A]]');
 fsFlush();
 $subjectA = SemanticWikiPage::newFromTitle(Title::newFromText('WD HTTP query A'));
 $store->clear();
 check($store->getPropertyValues($subjectA, new Property('_ASK')) !== [],
 	'The query page registered a genuine SMW _ASK profile before HTTP reads');
+$orSubject = SemanticWikiPage::newFromTitle(Title::newFromText('WD HTTP OR query'));
+check($store->getPropertyValues($orSubject, new Property('_ASK')) !== [],
+	'Combined OR parent query persists genuine SMW _ASK profiles');
 
 $marker = $temporary . '/.semantic-http-disposable';
 file_put_contents($marker, "Isolated CI semantic HTTP lab\n");
@@ -317,6 +348,78 @@ try {
 		'Removing a parent updates HTTP while target purge waits');
 	check(str_contains($fragment('WD HTTP query B')['fragment']['html'], 'WD_HTTP_MATCHES=1'),
 		'Adding a different parent updates HTTP while target purge waits');
+	fsFlush();
+
+	// Exercise the real Argument parent-query OR form via independent HTTP
+	// workers, without clearing the workers' memory from this CLI process.
+	// The semantics must remain correct while targeted purge jobs are queued.
+	$orPage = 'WD HTTP OR query';
+	$orEmpty = $fragment($orPage);
+	check(str_contains($orEmpty['fragment']['html'],
+		'WD_HTTP_OR_A=0;WD_HTTP_OR_B=0;WD_HTTP_OR_TOTAL=0'),
+		'Independent HTTP combined-parent query starts empty');
+	$orWarm = null;
+	for ($attempt = 0; $attempt < 5; $attempt++) {
+		$candidate = $fragment($orPage);
+		if ($candidate['fragment']['source'] === 'fragment-cache') {
+			$orWarm = $candidate;
+			break;
+		}
+		check(str_contains($candidate['fragment']['html'], 'WD_HTTP_OR_TOTAL=0'),
+			'Combined-parent warmup remains current');
+	}
+	check($orWarm !== null, 'Combined OR query reuses its prepared fragment');
+
+	$beforeOr = SemanticRevisionStore::fingerprint($store, $orSubject);
+	fsSave('WD HTTP OR parent', '{{#set:WD HTTP Pro=WD HTTP OR target}}');
+	fsFlush(['wikidebatesSemanticCachePurge']);
+	check($services->getJobQueueGroup()->queuesHaveJobs(),
+		'Combined OR first-result purge is deliberately pending');
+	check(SemanticRevisionStore::fingerprint($store, $orSubject) !== $beforeOr,
+		'Combined OR first result changes the transaction revision');
+	$orFirst = $fragment($orPage);
+	check($orFirst['fragment']['source'] !== 'fragment-cache' &&
+		str_contains($orFirst['fragment']['html'], 'WD_HTTP_OR_A=1;WD_HTTP_OR_B=0;WD_HTTP_OR_TOTAL=1'),
+		'Combined OR first result appears on another PHP worker before purge: ' .
+		($orFirst['fragment']['html'] ?? ''));
+	fsFlush();
+
+	$beforeOr = SemanticRevisionStore::fingerprint($store, $orSubject);
+	fsSave('WD HTTP OR parent', '{{#set:WD HTTP Con=WD HTTP OR target}}');
+	fsFlush(['wikidebatesSemanticCachePurge']);
+	check($services->getJobQueueGroup()->queuesHaveJobs(),
+		'Combined OR same-cardinality switch keeps the purge job waiting');
+	check(SemanticRevisionStore::fingerprint($store, $orSubject) !== $beforeOr,
+		'Combined OR same-cardinality switch changes the revision');
+	$orSwitched = $fragment($orPage);
+	check($orSwitched['fragment']['source'] !== 'fragment-cache' &&
+		str_contains($orSwitched['fragment']['html'],
+			'WD_HTTP_OR_A=0;WD_HTTP_OR_B=1;WD_HTTP_OR_TOTAL=1'),
+		'Combined OR prints only the new parent after a real HTTP edit: ' .
+		($orSwitched['fragment']['html'] ?? ''));
+
+	$orDesktop = $http('index.php', ['title' => 'WD_HTTP_OR_query']);
+	check($orDesktop['status'] === 200 &&
+		str_contains($orDesktop['body'], 'WD_HTTP_OR_A=0;WD_HTTP_OR_B=1;WD_HTTP_OR_TOTAL=1'),
+		'Full Vector page reflects the combined OR switch before purge');
+	$orMobile = $http('index.php', ['title' => 'WD_HTTP_OR_query'], [$mobileUA]);
+	check($orMobile['status'] === 200 &&
+		str_contains($orMobile['body'], 'WD_HTTP_OR_A=0;WD_HTTP_OR_B=1;WD_HTTP_OR_TOTAL=1') &&
+		str_starts_with($orMobile['headers']['x-minerva-file-cache'][0] ?? '', 'BYPASS'),
+		'Minerva bypasses old full HTML while an OR parent switches before purge');
+	fsFlush();
+
+	$beforeOr = SemanticRevisionStore::fingerprint($store, $orSubject);
+	fsSave('WD HTTP OR parent', 'No parent relation');
+	fsFlush(['wikidebatesSemanticCachePurge']);
+	check(SemanticRevisionStore::fingerprint($store, $orSubject) !== $beforeOr,
+		'Removing the final OR parent changes its revision before purge');
+	$orRemoved = $fragment($orPage);
+	check($orRemoved['fragment']['source'] !== 'fragment-cache' &&
+		str_contains($orRemoved['fragment']['html'],
+			'WD_HTTP_OR_A=0;WD_HTTP_OR_B=0;WD_HTTP_OR_TOTAL=0'),
+		'Combined OR query returns to empty immediately after removal: ' .
+		($orRemoved['fragment']['html'] ?? ''));
 	fsFlush();
 
 	// Content authorization must remain ahead of any prepared cache.
