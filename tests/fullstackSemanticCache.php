@@ -120,6 +120,11 @@ $read = static function(string $name) use ($services): array {
 	$context->setTitle(Title::newFromText($name));
 	return FragmentService::read($context, $name, 'vector');
 };
+$observedParseOutput = null;
+$parseObserver = $services->getHookContainer()->scopedRegister('ParserOutputPostCacheTransform',
+	static function($output, &$text, &$options) use (&$observedParseOutput): void {
+		$observedParseOutput = $output;
+	});
 $first = $read('WD Cache query A');
 check(str_contains($first['html'], 'WD_MATCHES=0'),
 	'First reading API render includes the empty parent list');
@@ -129,12 +134,14 @@ $second = $read('WD Cache query A');
 check($second['source'] === 'fragment-cache',
 	'Second identical anonymous reading request hits fragment-cache');
 
-$canonicalQueryPage = $services->getWikiPageFactory()->newFromTitle(Title::newFromText('WD Cache query A'));
-$parserOutput = $services->getParserCache()->get($canonicalQueryPage, ParserOptions::newFromAnon());
-check($parserOutput instanceof \MediaWiki\Parser\ParserOutput,
-	'The genuine MediaWiki ParserCache contains the traced query output');
-check(is_string($parserOutput->getExtensionData(SemanticPageCacheHooks::OUTPUT_REVISION)),
-	'ParserAfterParse persisted the semantic revision marker in the real ParserOutput');
+// MediaWiki's parser-cache keys vary with ApiParse's options; a raw
+// ParserOptions::newFromAnon() lookup does not necessarily address that
+// same entry. Observe the actual parser output from the API pipeline.
+check($observedParseOutput instanceof \MediaWiki\Parser\ParserOutput,
+	'The real API parse produces a ParserOutput');
+check(is_string($observedParseOutput->getExtensionData(SemanticPageCacheHooks::OUTPUT_REVISION)),
+	'ParserAfterParse recorded its semantic revision on the actual API output');
+$parseObserver = null;
 
 
 // Check the exact empty-query case: the two queries currently match no subjects.
