@@ -579,10 +579,21 @@ check($services->getJobQueueGroup()->queuesHaveJobs(),
 check(SemanticRevisionStore::fingerprint($store, $actualSubject) !== $previousActual,
 	'Real Argument parent relation advances the revision before purge');
 $actualAdded = $read($actualArgument);
+$actualMatches = [];
+preg_match_all('/WD[_ ]Cache[^<>"]{0,140}/', $actualAdded['html'], $actualMatches);
+$directActual = (new \SMW\Scribunto\LibraryFactory($store))->newQueryResultFrom([
+	'[[' . $proProperty . '::' . $actualArgument . ']]', 'limit=200', 'link=none',
+]);
+$directActualCount = $directActual instanceof \SMW\Query\QueryResult ? $directActual->getCount() : -1;
+$actualStored = fsValues($actualParentA, $proProperty);
 check($actualAdded['source'] !== 'fragment-cache' &&
 	str_contains($actualAdded['html'], $actualParentA),
-	'Real French Argument shows its newly added debate parent before purge: ' .
-	substr($actualAdded['html'], 0, 1000));
+	'Real French Argument shows its newly added debate parent before purge; source=' .
+	($actualAdded['source'] ?? '?') . '; direct_count=' . $directActualCount .
+	'; stored=' . json_encode($actualStored) .
+	'; encoded_title=' . (int)str_contains($actualAdded['html'], str_replace(' ', '_', $actualParentA)) .
+	'; title_fragments=' . json_encode(array_slice($actualMatches[0] ?? [], 0, 14)) .
+	'; html_tail=' . substr($actualAdded['html'], -1800));
 fsFlush();
 
 $previousActual = SemanticRevisionStore::fingerprint($store, $actualSubject);
