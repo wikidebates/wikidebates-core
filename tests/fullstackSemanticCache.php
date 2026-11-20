@@ -454,7 +454,8 @@ foreach ($combined as $kind => $case) {
 
 	$empty = $read($queryTitle);
 	check(str_contains($empty['html'], 'WD_OR_A=0;WD_OR_B=0;WD_OR_TOTAL=0'),
-		'Combined ' . $kind . ' parent query is initially empty');
+		'Combined ' . $kind . ' parent query is initially empty; source=' .
+		($empty['source'] ?? '?') . '; html=' . substr($empty['html'] ?? '', 0, 1200));
 	$cached = $read($queryTitle);
 	check($cached['source'] === 'fragment-cache',
 		'Empty combined ' . $kind . ' query safely reuses its fragment');
