@@ -15,7 +15,7 @@ use MediaWiki\Extension\DebatePHP\Table;
 use MediaWiki\Extension\DebatePHP\TrackedSemanticQuery;
 use MediaWiki\Extension\Wikidebates\Reading\FragmentService;
 use MediaWiki\Extension\Wikidebates\Reading\SemanticRevisionStore;
-use MediaWiki\Extension\Wikidebates\Reading\SemanticCacheGuard;
+use MediaWiki\Extension\Wikidebates\Reading\SemanticRevisionStore;
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Request\FauxRequest;
 use MediaWiki\MediaWikiServices;
@@ -273,8 +273,13 @@ $db->newDeleteQueryBuilder()
 	->where(['s_id' => $storedQueries])
 	->caller('FullstackSemanticCacheTest')
 	->execute();
-$missingLinks = new \ReflectionMethod(SemanticCacheGuard::class, 'hasAmbiguousTimestampDependencies');
-check($missingLinks->invoke(null, $store, $subjectForMissingLinks) === true,
+$linksRejected = false;
+try {
+	SemanticRevisionStore::fingerprint($store, $subjectForMissingLinks);
+} catch (\RuntimeException $e) {
+	$linksRejected = true;
+}
+check($linksRejected,
 	'Missing SMW query links are an unsafe, non-cacheable dependency state');
 $missingResponse = $read('WD Cache query A');
 check($missingResponse['source'] !== 'fragment-cache',
