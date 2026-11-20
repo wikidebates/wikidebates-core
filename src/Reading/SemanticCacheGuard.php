@@ -10,7 +10,8 @@ use SMW\SQLStore\QueryDependencyLinksStoreFactory;
 
 /**
  * Cache-hit guard: the SMW 7.3.1 ArticleViewHeader hook is skipped by
- * action=wikidebatesreading and by direct fragment-cache hits.
+ * action=wikidebatesreading and by direct fragment-cache hits. The durable
+ * semantic revision fingerprint, not smw_touched, validates these hits.
  */
 final class SemanticCacheGuard {
 	public static function safeForRead($title, $page): bool {
@@ -45,20 +46,18 @@ final class SemanticCacheGuard {
 				self::testTrace('validator-disabled');
 				return false;
 			}
-			if (!$validator->hasArchaicDependencies($subject)) {
-				self::testTrace('safe');
-				return true;
-			}
-			self::testTrace('archaic', ['dependencies' => $validator->getCheckedDependencies()]);
-
-			// SMW normally marks the parser cache dirty on ArticleViewHeader,
-			// which the reading API skips. doPurge() invokes MediaWiki's
-			// TitleSquidURLs path, purging the parser/file cache and our own
-			// fragment generations (including MinervaFileCache).
-			FragmentService::invalidate($title);
-			$page->doPurge();
-			MediaWikiServices::getInstance()->getParserCache()->deleteOptionsKey($page);
-			return false;
+			// Do not gate fragment hits on SMW's smw_touched comparator.
+			// After a fresh render SMW can advance dependency timestamps
+			// without changing the semantic values or query links, making
+			// hasArchaicDependencies() reject the very next cache hit.
+			// The transactional revision fingerprint is our real freshness
+			// boundary: it captures every linked entity revision, and its
+			// verification fails closed if any tracked query has no links.
+			// FragmentService puts this fingerprint in the cache identity
+			// and checks it again immediately before publishing HTML.
+			SemanticRevisionStore::fingerprint($store, $subject);
+			self::testTrace('safe-fingerprint');
+			return true;
 		} catch (\Throwable $e) {
 			self::testTrace('exception', ['type' => get_class($e), 'message' => $e->getMessage()]);
 			FragmentService::log($e);
