@@ -5,6 +5,7 @@ namespace MediaWiki\Extension\Wikidebates\Reading;
 use MediaWiki\Deferred\DeferredUpdates;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Title\Title;
+use SMW\DataItems\Property;
 use SMW\DataItems\WikiPage;
 use SMW\Services\ServicesFactory as SemanticServices;
 use SMW\DataModel\SemanticData;
@@ -69,10 +70,21 @@ final class SemanticCacheHooks {
 		$newTitle = Title::newFromLinkTarget($new);
 		$store = SemanticServices::getInstance()->getStore();
 		$objectIds = $store->getObjectIds();
-		$ids = self::changedIds([
-			$objectIds->getId(WikiPage::newFromTitle($oldTitle)),
-			$objectIds->getId(WikiPage::newFromTitle($newTitle))
-		]);
+		$affectedIds = [];
+		foreach ([$oldTitle, $newTitle] as $title) {
+			$subject = WikiPage::newFromTitle($title);
+			$affectedIds[] = $objectIds->getId($subject);
+			// Query links for newly created matches may not yet include the
+			// result subject (SMW can defer re-registering query links).
+			// The property link is already present even for an empty query,
+			// so include all properties of both old/new semantic subjects.
+			foreach ($store->getSemanticData($subject)->getProperties() as $property) {
+				if ($property instanceof Property) {
+					$affectedIds[] = $objectIds->getId($property->getCanonicalDiWikiPage());
+				}
+			}
+		}
+		$ids = self::changedIds($affectedIds);
 		if ($ids === []) {
 			return true;
 		}
