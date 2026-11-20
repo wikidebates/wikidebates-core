@@ -435,29 +435,46 @@ try {
 		$corpusDebateAgain['body'] === $corpusDebate['body'],
 		'Corpus-sized debate remains byte-identical after its separate Argument changes');
 	fsFlush();
+	// A/B benchmark with crossed order: both configurations are warmed
+	// before measurement, then eight pairs alternate on/off and off/on.
+	// The tracking toggle is changed OUTSIDE the timed HTTP request.
+	// A single on-then-off block would bias the second group through
+	// progressively warmer MediaWiki/browser-independent server caches.
 	$corpusDebateTimings = [];
-	for ($i = 0; $i < 7; $i++) {
+	$corpusBaselineTimings = [];
+	$toggle = $temporary . '/semantic-http-disable-tracking';
+	$probeCorpus = static function(bool $tracking) use (
+		$toggle, $http, $corpusUrl, $corpusDebate
+	): float {
+		if ($tracking) {
+			if (is_file($toggle)) { unlink($toggle); }
+		} else {
+			touch($toggle);
+		}
 		$sample = $http('index.php', $corpusUrl);
 		check($sample['status'] === 200 &&
 			$sample['body'] === $corpusDebate['body'],
-			'Repeated corpus debate request returns stable native HTML');
-		$corpusDebateTimings[] = $sample['elapsed_ms'];
-	}
-	// Measure the identical native debate under the original configuration.
-	// This comparison isolates the opt-in tracking from the normal HTML
-	// pipeline. It is descriptive, not a CI latency pass/fail threshold.
-	$corpusBaselineTimings = [];
-	touch($temporary . '/semantic-http-disable-tracking');
+			'Debate HTML is byte-identical with or without semantic tracking');
+		return $sample['elapsed_ms'];
+	};
 	try {
-		for ($i = 0; $i < 7; $i++) {
-			$sample = $http('index.php', $corpusUrl);
-			check($sample['status'] === 200 &&
-				$sample['body'] === $corpusDebate['body'],
-				'Baseline debate remains byte-identical with tracking disabled');
-			$corpusBaselineTimings[] = $sample['elapsed_ms'];
+		for ($i = 0; $i < 3; $i++) {
+			$probeCorpus(true);
+			$probeCorpus(false);
+		}
+		for ($i = 0; $i < 8; $i++) {
+			$order = $i % 2 === 0 ? [true, false] : [false, true];
+			foreach ($order as $tracking) {
+				$elapsed = $probeCorpus($tracking);
+				if ($tracking) {
+					$corpusDebateTimings[] = $elapsed;
+				} else {
+					$corpusBaselineTimings[] = $elapsed;
+				}
+			}
 		}
 	} finally {
-		unlink($temporary . '/semantic-http-disable-tracking');
+		if (is_file($toggle)) { unlink($toggle); }
 	}
 	$trackedDebateMedian = $percentile($corpusDebateTimings, .5);
 	$baselineDebateMedian = $percentile($corpusBaselineTimings, .5);
@@ -468,6 +485,7 @@ try {
 		'con_titles' => count($corpusCon),
 		'html_bytes' => strlen($corpusDebate['body']),
 		'http_samples_each' => count($corpusDebateTimings),
+		'benchmark_design' => 'alternating paired requests, balanced AB/BA order, warmed before measurement',
 		'debate_tracking_on_median_ms' => $trackedDebateMedian,
 		'debate_tracking_off_median_ms' => $baselineDebateMedian,
 		'debate_tracking_extra_median_ms' => round(
