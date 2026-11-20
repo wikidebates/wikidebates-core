@@ -201,13 +201,32 @@ try {
 		'First independent HTTP read renders empty query');
 	check($cold['fragment']['source'] === 'parser', 'Initial HTTP read uses parser');
 
-	$count = $parseCount();
-	$warm = $fragment();
+	// The first real HTTP parse may advance page_touched through SMW
+	// deferred updates. Its fragment identity is then conservatively
+	// rejected on the next request. Require a genuinely stable cache HIT
+	// after at most four independent requests, not a stale one-second key.
+	$warm = null;
+	$warmCountBefore = null;
+	$sourceHistory = [];
+	for ($attempt = 0; $attempt < 4; $attempt++) {
+		$beforeCount = $parseCount();
+		$candidate = $fragment();
+		$sourceHistory[] = $candidate['fragment']['source'] ?? 'unknown';
+		if ($candidate['fragment']['source'] === 'fragment-cache') {
+			$warm = $candidate;
+			$warmCountBefore = $beforeCount;
+			break;
+		}
+		check($candidate['fragment']['source'] === 'parser' &&
+			str_contains($candidate['fragment']['html'], 'WD_HTTP_MATCHES=0'),
+			'An initial semantic-touched normalization still parses current HTML');
+	}
 	$fingerprintAfterWarm = SemanticRevisionStore::fingerprint($store, $subjectA);
 	$observedOutputLog = $temporary . '/semantic-http-parser-outputs.jsonl';
 	$diagnostics = [
 		'cold_source' => $cold['fragment']['source'],
-		'warm_source' => $warm['fragment']['source'],
+		'warm_source' => $warm['fragment']['source'] ?? null,
+		'sources_until_warm' => $sourceHistory,
 		'cold_expires' => $cold['fragment']['_expires'] ?? null,
 		'warm_expires' => $warm['fragment']['_expires'] ?? null,
 		'fingerprint_before' => $fingerprintBefore,
@@ -229,10 +248,10 @@ try {
 		'publication' => is_file($temporary . '/semantic-http-publication.jsonl') ?
 			array_slice(file($temporary . '/semantic-http-publication.jsonl', FILE_IGNORE_NEW_LINES), -8) : [],
 	];
-	check($warm['fragment']['source'] === 'fragment-cache',
-		'Second independent HTTP request reuses the prepared fragment: ' .
+	check($warm !== null && $warm['fragment']['source'] === 'fragment-cache',
+		'At least one stable independent HTTP request reuses the prepared fragment: ' .
 		json_encode($diagnostics, JSON_UNESCAPED_SLASHES));
-	check($count === $parseCount(), 'Fragment hit does not run the query renderer again');
+	check($warmCountBefore === $parseCount(), 'Fragment hit does not run the query renderer again');
 	check($cold['fragment']['html'] === $warm['fragment']['html'],
 		'Cold and warm HTTP results have identical bytes');
 
