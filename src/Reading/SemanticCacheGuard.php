@@ -28,9 +28,11 @@ final class SemanticCacheGuard {
 			$subject = WikiPage::newFromTitle($title);
 			$store = $services->getStore();
 
-			// During migration, previously parsed arguments may have no
-			// stored _ASK profiles. Never cache them based on an empty graph.
-			if (self::isArgument($page) &&
+			// On a newly migrated page, the saved _ASK profile may not
+			// exist yet. This includes both arguments and debate pages, not
+			// only the former. Never trust an empty dependency graph for a
+			// page whose source invokes a native semantic renderer.
+			if (SemanticPageCacheHooks::isQueryPage($title, $page) &&
 				$store->getPropertyValues($subject, new Property('_ASK')) === []) {
 				return false;
 			}
@@ -58,12 +60,4 @@ final class SemanticCacheGuard {
 		}
 	}
 
-	private static function isArgument($page): bool {
-		$content = $page->getContent();
-		if (!$content instanceof \TextContent) {
-			return false;
-		}
-		$text = $content->getText();
-		return preg_match('/^\s*\{\{\s*Argument\s*(?:[|}])/iu', $text) === 1;
-	}
 }
