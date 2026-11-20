@@ -21,7 +21,8 @@
 	"Hooks": {
 		"BeforePageDisplay": [
 			"MediaWiki\\Extension\\Wikidebates\\Hooks::onBeforePageDisplay",
-			"MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onBeforePageDisplay"
+			"MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onBeforePageDisplay",
+			"MediaWiki\\Extension\\Wikidebates\\Reading\\SemanticPageCacheHooks::onBeforePageDisplay"
 		],
 		"ParserFirstCallInit": "MediaWiki\\Extension\\Wikidebates\\Hooks::onParserFirstCallInit",
 		"PageSaveComplete": "MediaWiki\\Extension\\Wikidebates\\Hooks::onPageSaveComplete",
