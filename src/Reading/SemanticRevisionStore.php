@@ -86,7 +86,9 @@ final class SemanticRevisionStore {
 		}
 
 		$db = $store->getConnection('mw.db');
-		$rows = $db->newSelectQueryBuilder()
+		// Dependency revisions are a consistency boundary: a lagging
+		// replica could wrongly validate an obsolete fragment.
+		$rows = $db->newPrimarySelectQueryBuilder()
 			->select([
 				'query_id' => 'query.smw_id',
 				'dependency_id' => 'links.o_id',
