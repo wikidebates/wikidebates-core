@@ -137,7 +137,12 @@ foreach (array_keys($queries) as $queryTitle) {
 
 // Exercise the actual reading service in a synthetic anonymous API context,
 // including its ParserOutput freshness check and private fragment store.
-$read = static function(string $name) use ($services): array {
+$read = static function(string $name) use ($services, $store): array {
+	// A real HTTP request has a fresh SMW store/object cache. This isolated
+	// CLI test reuses one PHP process, so reset that request-local state.
+	// Otherwise a property removed moments earlier may still appear in
+	// a later query, even when the persistent SQLStore is already current.
+	$store->clear();
 	// This test executes several synthetic HTTP requests in ONE CLI
 	// process. MediaWiki's ParserOutputAccess otherwise keeps an in-memory
 	// ParserOutput for the entire CLI process even after an external purge.
@@ -480,26 +485,11 @@ foreach ($combined as $kind => $case) {
 	fsFlush(['wikidebatesSemanticCachePurge']);
 	check(SemanticRevisionStore::fingerprint($store, $subject) !== $previous,
 		'Same-cardinality ' . $kind . ' relation switch changes the revision');
-	$storedAfterSwitch = [
-		'left' => fsValues($parentTitle, $case['properties'][0]),
-		'right' => fsValues($parentTitle, $case['properties'][1]),
-	];
-	$directQuery = (new \SMW\Scribunto\LibraryFactory($store))->newQueryResultFrom([
-		'([[' . $case['properties'][0] . '::WD Cache searched argument]] OR [[' .
-			$case['properties'][1] . '::WD Cache searched argument]] )',
-		'?' . $case['properties'][0] . '=a',
-		'?' . $case['properties'][1] . '=b',
-		'limit=200', 'link=none',
-	]);
-	$directRows = $directQuery instanceof \SMW\Query\QueryResult
-		? (new \SMW\Scribunto\LibraryFactory($store))->newLuaAskResultProcessor($directQuery)->getProcessedResult()
-		: 'no-query-result';
 	$switched = $read($queryTitle);
 	check($switched['source'] !== 'fragment-cache' &&
 		str_contains($switched['html'], 'WD_OR_A=0;WD_OR_B=1;WD_OR_TOTAL=1'),
 		'Combined ' . $kind . ' parent switches its printout without stale HTML; source=' .
-		($switched['source'] ?? '?') . '; html=' . substr($switched['html'] ?? '', 0, 1200) .
-		'; stored=' . json_encode($storedAfterSwitch) . '; direct=' . json_encode($directRows));
+		($switched['source'] ?? '?') . '; html=' . substr($switched['html'] ?? '', 0, 1200));
 	fsFlush();
 
 	$previous = SemanticRevisionStore::fingerprint($store, $subject);
