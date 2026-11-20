@@ -118,6 +118,61 @@ les jobs. Les gains des fragments et le surcoût du suivi sont mesurés
 ci-dessous sur des petites pages synthétiques ; les performances
 des pages complètes du site restent à quantifier.
 
+## Parcours utilisateur : débat cacheable et argument chargé séparément
+
+Le rendu `#debate:render` produit les **titres et liens** des arguments
+pour et contre, pas leurs contenus. Le clic sur un titre est intercepté
+par `modules/features/view.ns0.js`, ouvre le mode lecture dans
+`modules/reading/core.js`, puis passe par `modules/common/parse.js`.
+L'API `action=wikidebatesreading` demande **la page d'argument** :
+seul le fragment compris entre `Summary` et `Parent_debates` est
+injecté dans l'interface. Le débat ne relance pas `#debate:render`
+lorsque son lecteur ouvre un argument.
+
+Le suivi et l'invalidation concernent alors les dépendances SMW de
+**l'argument**, tandis que la page de débat sans requête `_ASK`
+reste indépendante. Le rendu normal d'un débat ne transclut jamais
+`#argument:render` ; les combinaisons artificielles des deux appels
+ne représentent qu'un test défensif, pas l'architecture normale.
+
+Le scénario `tests/fullstackSemanticHttp.php` a été étendu à un
+vrai `#debate:render` français qui expose les titres « pour » et
+« contre », et à un vrai `#argument:render` chargé séparément.
+Une relation parentale modifiée, avec purge bloquée, invalide le
+fragment de l'argument sans toucher au HTML du débat. Une édition
+du résumé de cet argument est visible au prochain chargement par
+l'API, sans rendre le débat à nouveau. Le test JS simule également
+le clic réel dans `tests/js/parse.test.cjs`.
+
+**Validation :** [6 jobs sur 6, SQLite et MariaDB
+(20 novembre 2026)](https://github.com/wikidebates/wikidebates-core/actions/runs/44732408006).
+
+**Cache HTML et laboratoire :** le test compare une même page de débat
+avec suivi activé/désactivé. La politique HTTP public/privé ne régresse
+pas ; dans ce laboratoire, l'en-tête constaté côté suivi activé
+est `private, must-revalidate, max-age=0`. Ce résultat **ne prouve
+pas** que la page HTML complète profite d'un cache HTTP public ;
+la politique réelle et MinervaFileCache doivent être quantifiés
+en préproduction, séparément du cache de `ParserOutput`.
+
+### Limite : caches JavaScript dans un onglet qui reste ouvert
+
+Le navigateur peut réutiliser les réponses de `wkPageParseCache`
+(cache LRU de 50 entrées) et les fragments de `wkArgEmbedCache`
+sans demander de nouveau le serveur. `wkArgEmbedCache` n'a actuellement
+**pas de durée d'expiration**. Ainsi, si un autre contributeur
+modifie les relations ou le résumé d'un argument pendant qu'un
+lecteur conserve son onglet ouvert, une réouverture locale peut
+afficher l'ancienne version : l'empreinte transactionnelle serveur
+ne sera pas consultée.
+
+Cela ne remet pas en cause les tests de fraîcheur HTTP **lorsqu'une
+requête atteint le serveur**, mais interdit de promettre une fraîcheur
+immédiate pour toutes les réouvertures dans un onglet ancien. Avant
+déploiement, définir puis mesurer une politique explicite de
+révalidation ou d'expiration des fragments en mémoire, sans dégrader
+le parcours normal ni modifier le cache des débats.
+
 ## Limites exigeant validation
 
 - **Course avec les jobs différés :** les tests utilisent de véritables
