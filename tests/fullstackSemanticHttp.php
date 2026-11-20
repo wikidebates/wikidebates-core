@@ -528,6 +528,8 @@ try {
 		'html_bytes' => strlen($corpusDebate['body']),
 		'http_samples_each' => count($corpusDebateTimings),
 		'benchmark_design' => 'alternating paired requests, balanced AB/BA order, warmed before measurement',
+		'isquery_probes' => 5,
+		'isquery_profile_by_hook' => $profileByHook,
 		'debate_tracking_on_median_ms' => $trackedDebateMedian,
 		'debate_tracking_off_median_ms' => $baselineDebateMedian,
 		'debate_tracking_extra_median_ms' => round(
