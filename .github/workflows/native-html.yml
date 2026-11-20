@@ -121,28 +121,28 @@ jobs:
           composer install --working-dir=.mw-lab/extensions/SemanticMediaWiki --no-dev --no-interaction --prefer-dist --no-progress
           # SemanticScribunto only needs its ExtensionRegistry autoloader here;
           # its Composer dev requirements are not needed by this lab.
-      - name: Disposable local MariaDB via Unix socket
+      - name: Disposable MariaDB container (Unix socket only)
         if: matrix.database == 'mariadb'
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq mariadb-server
           LAB="$(mktemp -d /tmp/wikidebates-lab-XXXXXXXX)"
-          mkdir "$LAB/data"
-          mariadb-install-db --no-defaults --datadir="$LAB/data" \
-            --auth-root-authentication-method=normal --skip-test-db >"$LAB/install.log" 2>&1
-          mariadbd --no-defaults --datadir="$LAB/data" \
-            --socket="$LAB/mariadb.sock" --pid-file="$LAB/server.pid" \
-            --skip-networking --user="$(id -un)" >"$LAB/server.log" 2>&1 &
+          # The MySQL process inside the throwaway container needs access.
+          chmod 777 "$LAB"
+          container="$(docker run -d --rm \
+            --name "wd-smw-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            --network none -e MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1 \
+            -v "$LAB:/run/mysqld" mariadb:11.4 \
+            --skip-networking --socket=/run/mysqld/mariadb.sock)"
           ready=0
-          for i in $(seq 1 90); do
-            if mariadb --no-defaults --protocol=socket \
-              --socket="$LAB/mariadb.sock" -u root -e 'SELECT 1' >/dev/null 2>&1; then
+          for i in $(seq 1 120); do
+            if [ -S "$LAB/mariadb.sock" ] && \
+              php -r 'mysqli_report(MYSQLI_REPORT_OFF); $m = @new mysqli("localhost", "root", "", "", 0, $argv[1]); exit($m->connect_errno ? 1 : 0);' \
+                "$LAB/mariadb.sock"; then
               ready=1
               break
             fi
             sleep 1
           done
-          if [ "$ready" -ne 1 ]; then cat "$LAB/server.log"; exit 1; fi
+          if [ "$ready" -ne 1 ]; then docker logs "$container"; exit 1; fi
           echo "WD_TEST_MARIADB_SOCKET=$LAB/mariadb.sock" >> "$GITHUB_ENV"
           echo "WD_TEST_DISPOSABLE_MARIADB=1" >> "$GITHUB_ENV"
       - name: Real SMW 7.3.1 query and cache tests on ${{ matrix.database }}
