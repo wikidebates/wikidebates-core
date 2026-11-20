@@ -607,6 +607,10 @@
 			"value": false,
 			"description": "Opt-in tracking of native SMW queries and targeted cache invalidation; keep disabled until isolated integration validation."
 		},
+		"WikidebatesSemanticCacheEagerPurge": {
+			"value": true,
+			"description": "When false, only record semantic revision fences, and skip optional background purge jobs (including already queued jobs). Intended for controlled high-volume refreshes; requires semantic tracking and guarded HTML/fragment reads."
+		},
 		"WikidebatesReadingPrewarm": {
 			"value": true
 		},
