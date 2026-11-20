@@ -128,6 +128,14 @@ $second = $read('WD Cache query A');
 check($second['source'] === 'fragment-cache',
 	'Second identical anonymous reading request hits fragment-cache');
 
+$canonicalQueryPage = $services->getWikiPageFactory()->newFromTitle(Title::newFromText('WD Cache query A'));
+$parserOutput = $services->getParserCache()->get($canonicalQueryPage, ParserOptions::newFromAnon());
+check($parserOutput instanceof \MediaWiki\Parser\ParserOutput,
+	'The genuine MediaWiki ParserCache contains the traced query output');
+check(is_string($parserOutput->getExtensionData(SemanticPageCacheHooks::OUTPUT_REVISION)),
+	'ParserAfterParse persisted the semantic revision marker in the real ParserOutput');
+
+
 // Check the exact empty-query case: the two queries currently match no subjects.
 // Their query dependency records must nonetheless exist before any child link.
 // Normal article views must not serve a Vector/Minerva HTML file before
