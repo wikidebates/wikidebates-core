@@ -267,10 +267,28 @@ try {
 	check(!str_contains($debateFirst['body'], 'WD_HTTP_READING_SUMMARY_FIRST'),
 		'Debate page does not embed the Argument summary');
 	$debateHeaders = strtolower(implode(', ', $debateFirst['headers']['cache-control'] ?? []));
-	check(!str_contains($debateHeaders, 'no-store') &&
-		!str_contains($debateHeaders, 'no-cache') &&
-		!str_contains($debateHeaders, 'private'),
-		'Ordinary debate HTML remains publicly cacheable under SMW tracking: ' . $debateHeaders);
+	// Compare against the exact same MediaWiki HTTP pipeline without our
+	// opt-in semantic tracking. HTTP Cache-Control may already be private
+	// because of unrelated skin/extension conditions in this disposable
+	// wiki. The new feature must not make a cacheable debate uncacheable.
+	touch($temporary . '/semantic-http-disable-tracking');
+	try {
+		$debateWithoutTracking = $http('index.php', $debateUrl);
+	} finally {
+		unlink($temporary . '/semantic-http-disable-tracking');
+	}
+	$untrackedDebateHeaders = strtolower(implode(', ',
+		$debateWithoutTracking['headers']['cache-control'] ?? []));
+	$blocksPublic = static fn(string $value): bool =>
+		str_contains($value, 'no-store') ||
+		str_contains($value, 'no-cache') ||
+		str_contains($value, 'private');
+	check($debateWithoutTracking['status'] === 200 &&
+		$debateFirst['body'] === $debateWithoutTracking['body'],
+		'Debate HTML is unchanged with tracked versus untracked semantics');
+	check($blocksPublic($debateHeaders) === $blocksPublic($untrackedDebateHeaders),
+		'Opt-in tracking preserves baseline debate HTTP cache policy; tracked=' .
+		$debateHeaders . '; baseline=' . $untrackedDebateHeaders);
 	$debateAgain = $http('index.php', $debateUrl);
 	check($debateAgain['status'] === 200 &&
 		$debateAgain['body'] === $debateFirst['body'],
