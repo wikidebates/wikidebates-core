@@ -1,9 +1,11 @@
 # Migration prudente des caches sémantiques (MediaWiki 1.43 / SMW 7.3.1)
 
 > **Statut : expérimental, DÉSACTIVÉ PAR DÉFAUT.** Les suites SMW
-> SQLite et MariaDB sont passées, mais ne pas retirer `__NOCACHE__`
-> ni fusionner cette PR sans essais HTTP multiprocessus, mesures de
-> performances et pilote de préproduction. La production reste inchangée.
+> et HTTP multiprocessus sur SQLite et MariaDB, y compris Vector,
+> MobileFrontend et MinervaFileCache, passent sur des wikis jetables.
+> Ne pas fusionner ni retirer `__NOCACHE__` sans validation des
+> requêtes réelles, des performances et d'un pilote en préproduction.
+> La production reste inchangée.
 
 ## Architecture expérimentale
 
@@ -40,10 +42,15 @@ révoque les générations des fragments ; MinervaFileCache utilise
 
 ### 3. Contrôle avant lecture des fragments
 
-Avant un `fragment-cache` hit, l'API de lecture utilise la validation
-des dépendances de SMW, car elle n'exécute pas le hook
-`ArticleViewHeader` lors d'un hit. En présence d'une dépendance
-devenue archaïque, elle purge le titre et retombe sur le rendu normal.
+Avant un `fragment-cache` hit, l'API vérifie la présence de profils
+`_ASK`, l'activation du suivi natif SMW et une empreinte durable
+des liens de dépendance et révisions transactionnelles. Cette
+vérification remplace, dans l'API, le simple comparateur
+`smw_touched` : les essais HTTP ont révélé que ce dernier pouvait
+rejeter à tort une requête pourtant fraîche. Toute absence
+d'annotation requise, tout lien de requête manquant ou toute erreur
+SQL impose un rendu sans cache de fragment. Le cache déjà préparé
+n'est accepté que si son empreinte correspond à l'état actuel.
 
 Les arguments **et les débats** dépourvus de profil `_ASK` ne sont pas
 admis dans le cache partagé au cours de la migration. Les marqueurs
@@ -103,17 +110,17 @@ relations périmées sans consulter le serveur.
 complets pour les débats et arguments concernés. Cette limitation est
 délibérée : ce cache ne contient pas encore la nouvelle empreinte, et
 le réutiliser permettrait de renvoyer de vieilles relations en attendant
-les jobs. Un cache complet versionné pourra être étudié après la
-validation HTTP. Le gain de performance escompté dépend du cache du
-parseur et des fragments ; il n'est pas encore mesuré.
+les jobs. Les gains des fragments et le surcoût du suivi sont mesurés
+ci-dessous sur des petites pages synthétiques ; les performances
+des pages complètes du site restent à quantifier.
 
 ## Limites exigeant validation
 
-- **Course avec les jobs différés :** le laboratoire couvre les requêtes
-  initialement vides et les modifications réalisées alors qu'un job de purge
-  est volontairement bloqué. Il reste à vérifier par de véritables requêtes
-  HTTP multiprocessus et avec les caches CDN/proxy que cette protection
-  conserve sa fraîcheur en situation de concurrence.
+- **Course avec les jobs différés :** les tests utilisent de véritables
+  requêtes HTTP servies par plusieurs processus PHP indépendants et vérifient
+  les modifications de parent pendant qu'un job de purge est bloqué.
+  Les scénarios simultanés avec modifications SQL concurrentes, les caches
+  CDN/proxy réels et une éventuelle réplication restent à éprouver.
 - **Requêtes non traçables :** les recherches avec comparateurs non
   indexables, certaines requêtes par espace de noms et `limit=0`
   sont exclues du suivi selon la documentation de SMW 7.3.1.
@@ -123,9 +130,12 @@ parseur et des fragments ; il n'est pas encore mesuré.
   sémantiques ne sont pas écrites, le système doit refuser les fragments
   risquant de devenir obsolètes. Des essais avec panne forcée de job
   et de base doivent précéder tout déploiement.
-- **Extensions de rendu :** vérifier un vrai `action=wikidebatesreading`
-  avec `source=fragment-cache` après un premier rendu ; contrôler
-  les trois sources HTML, les habillages, les langues et les utilisateurs.
+- **Extensions de rendu :** les appels HTTP `action=wikidebatesreading`
+  rendent `parser` puis `fragment-cache` sur des pages synthétiques.
+  Les pages complètes Vector et MinervaFileCache sont contrôlées lors
+  d'un job en attente, avec refus de fichier mobile périmé. Reste à
+  comparer les vrais modèles Débat/Argument, Cite, les variantes
+  complètes de langue et de session, et l'intégration CDN.
 - **Suppression et renommage :** les tests isolés couvrent le changement
   d'identité à résultat de même cardinalité et la suppression. Ajouter les
   variantes avec redirections, jobs perdus et les deux wikis.
@@ -140,16 +150,58 @@ SemanticScribunto 2.3.3, puis exécute :
 
 ```sh
 php -d memory_limit=768M tests/fullstackSemanticCache.php
+php -d memory_limit=768M tests/fullstackSemanticHttp.php
 ```
 
-La suite teste les profils de requêtes, le passage de vide à non
+Ces suites testent les profils de requêtes, le passage de vide à non
 vide, les changements de parent, les suppressions, les fragments
 et l'absence d'invalidation en l'absence de changement sémantique.
+La seconde démarre un serveur HTTP local à trois workers PHP,
+vérifie deux processus distincts ou plus à l'aide de connexions
+simultanées, les cookies, les redirections, les droits, les pages
+complètes Vector et MinervaFileCache et les réponses avant purge.
 Elle emploie les scripts SQL de schéma propres à chaque moteur et
 n'accède jamais aux bases de données des sites réels.
 
 Les tests rapides et les autres régressions existantes tournent
 sur les deux versions de PHP de la CI.
+
+## Mesures HTTP sur pages synthétiques
+
+Le passage GitHub Actions
+[44706689452](https://github.com/wikidebates/wikidebates-core/actions/runs/44706689452)
+a comparé 15 lectures anonymes HTTP pour chaque scénario, sans imposer
+de seuil rigide sur des runners partagés. Les mesures sont des temps de
+réponse **complets** (médianes) et non des mesures isolées du SQL :
+
+| Scénario | SQLite | MariaDB |
+|---|---:|---:|
+| Fragment stable, suivi désactivé | 7,57 ms | 10,51 ms |
+| Fragment stable, suivi activé | 10,57 ms | 16,51 ms |
+| Rendu PHP forcé, suivi activé | 29,03 ms | 41,85 ms |
+| Surcoût observé du suivi sur un hit | +3,00 ms | +6,00 ms |
+
+L'expérience alterne **des séries distinctes** de hits et de
+rendus forcés : un rendu forcé peut actualiser `page_touched` et
+créer artificiellement un miss au tour suivant. La première analyse
+sémantique peut aussi actualiser `page_touched`, d'où la phase de
+stabilisation préalable à la mesure. Une empreinte est calculée
+sur la base primaire pour éviter de valider une réponse ancienne
+sur une éventuelle réplique.
+
+Un autre passage
+[44707122137](https://github.com/wikidebates/wikidebates-core/actions/runs/44707122137)
+valide également le rendu complet mobile avec MobileFrontend,
+MinervaNeue et MinervaFileCache avant exécution des purges
+sémantiques. Il vérifie les réponses actuelles et le veto du
+fichier HTML mobile obsolète.
+
+**À ne pas extrapoler :** ce sont des petites pages de test en
+anglais. Les requêtes imbriquées, longs arbres d'arguments,
+habillages réels, files d'attente et effets de Cloudflare peuvent
+modifier fortement ce bilan. Une mesure sur les pages de production
+reproduites en préproduction, avec suivi des requêtes SQL et taux
+de hits, est nécessaire avant migration.
 
 ## Vérifications manuelles EN PRÉPRODUCTION UNIQUEMENT
 
