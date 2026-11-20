@@ -84,6 +84,43 @@ $register = static function ($parser): void {
 $services->getHookContainer()->register('ParserFirstCallInit', $register);
 $register($services->getParser());
 
+// Use argument titles retained from an actual Wikidebates debate fixture.
+// The original full wikitext remains in the repository: no live wiki,
+// online request or production database is involved in this HTTP lab.
+$corpus = json_decode(file_get_contents(
+	__DIR__ . '/../debatephp/tests/fixtures/pages.json'
+), true, 512, JSON_THROW_ON_ERROR);
+$corpusPage = null;
+foreach ($corpus as $candidate) {
+	if (($candidate['title'] ?? '') === 'Dieu existe-t-il ?') {
+		$corpusPage = $candidate;
+		break;
+	}
+}
+check(is_array($corpusPage), 'Representative public debate is available in the retained corpus');
+$extractCorpusArguments = static function(string $source, string $side): array {
+	$pattern = '/\{\{Argument ' . preg_quote($side, '/') .
+		'\s*\|\s*page\s*=\s*([^\r\n|}]+)/u';
+	preg_match_all($pattern, $source, $matches);
+	return array_values(array_map('trim', $matches[1] ?? []));
+};
+$corpusPro = $extractCorpusArguments($corpusPage['text'], 'pour');
+$corpusCon = $extractCorpusArguments($corpusPage['text'], 'contre');
+check(count($corpusPro) === 12 && count($corpusCon) === 13,
+	'Real debate fixture contains 12 pro and 13 con arguments');
+$corpusArgumentTitle = 'Dieu est une invention';
+check(in_array($corpusArgumentTitle, $corpusCon, true),
+	'The selected Argument really belongs to the retained debate corpus');
+$encodeCorpusList = static function(array $titles): string {
+	return implode('', array_map(static function(string $name): string {
+		return str_replace('|', '{{!}}', $name) . '⟬' .
+			str_replace('|', '{{!}}', $name) . '⟬⟭';
+	}, $titles));
+};
+$corpusDebateName = 'WD HTTP corpus debate';
+fsSave($corpusDebateName, 'Initial corpus debate stub');
+fsSave($corpusArgumentTitle, 'Initial corpus Argument stub');
+
 // A normal debate page links to argument pages but never renders them
 // inline. The Argument page owns the semantic queries and reading HTML.
 $props = \MediaWiki\Extension\DebatePHP\I18n::bundled();
@@ -118,6 +155,11 @@ fsSave('WD HTTP query B',
 	"== Summary ==\n<wd-http-parents>WD HTTP parent B</wd-http-parents>\n== Parent debates ==\nB");
 fsSave('WD HTTP OR query',
 	"== Summary ==\n<wd-http-combined>WD HTTP OR target</wd-http-combined>\n== Parent debates ==\nOR");
+fsSave($corpusDebateName, '{{#debate:render|lang=fr|topic=Dieu' .
+	'|pro-arguments=' . $encodeCorpusList($corpusPro) .
+	'|con-arguments=' . $encodeCorpusList($corpusCon) . '}}');
+fsSave($corpusArgumentTitle,
+	'{{#argument:render|lang=fr|summary=WD_HTTP_CORPUS_ARGUMENT_FIRST}}');
 fsSave('WD HTTP reading argument',
 	'{{#argument:render|lang=fr|summary=WD_HTTP_READING_SUMMARY_FIRST}}');
 fsSave('WD HTTP reading debate',
@@ -142,6 +184,14 @@ check($store->getPropertyValues($readingArgSubject, new Property('_ASK')) !== []
 	'Real Argument reader persists parent-query _ASK profiles');
 check($store->getPropertyValues($readingDebateSubject, new Property('_ASK')) === [],
 	'Real debate-only renderer has no semantic parent-query profile');
+$corpusArgSubject = SemanticWikiPage::newFromTitle(Title::newFromText($corpusArgumentTitle));
+$corpusDebateSubject = SemanticWikiPage::newFromTitle(Title::newFromText($corpusDebateName));
+$store->clear();
+check($store->getPropertyValues($corpusArgSubject, new Property('_ASK')) !== [],
+	'The corpus Argument has native semantic parent-query profiles');
+check($store->getPropertyValues($corpusDebateSubject, new Property('_ASK')) === [],
+	'The 25-title debate has no Argument query profile');
+
 
 $marker = $temporary . '/.semantic-http-disposable';
 file_put_contents($marker, "Isolated CI semantic HTTP lab\n");
@@ -343,6 +393,65 @@ try {
 		$debateAfterArgumentEdit['body'] === $debateFirst['body'],
 		'Editing an Argument does not embed content or alter the cached debate view');
 	fsFlush();
+
+	// Representative corpus size: 25 actual pro/con titles from the
+	// retained "Dieu existe-t-il ?" fixture. A separate Argument page
+	// supplies the summary, not the debate renderer.
+	$corpusUrl = ['title' => 'WD_HTTP_corpus_debate'];
+	$corpusDebate = $http('index.php', $corpusUrl);
+	check($corpusDebate['status'] === 200 &&
+		str_contains($corpusDebate['body'], 'Il existe des interventions divines') &&
+		str_contains($corpusDebate['body'], 'Dieu est une invention') &&
+		substr_count($corpusDebate['body'], 'argument-title') >= 25,
+		'Corpus-sized native debate lists all 25 real argument titles');
+	check(!str_contains($corpusDebate['body'], 'WD_HTTP_CORPUS_ARGUMENT_FIRST'),
+		'Large debate HTML does not contain the selected Argument summary');
+	$corpusFragment = $fragment($corpusArgumentTitle,
+		['X-Requested-With: XMLHttpRequest']);
+	check(str_contains($corpusFragment['fragment']['html'],
+		'WD_HTTP_CORPUS_ARGUMENT_FIRST'),
+		'Reading a real corpus argument title fetches only its separate HTML fragment');
+	$corpusWarm = null;
+	for ($attempt = 0; $attempt < 5; $attempt++) {
+		$sample = $fragment($corpusArgumentTitle, ['X-Requested-With: XMLHttpRequest']);
+		if ($sample['fragment']['source'] === 'fragment-cache') {
+			$corpusWarm = $sample;
+			break;
+		}
+	}
+	check($corpusWarm !== null,
+		'Real corpus Argument retains a reusable prepared fragment');
+	fsSave($corpusArgumentTitle,
+		'{{#argument:render|lang=fr|summary=WD_HTTP_CORPUS_ARGUMENT_SECOND}}');
+	fsFlush(['wikidebatesSemanticCachePurge']);
+	$corpusUpdated = $fragment($corpusArgumentTitle,
+		['X-Requested-With: XMLHttpRequest']);
+	check($corpusUpdated['fragment']['source'] !== 'fragment-cache' &&
+		str_contains($corpusUpdated['fragment']['html'], 'WD_HTTP_CORPUS_ARGUMENT_SECOND') &&
+		!str_contains($corpusUpdated['fragment']['html'], 'WD_HTTP_CORPUS_ARGUMENT_FIRST'),
+		'Editing the corpus Argument invalidates its fragment even before queued purge');
+	$corpusDebateAgain = $http('index.php', $corpusUrl);
+	check($corpusDebateAgain['status'] === 200 &&
+		$corpusDebateAgain['body'] === $corpusDebate['body'],
+		'Corpus-sized debate remains byte-identical after its separate Argument changes');
+	fsFlush();
+	$corpusDebateTimings = [];
+	for ($i = 0; $i < 7; $i++) {
+		$sample = $http('index.php', $corpusUrl);
+		check($sample['status'] === 200 &&
+			$sample['body'] === $corpusDebate['body'],
+			'Repeated corpus debate request returns stable native HTML');
+		$corpusDebateTimings[] = $sample['elapsed_ms'];
+	}
+	$corpusMeasurements = [
+		'source' => 'retained debatephp/tests/fixtures/pages.json, no production access',
+		'corpus_debate' => $corpusPage['title'],
+		'pro_titles' => count($corpusPro),
+		'con_titles' => count($corpusCon),
+		'html_bytes' => strlen($corpusDebate['body']),
+		'http_samples' => count($corpusDebateTimings),
+		'debate_http_median_ms' => $percentile($corpusDebateTimings, .5)
+	];
 
 	$fingerprintBefore = SemanticRevisionStore::fingerprint($store, $subjectA);
 	$cold = $fragment();
@@ -658,6 +767,7 @@ try {
 		'smw' => SMW_VERSION,
 		'semantic_scribunto' => SMW_SCRIBUNTO_VERSION,
 		'transport' => 'real loopback HTTP, three PHP CLI server workers',
+		'corpus_debate' => $corpusMeasurements,
 		'benchmark' => [
 			'samples_each' => count($hitSamples),
 			'fragment_hit_median_ms' => $percentile($hitSamples, .5),
