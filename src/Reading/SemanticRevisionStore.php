@@ -70,9 +70,9 @@ final class SemanticRevisionStore {
 	 * embedded by this wiki page. It changes only when linked entities are
 	 * modified or the dependency graph changes, not after unrelated edits.
 	 *
-	 * Every revision is strictly increasing (never reset or decremented).
-	 * With a fixed dependency graph the SUM cannot collide across updates.
-	 * COUNTs also detect additions/removals of query links.
+	 * Each row captures the exact query ID, dependency ID and increasing
+	 * semantic revision. Hashing sorted tuples distinguishes additions,
+	 * removals and substitutions that COUNT/SUM aggregates would miss.
 	 */
 	public static function fingerprint(Store $store, WikiPage $subject): string {
 		if (!$store instanceof SQLStore) {
