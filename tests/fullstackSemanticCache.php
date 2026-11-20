@@ -16,6 +16,7 @@ use MediaWiki\Extension\DebatePHP\TrackedSemanticQuery;
 use MediaWiki\Extension\Wikidebates\Reading\FragmentService;
 use MediaWiki\Extension\Wikidebates\Reading\SemanticRevisionStore;
 use MediaWiki\Extension\Wikidebates\Reading\SemanticPageCacheHooks;
+use MediaWiki\Extension\Wikidebates\Reading\SemanticCacheGuard;
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Request\FauxRequest;
 use MediaWiki\MediaWikiServices;
@@ -313,6 +314,27 @@ check($linksRejected,
 $missingResponse = $read('WD Cache query A');
 check($missingResponse['source'] !== 'fragment-cache',
 	'Reading API refuses a fragment with an _ASK profile but lost query links');
+
+
+
+// A debate containing native semantic rendering may be created before its
+// _ASK profiles are registered. It must not be cached as an empty query.
+// The transclusion is deliberately beyond 8 KiB of harmless wikitext.
+$unregisteredTitle = Title::newFromText('WD Cache unregistered debate');
+fsSave('WD Cache unregistered debate', str_repeat('Prose without a query. ', 380) . "\n{{Débat}}");
+fsFlush();
+$unregisteredPage = $services->getWikiPageFactory()->newFromTitle($unregisteredTitle);
+$unregisteredSubject = SemanticWikiPage::newFromTitle($unregisteredTitle);
+$store->clear();
+check($store->getPropertyValues($unregisteredSubject, new Property('_ASK')) === [],
+	'New debate still has no _ASK profile before its semantic renderer executes');
+check(SemanticPageCacheHooks::isQueryPage($unregisteredTitle, $unregisteredPage),
+	'Full source scan identifies a debate transclusion beyond the first 8 KiB');
+check(!SemanticCacheGuard::safeForRead($unregisteredTitle, $unregisteredPage),
+	'The API refuses shared fragments for unregistered semantic debates');
+$fullPageContext->setTitle($unregisteredTitle);
+check(!SemanticPageCacheHooks::onHTMLFileCache__useFileCache($fullPageContext),
+	'An unregistered semantic debate also bypasses full-page HTML file caching');
 
 
 echo "OK: SMW 7.3.1 native profiles, empty results, inserts, moves, deletes and fragment invalidation\n";
