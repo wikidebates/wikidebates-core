@@ -191,15 +191,32 @@ try {
 	}
 	check($ready, 'Real HTTP server is accepting loopback connections');
 
+	$fingerprintBefore = SemanticRevisionStore::fingerprint($store, $subjectA);
 	$cold = $fragment();
+	$fingerprintAfterCold = SemanticRevisionStore::fingerprint($store, $subjectA);
 	check(str_contains($cold['fragment']['html'], 'WD_HTTP_MATCHES=0'),
 		'First independent HTTP read renders empty query');
 	check($cold['fragment']['source'] === 'parser', 'Initial HTTP read uses parser');
 
 	$count = $parseCount();
 	$warm = $fragment();
+	$fingerprintAfterWarm = SemanticRevisionStore::fingerprint($store, $subjectA);
+	$observedOutputLog = $temporary . '/semantic-http-parser-outputs.jsonl';
+	$diagnostics = [
+		'cold_source' => $cold['fragment']['source'],
+		'warm_source' => $warm['fragment']['source'],
+		'cold_expires' => $cold['fragment']['_expires'] ?? null,
+		'warm_expires' => $warm['fragment']['_expires'] ?? null,
+		'fingerprint_before' => $fingerprintBefore,
+		'fingerprint_after_cold' => $fingerprintAfterCold,
+		'fingerprint_after_warm' => $fingerprintAfterWarm,
+		'cache_files' => count(glob($temporary . '/semantic-http-fragments/*/*/*.cache') ?: []),
+		'parser_output_events' => is_file($observedOutputLog) ?
+			array_slice(file($observedOutputLog, FILE_IGNORE_NEW_LINES), -4) : [],
+	];
 	check($warm['fragment']['source'] === 'fragment-cache',
-		'Second independent HTTP request reuses the prepared fragment');
+		'Second independent HTTP request reuses the prepared fragment: ' .
+		json_encode($diagnostics, JSON_UNESCAPED_SLASHES));
 	check($count === $parseCount(), 'Fragment hit does not run the query renderer again');
 	check($cold['fragment']['html'] === $warm['fragment']['html'],
 		'Cold and warm HTTP results have identical bytes');
