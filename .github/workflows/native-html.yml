@@ -138,7 +138,11 @@ jobs:
             --skip-networking --socket=/run/mysqld/mariadb.sock)"
           ready=0
           for i in $(seq 1 120); do
-            if [ -S "$LAB/mariadb.sock" ] && \
+            # The image briefly starts a TEMPORARY SQL server to initialize
+            # its tables, then stops it before starting the real daemon.
+            # Checking the socket alone races that planned shutdown.
+            if docker logs "$container" 2>&1 | grep -q 'MariaDB init process done' && \
+              [ -S "$LAB/mariadb.sock" ] && \
               php -r 'mysqli_report(MYSQLI_REPORT_OFF); $m = @new mysqli("localhost", "root", "", "", 0, $argv[1]); exit($m->connect_errno ? 1 : 0);' \
                 "$LAB/mariadb.sock"; then
               ready=1
