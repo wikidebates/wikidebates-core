@@ -121,6 +121,12 @@ des pages complètes du site restent à quantifier.
   les modifications de parent pendant qu'un job de purge est bloqué.
   Les scénarios simultanés avec modifications SQL concurrentes, les caches
   CDN/proxy réels et une éventuelle réplication restent à éprouver.
+- **Détection avant le premier profil :** les transclusions directes
+  des modèles `Argument`/`Débat` et les appels directs
+  `#argument:render`/`#debate:render` sont reconnus sans `_ASK`.
+  Les modèles intermédiaires ou alias non inventoriés peuvent masquer
+  une lecture sémantique ; les recenser sur les wikis FR et EN avant
+  d'autoriser des pages jusqu'ici non suivies à utiliser le cache.
 - **Requêtes non traçables :** les recherches avec comparateurs non
   indexables, certaines requêtes par espace de noms et `limit=0`
   sont exclues du suivi selon la documentation de SMW 7.3.1.

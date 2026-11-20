@@ -141,9 +141,12 @@ final class SemanticPageCacheHooks {
 		if (!$content instanceof \TextContent) {
 			return false;
 		}
-		// Templates that invoke the DebatePHP semantic readers. This also
-		// works if __NOCACHE__ precedes the transclusion in the source.
-		return preg_match('/\{\{\s*(?:Argument|D[eé]bat|Debate)\s*(?:[|}])/iu',
-			$content->getText()) === 1;
+		// Recognize both the wiki templates and the native PHP parser
+		// functions used by DebatePHP, even before _ASK is registered.
+		// An indirect wrapper needs a separate preproduction inventory.
+		return preg_match(
+			'/\\{\\{\\s*(?:(?:Argument|D[eé]bat|Debate)\\s*(?:[|}])|#(?:argument|debate):render\\s*(?:[|}]))/iu',
+			$content->getText()
+		) === 1;
 	}
 }

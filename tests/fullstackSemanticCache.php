@@ -419,6 +419,32 @@ check(!SemanticPageCacheHooks::onHTMLFileCache__useFileCache($fullPageContext),
 	'An unregistered semantic debate also bypasses full-page HTML file caching');
 
 
+// Direct PHP parser functions can be present even when the canonical
+// Argument/Debate templates are not transcluded. Before the first parse,
+// these pages have no _ASK profile and must be recognized from source.
+foreach ([
+	'argument' => '{{#argument:render|summary=Native semantic argument}}',
+	'debate' => '{{#debate:render|topic=Native semantic debate}}',
+] as $kind => $source) {
+	$title = Title::newFromText('WD Cache native source ' . $kind);
+	$content = \MediaWiki\Content\ContentHandler::makeContent($source, $title);
+	$page = new class($content) {
+		private $content;
+		public function __construct($content) { $this->content = $content; }
+		public function getContent() { return $this->content; }
+	};
+	$store->clear();
+	check($store->getPropertyValues(SemanticWikiPage::newFromTitle($title),
+		new Property('_ASK')) === [],
+		'Unparsed native ' . $kind . ' page has no semantic profile');
+	check(SemanticPageCacheHooks::isQueryPage($title, $page),
+		'Native parser function ' . $kind . ' is recognized before first parse');
+	check(!SemanticCacheGuard::safeForRead($title, $page),
+		'Unregistered native ' . $kind . ' page fails closed for fragments');
+}
+
+// Indirect custom wrappers still require a preproduction inventory.
+
 // The production Argument renderer uses combined OR queries with two
 // property printouts for its debate parents and justification/objection
 // parents. A single-property #ask is not sufficient to prove that an empty
