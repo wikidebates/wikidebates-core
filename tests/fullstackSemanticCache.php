@@ -579,21 +579,20 @@ check($services->getJobQueueGroup()->queuesHaveJobs(),
 check(SemanticRevisionStore::fingerprint($store, $actualSubject) !== $previousActual,
 	'Real Argument parent relation advances the revision before purge');
 $actualAdded = $read($actualArgument);
-$actualMatches = [];
-preg_match_all('/WD[_ ]Cache[^<>"]{0,140}/', $actualAdded['html'], $actualMatches);
-$directActual = (new \SMW\Scribunto\LibraryFactory($store))->newQueryResultFrom([
-	'[[' . $proProperty . '::' . $actualArgument . ']]', 'limit=200', 'link=none',
-]);
-$directActualCount = $directActual instanceof \SMW\Query\QueryResult ? $directActual->getCount() : -1;
-$actualStored = fsValues($actualParentA, $proProperty);
-check($actualAdded['source'] !== 'fragment-cache' &&
-	str_contains($actualAdded['html'], $actualParentA),
-	'Real French Argument shows its newly added debate parent before purge; source=' .
-	($actualAdded['source'] ?? '?') . '; direct_count=' . $directActualCount .
-	'; stored=' . json_encode($actualStored) .
-	'; encoded_title=' . (int)str_contains($actualAdded['html'], str_replace(' ', '_', $actualParentA)) .
-	'; title_fragments=' . json_encode(array_slice($actualMatches[0] ?? [], 0, 14)) .
-	'; html_tail=' . substr($actualAdded['html'], -1800));
+check($actualAdded['source'] !== 'fragment-cache',
+	'Real Argument fragment is invalidated before the semantic purge');
+$actualWikiPage = $services->getWikiPageFactory()->newFromTitle($actualTitle);
+$fullAfterAdd = $actualWikiPage->getParserOutput(ParserOptions::newFromAnon());
+check($fullAfterAdd instanceof \MediaWiki\Parser\ParserOutput,
+	'MediaWiki returns a full native Argument ParserOutput after parent edit');
+$actualFullHtml = $fullAfterAdd->getText();
+// FragmentExtractor intentionally excludes the Parent_debates section.
+// Parent breadcrumbs and banner links must be validated in the FULL page.
+$hasActualParent = static fn(string $html, string $name): bool =>
+	str_contains($html, $name) || str_contains($html, str_replace(' ', '_', $name));
+check($hasActualParent($actualFullHtml, $actualParentA),
+	'Real full French Argument HTML shows its new parent before purge: ' .
+	substr($actualFullHtml, -2200));
 fsFlush();
 
 $previousActual = SemanticRevisionStore::fingerprint($store, $actualSubject);
@@ -603,11 +602,16 @@ fsFlush(['wikidebatesSemanticCachePurge']);
 check(SemanticRevisionStore::fingerprint($store, $actualSubject) !== $previousActual,
 	'Real Argument parent transfer advances the semantic revision');
 $actualMoved = $read($actualArgument);
-check($actualMoved['source'] !== 'fragment-cache' &&
-	str_contains($actualMoved['html'], $actualParentB) &&
-	!str_contains($actualMoved['html'], $actualParentA),
+check($actualMoved['source'] !== 'fragment-cache',
+	'Real Argument fragment is invalidated during parent transfer before purge');
+$fullAfterMove = $actualWikiPage->getParserOutput(ParserOptions::newFromAnon());
+check($fullAfterMove instanceof \MediaWiki\Parser\ParserOutput,
+	'Full native Argument ParserOutput survives a parent transfer');
+$fullAfterMoveHtml = $fullAfterMove->getText();
+check($hasActualParent($fullAfterMoveHtml, $actualParentB) &&
+	!$hasActualParent($fullAfterMoveHtml, $actualParentA),
 	'Real Argument replaces its displayed debate parent before purge: ' .
-	substr($actualMoved['html'], 0, 1500));
+	substr($fullAfterMoveHtml, -2600));
 fsFlush();
 
 echo "OK: SMW 7.3.1 native profiles, empty results, inserts, moves, deletes and fragment invalidation\n";
