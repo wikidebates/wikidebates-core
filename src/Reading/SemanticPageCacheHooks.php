@@ -36,6 +36,26 @@ final class SemanticPageCacheHooks {
 	}
 
 	/**
+	 * Full HTML output may also pass through a reverse proxy or browser cache.
+	 * Until those caches understand semantic revisions, never advertise
+	 * query-owning pages as publicly cacheable in the opt-in tracking mode.
+	 */
+	public static function onBeforePageDisplay($out, $skin): void {
+		if (!self::enabled()) {
+			return;
+		}
+		try {
+			$title = $out->getTitle();
+			if ($title && $title->canExist() && !self::isQueryPage($title)) {
+				return;
+			}
+		} catch (\Throwable $e) {
+			FragmentService::log($e);
+		}
+		$out->disableClientCache();
+	}
+
+	/**
 	 * Bind ParserOutput to the semantic graph observed during the parse.
 	 * Only the canonical traced PHP queries need this additional marker.
 	 */
