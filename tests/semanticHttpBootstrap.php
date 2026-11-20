@@ -54,6 +54,19 @@ function wdSemanticHttpTestSettings($settings): void {
 		'ShowExceptionDetails' => true,
 		'CookiePrefix' => 'wd_semantic_http_lab',
 		'Hooks' => [
+			'ParserOutputPostCacheTransform' => [static function ($output, &$text, &$options) use ($root): void {
+				file_put_contents($root . '/semantic-http-parser-outputs.jsonl',
+					json_encode([
+						'pid' => getmypid(),
+						'revision' => $output->getCacheRevisionId(),
+						'cacheable' => $output->isCacheable(),
+						'expiry' => $output->getCacheExpiry(),
+						'cacheTime' => $output->getCacheTime(),
+						'semanticRevision' => $output->getExtensionData(
+							\MediaWiki\Extension\Wikidebates\Reading\SemanticPageCacheHooks::OUTPUT_REVISION
+						)
+					], JSON_UNESCAPED_SLASHES) . "\n", FILE_APPEND | LOCK_EX);
+			}],
 			'ParserFirstCallInit' => [static function ($parser): void {
 				$parser->setHook('wd-http-parents',
 					static function ($input, $args, $parser, $frame): string {
