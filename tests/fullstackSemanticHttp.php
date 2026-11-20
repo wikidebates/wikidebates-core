@@ -443,14 +443,36 @@ try {
 			'Repeated corpus debate request returns stable native HTML');
 		$corpusDebateTimings[] = $sample['elapsed_ms'];
 	}
+	// Measure the identical native debate under the original configuration.
+	// This comparison isolates the opt-in tracking from the normal HTML
+	// pipeline. It is descriptive, not a CI latency pass/fail threshold.
+	$corpusBaselineTimings = [];
+	touch($temporary . '/semantic-http-disable-tracking');
+	try {
+		for ($i = 0; $i < 7; $i++) {
+			$sample = $http('index.php', $corpusUrl);
+			check($sample['status'] === 200 &&
+				$sample['body'] === $corpusDebate['body'],
+				'Baseline debate remains byte-identical with tracking disabled');
+			$corpusBaselineTimings[] = $sample['elapsed_ms'];
+		}
+	} finally {
+		unlink($temporary . '/semantic-http-disable-tracking');
+	}
+	$trackedDebateMedian = $percentile($corpusDebateTimings, .5);
+	$baselineDebateMedian = $percentile($corpusBaselineTimings, .5);
 	$corpusMeasurements = [
 		'source' => 'retained debatephp/tests/fixtures/pages.json, no production access',
 		'corpus_debate' => $corpusPage['title'],
 		'pro_titles' => count($corpusPro),
 		'con_titles' => count($corpusCon),
 		'html_bytes' => strlen($corpusDebate['body']),
-		'http_samples' => count($corpusDebateTimings),
-		'debate_http_median_ms' => $percentile($corpusDebateTimings, .5)
+		'http_samples_each' => count($corpusDebateTimings),
+		'debate_tracking_on_median_ms' => $trackedDebateMedian,
+		'debate_tracking_off_median_ms' => $baselineDebateMedian,
+		'debate_tracking_extra_median_ms' => round(
+			$trackedDebateMedian - $baselineDebateMedian, 2
+		)
 	];
 
 	$fingerprintBefore = SemanticRevisionStore::fingerprint($store, $subjectA);
