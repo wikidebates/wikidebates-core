@@ -116,6 +116,15 @@ class FragmentService {
 			try {
 				$store = self::store();
 				$snapshot = $store->read($title->getPrefixedDBkey(), $variant, $identity);
+				if (getenv('WD_SEMANTIC_HTTP_DISPOSABLE') === '1') {
+					@file_put_contents((string)getenv('WD_SEMANTIC_HTTP_ROOT') . '/semantic-http-publication.jsonl',
+						json_encode(['event' => 'snapshot', 'pid' => getmypid(),
+							'wikiId' => \MediaWiki\WikiMap\WikiMap::getCurrentWikiId(),
+							'variant' => $variant, 'identity' => $identity,
+							'entry' => $snapshot['entry'] !== null,
+							'generation' => $snapshot['generation']]) . "\n",
+						FILE_APPEND | LOCK_EX);
+				}
 				if ($prepared && ($prepared['_generation'] !== $snapshot['generation'] ||
 					$prepared['revid'] !== (int)$identity['revision'] || $prepared['_touched'] !== $identity['touched'])) { return $prepared; }
 				if ($snapshot['entry']) {
