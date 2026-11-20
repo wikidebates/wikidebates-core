@@ -32,10 +32,11 @@ final class SemanticCacheGuard {
 			$subject = WikiPage::newFromTitle($title);
 			$store = $services->getStore();
 
-			// An unparsed or newly migrated argument/debate may have no _ASK
-			// profile yet. An empty graph must never be trusted for a page
-			// whose source contains native semantic queries.
-			// Most cached debate/argument pages already have an _ASK profile.
+			// An unparsed argument may have no _ASK profile yet. Such
+			// an empty graph is unsafe if native argument queries execute.
+			// A debate-only render writes semantic properties, but does
+			// not itself execute semantic queries; its existing cache
+			// must remain available when no _ASK profile exists.
 			// Do not read that property twice via isQueryPage() on every hit.
 			// Only inspect the source when no saved profile exists yet.
 			$profiles = $store->getPropertyValues($subject, new Property('_ASK'));

@@ -141,11 +141,15 @@ final class SemanticPageCacheHooks {
 		if (!$content instanceof \TextContent) {
 			return false;
 		}
-		// Recognize both the wiki templates and the native PHP parser
-		// functions used by DebatePHP, even before _ASK is registered.
-		// An indirect wrapper needs a separate preproduction inventory.
+		// A standalone Debate renderer writes semantic properties; unlike
+		// Argument, it does not read semantic parent queries. Do not
+		// disable full-page caching merely because a page transcludes
+		// Debate or calls #debate:render. Existing _ASK profiles above
+		// still protect debates with genuine semantic reads.
+		// Before the first _ASK profile, recognize Argument and its
+		// legacy Lua reader, including invocations nested in a debate.
 		return preg_match(
-			'/\\{\\{\\s*(?:(?:Argument|D[eé]bat|Debate)\\s*(?:[|}])|#(?:argument|debate):render\\s*(?:[|}]))/iu',
+			'/\{\{\s*(?:Argument\s*(?:[|}])|#argument\s*:\s*render\s*(?:[|}])|#invoke\s*:\s*Argument\s*\|\s*render\s*(?:[|}]))/iu',
 			$content->getText()
 		) === 1;
 	}

@@ -399,34 +399,68 @@ check($missingResponse['source'] !== 'fragment-cache',
 
 
 
-// A debate containing native semantic rendering may be created before its
-// _ASK profiles are registered. It must not be cached as an empty query.
-// The transclusion is deliberately beyond 8 KiB of harmless wikitext.
-$unregisteredTitle = Title::newFromText('WD Cache unregistered debate');
-fsSave('WD Cache unregistered debate', str_repeat('Prose without a query. ', 380) . "\n{{Débat}}");
+// __NOCACHE__ currently applies to Argument pages, not Debate pages.
+// A debate-only native render writes properties but contains no SMW
+// query; it must keep its parser cache and full HTML file cache.
+$plainDebateTitle = Title::newFromText('WD Cache plain debate');
+fsSave('WD Cache plain debate', str_repeat('Ordinary debate prose. ', 380) .
+	"\n{{#debate:render|topic=Ordinary debate without a query}}");
+fsFlush();
+$plainDebatePage = $services->getWikiPageFactory()->newFromTitle($plainDebateTitle);
+$store->clear();
+check($store->getPropertyValues(SemanticWikiPage::newFromTitle($plainDebateTitle),
+	new Property('_ASK')) === [],
+	'Debate-only native rendering has no _ASK query profile');
+check(!SemanticPageCacheHooks::isQueryPage($plainDebateTitle, $plainDebatePage),
+	'A debate-only render is not a semantic query page, even after 8 KiB');
+check(SemanticCacheGuard::safeForRead($plainDebateTitle, $plainDebatePage),
+	'Debate without semantic queries retains eligibility for prepared fragments');
+$fullPageContext->setTitle($plainDebateTitle);
+check(SemanticPageCacheHooks::onHTMLFileCache__useFileCache($fullPageContext),
+	'Debate-only pages keep their full HTML file cache enabled');
+$debateViewOutput = new \MediaWiki\Output\OutputPage($fullPageContext);
+SemanticPageCacheHooks::onBeforePageDisplay($debateViewOutput, null);
+$debateViewOutput->considerCacheSettingsFinal();
+check($debateViewOutput->couldBePublicCached(),
+	'Debate-only pages retain public HTML caching');
+$debateParserOutput = $plainDebatePage->getParserOutput(ParserOptions::newFromAnon());
+check($debateParserOutput instanceof \MediaWiki\Parser\ParserOutput &&
+	$debateParserOutput->isCacheable() &&
+	$debateParserOutput->getCacheExpiry() > 0,
+	'Real #debate:render ParserOutput remains cacheable');
+check(SemanticPageCacheHooks::onRejectParserCacheValue(
+	new \MediaWiki\Parser\ParserOutput(), $plainDebatePage, ParserOptions::newFromAnon()
+), 'Ordinary debate ParserOutput does not require an _ASK revision marker');
+
+// Argument pages must still fail closed before their first query
+// profile, including when a transclusion is beyond the first 8 KiB.
+$unregisteredTitle = Title::newFromText('WD Cache unregistered argument');
+fsSave('WD Cache unregistered argument',
+	str_repeat('Prose without a query. ', 380) . "\n{{Argument}}");
 fsFlush();
 $unregisteredPage = $services->getWikiPageFactory()->newFromTitle($unregisteredTitle);
-$unregisteredSubject = SemanticWikiPage::newFromTitle($unregisteredTitle);
 $store->clear();
-check($store->getPropertyValues($unregisteredSubject, new Property('_ASK')) === [],
-	'New debate still has no _ASK profile before its semantic renderer executes');
+check($store->getPropertyValues(SemanticWikiPage::newFromTitle($unregisteredTitle),
+	new Property('_ASK')) === [],
+	'Unregistered argument has no _ASK profile yet');
 check(SemanticPageCacheHooks::isQueryPage($unregisteredTitle, $unregisteredPage),
-	'Full source scan identifies a debate transclusion beyond the first 8 KiB');
+	'Argument transclusion beyond the first 8 KiB is detected');
 check(!SemanticCacheGuard::safeForRead($unregisteredTitle, $unregisteredPage),
-	'The API refuses shared fragments for unregistered semantic debates');
+	'Unregistered argument refuses a shared fragment');
 $fullPageContext->setTitle($unregisteredTitle);
 check(!SemanticPageCacheHooks::onHTMLFileCache__useFileCache($fullPageContext),
-	'An unregistered semantic debate also bypasses full-page HTML file caching');
+	'Unregistered argument bypasses unsafe full HTML file cache');
 
-
-// Direct PHP parser functions can be present even when the canonical
-// Argument/Debate templates are not transcluded. Before the first parse,
-// these pages have no _ASK profile and must be recognized from source.
+// A direct PHP Argument invocation requires protection even without
+// its template. A standalone Debate invocation does not. Legacy Lua
+// Argument readers also execute semantic queries.
 foreach ([
-	'argument' => '{{#argument:render|summary=Native semantic argument}}',
-	'debate' => '{{#debate:render|topic=Native semantic debate}}',
-] as $kind => $source) {
-	$title = Title::newFromText('WD Cache native source ' . $kind);
+	'argument' => ['{{#argument:render|summary=Native argument}}', true],
+	'debate' => ['{{#debate:render|topic=Native debate}}', false],
+	'legacy-argument' => ['{{#invoke:Argument|render}}', true],
+	'mixed' => ['{{#debate:render|topic=Debate}}{{#argument:render|summary=Argument}}', true],
+] as $kind => [$source, $expected]) {
+	$title = Title::newFromText('WD Cache source ' . $kind);
 	$content = \MediaWiki\Content\ContentHandler::makeContent($source, $title);
 	$page = new class($content) {
 		private $content;
@@ -436,11 +470,11 @@ foreach ([
 	$store->clear();
 	check($store->getPropertyValues(SemanticWikiPage::newFromTitle($title),
 		new Property('_ASK')) === [],
-		'Unparsed native ' . $kind . ' page has no semantic profile');
-	check(SemanticPageCacheHooks::isQueryPage($title, $page),
-		'Native parser function ' . $kind . ' is recognized before first parse');
-	check(!SemanticCacheGuard::safeForRead($title, $page),
-		'Unregistered native ' . $kind . ' page fails closed for fragments');
+		'Unparsed ' . $kind . ' page has no semantic profile');
+	check(SemanticPageCacheHooks::isQueryPage($title, $page) === $expected,
+		'Query classification for ' . $kind . ' matches actual semantic reads');
+	check(SemanticCacheGuard::safeForRead($title, $page) === !$expected,
+		'Fragment guard preserves debate-only caching, protects ' . $kind);
 }
 
 // Indirect custom wrappers still require a preproduction inventory.

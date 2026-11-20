@@ -52,8 +52,12 @@ d'annotation requise, tout lien de requête manquant ou toute erreur
 SQL impose un rendu sans cache de fragment. Le cache déjà préparé
 n'est accepté que si son empreinte correspond à l'état actuel.
 
-Les arguments **et les débats** dépourvus de profil `_ASK` ne sont pas
-admis dans le cache partagé au cours de la migration. Les marqueurs
+Les pages d'**arguments** sans profil `_ASK` restent exclues du cache
+partagé tant que leurs requêtes ne sont pas traçables. Au contraire,
+les débats qui n'exécutent aucune recherche sémantique doivent conserver
+leurs caches existants, même sans `_ASK`. Un débat qui contient
+réellement des requêtes (`_ASK` présent ou argument imbriqué)
+reste protégé. Les marqueurs
 `semanticTracking` et `semanticRevision` de l'identité empêchent
 le réemploi d'anciens fragments. En cas d'empreinte douteuse,
 l'API exécute une analyse `ApiParse` sans lecture du cache du parseur.
@@ -121,12 +125,14 @@ des pages complètes du site restent à quantifier.
   les modifications de parent pendant qu'un job de purge est bloqué.
   Les scénarios simultanés avec modifications SQL concurrentes, les caches
   CDN/proxy réels et une éventuelle réplication restent à éprouver.
-- **Détection avant le premier profil :** les transclusions directes
-  des modèles `Argument`/`Débat` et les appels directs
-  `#argument:render`/`#debate:render` sont reconnus sans `_ASK`.
-  Les modèles intermédiaires ou alias non inventoriés peuvent masquer
-  une lecture sémantique ; les recenser sur les wikis FR et EN avant
-  d'autoriser des pages jusqu'ici non suivies à utiliser le cache.
+- **Détection avant le premier profil :** les pages d'arguments utilisant
+  le modèle `Argument`, `#argument:render` ou l'ancien
+  `#invoke:Argument|render` sont protégées même sans `_ASK`.
+  Le seul modèle `Débat` ou `#debate:render` n'implique PAS une
+  requête sémantique ; ces pages conservent leurs caches ordinaires.
+  Un débat contenant aussi un argument rendu, une requête `#ask`
+  enregistrée ou une autre requête tracée est protégé.
+  Les modèles intermédiaires et alias non inventoriés restent à étudier.
 - **Requêtes non traçables :** les recherches avec comparateurs non
   indexables, certaines requêtes par espace de noms et `limit=0`
   sont exclues du suivi selon la documentation de SMW 7.3.1.
@@ -211,6 +217,14 @@ de hits, est nécessaire avant migration.
 
 ## Inventaire sans modification des pages (outil préparatoire)
 
+**Règle de base :** en production, `__NOCACHE__` concerne les pages
+d'arguments, pas les pages de débats. La migration ne doit pas retirer
+ni modifier un mot magique sur les débats, mais vérifier que leurs caches
+restent utilisables. Les occurrences du mot magique dans le seul
+wikicode d'une page ne révèlent pas les mots magiques transmis par un modèle
+transclus ; les résultats d'inventaire ne doivent pas être interprétés
+comme un relevé exhaustif du comportement effectif des pages.
+
 Le script `maintenance/AuditSemanticCacheSources.php` lit les dernières
 révisions et les profils `_ASK` sans lancer de rendu, de sauvegarde, de job,
 de purge ou de migration. Les sorties JSONL donnent les titres, tailles et
@@ -282,8 +296,10 @@ et activation de cette migration.
 Le recalcul de l'empreinte sémantique nécessite une lecture des liens SMW.
 Comparer en préproduction les latences des pages de débats volumineuses,
 le temps des requêtes SQL et la fréquence des caches réellement utilisés.
-Le contrôle renforcé des fichiers HTML peut réduire temporairement leur taux
-de hits ; mesurer ce coût avant de proposer de supprimer `__NOCACHE__`.
+Le contrôle renforcé des fichiers HTML ne doit viser que les pages qui
+exécutent des requêtes sémantiques. Mesurer séparément les taux de hits
+des débats ordinaires (qui doivent rester cacheables) et des arguments
+suivis avant de proposer de supprimer `__NOCACHE__`.
 
 En cas de régression, remettre `$wgWikidebatesSemanticCacheTracking = false;`,
 puis purger les caches du parseur, les fragments, les fichiers HTML et tout
