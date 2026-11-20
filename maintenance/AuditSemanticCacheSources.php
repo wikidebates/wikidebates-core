@@ -63,7 +63,9 @@ class AuditSemanticCacheSources extends Maintenance {
 		$matched = 0;
 		$nocacheCount = 0;
 		$profileCount = 0;
-		$unprofiledDirect = 0;
+		$unprofiledArgument = 0;
+		$debateOnlyWithoutProfiles = 0;
+		$nocacheDebateOnlySources = 0;
 		$indirectProfiles = 0;
 		$nontext = 0;
 		$missing = 0;
@@ -108,17 +110,25 @@ class AuditSemanticCacheSources extends Maintenance {
 					}
 					$source = $content->getText();
 					$nocache = preg_match('/__NOCACHE__/i', $source) === 1;
-					$templates = preg_match('/\{\{\s*(?:Argument|D[eé]bat|Debate)\s*(?:[|}])/iu', $source) === 1;
-					$native = preg_match('/\{\{\s*#(?:argument|debate):render\s*(?:[|}])/iu', $source) === 1;
-					$legacyLua = preg_match('/\{\{\s*#invoke\s*:\s*(?:Argument|Debate)\s*(?:[|}])/iu', $source) === 1;
+					$argumentTemplate = preg_match('/\{\{\s*Argument\s*(?:[|}])/iu', $source) === 1;
+					$debateTemplate = preg_match('/\{\{\s*(?:D[eé]bat|Debate)\s*(?:[|}])/iu', $source) === 1;
+					$nativeArgument = preg_match('/\{\{\s*#argument\s*:\s*render\s*(?:[|}])/iu', $source) === 1;
+					$nativeDebate = preg_match('/\{\{\s*#debate\s*:\s*render\s*(?:[|}])/iu', $source) === 1;
+					$legacyArgument = preg_match('/\{\{\s*#invoke\s*:\s*Argument\s*\|\s*render\s*(?:[|}])/iu', $source) === 1;
+					$legacyDebate = preg_match('/\{\{\s*#invoke\s*:\s*Debate\s*\|\s*render\s*(?:[|}])/iu', $source) === 1;
+					$argumentReader = $argumentTemplate || $nativeArgument || $legacyArgument;
+					$debateRenderer = $debateTemplate || $nativeDebate || $legacyDebate;
+					$direct = $argumentReader || $debateRenderer;
 					$profiles = $store->getPropertyValues(
 						SemanticWikiPage::newFromTitle($title), new Property('_ASK')
 					);
 					$hasProfiles = $profiles !== [];
-					$direct = $templates || $native || $legacyLua;
+					$debateOnly = $debateRenderer && !$argumentReader;
 					$nocacheCount += (int)$nocache;
 					$profileCount += (int)$hasProfiles;
-					$unprofiledDirect += (int)($direct && !$hasProfiles);
+					$unprofiledArgument += (int)($argumentReader && !$hasProfiles);
+					$debateOnlyWithoutProfiles += (int)($debateOnly && !$hasProfiles);
+					$nocacheDebateOnlySources += (int)($debateOnly && $nocache);
 					$indirectProfiles += (int)($hasProfiles && !$direct);
 					if ($nocache || $direct || $hasProfiles) {
 						$matched++;
@@ -129,11 +139,24 @@ class AuditSemanticCacheSources extends Maintenance {
 							'title' => $title->getPrefixedText(),
 							'bytes' => strlen($source),
 							'nocache' => $nocache,
-							'argument_or_debate_template' => $templates,
-							'native_php_reader' => $native,
-							'legacy_lua_reader' => $legacyLua,
+							// Keep older grouped keys for existing JSONL consumers,
+							// but expose the important Argument/Debate distinction.
+							'argument_or_debate_template' => $argumentTemplate || $debateTemplate,
+							'native_php_reader' => $nativeArgument || $nativeDebate,
+							'legacy_lua_reader' => $legacyArgument || $legacyDebate,
+							'argument_template' => $argumentTemplate,
+							'debate_template' => $debateTemplate,
+							'native_argument_reader' => $nativeArgument,
+							'native_debate_renderer' => $nativeDebate,
+							'legacy_argument_reader' => $legacyArgument,
+							'legacy_debate_renderer' => $legacyDebate,
+							'argument_reader' => $argumentReader,
+							'debate_renderer' => $debateRenderer,
 							'ask_profile_count' => count($profiles),
-							'unprofiled_direct_reader' => $direct && !$hasProfiles,
+							'unprofiled_direct_reader' => $argumentReader && !$hasProfiles,
+							'unprofiled_argument_reader' => $argumentReader && !$hasProfiles,
+							'debate_only_without_profiles' => $debateOnly && !$hasProfiles,
+							'nocache_in_debate_only_source' => $debateOnly && $nocache,
 							'profile_without_direct_reader' => $hasProfiles && !$direct,
 						]);
 					}
@@ -160,7 +183,10 @@ class AuditSemanticCacheSources extends Maintenance {
 			'scanned' => $scanned, 'matched' => $matched,
 			'nocache_pages' => $nocacheCount,
 			'pages_with_ask_profiles' => $profileCount,
-			'direct_readers_without_profiles' => $unprofiledDirect,
+			'direct_readers_without_profiles' => $unprofiledArgument,
+			'argument_readers_without_profiles' => $unprofiledArgument,
+			'debate_only_without_profiles' => $debateOnlyWithoutProfiles,
+			'nocache_in_debate_only_sources' => $nocacheDebateOnlySources,
 			'profiles_without_direct_readers' => $indirectProfiles,
 			'nontext' => $nontext, 'missing' => $missing,
 			'errors' => $errors, 'resume_after' => $after,

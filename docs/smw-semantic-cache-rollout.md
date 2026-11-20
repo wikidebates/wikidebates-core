@@ -243,11 +243,18 @@ et adapter `--namespaces=0,10` ou `--ids=123,456` pour des sondages ciblés.
 L'option `--limit` est bornée à 5000 pages par invocation afin de ne pas
 lancer accidentellement une analyse sans limite sur une grosse base.
 
-`unprofiled_direct_reader` signale une page avec appel direct mais sans `_ASK`.
-`profile_without_direct_reader` suggère une inclusion indirecte, une
-requête provenant d'une autre extension ou une trace ancienne : ce n'est
-pas une preuve à lui seul. Les alias et modèles intermédiaires restent à
-étudier manuellement avant le retrait de `__NOCACHE__`.
+Le rapport distingue `argument_reader` (requêtes parentes réelles)
+et `debate_renderer` (écriture sémantique, sans requête de parent).
+`unprofiled_argument_reader` relève les arguments sans `_ASK`
+qu'il faudra examiner avant toute migration de `__NOCACHE__`.
+`debate_only_without_profiles` est au contraire un état **normal** :
+ne pas traiter ces débats comme des erreurs ni désactiver leurs caches.
+`nocache_in_debate_only_source` signale un mot magique écrit
+explicitement dans le texte source d'un débat, à vérifier sans supposer
+que la transclusion est représentative. `profile_without_direct_reader`
+peut provenir d'une inclusion indirecte, d'une autre extension ou
+d'une ancienne annotation : ce n'est pas une preuve à lui seul.
+Les alias et modèles intermédiaires restent à étudier manuellement.
 
 ## Vérifications manuelles EN PRÉPRODUCTION UNIQUEMENT
 
