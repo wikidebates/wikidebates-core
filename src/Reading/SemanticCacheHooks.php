@@ -30,6 +30,12 @@ final class SemanticCacheHooks {
 			return true;
 		}
 
+		// SMW 7.3.1 invokes this hook INSIDE the SQLStore section
+		// transaction, before endSectionTransaction(). Write the durable
+		// revision ledger here so a concurrent reader cannot observe new
+		// semantic data with an old watermark. Jobs remain asynchronous.
+		SemanticRevisionStore::record($store, $ids);
+
 		// The SQLStore callback can run inside a transaction. Queue jobs only
 		// after the request's transaction has finished, never purge against
 		// uncommitted semantic results.
