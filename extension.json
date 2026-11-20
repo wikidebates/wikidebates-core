@@ -28,7 +28,8 @@
 		"AuthChangeFormFields": "MediaWiki\\Extension\\Wikidebates\\Hooks::onAuthChangeFormFields",
 		"TitleSquidURLs": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onTitleSquidURLs",
 		"AfterFinalPageOutput": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onAfterFinalPageOutput",
-		"SMW::SQLStore::AfterDataUpdateComplete": "MediaWiki\\Extension\\Wikidebates\\Reading\\SemanticCacheHooks::onSMW__SQLStore__AfterDataUpdateComplete"
+		"SMW::SQLStore::AfterDataUpdateComplete": "MediaWiki\\Extension\\Wikidebates\\Reading\\SemanticCacheHooks::onSMW__SQLStore__AfterDataUpdateComplete",
+		"LoadExtensionSchemaUpdates": "MediaWiki\\Extension\\Wikidebates\\Reading\\SemanticRevisionStore::onLoadExtensionSchemaUpdates"
 	},
 	"ResourceFileModulePaths": {
 		"localBasePath": "modules",
