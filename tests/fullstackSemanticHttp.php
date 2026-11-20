@@ -317,9 +317,39 @@ try {
 	}
 	check($parseCount() >= $parseStart + 15,
 		'Forced HTTP reads execute the native semantic query at least once each');
+	// Serial calls may all land on the same idle worker. Open multiple TCP
+	// requests BEFORE reading any responses; the lab-only hold header keeps
+	// the first workers busy so the others must process their own requests.
+	$parallel = [];
+	for ($i = 0; $i < 6; $i++) {
+		$socket = stream_socket_client('tcp://127.0.0.1:' . $port, $errno, $error, 8);
+		check(is_resource($socket), 'Open independent concurrent loopback request');
+		stream_set_timeout($socket, 20);
+		$query = http_build_query(['action' => 'wikidebatesreading',
+			'page' => 'WD HTTP query B', 'useskin' => 'vector',
+			'format' => 'json', 'formatversion' => 2], '', '&', PHP_QUERY_RFC3986);
+		$written = fwrite($socket,
+			"GET /api.php?$query HTTP/1.1\r\n" .
+			"Host: 127.0.0.1:$port\r\n" .
+			"Connection: close\r\n" .
+			"Accept-Encoding: identity\r\n" .
+			"X-WD-Semantic-Lab-Hold: 1\r\n\r\n");
+		check(is_int($written) && $written > 0,
+			'Concurrent HTTP request was sent to the test worker');
+		$parallel[] = $socket;
+	}
+	foreach ($parallel as $socket) {
+		$raw = stream_get_contents($socket);
+		fclose($socket);
+		check(is_string($raw) && preg_match('/^HTTP\/\d(?:\.\d)? 200\b/', $raw) === 1,
+			'Concurrent HTTP worker responds successfully');
+		check(preg_match('/^X-WD-Semantic-Lab-Worker:\s*(\d+)/mi', $raw, $matches) === 1,
+			'Concurrent HTTP request identifies its separate worker');
+		$workers[$matches[1]] = true;
+	}
 	$workers = array_keys($workers);
 	check(count(array_filter($workers, static fn($id) => $id !== 'unknown')) >= 2,
-		'Requests have been handled by at least two independent PHP HTTP workers');
+		'At least two distinct PHP worker processes served concurrent HTTP reads');
 
 	$report = [
 		'backend' => $dbType,
