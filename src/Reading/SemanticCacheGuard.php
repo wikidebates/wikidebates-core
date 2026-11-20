@@ -22,6 +22,8 @@ final class SemanticCacheGuard {
 			$settings = $services->getSettings();
 			if (!$settings->get('smwgEnabledQueryDependencyLinksStore') ||
 				$settings->get('smwgQueryProfiler') === false) {
+				self::testTrace('settings', ['links' => $settings->get('smwgEnabledQueryDependencyLinksStore'),
+					'profiler' => $settings->get('smwgQueryProfiler')]);
 				return false;
 			}
 
@@ -34,16 +36,20 @@ final class SemanticCacheGuard {
 			// page whose source invokes a native semantic renderer.
 			if (SemanticPageCacheHooks::isQueryPage($title, $page) &&
 				$store->getPropertyValues($subject, new Property('_ASK')) === []) {
+				self::testTrace('missing-ask');
 				return false;
 			}
 
 			$validator = (new QueryDependencyLinksStoreFactory())->newDependencyLinksValidator();
 			if (!$validator->canCheckDependencies()) {
+				self::testTrace('validator-disabled');
 				return false;
 			}
 			if (!$validator->hasArchaicDependencies($subject)) {
+				self::testTrace('safe');
 				return true;
 			}
+			self::testTrace('archaic', ['dependencies' => $validator->getCheckedDependencies()]);
 
 			// SMW normally marks the parser cache dirty on ArticleViewHeader,
 			// which the reading API skips. doPurge() invokes MediaWiki's
@@ -54,10 +60,22 @@ final class SemanticCacheGuard {
 			MediaWikiServices::getInstance()->getParserCache()->deleteOptionsKey($page);
 			return false;
 		} catch (\Throwable $e) {
+			self::testTrace('exception', ['type' => get_class($e), 'message' => $e->getMessage()]);
 			FragmentService::log($e);
 			// Never return a prebuilt fragment when dependency checks fail.
 			return false;
 		}
+	}
+
+	/** Test-only diagnostic, never active on production requests. */
+	private static function testTrace(string $event, array $details = []): void {
+		if (getenv('WD_SEMANTIC_HTTP_DISPOSABLE') !== '1') {
+			return;
+		}
+		$root = (string)getenv('WD_SEMANTIC_HTTP_ROOT');
+		@file_put_contents($root . '/semantic-http-guard.jsonl',
+			json_encode(['pid' => getmypid(), 'event' => $event] + $details) . "\n",
+			FILE_APPEND | LOCK_EX);
 	}
 
 }
