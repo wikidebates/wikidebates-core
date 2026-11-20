@@ -39,6 +39,9 @@ final class SemanticCacheHooks {
 		// revision ledger here so a concurrent reader cannot observe new
 		// semantic data with an old watermark. Jobs remain asynchronous.
 		SemanticRevisionStore::record($store, $ids);
+		if (!$config->get('WikidebatesSemanticCacheEagerPurge')) {
+			return true;
+		}
 
 		// The SQLStore callback can run inside a transaction. Queue jobs only
 		// after the request's transaction has finished, never purge against
@@ -92,6 +95,9 @@ final class SemanticCacheHooks {
 		// A move is a semantic identity mutation even if no property values
 		// differ. A revision fence makes old fragments unsafe immediately.
 		SemanticRevisionStore::record($store, $ids);
+		if (!MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesSemanticCacheEagerPurge')) {
+			return true;
+		}
 		DeferredUpdates::addCallableUpdate(static function () use ($oldTitle, $ids): void {
 			MediaWikiServices::getInstance()->getJobQueueGroup()->push(
 				new SemanticCachePurgeJob($oldTitle, ['dependencyIds' => $ids, 'cursor' => 0])
