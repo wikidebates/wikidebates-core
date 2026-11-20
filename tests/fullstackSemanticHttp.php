@@ -84,6 +84,16 @@ $register = static function ($parser): void {
 $services->getHookContainer()->register('ParserFirstCallInit', $register);
 $register($services->getParser());
 
+// A normal debate page links to argument pages but never renders them
+// inline. The Argument page owns the semantic queries and reading HTML.
+$props = \MediaWiki\Extension\DebatePHP\I18n::bundled();
+$proProperty = $props->message('Argument.props', 'fr', 'arg_pro');
+foreach ([$proProperty] as $property) {
+	fsSave('Property:' . $property, '[[Has type::Page]]');
+}
+fsSave('WD HTTP reading debate', 'Initial debate stub');
+fsSave('WD HTTP reading argument', 'Initial argument stub');
+fsSave('WD HTTP reading parent', 'No semantic relation');
 fsSave('Property:WD HTTP Parent', '[[Has type::Page]]');
 fsSave('Property:WD HTTP Pro', '[[Has type::Page]]');
 fsSave('Property:WD HTTP Con', '[[Has type::Page]]');
@@ -108,6 +118,12 @@ fsSave('WD HTTP query B',
 	"== Summary ==\n<wd-http-parents>WD HTTP parent B</wd-http-parents>\n== Parent debates ==\nB");
 fsSave('WD HTTP OR query',
 	"== Summary ==\n<wd-http-combined>WD HTTP OR target</wd-http-combined>\n== Parent debates ==\nOR");
+fsSave('WD HTTP reading argument',
+	'{{#argument:render|lang=fr|summary=WD_HTTP_READING_SUMMARY_FIRST}}');
+fsSave('WD HTTP reading debate',
+	'{{#debate:render|lang=fr|topic=Reading flow debate' .
+	'|pro-arguments=WD HTTP reading argument⟬WD HTTP displayed pro argument⟬⟭' .
+	'|con-arguments=WD HTTP alternative argument⟬WD HTTP displayed con argument⟬⟭}}');
 fsSave('WD HTTP redirect', '#REDIRECT [[WD HTTP query A]]');
 fsFlush();
 $subjectA = SemanticWikiPage::newFromTitle(Title::newFromText('WD HTTP query A'));
@@ -117,6 +133,15 @@ check($store->getPropertyValues($subjectA, new Property('_ASK')) !== [],
 $orSubject = SemanticWikiPage::newFromTitle(Title::newFromText('WD HTTP OR query'));
 check($store->getPropertyValues($orSubject, new Property('_ASK')) !== [],
 	'Combined OR parent query persists genuine SMW _ASK profiles');
+$readingArgTitle = Title::newFromText('WD HTTP reading argument');
+$readingDebateTitle = Title::newFromText('WD HTTP reading debate');
+$readingArgSubject = SemanticWikiPage::newFromTitle($readingArgTitle);
+$readingDebateSubject = SemanticWikiPage::newFromTitle($readingDebateTitle);
+$store->clear();
+check($store->getPropertyValues($readingArgSubject, new Property('_ASK')) !== [],
+	'Real Argument reader persists parent-query _ASK profiles');
+check($store->getPropertyValues($readingDebateSubject, new Property('_ASK')) === [],
+	'Real debate-only renderer has no semantic parent-query profile');
 
 $marker = $temporary . '/.semantic-http-disposable';
 file_put_contents($marker, "Isolated CI semantic HTTP lab\n");
@@ -227,6 +252,79 @@ try {
 		usleep(100000);
 	}
 	check($ready, 'Real HTTP server is accepting loopback connections');
+
+	// Real user flow: the cached debate contains clickable argument titles,
+	// not their rendered content. Clicking a link requests the Argument
+	// page fragment independently through the same reading API as the JS.
+	$debateUrl = ['title' => 'WD_HTTP_reading_debate'];
+	$debateFirst = $http('index.php', $debateUrl);
+	check($debateFirst['status'] === 200 &&
+		str_contains($debateFirst['body'], 'WD HTTP displayed pro argument') &&
+		str_contains($debateFirst['body'], 'WD HTTP displayed con argument') &&
+		str_contains($debateFirst['body'], 'WD_HTTP_reading_argument') &&
+		str_contains($debateFirst['body'], 'argument-title'),
+		'Actual #debate:render HTML contains argument title links, not inline Argument render');
+	check(!str_contains($debateFirst['body'], 'WD_HTTP_READING_SUMMARY_FIRST'),
+		'Debate page does not embed the Argument summary');
+	$debateHeaders = strtolower(implode(', ', $debateFirst['headers']['cache-control'] ?? []));
+	check(!str_contains($debateHeaders, 'no-store') &&
+		!str_contains($debateHeaders, 'no-cache') &&
+		!str_contains($debateHeaders, 'private'),
+		'Ordinary debate HTML remains publicly cacheable under SMW tracking: ' . $debateHeaders);
+	$debateAgain = $http('index.php', $debateUrl);
+	check($debateAgain['status'] === 200 &&
+		$debateAgain['body'] === $debateFirst['body'],
+		'Second HTTP debate page view is byte-identical without a new Argument rendering');
+
+	$readerFirst = $fragment('WD HTTP reading argument', ['X-Requested-With: XMLHttpRequest']);
+	check(str_contains($readerFirst['fragment']['html'], 'WD_HTTP_READING_SUMMARY_FIRST'),
+		'AJAX click on an argument gets the separate Argument page summary');
+	$readerWarm = null;
+	for ($attempt = 0; $attempt < 5; $attempt++) {
+		$candidate = $fragment('WD HTTP reading argument', ['X-Requested-With: XMLHttpRequest']);
+		if ($candidate['fragment']['source'] === 'fragment-cache') {
+			$readerWarm = $candidate;
+			break;
+		}
+	}
+	check($readerWarm !== null && $readerWarm['fragment']['html'] ===
+		$readerFirst['fragment']['html'],
+		'Repeated argument clicks reuse a prepared server fragment without re-rendering the debate');
+
+	$readerPrevious = SemanticRevisionStore::fingerprint($store, $readingArgSubject);
+	fsSave('WD HTTP reading parent', '{{#set:' . $proProperty . '=WD HTTP reading argument}}');
+	fsFlush(['wikidebatesSemanticCachePurge']);
+	check($services->getJobQueueGroup()->queuesHaveJobs(),
+		'Changing an Argument parent leaves the dependent purge job queued');
+	check(SemanticRevisionStore::fingerprint($store, $readingArgSubject) !== $readerPrevious,
+		'Argument semantic revision advances without any edit to the debate page');
+	$readerAfterParent = $fragment('WD HTTP reading argument', ['X-Requested-With: XMLHttpRequest']);
+	check($readerAfterParent['fragment']['source'] !== 'fragment-cache' &&
+		str_contains($readerAfterParent['fragment']['html'], 'WD_HTTP_READING_SUMMARY_FIRST'),
+		'New argument semantic relations invalidate only its cached fragment before purge');
+	$parentInArgument = $http('index.php', ['title' => 'WD_HTTP_reading_argument']);
+	check($parentInArgument['status'] === 200 &&
+		(str_contains($parentInArgument['body'], 'WD_HTTP_reading_parent') ||
+			str_contains($parentInArgument['body'], 'WD HTTP reading parent')),
+		'Full Argument HTML reflects the parent edit before the purge');
+	$debateAfterParent = $http('index.php', $debateUrl);
+	check($debateAfterParent['status'] === 200 &&
+		$debateAfterParent['body'] === $debateFirst['body'],
+		'The debate page stays unchanged while the separately loaded argument updates');
+	fsFlush();
+
+	fsSave('WD HTTP reading argument',
+		'{{#argument:render|lang=fr|summary=WD_HTTP_READING_SUMMARY_SECOND}}');
+	fsFlush(['wikidebatesSemanticCachePurge']);
+	$readerEdited = $fragment('WD HTTP reading argument', ['X-Requested-With: XMLHttpRequest']);
+	check(str_contains($readerEdited['fragment']['html'], 'WD_HTTP_READING_SUMMARY_SECOND') &&
+		!str_contains($readerEdited['fragment']['html'], 'WD_HTTP_READING_SUMMARY_FIRST'),
+		'An Argument summary edit is visible on the next independent reading API fetch');
+	$debateAfterArgumentEdit = $http('index.php', $debateUrl);
+	check($debateAfterArgumentEdit['status'] === 200 &&
+		$debateAfterArgumentEdit['body'] === $debateFirst['body'],
+		'Editing an Argument does not embed content or alter the cached debate view');
+	fsFlush();
 
 	$fingerprintBefore = SemanticRevisionStore::fingerprint($store, $subjectA);
 	$cold = $fragment();

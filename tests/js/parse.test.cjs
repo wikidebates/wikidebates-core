@@ -303,3 +303,32 @@ test( 'diagnostics distinguish response-cache and pending-prefetch reads without
 	measurement.sources.response.count = 999;
 	assert.equal( WK.wkReadingCacheDiagnostics.snapshot().measurement.sources.response.count, 1, 'snapshots are detached' );
 } );
+
+
+test( 'clicking an argument title inside a debate loads only the Argument fragment', async ( t ) => {
+	const { WK, gets, run, $, window } = await parseEnvironment( t, {
+		wgWikidebatesReadingFragments: true,
+		wgUserLanguage: 'fr'
+	} );
+	window.document.body.innerHTML =
+		'<h1 id="firstHeading">WD HTTP reading debate</h1>' +
+		'<ul class="argument-list pour"><li class="argument level-1">' +
+		'<div class="argument-title"><a href="/wiki/WD_HTTP_reading_argument">' +
+		'WD HTTP displayed pro argument</a></div></li></ul>' +
+		'<ul class="argument-list contre"><li class="argument level-1">' +
+		'<div class="argument-title"><a href="/wiki/WD_HTTP_other_argument">' +
+		'WD HTTP displayed con argument</a></div></li></ul>';
+	run( 'modules/reading/core.js' );
+	const content = window.document.createElement( 'div' );
+	WK.wkReadingSetAdapter( { ensureUi: () => ( { content } ) } );
+	run( 'modules/features/view.ns0.js' );
+	$( '.argument-list.pour .argument-title' ).trigger( 'click' );
+	assert.equal( gets.length, 1 );
+	assert.equal( gets[ 0 ].params.action, 'wikidebatesreading' );
+	assert.equal( gets[ 0 ].params.page, 'WD HTTP reading argument' );
+	const html = '<h2 id="Summary">Résumé</h2><p>Argument chargé séparément</p>';
+	gets[ 0 ].request.resolve( { wikidebatesreading: { html } } );
+	await tick(); await tick();
+	assert.match( content.innerHTML, /Argument chargé séparément/ );
+	assert.equal( gets.length, 1, 'the debate itself is never fetched or rendered on click' );
+} );
