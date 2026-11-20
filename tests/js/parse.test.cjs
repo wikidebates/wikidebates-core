@@ -332,3 +332,46 @@ test( 'clicking an argument title inside a debate loads only the Argument fragme
 	assert.match( content.innerHTML, /Argument chargé séparément/ );
 	assert.equal( gets.length, 1, 'the debate itself is never fetched or rendered on click' );
 } );
+
+
+test( 'a full navigation after a form save clears both argument caches', async ( t ) => {
+	const config = { wgWikidebatesReadingFragments: true, wgUserLanguage: 'fr' };
+	const before = await parseEnvironment( t, config );
+	before.window.document.body.classList.remove( 'action-view' );
+	before.run( 'modules/reading/core.js' );
+	const oldContent = before.window.document.createElement( 'div' );
+	before.WK.wkReadingSetAdapter( { ensureUi: () => ( { content: oldContent } ) } );
+	before.WK.wkOpenReadingModeFromPageTitle( 'Modified argument', [], { history: false } );
+	assert.equal( before.gets.length, 1 );
+	before.gets[ 0 ].request.resolve( {
+		wikidebatesreading: {
+			html: '<h2 id="Summary">Résumé ancien</h2><p>Ancienne version</p>'
+		}
+	} );
+	await tick(); await tick();
+	assert.equal( before.WK.wkReadingCacheDiagnostics.snapshot().fragments.entries, 1 );
+	assert.equal( before.WK.wkPageParseCache.stats().entries, 1 );
+
+	// A regular Page Forms save redirects to a new document. Recreate the
+	// JavaScript environment rather than manually clearing either cache.
+	const after = await parseEnvironment( t, config );
+	after.window.document.body.classList.remove( 'action-view' );
+	after.run( 'modules/reading/core.js' );
+	assert.equal( after.WK.wkReadingCacheDiagnostics.snapshot().fragments.entries, 0 );
+	assert.equal( after.WK.wkPageParseCache.stats().entries, 0 );
+	const newContent = after.window.document.createElement( 'div' );
+	after.WK.wkReadingSetAdapter( { ensureUi: () => ( { content: newContent } ) } );
+	after.WK.wkOpenReadingModeFromPageTitle( 'Modified argument', [], { history: false } );
+	assert.equal( after.gets.length, 1 );
+	assert.equal( after.gets[ 0 ].params.action, 'wikidebatesreading' );
+	assert.equal( after.gets[ 0 ].params.page, 'Modified argument' );
+	after.gets[ 0 ].request.resolve( {
+		wikidebatesreading: {
+			html: '<h2 id="Summary">Résumé nouveau</h2><p>Version enregistrée</p>'
+		}
+	} );
+	await tick(); await tick();
+	assert.match( newContent.innerHTML, /Version enregistrée/ );
+	assert.doesNotMatch( newContent.innerHTML, /Ancienne version/ );
+	assert.equal( after.gets.length, 1, 'navigation fetches only the edited argument' );
+} );

@@ -76,3 +76,15 @@ test( 'interlang updates retain other summaries, support additions, and remove c
 	assert.doesNotMatch( summary.val(), /interlanguage-page-add/ );
 	assert.match( summary.val(), /New subject/ );
 } );
+
+
+test( 'Wikidebates does not intercept normal Page Forms submission', async ( t ) => {
+	const { window, subject, summary } = await formEnvironment( t );
+	const form = window.document.getElementById( 'pfForm' );
+	subject.val( 'Subject after edit' ).trigger( 'input' );
+	const submitEvent = new window.Event( 'submit', { bubbles: true, cancelable: true } );
+	const allowed = form.dispatchEvent( submitEvent );
+	assert.equal( allowed, true, 'the Wikidebates listener does not cancel native form submission' );
+	assert.equal( submitEvent.defaultPrevented, false );
+	assert.match( summary.val(), /Subject after edit/, 'summary is flushed before the normal navigation' );
+} );

@@ -155,6 +155,30 @@ pas** que la page HTML complète profite d'un cache HTTP public ;
 la politique réelle et MinervaFileCache doivent être quantifiés
 en préproduction, séparément du cache de `ParserOutput`.
 
+### Cache JavaScript et enregistrement des formulaires
+
+Le code propre à Wikidébats (`modules/features/editForm.js`) prépare
+les résumés d'édition avant la soumission de `#pfForm`, sans bloquer
+l'envoi normal du formulaire. Dans Page Forms pour MediaWiki 1.43,
+`PF_AutoeditAPI::doStore()` redirige après une création ou une
+mise à jour réussie. Le navigateur charge donc un **nouveau document**,
+avec de nouvelles `Map()` vides pour les deux caches JavaScript :
+la prochaine ouverture d'un argument interroge de nouveau le serveur.
+
+Les tests JavaScript vérifient que le formulaire n'est pas intercepté
+par Wikidébats et qu'une nouvelle navigation repart sans ancien
+fragment ni ancienne réponse API. Ils simulent le changement de
+document ; ils ne prouvent pas à eux seuls la configuration exacte
+de chaque formulaire installé sur le site.
+
+Page Forms prévoit également des exceptions : « Save and continue »
+enregistre en AJAX sans quitter le formulaire ; `#autoedit` peut agir
+sans rechargement (sauf option de rechargement) ; les formulaires
+contextuels ont leur propre gestion de l'actualisation. Il faut
+vérifier quels boutons sont réellement utilisés sur la préproduction,
+mais ne pas imposer de révalidation systématique des fragments dans
+le parcours standard.
+
 ### Limite : caches JavaScript dans un onglet qui reste ouvert
 
 Le navigateur peut réutiliser les réponses de `wkPageParseCache`
@@ -167,11 +191,14 @@ afficher l'ancienne version : l'empreinte transactionnelle serveur
 ne sera pas consultée.
 
 Cela ne remet pas en cause les tests de fraîcheur HTTP **lorsqu'une
-requête atteint le serveur**, mais interdit de promettre une fraîcheur
-immédiate pour toutes les réouvertures dans un onglet ancien. Avant
-déploiement, définir puis mesurer une politique explicite de
-révalidation ou d'expiration des fragments en mémoire, sans dégrader
-le parcours normal ni modifier le cache des débats.
+requête atteint le serveur**. Une consultation restée ouverte pendant
+qu'un autre utilisateur enregistre une modification peut afficher
+l'ancienne version jusqu'à une navigation/relecture effective. Ce
+compromis est acceptable pour le mode lecture actuel, qui ne promet
+pas une synchronisation en temps réel. Il n'est donc pas nécessaire
+d'ajouter un TTL ou une révalidation réseau à chaque réouverture.
+Les modifications dans un formulaire AJAX intégré à la page, sans
+navigation, restent à vérifier séparément sur la préproduction.
 
 ## Limites exigeant validation
 
