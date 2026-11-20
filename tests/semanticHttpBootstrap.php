@@ -97,5 +97,5 @@ function wdSemanticHttpTestSettings($settings): void {
 	wfLoadExtension('Scribunto');
 	wfLoadExtension('SemanticMediaWiki');
 	wfLoadExtension('SemanticScribunto');
-	wfLoadExtension('Wikidebates', dirname(__DIR__, 2) . '/extension.json');
+	wfLoadExtension('Wikidebates', dirname(__DIR__) . '/extension.json');
 }
