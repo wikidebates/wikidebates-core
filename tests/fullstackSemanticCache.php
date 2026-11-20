@@ -14,6 +14,7 @@ use MediaWiki\Extension\DebatePHP\MediaWikiContext;
 use MediaWiki\Extension\DebatePHP\Table;
 use MediaWiki\Extension\DebatePHP\TrackedSemanticQuery;
 use MediaWiki\Extension\Wikidebates\Reading\FragmentService;
+use MediaWiki\Extension\Wikidebates\Reading\SemanticRevisionStore;
 use MediaWiki\Extension\Wikidebates\Reading\SemanticCacheGuard;
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Request\FauxRequest;
@@ -33,6 +34,15 @@ $services = MediaWikiServices::getInstance();
 $store = ServicesFactory::getInstance()->getStore();
 check($store instanceof \SMW\SQLStore\SQLStore, 'Real SMW SQLStore');
 check($store->setup(false), 'Disposable SMW tables initialized');
+// update.php would create this table through LoadExtensionSchemaUpdates. This
+// disposable full-stack harness initializes MediaWiki SQL tables directly.
+$store->getConnection('mw.db')->query(
+	'CREATE TABLE wd_smw_entity_revisions (entity_id INTEGER NOT NULL PRIMARY KEY, revision INTEGER NOT NULL DEFAULT 0)',
+	__METHOD__
+);
+check($store->getConnection('mw.db')->tableExists(SemanticRevisionStore::TABLE),
+	'Durable semantic revision table installed in isolated SQLite database');
+
 $schema = $GLOBALS;
 (new \SMW\SetupFile())->loadSchema($schema);
 \SMW\Globals::replace($schema);
@@ -124,14 +134,22 @@ $subjectA = SemanticWikiPage::newFromTitle(Title::newFromText('WD Cache query A'
 $validator = (new QueryDependencyLinksStoreFactory())->newDependencyLinksValidator();
 check($validator->canCheckDependencies(), 'SMW dependency checks are enabled');
 check(!$validator->hasArchaicDependencies($subjectA), 'A stable empty query is not archaic');
+$initialFingerprint = SemanticRevisionStore::fingerprint($store, $subjectA);
+check(is_string($initialFingerprint) && $initialFingerprint !== '',
+	'A stable _ASK query exposes a durable dependency revision fingerprint');
 
 fsSave('WD Cache child', '{{#set:WD Cache Parent=WD Cache A}}');
 // Persist the SMW edit but deliberately hold the targeted purge job in queue.
 fsFlush(['wikidebatesSemanticCachePurge']);
 check($services->getJobQueueGroup()->queuesHaveJobs(),
 	'Semantic purge is genuinely still pending after the data update');
+check(SemanticRevisionStore::fingerprint($store, $subjectA) !== $initialFingerprint,
+	'The relevant query fingerprint advances before deferred purge jobs execute');
 check($generation('WD Cache query A') === $queries['WD Cache query A'],
 	'Neither the background purge nor a guard has invalidated the fragment yet');
+check(SemanticRevisionStore::fingerprint($store,
+	SemanticWikiPage::newFromTitle(Title::newFromText('WD Cache query B'))) !== '',
+	'Unrelated query fingerprints remain readable while purge jobs are blocked');
 
 $beforePurge = $read('WD Cache query A');
 check($beforePurge['source'] !== 'fragment-cache',
