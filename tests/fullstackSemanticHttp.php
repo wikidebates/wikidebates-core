@@ -393,6 +393,33 @@ try {
 	check(count(array_filter($workers, static fn($id) => $id !== 'unknown')) >= 2,
 		'At least two distinct PHP worker processes served concurrent HTTP reads');
 
+	// Approximate the per-HIT SQL tracking cost. The lab feature flag is read
+	// afresh on every HTTP request, without any external wiki configuration.
+	// No semantic edits occur in this comparison, and the fragment identity
+	// explicitly separates tracked and untracked representations.
+	$noTrackingSamples = [];
+	touch($temporary . '/semantic-http-disable-tracking');
+	try {
+		$baselineStableHits = 0;
+		for ($attempt = 0; $attempt < 12 && $baselineStableHits < 3; $attempt++) {
+			$probe = $fragment('WD HTTP query B');
+			$baselineStableHits = $probe['fragment']['source'] === 'fragment-cache' ?
+				$baselineStableHits + 1 : 0;
+		}
+		check($baselineStableHits === 3,
+			'Untracked control version also stabilizes as a shared HTTP fragment');
+		for ($i = 0; $i < 15; $i++) {
+			$control = $fragment('WD HTTP query B');
+			check($control['fragment']['source'] === 'fragment-cache',
+				'Untracked control request is a real shared fragment hit');
+			check($control['fragment']['html'] === $benchmarkHtml,
+				'Tracking on and off render byte-for-byte identical semantic HTML');
+			$noTrackingSamples[] = $control['elapsed_ms'];
+		}
+	} finally {
+		unlink($temporary . '/semantic-http-disable-tracking');
+	}
+
 	$report = [
 		'backend' => $dbType,
 		'mediawiki' => MW_VERSION,
@@ -405,6 +432,10 @@ try {
 			'fragment_hit_p95_ms' => $percentile($hitSamples, .95),
 			'forced_fresh_median_ms' => $percentile($parseSamples, .5),
 			'forced_fresh_p95_ms' => $percentile($parseSamples, .95),
+			'no_tracking_hit_median_ms' => $percentile($noTrackingSamples, .5),
+			'no_tracking_hit_p95_ms' => $percentile($noTrackingSamples, .95),
+			'tracking_hit_extra_median_ms' => round(
+				$percentile($hitSamples, .5) - $percentile($noTrackingSamples, .5), 2),
 		],
 		'php_worker_pids' => $workers,
 		'assertions' => 'PASS'
