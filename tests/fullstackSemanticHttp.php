@@ -476,6 +476,48 @@ try {
 	} finally {
 		if (is_file($toggle)) { unlink($toggle); }
 	}
+	// Read-only diagnostic calls after the timed A/B series. These
+	// instrumented requests are excluded from performance medians.
+	$profileFile = $temporary . '/semantic-http-isquery-profile.jsonl';
+	if (is_file($profileFile)) { unlink($profileFile); }
+	for ($i = 0; $i < 5; $i++) {
+		$probe = $http('index.php', $corpusUrl, [
+			'X-WD-Semantic-Profile: 1',
+			'X-WD-Semantic-Probe-Id: corpus-' . $i
+		]);
+		check($probe['status'] === 200 && $probe['body'] === $corpusDebate['body'],
+			'Instrumented debate HTTP response retains identical HTML');
+	}
+	$profileEntries = [];
+	foreach (is_file($profileFile) ? file($profileFile, FILE_IGNORE_NEW_LINES) : [] as $line) {
+		$item = json_decode($line, true);
+		if (!is_array($item) || !str_starts_with($item['probe'] ?? '', 'corpus-')) {
+			continue;
+		}
+		$profileEntries[] = $item;
+	}
+	check($profileEntries !== [], 'SMW page-classification profiler logged real HTTP hooks');
+	$profileByHook = [];
+	foreach ($profileEntries as $entry) {
+		$hook = $entry['hook'];
+		$profileByHook[$hook] ??= [
+			'calls' => 0, 'ask_total_ms' => 0.0,
+			'source_total_ms' => 0.0, 'total_ms' => 0.0,
+			'found_ask' => 0, 'query_pages' => 0
+		];
+		$profileByHook[$hook]['calls']++;
+		$profileByHook[$hook]['ask_total_ms'] += $entry['ask_ms'];
+		$profileByHook[$hook]['source_total_ms'] += $entry['source_ms'];
+		$profileByHook[$hook]['total_ms'] += $entry['total_ms'];
+		$profileByHook[$hook]['found_ask'] += (int)$entry['ask'];
+		$profileByHook[$hook]['query_pages'] += (int)$entry['query_page'];
+	}
+	foreach ($profileByHook as &$entry) {
+		foreach (['ask_total_ms', 'source_total_ms', 'total_ms'] as $field) {
+			$entry[$field] = round($entry[$field], 3);
+		}
+	}
+	unset($entry);
 	$trackedDebateMedian = $percentile($corpusDebateTimings, .5);
 	$baselineDebateMedian = $percentile($corpusBaselineTimings, .5);
 	$corpusMeasurements = [

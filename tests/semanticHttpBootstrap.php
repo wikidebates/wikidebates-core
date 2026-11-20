@@ -14,6 +14,9 @@ if (!$wdHttpRoot || !str_starts_with($wdHttpRoot . '/', rtrim(sys_get_temp_dir()
 	throw new RuntimeException('Refusing to run semantic HTTP tests without an isolated, marked lab');
 }
 
+// Instrumentation is usable only inside this disposable, validated lab.
+define('WD_SEMANTIC_HTTP_PROFILE', true);
+
 header('X-WD-Semantic-Lab-Worker: ' . getmypid());
 
 // The runner uses this diagnostic hold ONLY for concurrent loopback requests.
