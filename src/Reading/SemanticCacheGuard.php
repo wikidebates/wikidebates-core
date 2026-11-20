@@ -35,8 +35,11 @@ final class SemanticCacheGuard {
 			// An unparsed or newly migrated argument/debate may have no _ASK
 			// profile yet. An empty graph must never be trusted for a page
 			// whose source contains native semantic queries.
-			if (SemanticPageCacheHooks::isQueryPage($title, $page) &&
-				$store->getPropertyValues($subject, new Property('_ASK')) === []) {
+			// Most cached debate/argument pages already have an _ASK profile.
+			// Do not read that property twice via isQueryPage() on every hit.
+			// Only inspect the source when no saved profile exists yet.
+			$profiles = $store->getPropertyValues($subject, new Property('_ASK'));
+			if ($profiles === [] && SemanticPageCacheHooks::isQueryPage($title, $page)) {
 				return false;
 			}
 
