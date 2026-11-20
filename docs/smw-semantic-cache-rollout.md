@@ -26,6 +26,39 @@ Ces profils permettent à SMW de retrouver les requêtes attachées à
 une page. Si le contexte ne permet pas une traçabilité sûre, le rendu
 est marqué non cacheable : ne jamais publier un résultat inobservable.
 
+### Optimisation pendant la migration massive du modèle Argument (20 novembre 2026)
+
+La suppression de `__NOCACHE__` dans `Modèle:Argument` provoque la
+réactualisation de nombreuses pages et la création de nombreux jobs
+`refreshLinks`. Cette cascade attendue ne doit pas être confondue avec
+une boucle infinie. Chaque mise à jour du magasin SMW continue d'avancer
+les compteurs transactionnels `wd_smw_entity_revisions`.
+
+Le nouveau paramètre `$wgWikidebatesSemanticCacheEagerPurge` vaut **true**
+par défaut. Avec `false`, le système conserve les empreintes et la
+vérification à chaque lecture mais **ne programme plus de purges
+anticipées** et considère les jobs de purge déjà présents comme terminés
+sans exécuter leurs effets. Cela réduit fortement le travail durant une
+migration massive, mais il n'y a **pas de rattrapage automatique** de ces
+purges quand on réactive l'option. À réserver aux périodes contrôlées
+pendant lesquelles le suivi est actif, les profils `_ASK` sont valides,
+les fichiers HTML des pages concernées sont effectivement refusés,
+et aucun cache HTTP/CDN externe ne force leur conservation.
+
+Les jobs de purge effectivement exécutés ne passent plus par
+`WikiPage::doPurge()`, qui déclenche `ArticlePurge` dans SMW et peut
+marquer la page pour une nouvelle actualisation sémantique. Ils
+révoquent directement les fragments, actualisent `page_touched`,
+vident les fichiers HTML, purgent les URL CDN via `HTMLCacheUpdater`
+(et le hook `TitleSquidURLs`), et révoquent la clé du cache du parseur.
+Les purges *strictement identiques* sont dédupliquées ; des ensembles
+d'entités ou des curseurs distincts ne sont jamais fusionnés.
+
+Une fois la migration terminée : remettre `true` si l'on souhaite
+reprendre les purges anticipées ; contrôler la validité des profils
+et les caches externes, puis rétablir la configuration SMW souhaitée.
+Ne pas supprimer ou réinitialiser la table des révisions sémantiques.
+
 ### 2. Après modification sémantique
 
 Le hook `SMW::SQLStore::AfterDataUpdateComplete` récupère les ID
