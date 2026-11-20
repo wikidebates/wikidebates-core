@@ -1,9 +1,9 @@
 # Migration prudente des caches sémantiques (MediaWiki 1.43 / SMW 7.3.1)
 
-> **Statut : expérimental, DÉSACTIVÉ PAR DÉFAUT.** Ne pas retirer
-> `__NOCACHE__` ni fusionner cette PR sans une suite SMW complète réussie
-> sur un wiki jetable et un pilote sur environnement de préproduction.
-> La configuration de production actuelle doit rester inchangée.
+> **Statut : expérimental, DÉSACTIVÉ PAR DÉFAUT.** Les suites SMW
+> SQLite et MariaDB sont passées, mais ne pas retirer `__NOCACHE__`
+> ni fusionner cette PR sans essais HTTP multiprocessus, mesures de
+> performances et pilote de préproduction. La production reste inchangée.
 
 ## Architecture expérimentale
 
@@ -38,22 +38,6 @@ les fichiers HTML ordinaires et `TitleSquidURLs`. Le hook Wikidebates
 révoque les générations des fragments ; MinervaFileCache utilise
 également `TitleSquidURLs` pour invalider ses fichiers.
 
-### 2 bis. Journal transactionnel et migration SQL
-
-Le nouveau journal `wd_smw_entity_revisions` contient un compteur croissant
-par entité sémantique modifiée. Il est écrit dans la **même transaction SQL**
-que la modification SMW, sans attendre les jobs. Une empreinte SHA-256
-construite sur la liste triée des identités et versions des dépendances
-remplace les comparaisons fragiles de `smw_touched` à la seconde.
-Les liens manquants rendent l'empreinte indisponible : le cache est refusé.
-
-L'ajout de la table est déclaré dans `LoadExtensionSchemaUpdates` ; les scripts
-pour MariaDB et SQLite se trouvent dans `sql/mysql/` et `sql/sqlite/`.
-L'installation de l'extension **ne suffit plus à préparer la nouvelle option** :
-le schéma doit être mis à jour sur chaque wiki concerné **avant** l'activation
-de `WikidebatesSemanticCacheTracking`. Ne jamais exécuter cette migration
-en production dans le cadre de cet audit.
-
 ### 3. Contrôle avant lecture des fragments
 
 Avant un `fragment-cache` hit, l'API de lecture utilise la validation
@@ -67,12 +51,6 @@ admis dans le cache partagé au cours de la migration. Les marqueurs
 le réemploi d'anciens fragments. En cas d'empreinte douteuse,
 l'API exécute une analyse `ApiParse` sans lecture du cache du parseur.
 Les vérifications de permission restent faites AVANT le fragment.
-
-Pour les pages HTML complètes, `HTMLFileCache::useFileCache` refuse
-provisoirement les fichiers Vector et MinervaFileCache des pages de
-requêtes SMW. `RejectParserCacheValue` vérifie l'empreinte du
-`ParserOutput` avant de le réutiliser. Le veto des fichiers HTML est
-un compromis temporaire, pas la garantie d'un gain de performance global.
 
 ## 4. Compteurs de révision et prévention des purges tardives
 
@@ -116,6 +94,11 @@ dépendances actuelles et rejette une version divergente ou non tracée.
 Les pages jamais enregistrées dans le suivi doivent initialement être
 recalculées.
 
+Le hook `BeforePageDisplay` retire également la possibilité de
+mettre en cache publiquement le HTML complet des pages sémantiques
+concernées, afin de ne pas laisser un proxy ou CDN conserver des
+relations périmées sans consulter le serveur.
+
 **Coût connu :** ce mode n'utilise pas le cache de fichiers HTML
 complets pour les débats et arguments concernés. Cette limitation est
 délibérée : ce cache ne contient pas encore la nouvelle empreinte, et
@@ -149,9 +132,11 @@ parseur et des fragments ; il n'est pas encore mesuré.
 
 ## Essais automatisés
 
-Le workflow `.github/workflows/native-html.yml` contient un job
-`smw-143` qui installe un MediaWiki 1.43.11 jetable, SMW 7.3.1
-et SemanticScribunto 2.3.3, puis exécute :
+Le workflow `.github/workflows/native-html.yml` exécute le job
+`smw-143` sur **deux bases indépendantes** : SQLite et MariaDB
+conteneurisée, isolée du réseau et jointe uniquement par socket Unix.
+Chaque laboratoire utilise MediaWiki 1.43.11, SMW 7.3.1 et
+SemanticScribunto 2.3.3, puis exécute :
 
 ```sh
 php -d memory_limit=768M tests/fullstackSemanticCache.php
@@ -160,7 +145,8 @@ php -d memory_limit=768M tests/fullstackSemanticCache.php
 La suite teste les profils de requêtes, le passage de vide à non
 vide, les changements de parent, les suppressions, les fragments
 et l'absence d'invalidation en l'absence de changement sémantique.
-Elle n'emploie jamais la base de données des sites réels.
+Elle emploie les scripts SQL de schéma propres à chaque moteur et
+n'accède jamais aux bases de données des sites réels.
 
 Les tests rapides et les autres régressions existantes tournent
 sur les deux versions de PHP de la CI.
