@@ -44,6 +44,13 @@ final class SemanticPageCacheHooks {
 		if (!self::enabled()) {
 			return;
 		}
+		// ApiParse builds a temporary OutputPage when preparing a private
+		// fragment. Denying HTTP caching on that INTERNAL parse would set its
+		// expiry to zero and prevent any anonymous fragment publication.
+		// Restrict this veto to an actual action=view HTML response.
+		if ($out->getContext()->getRequest()->getVal('action', 'view') !== 'view') {
+			return;
+		}
 		try {
 			$title = $out->getTitle();
 			if ($title && $title->canExist() && !self::isQueryPage($title)) {
