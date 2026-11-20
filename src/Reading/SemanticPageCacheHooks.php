@@ -100,7 +100,7 @@ final class SemanticPageCacheHooks {
 	}
 
 	/** Semantic data first; template identification covers pre-migration pages. */
-	private static function isQueryPage($title, $page = null): bool {
+	public static function isQueryPage($title, $page = null): bool {
 		$subject = WikiPage::newFromTitle($title);
 		$store = SemanticServices::getInstance()->getStore();
 		if ($store->getPropertyValues($subject, new Property('_ASK')) !== []) {
@@ -117,6 +117,6 @@ final class SemanticPageCacheHooks {
 		// Templates that invoke the DebatePHP semantic readers. This also
 		// works if __NOCACHE__ precedes the transclusion in the source.
 		return preg_match('/\{\{\s*(?:Argument|D[eé]bat|Debate)\s*(?:[|}])/iu',
-			substr($content->getText(), 0, 8192)) === 1;
+			$content->getText()) === 1;
 	}
 }
