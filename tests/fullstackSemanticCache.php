@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Integration regression for SMW 7.3.1 on a new, disposable SQLite wiki.
+ * Integration regression for SMW 7.3.1 on a disposable SQLite or MariaDB wiki.
  * Run only after installing the genuine SMW and SemanticScribunto extensions.
  */
 define('WD_FULLSTACK_TEST', true);
@@ -35,14 +35,16 @@ $services = MediaWikiServices::getInstance();
 $store = ServicesFactory::getInstance()->getStore();
 check($store instanceof \SMW\SQLStore\SQLStore, 'Real SMW SQLStore');
 check($store->setup(false), 'Disposable SMW tables initialized');
-// update.php would create this table through LoadExtensionSchemaUpdates. This
-// disposable full-stack harness initializes MediaWiki SQL tables directly.
-$store->getConnection('mw.db')->query(
-	'CREATE TABLE wd_smw_entity_revisions (entity_id INTEGER NOT NULL PRIMARY KEY, revision INTEGER NOT NULL DEFAULT 0)',
-	__METHOD__
-);
-check($store->getConnection('mw.db')->tableExists(SemanticRevisionStore::TABLE),
-	'Durable semantic revision table installed in isolated SQLite database');
+// update.php would create this table through LoadExtensionSchemaUpdates.
+// The disposable harness initializes the exact backend-specific DDL directly.
+$db = $store->getConnection('mw.db');
+$backend = $db->getType();
+check(in_array($backend, ['mysql', 'sqlite'], true), 'Supported isolated semantic ledger backend');
+$ddl = file_get_contents(__DIR__ . '/../sql/' . $backend . '/wd_smw_entity_revisions.sql');
+check($ddl !== false, 'Disposable semantic revision SQL schema is available');
+$db->query($ddl, 'fullstackSemanticCacheInstallSchema');
+check($db->tableExists(SemanticRevisionStore::TABLE),
+	'Durable semantic revision table installed in isolated ' . $backend . ' database');
 
 $schema = $GLOBALS;
 (new \SMW\SetupFile())->loadSchema($schema);
