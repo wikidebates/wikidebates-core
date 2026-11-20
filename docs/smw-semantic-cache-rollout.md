@@ -209,6 +209,32 @@ modifier fortement ce bilan. Une mesure sur les pages de production
 reproduites en préproduction, avec suivi des requêtes SQL et taux
 de hits, est nécessaire avant migration.
 
+## Inventaire sans modification des pages (outil préparatoire)
+
+Le script `maintenance/AuditSemanticCacheSources.php` lit les dernières
+révisions et les profils `_ASK` sans lancer de rendu, de sauvegarde, de job,
+de purge ou de migration. Les sorties JSONL donnent les titres, tailles et
+indicateurs ; **aucun wikicode ni contenu privé n'est exporté**.
+
+Exemples à exécuter **uniquement sur une préproduction isolée** depuis la
+racine MediaWiki 1.43 :
+
+```sh
+php maintenance/run.php Wikidebates:AuditSemanticCacheSources --wiki=fr --limit=200
+php maintenance/run.php Wikidebates:AuditSemanticCacheSources --wiki=en --limit=200
+```
+
+Reprendre avec `--after=ID` (valeur `resume_after` du dernier résumé),
+et adapter `--namespaces=0,10` ou `--ids=123,456` pour des sondages ciblés.
+L'option `--limit` est bornée à 5000 pages par invocation afin de ne pas
+lancer accidentellement une analyse sans limite sur une grosse base.
+
+`unprofiled_direct_reader` signale une page avec appel direct mais sans `_ASK`.
+`profile_without_direct_reader` suggère une inclusion indirecte, une
+requête provenant d'une autre extension ou une trace ancienne : ce n'est
+pas une preuve à lui seul. Les alias et modèles intermédiaires restent à
+étudier manuellement avant le retrait de `__NOCACHE__`.
+
 ## Vérifications manuelles EN PRÉPRODUCTION UNIQUEMENT
 
 1. Reproduire la configuration MediaWiki 1.43 / SMW 7.3.1 et
