@@ -530,4 +530,73 @@ foreach ($combined as $kind => $case) {
 	fsFlush();
 }
 
+// Render a real native #argument:render page in French, not merely a
+// diagnostic test tag. Its parent-query shapes come from ArgumentReferenceRenderer
+// and the resulting HTML passes through the same reading fragment pipeline.
+$i18n = \MediaWiki\Extension\DebatePHP\I18n::bundled();
+$proProperty = $i18n->message('Argument.props', 'fr', 'arg_pro');
+$conProperty = $i18n->message('Argument.props', 'fr', 'arg_con');
+$justificationProperty = $i18n->message('Argument.props', 'fr', 'justif');
+$objectionProperty = $i18n->message('Argument.props', 'fr', 'obj');
+foreach ([$proProperty, $conProperty, $justificationProperty, $objectionProperty] as $property) {
+	fsSave('Property:' . $property, '[[Has type::Page]]');
+}
+$actualArgument = 'WD Cache real argument fr';
+$actualParentA = 'WD Cache real parent A';
+$actualParentB = 'WD Cache real parent B';
+fsSave($actualArgument, 'Initial stub');
+fsSave($actualParentA, 'No semantic relation');
+fsSave($actualParentB, 'No semantic relation');
+fsFlush();
+sleep(2);
+fsSave($actualArgument,
+	'{{#argument:render|lang=fr|summary=Résumé du véritable argument de test}}');
+fsFlush();
+
+$actualTitle = Title::newFromText($actualArgument);
+$actualSubject = SemanticWikiPage::newFromTitle($actualTitle);
+$store->clear();
+check($store->getPropertyValues($actualSubject, new Property('_ASK')) !== [],
+	'The real French Argument renderer persists native SMW query profiles');
+$actualFirst = $read($actualArgument);
+check(str_contains($actualFirst['html'], 'Résumé du véritable argument de test'),
+	'Real native Argument HTML contains its summary: ' . substr($actualFirst['html'], 0, 700));
+$actualCached = null;
+for ($attempt = 0; $attempt < 5; $attempt++) {
+	$candidate = $read($actualArgument);
+	if ($candidate['source'] === 'fragment-cache') {
+		$actualCached = $candidate;
+		break;
+	}
+}
+check($actualCached !== null, 'Real French argument reuses a semantic-tracked fragment');
+
+$previousActual = SemanticRevisionStore::fingerprint($store, $actualSubject);
+fsSave($actualParentA, '{{#set:' . $proProperty . '=' . $actualArgument . '}}');
+fsFlush(['wikidebatesSemanticCachePurge']);
+check($services->getJobQueueGroup()->queuesHaveJobs(),
+	'Real Argument parent edit leaves a targeted purge job pending');
+check(SemanticRevisionStore::fingerprint($store, $actualSubject) !== $previousActual,
+	'Real Argument parent relation advances the revision before purge');
+$actualAdded = $read($actualArgument);
+check($actualAdded['source'] !== 'fragment-cache' &&
+	str_contains($actualAdded['html'], $actualParentA),
+	'Real French Argument shows its newly added debate parent before purge: ' .
+	substr($actualAdded['html'], 0, 1000));
+fsFlush();
+
+$previousActual = SemanticRevisionStore::fingerprint($store, $actualSubject);
+fsSave($actualParentA, 'No semantic relation');
+fsSave($actualParentB, '{{#set:' . $conProperty . '=' . $actualArgument . '}}');
+fsFlush(['wikidebatesSemanticCachePurge']);
+check(SemanticRevisionStore::fingerprint($store, $actualSubject) !== $previousActual,
+	'Real Argument parent transfer advances the semantic revision');
+$actualMoved = $read($actualArgument);
+check($actualMoved['source'] !== 'fragment-cache' &&
+	str_contains($actualMoved['html'], $actualParentB) &&
+	!str_contains($actualMoved['html'], $actualParentA),
+	'Real Argument replaces its displayed debate parent before purge: ' .
+	substr($actualMoved['html'], 0, 1500));
+fsFlush();
+
 echo "OK: SMW 7.3.1 native profiles, empty results, inserts, moves, deletes and fragment invalidation\n";
