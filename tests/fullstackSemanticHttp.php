@@ -213,7 +213,13 @@ try {
 		'fingerprint_before' => $fingerprintBefore,
 		'fingerprint_after_cold' => $fingerprintAfterCold,
 		'fingerprint_after_warm' => $fingerprintAfterWarm,
-		'cache_files' => count(glob($temporary . '/semantic-http-fragments/*/*/*.cache') ?: []),
+		'cache_files' => count(glob($temporary . '/semantic-http-fragments/*/*/*/*.cache') ?: []),
+		'disk_identities' => array_map(static function ($path) {
+			$encoded = @file_get_contents($path);
+			$data = $encoded === false ? [] : json_decode((string)@gzdecode($encoded), true);
+			return ['path' => basename($path), 'identity' => $data['identity'] ?? null,
+				'generation' => $data['generation'] ?? null];
+		}, array_slice(glob($temporary . '/semantic-http-fragments/*/*/*/*.cache') ?: [], -3)),
 		'parser_output_events' => is_file($observedOutputLog) ?
 			array_slice(file($observedOutputLog, FILE_IGNORE_NEW_LINES), -4) : [],
 		'eligibility' => is_file($temporary . '/semantic-http-eligibility.jsonl') ?
