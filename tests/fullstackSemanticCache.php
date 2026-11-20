@@ -277,11 +277,22 @@ same(['WD Cache child moved'], $queryMembers(),
 check($generation('WD Cache query A') !== $priorMoveGeneration,
 	'Moving a matching subject purges the parent query despite an unchanged result count');
 $priorDeleteGeneration = $generation('WD Cache query A');
+$priorDeleteFingerprint = SemanticRevisionStore::fingerprint($store, $subjectA);
 $services->getUserGroupManager()->addUserToGroup($fsUser, 'sysop');
 $deletedPage = $services->getWikiPageFactory()->newFromTitle(Title::newFromText('WD Cache child moved'));
 $deleted = $services->getDeletePageFactory()->newDeletePage($deletedPage, $fsUser)
 	->deleteIfAllowed('Disposable semantic deletion regression');
 check($deleted->isOK(), 'Synthetic matching page can be deleted');
+// Keep targeted purge jobs pending while SMW completes deferred deletion.
+fsFlush(['wikidebatesSemanticCachePurge']);
+check($services->getJobQueueGroup()->queuesHaveJobs(),
+	'Deleting a subject schedules a targeted dependent purge job');
+check(SemanticRevisionStore::fingerprint($store, $subjectA) !== $priorDeleteFingerprint,
+	'Deletion advances the semantic revision before dependent purge jobs run');
+$deletedRead = $read('WD Cache query A');
+check($deletedRead['source'] !== 'fragment-cache' &&
+	str_contains($deletedRead['html'], 'WD_MATCHES=0'),
+	'A deleted subject disappears from the API while purge jobs remain pending');
 fsFlush();
 same([], $queryMembers(), 'Deleting a matching page removes it from the SMW result');
 check($generation('WD Cache query A') !== $priorDeleteGeneration,
