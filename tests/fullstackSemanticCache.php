@@ -441,7 +441,9 @@ fsFlush();
 sleep(2);
 foreach ($combined as $kind => $case) {
 	fsSave('WD Cache combined query ' . $kind,
-		'<' . $case['tag'] . '>WD Cache searched argument</' . $case['tag'] . '>');
+		"== Summary ==\n" .
+		'<' . $case['tag'] . '>WD Cache searched argument</' . $case['tag'] . '>' .
+		"\n== Parent debates ==\n" . $kind);
 }
 fsFlush();
 foreach ($combined as $kind => $case) {
