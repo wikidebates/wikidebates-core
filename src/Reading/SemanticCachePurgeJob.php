@@ -40,7 +40,9 @@ final class SemanticCachePurgeJob extends \Job {
 				throw new \RuntimeException('SMW SQLStore is required for targeted dependency invalidation');
 			}
 			$database = $store->getConnection('mw.db');
-			$rows = $database->newSelectQueryBuilder()
+			// A newly committed semantic update might not yet be visible
+			// on a replica; do not drop dependent purges due to lag.
+			$rows = $database->newPrimarySelectQueryBuilder()
 				->select('s_id')
 				->distinct()
 				->from(SQLStore::QUERY_LINKS_TABLE)
