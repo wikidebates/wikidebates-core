@@ -15,6 +15,7 @@ use MediaWiki\Extension\DebatePHP\Table;
 use MediaWiki\Extension\DebatePHP\TrackedSemanticQuery;
 use MediaWiki\Extension\Wikidebates\Reading\FragmentService;
 use MediaWiki\Extension\Wikidebates\Reading\SemanticRevisionStore;
+use MediaWiki\Extension\Wikidebates\Reading\SemanticPageCacheHooks;
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Request\FauxRequest;
 use MediaWiki\MediaWikiServices;
@@ -129,6 +130,24 @@ check($second['source'] === 'fragment-cache',
 
 // Check the exact empty-query case: the two queries currently match no subjects.
 // Their query dependency records must nonetheless exist before any child link.
+// Normal article views must not serve a Vector/Minerva HTML file before
+// the SMW freshness check. Unrelated ordinary pages remain file-cacheable.
+$fullPageContext = new RequestContext();
+$fullPageContext->setTitle(Title::newFromText('WD Cache query A'));
+check(!SemanticPageCacheHooks::onHTMLFileCache__useFileCache($fullPageContext),
+	'Query-containing full HTML pages bypass unsafe file-cache hits');
+$fullPageContext->setTitle(Title::newFromText('WD Cache A'));
+check(SemanticPageCacheHooks::onHTMLFileCache__useFileCache($fullPageContext),
+	'An unrelated ordinary page retains its normal file cache');
+
+$dependentPage = $services->getWikiPageFactory()->newFromTitle(Title::newFromText('WD Cache query A'));
+$cachedOutput = new \MediaWiki\Parser\ParserOutput();
+$cachedOutput->setExtensionData(SemanticPageCacheHooks::OUTPUT_REVISION,
+	SemanticRevisionStore::fingerprint($store,
+		SemanticWikiPage::newFromTitle(Title::newFromText('WD Cache query A'))));
+check(SemanticPageCacheHooks::onRejectParserCacheValue($cachedOutput, $dependentPage,
+	ParserOptions::newFromAnon()), 'Current semantic revision permits the parser cache');
+
 $subjectA = SemanticWikiPage::newFromTitle(Title::newFromText('WD Cache query A'));
 $validator = (new QueryDependencyLinksStoreFactory())->newDependencyLinksValidator();
 check($validator->canCheckDependencies(), 'SMW dependency checks are enabled');
@@ -142,6 +161,9 @@ fsSave('WD Cache child', '{{#set:WD Cache Parent=WD Cache A}}');
 fsFlush(['wikidebatesSemanticCachePurge']);
 check($services->getJobQueueGroup()->queuesHaveJobs(),
 	'Semantic purge is genuinely still pending after the data update');
+check(!SemanticPageCacheHooks::onRejectParserCacheValue($cachedOutput, $dependentPage,
+	ParserOptions::newFromAnon()),
+	'Parser output from before a semantic edit is rejected while the purge job waits');
 check(SemanticRevisionStore::fingerprint($store, $subjectA) !== $initialFingerprint,
 	'The relevant query fingerprint advances before deferred purge jobs execute');
 check($generation('WD Cache query A') === $queries['WD Cache query A'],
