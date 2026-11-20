@@ -149,3 +149,14 @@ jobs:
         env:
           MW_INSTALL_PATH: ${{ github.workspace }}/.mw-lab
         run: php -d memory_limit=768M tests/fullstackSemanticCache.php
+      - name: Real multiworker HTTP semantic freshness and benchmark on ${{ matrix.database }}
+        env:
+          MW_INSTALL_PATH: ${{ github.workspace }}/.mw-lab
+        run: php -d memory_limit=768M tests/fullstackSemanticHttp.php
+      - name: Preserve isolated HTTP performance measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semantic-http-${{ matrix.database }}
+          path: tests/results/semantic-http-*.json
+          if-no-files-found: warn
