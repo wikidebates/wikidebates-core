@@ -244,12 +244,6 @@ try {
 		}, array_slice(glob($temporary . '/semantic-http-fragments/*/*/*/*.cache') ?: [], -3)),
 		'parser_output_events' => is_file($observedOutputLog) ?
 			array_slice(file($observedOutputLog, FILE_IGNORE_NEW_LINES), -4) : [],
-		'eligibility' => is_file($temporary . '/semantic-http-eligibility.jsonl') ?
-			array_slice(file($temporary . '/semantic-http-eligibility.jsonl', FILE_IGNORE_NEW_LINES), -4) : [],
-		'guard' => is_file($temporary . '/semantic-http-guard.jsonl') ?
-			array_slice(file($temporary . '/semantic-http-guard.jsonl', FILE_IGNORE_NEW_LINES), -6) : [],
-		'publication' => is_file($temporary . '/semantic-http-publication.jsonl') ?
-			array_slice(file($temporary . '/semantic-http-publication.jsonl', FILE_IGNORE_NEW_LINES), -8) : [],
 	];
 	check($warm !== null && $warm['fragment']['source'] === 'fragment-cache',
 		'At least one stable independent HTTP request reuses the prepared fragment: ' .
