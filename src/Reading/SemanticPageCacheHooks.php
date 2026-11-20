@@ -3,7 +3,6 @@
 namespace MediaWiki\Extension\Wikidebates\Reading;
 
 use MediaWiki\MediaWikiServices;
-use MediaWiki\Context\RequestContext;
 use SMW\DataItems\Property;
 use SMW\DataItems\WikiPage;
 use SMW\Services\ServicesFactory as SemanticServices;
@@ -18,18 +17,6 @@ use SMW\Services\ServicesFactory as SemanticServices;
  */
 final class SemanticPageCacheHooks {
 	public const OUTPUT_REVISION = 'wikidebates-semantic-revision';
-
-	/** Request-local classification only for full-page view hooks. */
-	private static ?\WeakMap $requestChecks = null;
-
-	/**
-	 * Drop a request's classifications after a parse or a semantic write.
-	 * A template may add _ASK on the very first parse, and an old "false"
-	 * must never survive that transition. No cache crosses HTTP requests.
-	 */
-	public static function clearRequestChecks(): void {
-		self::$requestChecks = null;
-	}
 
 	public static function onHTMLFileCache__useFileCache($context): bool {
 		if (!self::enabled()) {
@@ -80,8 +67,6 @@ final class SemanticPageCacheHooks {
 	 * Only the canonical traced PHP queries need this additional marker.
 	 */
 	public static function onParserAfterParse($parser, &$text, $stripState): bool {
-		// A parse can register the first _ASK profile for this page.
-		self::clearRequestChecks();
 		if (!self::enabled() ||
 			$parser->getOutput()->getExtensionData(\MediaWiki\Extension\DebatePHP\TrackedSemanticQuery::OUTPUT_MARKER) !== true) {
 			return true;
@@ -141,34 +126,8 @@ final class SemanticPageCacheHooks {
 		return (bool)MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesSemanticCacheTracking');
 	}
 
-	/**
-	 * Full-page hooks can classify the same page repeatedly during one
-	 * HTTP request. Cache only those classifications, not direct calls
-	 * with a concrete WikiPage (such as the parser-cache fence).
-	 * Refresh immediately after every parse/semantic update.
-	 */
+	/** Semantic data first; template identification covers pre-migration pages. */
 	public static function isQueryPage($title, $page = null): bool {
-		if ($page !== null || PHP_SAPI === 'cli') {
-			return self::computeQueryPage($title, $page);
-		}
-		$request = RequestContext::getMain()->getRequest();
-		if (!is_object($request)) {
-			return self::computeQueryPage($title, $page);
-		}
-		self::$requestChecks ??= new \WeakMap();
-		$memo = self::$requestChecks[$request] ?? [];
-		$key = $title->getPrefixedDBkey();
-		if (array_key_exists($key, $memo)) {
-			return $memo[$key];
-		}
-		$result = self::computeQueryPage($title, $page);
-		$memo[$key] = $result;
-		self::$requestChecks[$request] = $memo;
-		return $result;
-	}
-
-	/** SMW profiles first; the Argument source covers first-time parses. */
-	private static function computeQueryPage($title, $page = null): bool {
 		$subject = WikiPage::newFromTitle($title);
 		$store = SemanticServices::getInstance()->getStore();
 		if ($store->getPropertyValues($subject, new Property('_ASK')) !== []) {

@@ -43,7 +43,6 @@ class Hooks {
 		$revisionRecord,
 		$editResult
 	): void {
-		\MediaWiki\Extension\Wikidebates\Reading\SemanticPageCacheHooks::clearRequestChecks();
 		AutoParentLink::onPageSaveComplete(
 			$wikiPage,
 			$user,

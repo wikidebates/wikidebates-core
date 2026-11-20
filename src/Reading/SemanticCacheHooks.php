@@ -24,7 +24,6 @@ final class SemanticCacheHooks {
 		if (!$config->get('WikidebatesSemanticCacheTracking')) {
 			return true;
 		}
-		SemanticPageCacheHooks::clearRequestChecks();
 		$subject = $semanticData->getSubject();
 		$title = $subject->getTitle();
 		if (!$title) {
@@ -66,7 +65,6 @@ final class SemanticCacheHooks {
 		if (!MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesSemanticCacheTracking')) {
 			return true;
 		}
-		SemanticPageCacheHooks::clearRequestChecks();
 
 		$oldTitle = Title::newFromLinkTarget($old);
 		$newTitle = Title::newFromLinkTarget($new);
