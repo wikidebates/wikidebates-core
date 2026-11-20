@@ -74,6 +74,56 @@ requêtes SMW. `RejectParserCacheValue` vérifie l'empreinte du
 `ParserOutput` avant de le réutiliser. Le veto des fichiers HTML est
 un compromis temporaire, pas la garantie d'un gain de performance global.
 
+## 4. Compteurs de révision et prévention des purges tardives
+
+La table expérimentale `wd_smw_entity_revisions` associe chaque
+entité SMW modifiée à un compteur de révision croissant. Le hook
+`SMW::SQLStore::AfterDataUpdateComplete` l'incrémente dans la même
+transaction SQL que les données sémantiques. Il ne dépend pas de la
+précision à la seconde de `smw_touched`, ni de l'exécution immédiate
+des jobs d'invalidation.
+
+Pour chaque page interrogée, `SemanticRevisionStore::fingerprint()`
+calcule une empreinte SHA-256 des **triplets exacts** (identifiant de
+requête, identifiant de dépendance, révision de l'entité). Un fragment
+ancien ne correspond plus à cette identité si l'une des dépendances a
+changé, même si le nombre de résultats reste identique. Une requête
+`_ASK` sans lien enregistré interdit la réutilisation du fragment.
+Une seconde lecture du compteur avant publication réduit le risque
+de stocker un rendu obsolète produit pendant une modification.
+
+**Migration de schéma obligatoire en préproduction :** les fichiers
+`sql/mysql/wd_smw_entity_revisions.sql` et
+`sql/sqlite/wd_smw_entity_revisions.sql` sont déclarés via le hook
+`LoadExtensionSchemaUpdates`. Exécuter le mécanisme standard
+`update.php` pour **chaque wiki** du laboratoire avant d'activer le
+nouveau suivi. En absence de table, le mode actif ne peut pas assurer
+les lectures mises en cache. Ne pas lancer de migration de production
+avant la validation générale.
+
+## 5. Pages HTML complètes (Vector et Minerva)
+
+Un fichier HTML complet peut être envoyé avant
+`ArticleViewHeader`. `SemanticPageCacheHooks` oppose donc,
+**uniquement en mode opt-in**, un veto temporaire à la lecture et
+à l'écriture des fichiers HTML pour les pages contenant des requêtes
+sémantiques. Les pages non concernées conservent leur cache de fichiers.
+
+Pour ces pages, un marqueur de révision sémantique est enregistré dans
+`ParserOutput` à la fin du traitement PHP. À la lecture du cache du
+parseur, le hook `RejectParserCacheValue` compare ce marqueur aux
+dépendances actuelles et rejette une version divergente ou non tracée.
+Les pages jamais enregistrées dans le suivi doivent initialement être
+recalculées.
+
+**Coût connu :** ce mode n'utilise pas le cache de fichiers HTML
+complets pour les débats et arguments concernés. Cette limitation est
+délibérée : ce cache ne contient pas encore la nouvelle empreinte, et
+le réutiliser permettrait de renvoyer de vieilles relations en attendant
+les jobs. Un cache complet versionné pourra être étudié après la
+validation HTTP. Le gain de performance escompté dépend du cache du
+parseur et des fragments ; il n'est pas encore mesuré.
+
 ## Limites exigeant validation
 
 - **Course avec les jobs différés :** le laboratoire couvre les requêtes
