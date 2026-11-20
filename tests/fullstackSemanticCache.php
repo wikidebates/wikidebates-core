@@ -13,6 +13,7 @@ require __DIR__ . '/mediawikiEnvironment.php';
 use MediaWiki\Extension\DebatePHP\MediaWikiContext;
 use MediaWiki\Extension\DebatePHP\Table;
 use MediaWiki\Extension\DebatePHP\TrackedSemanticQuery;
+use MediaWiki\Extension\DebatePHP\SemanticReadResult;
 use MediaWiki\Extension\Wikidebates\Reading\FragmentService;
 use MediaWiki\Extension\Wikidebates\Reading\SemanticRevisionStore;
 use MediaWiki\Extension\Wikidebates\Reading\SemanticPageCacheHooks;
@@ -63,6 +64,38 @@ $register = static function($parser): void {
 		]), 'cache-tracking');
 		return 'WD_MATCHES=' . count($rows->rows ?? []);
 	});
+	// Mirror the actual ArgumentReferenceRenderer parent queries: two
+	// alternatives, both property printouts, and the native PHP reader.
+	foreach ([
+		'wd-cache-debate-parents' => ['WD Cache Pro', 'WD Cache Con', 'debate-parents'],
+		'wd-cache-argument-parents' => ['WD Cache Justif', 'WD Cache Obj', 'argument-parents'],
+	] as $tag => $properties) {
+		$parser->setHook($tag, static function($input, $args, $parser, $frame) use ($properties): string {
+			[$left, $right, $origin] = $properties;
+			$context = new MediaWikiContext($parser, $frame, [], false);
+			$rows = $context->readSemantic(Table::wrap([
+				'([[' . $left . '::' . trim($input) . ']] OR [[' . $right . '::' . trim($input) . ']] )',
+				'?' . $left . '=a',
+				'?' . $right . '=b',
+				'limit=200',
+				'link=none',
+			]), $origin);
+			$a = $b = 0;
+			foreach (SemanticReadResult::sequence($rows->rows ?? []) as $row) {
+				if (!is_array($row)) {
+					continue;
+				}
+				if (($row['a'] ?? null) !== null && ($row['a'] ?? null) !== '') {
+					$a++;
+				}
+				if (($row['b'] ?? null) !== null && ($row['b'] ?? null) !== '') {
+					$b++;
+				}
+			}
+			return 'WD_OR_A=' . $a . ';WD_OR_B=' . $b .
+				';WD_OR_TOTAL=' . count($rows->rows ?? []);
+		});
+	}
 };
 $services->getHookContainer()->register('ParserFirstCallInit', $register);
 $register($services->getParser());
@@ -380,5 +413,86 @@ $fullPageContext->setTitle($unregisteredTitle);
 check(!SemanticPageCacheHooks::onHTMLFileCache__useFileCache($fullPageContext),
 	'An unregistered semantic debate also bypasses full-page HTML file caching');
 
+
+// The production Argument renderer uses combined OR queries with two
+// property printouts for its debate parents and justification/objection
+// parents. A single-property #ask is not sufficient to prove that an empty
+// OR query will notice its first match or that a same-cardinality switch
+// will invalidate HTML while a purge job is delayed.
+$combined = [
+	'debate' => [
+		'tag' => 'wd-cache-debate-parents',
+		'properties' => ['WD Cache Pro', 'WD Cache Con'],
+	],
+	'argument' => [
+		'tag' => 'wd-cache-argument-parents',
+		'properties' => ['WD Cache Justif', 'WD Cache Obj'],
+	],
+];
+fsSave('WD Cache searched argument', 'Target argument for combined-query tests');
+foreach ($combined as $kind => $case) {
+	foreach ($case['properties'] as $property) {
+		fsSave('Property:' . $property, '[[Has type::Page]]');
+	}
+	fsSave('WD Cache combined parent ' . $kind, 'No semantic parent yet');
+	fsSave('WD Cache combined query ' . $kind, 'Initial stub');
+}
+fsFlush();
+sleep(2);
+foreach ($combined as $kind => $case) {
+	fsSave('WD Cache combined query ' . $kind,
+		'<' . $case['tag'] . '>WD Cache searched argument</' . $case['tag'] . '>');
+}
+fsFlush();
+foreach ($combined as $kind => $case) {
+	$queryTitle = 'WD Cache combined query ' . $kind;
+	$parentTitle = 'WD Cache combined parent ' . $kind;
+	$subject = SemanticWikiPage::newFromTitle(Title::newFromText($queryTitle));
+	$store->clear();
+	check($store->getPropertyValues($subject, new Property('_ASK')) !== [],
+		'Combined ' . $kind . ' OR query persists a real _ASK profile');
+
+	$empty = $read($queryTitle);
+	check(str_contains($empty['html'], 'WD_OR_A=0;WD_OR_B=0;WD_OR_TOTAL=0'),
+		'Combined ' . $kind . ' parent query is initially empty');
+	$cached = $read($queryTitle);
+	check($cached['source'] === 'fragment-cache',
+		'Empty combined ' . $kind . ' query safely reuses its fragment');
+	$previous = SemanticRevisionStore::fingerprint($store, $subject);
+
+	// The first member appears while the dependent purge job is blocked.
+	fsSave($parentTitle, '{{#set:' . $case['properties'][0] . '=WD Cache searched argument}}');
+	fsFlush(['wikidebatesSemanticCachePurge']);
+	check(SemanticRevisionStore::fingerprint($store, $subject) !== $previous,
+		'First ' . $kind . ' OR result changes the revision before purge');
+	$added = $read($queryTitle);
+	check($added['source'] !== 'fragment-cache' &&
+		str_contains($added['html'], 'WD_OR_A=1;WD_OR_B=0;WD_OR_TOTAL=1'),
+		'First ' . $kind . ' OR result is visible before purge');
+	fsFlush();
+
+	$previous = SemanticRevisionStore::fingerprint($store, $subject);
+	// Same query-result count, but the matching property and printout flip.
+	fsSave($parentTitle, '{{#set:' . $case['properties'][1] . '=WD Cache searched argument}}');
+	fsFlush(['wikidebatesSemanticCachePurge']);
+	check(SemanticRevisionStore::fingerprint($store, $subject) !== $previous,
+		'Same-cardinality ' . $kind . ' relation switch changes the revision');
+	$switched = $read($queryTitle);
+	check($switched['source'] !== 'fragment-cache' &&
+		str_contains($switched['html'], 'WD_OR_A=0;WD_OR_B=1;WD_OR_TOTAL=1'),
+		'Combined ' . $kind . ' parent switches its printout without stale HTML');
+	fsFlush();
+
+	$previous = SemanticRevisionStore::fingerprint($store, $subject);
+	fsSave($parentTitle, 'No parent');
+	fsFlush(['wikidebatesSemanticCachePurge']);
+	check(SemanticRevisionStore::fingerprint($store, $subject) !== $previous,
+		'Last ' . $kind . ' OR relation removal changes the revision');
+	$removed = $read($queryTitle);
+	check($removed['source'] !== 'fragment-cache' &&
+		str_contains($removed['html'], 'WD_OR_A=0;WD_OR_B=0;WD_OR_TOTAL=0'),
+		'Combined ' . $kind . ' OR query returns to empty before purge');
+	fsFlush();
+}
 
 echo "OK: SMW 7.3.1 native profiles, empty results, inserts, moves, deletes and fragment invalidation\n";
