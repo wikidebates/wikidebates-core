@@ -90,6 +90,7 @@ final class SemanticRevisionStore {
 			->select([
 				'query_count' => 'COUNT(DISTINCT query.smw_id)',
 				'link_count' => 'COUNT(links.o_id)',
+				'missing_links' => 'COALESCE(SUM(CASE WHEN links.s_id IS NULL THEN 1 ELSE 0 END), 0)',
 				'revision_sum' => 'COALESCE(SUM(watermarks.revision), 0)',
 			])
 			->from($tables[$tableId]->getName(), 'ask_profile')
@@ -107,6 +108,9 @@ final class SemanticRevisionStore {
 
 		if ($row === false) {
 			throw new \RuntimeException('Cannot inspect semantic revision watermarks');
+		}
+		if ((int)$row->missing_links > 0) {
+			throw new \RuntimeException('One or more embedded SMW queries have no dependency links');
 		}
 		return (string)$row->query_count . ':' . (string)$row->link_count . ':' . (string)$row->revision_sum;
 	}
