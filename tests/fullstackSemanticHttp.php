@@ -218,6 +218,8 @@ try {
 			array_slice(file($observedOutputLog, FILE_IGNORE_NEW_LINES), -4) : [],
 		'eligibility' => is_file($temporary . '/semantic-http-eligibility.jsonl') ?
 			array_slice(file($temporary . '/semantic-http-eligibility.jsonl', FILE_IGNORE_NEW_LINES), -4) : [],
+		'guard' => is_file($temporary . '/semantic-http-guard.jsonl') ?
+			array_slice(file($temporary . '/semantic-http-guard.jsonl', FILE_IGNORE_NEW_LINES), -6) : [],
 	];
 	check($warm['fragment']['source'] === 'fragment-cache',
 		'Second independent HTTP request reuses the prepared fragment: ' .
