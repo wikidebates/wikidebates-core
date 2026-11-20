@@ -483,7 +483,8 @@ foreach ($combined as $kind => $case) {
 	$switched = $read($queryTitle);
 	check($switched['source'] !== 'fragment-cache' &&
 		str_contains($switched['html'], 'WD_OR_A=0;WD_OR_B=1;WD_OR_TOTAL=1'),
-		'Combined ' . $kind . ' parent switches its printout without stale HTML');
+		'Combined ' . $kind . ' parent switches its printout without stale HTML; source=' .
+		($switched['source'] ?? '?') . '; html=' . substr($switched['html'] ?? '', 0, 1200));
 	fsFlush();
 
 	$previous = SemanticRevisionStore::fingerprint($store, $subject);
