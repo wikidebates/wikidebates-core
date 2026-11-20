@@ -18,6 +18,7 @@ use MediaWiki\Extension\Wikidebates\Reading\FragmentService;
 use MediaWiki\Extension\Wikidebates\Reading\SemanticRevisionStore;
 use MediaWiki\Extension\Wikidebates\Reading\SemanticPageCacheHooks;
 use MediaWiki\Extension\Wikidebates\Reading\SemanticCacheGuard;
+use MediaWiki\Extension\Wikidebates\Reading\SemanticCachePurgeJob;
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Request\FauxRequest;
 use MediaWiki\MediaWikiServices;
@@ -54,6 +55,20 @@ check(\SMW\Site::isReady(), 'SMW ready after isolated schema setup');
 require __DIR__ . '/fullstackSupport.php';
 $fsUser = \MediaWiki\User\User::newSystemUser('Wikidebates semantic cache lab', ['steal' => false]);
 check($fsUser !== null, 'Disposable test writer');
+check($services->getMainConfig()->get('WikidebatesSemanticCacheEagerPurge') === true,
+	'Eager purge stays enabled by default');
+$jobTitle = Title::newFromText('WD Cache child');
+$jobA = new SemanticCachePurgeJob($jobTitle, ['dependencyIds' => [31, 12, 31], 'cursor' => 0]);
+$jobB = new SemanticCachePurgeJob($jobTitle, ['dependencyIds' => [12, 31], 'cursor' => 0]);
+$jobC = new SemanticCachePurgeJob($jobTitle, ['dependencyIds' => [12, 32], 'cursor' => 0]);
+$jobNextPage = new SemanticCachePurgeJob($jobTitle, ['dependencyIds' => [31, 12], 'cursor' => 100]);
+check($jobA->ignoreDuplicates(), 'Semantically equivalent purge jobs are deduplicable');
+same($jobA->getDeduplicationInfo(), $jobB->getDeduplicationInfo(),
+	'Dependency order and duplicate IDs do not affect purge deduplication');
+check($jobA->getDeduplicationInfo() !== $jobC->getDeduplicationInfo(),
+	'Distinct dependency sets are never merged by deduplication');
+check($jobA->getDeduplicationInfo() !== $jobNextPage->getDeduplicationInfo(),
+	'Distinct pagination cursors are never merged by deduplication');
 
 $register = static function($parser): void {
 	$parser->setHook('wd-cache-parents', static function($input, $args, $parser, $frame): string {
@@ -236,6 +251,11 @@ $initialFingerprint = SemanticRevisionStore::fingerprint($store, $subjectA);
 check(is_string($initialFingerprint) && $initialFingerprint !== '',
 	'A stable _ASK query exposes a durable dependency revision fingerprint');
 
+$purgeTargetTitle = Title::newFromText('WD Cache query A');
+$smwPurgeKey = smwfCacheKey(\SMW\MediaWiki\Hooks\ArticlePurge::CACHE_NAMESPACE,
+	$purgeTargetTitle->getArticleID());
+$smwPurgeCache = ServicesFactory::getInstance()->getObjectCache();
+$smwPurgeCache->delete($smwPurgeKey);
 fsSave('WD Cache child', '{{#set:WD Cache Parent=WD Cache A}}');
 // Persist the SMW edit but deliberately hold the targeted purge job in queue.
 fsFlush(['wikidebatesSemanticCachePurge']);
@@ -261,6 +281,8 @@ check($services->getJobQueueGroup()->queuesHaveJobs(),
 	'The freshness check works without draining or relying on the queued purge');
 
 fsFlush();
+check($smwPurgeCache->get($smwPurgeKey) === false,
+	'Cache-only dependent purge never schedules an SMW purge-driven semantic rewrite');
 
 $valuesAfterInsert = fsValues('WD Cache child', 'WD Cache Parent');
 check(count($valuesAfterInsert) === 1, 'The changed relation is persisted in the real SMW store');
