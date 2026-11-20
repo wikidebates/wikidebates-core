@@ -86,12 +86,11 @@ final class SemanticRevisionStore {
 		}
 
 		$db = $store->getConnection('mw.db');
-		$row = $db->newSelectQueryBuilder()
+		$rows = $db->newSelectQueryBuilder()
 			->select([
-				'query_count' => 'COUNT(DISTINCT query.smw_id)',
-				'link_count' => 'COUNT(links.o_id)',
-				'missing_links' => 'COALESCE(SUM(CASE WHEN links.s_id IS NULL THEN 1 ELSE 0 END), 0)',
-				'revision_sum' => 'COALESCE(SUM(watermarks.revision), 0)',
+				'query_id' => 'query.smw_id',
+				'dependency_id' => 'links.o_id',
+				'dependency_revision' => 'watermarks.revision'
 			])
 			->from($tables[$tableId]->getName(), 'ask_profile')
 			->join(SQLStore::ID_TABLE, 'page', ['ask_profile.s_id=page.smw_id'])
@@ -104,14 +103,20 @@ final class SemanticRevisionStore {
 				$db->expr('page.smw_iw', '!=', SMW_SQL3_SMWDELETEIW),
 			])
 			->caller(__METHOD__)
-			->fetchRow();
+			->fetchResultSet();
 
-		if ($row === false) {
-			throw new \RuntimeException('Cannot inspect semantic revision watermarks');
+		// Hash the exact dependency graph, not a COUNT/SUM aggregate:
+		// replacing one entity with another of the same revision could keep
+		// those aggregates unchanged while changing the rendered result.
+		$links = [];
+		foreach ($rows as $row) {
+			if ($row->dependency_id === null) {
+				throw new \RuntimeException('An embedded SMW query has no dependency links');
+			}
+			$links[] = $row->query_id . ':' . $row->dependency_id . ':' .
+				($row->dependency_revision === null ? 'missing' : $row->dependency_revision);
 		}
-		if ((int)$row->missing_links > 0) {
-			throw new \RuntimeException('One or more embedded SMW queries have no dependency links');
-		}
-		return (string)$row->query_count . ':' . (string)$row->link_count . ':' . (string)$row->revision_sum;
+		sort($links, SORT_STRING);
+		return hash('sha256', implode("\n", $links));
 	}
 }
