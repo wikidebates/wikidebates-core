@@ -52,6 +52,10 @@ function wdSemanticHttpTestSettings($settings): void {
 		'UseFileCache' => true,
 		'FileCacheDirectory' => $root . '/semantic-http-full-pages',
 		'FileCacheDepth' => 0,
+		'MinervaFileCacheEnabled' => true,
+		'MinervaFileCacheDirectory' => $root . '/semantic-http-minerva-files',
+		'MinervaFileCacheTTL' => 300,
+		'MinervaFileCacheDebugHeaders' => true,
 		'WikidebatesReadingFragments' => true,
 		'WikidebatesSemanticCacheTracking' => !is_file($root . '/semantic-http-disable-tracking'),
 		'WikidebatesReadingCacheDirectory' => $root . '/semantic-http-fragments',
@@ -113,6 +117,9 @@ function wdSemanticHttpTestSettings($settings): void {
 	$GLOBALS['wgScribuntoDefaultEngine'] = 'luastandalone';
 
 	wfLoadSkin('Vector');
+	wfLoadSkin('MinervaNeue');
+	wfLoadExtension('MobileFrontend');
+	wfLoadExtension('MinervaFileCache', dirname(__DIR__) . '/extensions/MinervaFileCache/extension.json');
 	wfLoadExtension('Scribunto');
 	wfLoadExtension('SemanticMediaWiki');
 	wfLoadExtension('SemanticScribunto');
