@@ -18,6 +18,18 @@ use SMW\Store;
 final class SemanticRevisionStore {
 	public const TABLE = 'wd_smw_entity_revisions';
 
+	/** Install the ledger through the standard MediaWiki 1.43 update.php path. */
+	public static function onLoadExtensionSchemaUpdates($updater): void {
+		$type = $updater->getDB()->getType();
+		if (!in_array($type, ['mysql', 'sqlite'], true)) {
+			throw new \RuntimeException('SMW semantic cache tracking supports MariaDB and SQLite');
+		}
+		$updater->addExtensionTable(
+			self::TABLE,
+			dirname(__DIR__, 2) . '/sql/' . $type . '/wd_smw_entity_revisions.sql'
+		);
+	}
+
 	/** Increment every changed entity once, as part of SMW's own transaction. */
 	public static function record(Store $store, array $entityIds): void {
 		if (!$store instanceof SQLStore) {
