@@ -86,6 +86,23 @@ class FragmentService {
 			$eligible = $eligible && $safe;
 			$forceFreshSemanticParse = $forceFreshSemanticParse || !$safe;
 		}
+		// Temporary isolated HTTP-lab diagnostics. Not enabled in production.
+		if (getenv('WD_SEMANTIC_HTTP_DISPOSABLE') === '1') {
+			$root = (string)getenv('WD_SEMANTIC_HTTP_ROOT');
+			@file_put_contents($root . '/semantic-http-eligibility.jsonl',
+				json_encode([
+					'pid' => getmypid(),
+					'registered' => $context->getUser()->isRegistered(),
+					'persistentSession' => $request->getSession()->isPersistent(),
+					'cookie' => $request->getHeader('Cookie') !== '',
+					'method' => $request->getMethod(),
+					'params' => array_keys($request->getValues()),
+					'tracking' => $semanticTracking,
+					'safe' => $safe ?? null,
+					'eligible' => $eligible,
+					'semanticRevision' => $semanticRevision
+				]) . "\n", FILE_APPEND | LOCK_EX);
+		}
 		$identity = ['pageid' => $page->getId(), 'revision' => $page->getLatest(), 'touched' => $page->getTouched(),
 			'epoch' => $config->get('WikidebatesReadingCacheEpoch'), 'coreEpoch' => $config->get('CacheEpoch'), 'format' => 4,
 			'semanticTracking' => $semanticTracking, 'semanticRevision' => $semanticRevision,
