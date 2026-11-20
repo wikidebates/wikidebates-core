@@ -53,7 +53,7 @@ function wdSemanticHttpTestSettings($settings): void {
 		'FileCacheDirectory' => $root . '/semantic-http-full-pages',
 		'FileCacheDepth' => 0,
 		'WikidebatesReadingFragments' => true,
-		'WikidebatesSemanticCacheTracking' => true,
+		'WikidebatesSemanticCacheTracking' => !is_file($root . '/semantic-http-disable-tracking'),
 		'WikidebatesReadingCacheDirectory' => $root . '/semantic-http-fragments',
 		'WikidebatesReadingCacheTTL' => 300,
 		'WikidebatesReadingCacheEpoch' => 'semantic-http-lab-1',
