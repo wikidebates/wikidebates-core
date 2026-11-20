@@ -322,23 +322,38 @@ try {
 	check($public['status'] === 200, 'Unrelated public HTTP page still loads');
 
 	// Characterize, do not impose a speed threshold on noisy CI hosts.
-	for ($i = 0; $i < 3; $i++) {
-		$fragment('WD HTTP query B');
+	// Forced re-parses can change page_touched, so measuring HITs
+	// immediately after each forced parse would deliberately manufacture
+	// cache misses. Stabilize first; then measure each scenario separately.
+	$stableHitCount = 0;
+	for ($attempt = 0; $attempt < 12 && $stableHitCount < 3; $attempt++) {
+		$probe = $fragment('WD HTTP query B');
+		$stableHitCount = $probe['fragment']['source'] === 'fragment-cache' ?
+			$stableHitCount + 1 : 0;
 	}
+	check($stableHitCount === 3, 'Semantic query has three stable consecutive fragment-cache hits');
+
 	$hitSamples = [];
 	$parseSamples = [];
 	$workers = [];
+	$benchmarkHtml = null;
 	$parseStart = $parseCount();
 	for ($i = 0; $i < 15; $i++) {
 		$hit = $fragment('WD HTTP query B');
-		check($hit['fragment']['source'] === 'fragment-cache', 'Benchmark warm fragment remains a hit');
+		check($hit['fragment']['source'] === 'fragment-cache',
+			'Benchmark records a real, stable HTTP fragment-cache hit');
+		$benchmarkHtml ??= $hit['fragment']['html'];
+		check($hit['fragment']['html'] === $benchmarkHtml,
+			'Benchmark warm HTML stays byte-for-byte stable');
 		$hitSamples[] = $hit['elapsed_ms'];
 		$workers[$hit['headers']['x-wd-semantic-lab-worker'][0] ?? 'unknown'] = true;
-
+	}
+	check($parseCount() === $parseStart, 'Fifteen HTTP cache hits avoid the semantic renderer');
+	for ($i = 0; $i < 15; $i++) {
 		$bypass = $fragment('WD HTTP query B', ['Cache-Control: no-cache']);
 		check($bypass['fragment']['source'] === 'parser', 'Benchmark forced refresh uses parser');
-		check($bypass['fragment']['html'] === $hit['fragment']['html'],
-			'Benchmark compares the exact same semantic HTML');
+		check($bypass['fragment']['html'] === $benchmarkHtml,
+			'Benchmark compares exact same semantic HTML in both scenarios');
 		$parseSamples[] = $bypass['elapsed_ms'];
 		$workers[$bypass['headers']['x-wd-semantic-lab-worker'][0] ?? 'unknown'] = true;
 	}
