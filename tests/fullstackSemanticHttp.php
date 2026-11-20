@@ -73,6 +73,9 @@ fsSave('WD HTTP public page', str_repeat('This ordinary page contains no semanti
 fsFlush();
 
 // SMW profiles must belong to already-created query pages.
+// Give initial semantic subjects an earlier touched second than the _ASK
+// profiles, matching the stable-profile baseline of fullstackSemanticCache.
+sleep(2);
 fsSave('WD HTTP query A',
 	"== Summary ==\n<wd-http-parents>WD HTTP parent A</wd-http-parents>\n== Parent debates ==\nA");
 fsSave('WD HTTP query B',
