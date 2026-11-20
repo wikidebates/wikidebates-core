@@ -4,6 +4,9 @@ namespace MediaWiki\Extension\Wikidebates\Reading;
 
 use MediaWiki\Deferred\DeferredUpdates;
 use MediaWiki\MediaWikiServices;
+use MediaWiki\Title\Title;
+use SMW\DataItems\WikiPage;
+use SMW\Services\ServicesFactory as SemanticServices;
 use SMW\DataModel\SemanticData;
 use SMW\SQLStore\ChangeOp\ChangeOp;
 use SMW\Store;
@@ -44,6 +47,43 @@ final class SemanticCacheHooks {
 			foreach (array_chunk($ids, 128) as $chunk) {
 				$group->push(new SemanticCachePurgeJob($title, ['dependencyIds' => $chunk, 'cursor' => 0]));
 			}
+		});
+		return true;
+	}
+
+
+	/**
+	 * A page move is handled partly by SMW's PageMoveComplete hook and may
+	 * change a query's result subjects without a corresponding table diff
+	 * reaching AfterDataUpdateComplete. Include both the old and new IDs:
+	 * stored query links can still refer to the old subject at move time.
+	 *
+	 * This is intentionally guarded by the same opt-in as normal updates.
+	 */
+	public static function onPageMoveComplete($old, $new, $user, $pageid, $redirid, $reason, $revision): bool {
+		if (!MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesSemanticCacheTracking')) {
+			return true;
+		}
+
+		$oldTitle = Title::newFromLinkTarget($old);
+		$newTitle = Title::newFromLinkTarget($new);
+		$store = SemanticServices::getInstance()->getStore();
+		$objectIds = $store->getObjectIds();
+		$ids = self::changedIds([
+			$objectIds->getId(WikiPage::newFromTitle($oldTitle)),
+			$objectIds->getId(WikiPage::newFromTitle($newTitle))
+		]);
+		if ($ids === []) {
+			return true;
+		}
+
+		// A move is a semantic identity mutation even if no property values
+		// differ. A revision fence makes old fragments unsafe immediately.
+		SemanticRevisionStore::record($store, $ids);
+		DeferredUpdates::addCallableUpdate(static function () use ($oldTitle, $ids): void {
+			MediaWikiServices::getInstance()->getJobQueueGroup()->push(
+				new SemanticCachePurgeJob($oldTitle, ['dependencyIds' => $ids, 'cursor' => 0])
+			);
 		});
 		return true;
 	}
