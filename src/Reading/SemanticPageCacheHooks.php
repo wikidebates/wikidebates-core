@@ -128,53 +128,29 @@ final class SemanticPageCacheHooks {
 
 	/** Semantic data first; template identification covers pre-migration pages. */
 	public static function isQueryPage($title, $page = null): bool {
-		// Temporary, isolated CI lab instrumentation only. This code is
-		// removed after the query cost is characterized.
-		$measure = defined('WD_SEMANTIC_HTTP_PROFILE') &&
-			WD_SEMANTIC_HTTP_PROFILE &&
-			($_SERVER['HTTP_X_WD_SEMANTIC_PROFILE'] ?? '') === '1';
-		$started = $measure ? hrtime(true) : 0;
-
 		$subject = WikiPage::newFromTitle($title);
 		$store = SemanticServices::getInstance()->getStore();
-		$askStart = $measure ? hrtime(true) : 0;
-		$hasAsk = $store->getPropertyValues($subject, new Property('_ASK')) !== [];
-		$askDuration = $measure ? (hrtime(true) - $askStart) / 1e6 : 0;
-		$sourceDuration = 0;
-		if ($hasAsk) {
-			$result = true;
-		} elseif ($title->getNamespace() !== NS_MAIN) {
-			$result = false;
-		} else {
-			$sourceStart = $measure ? hrtime(true) : 0;
-			$page ??= MediaWikiServices::getInstance()->getWikiPageFactory()->newFromTitle($title);
-			$content = $page->getContent();
-			// Before the first _ASK, recognize Argument and its legacy Lua
-			// reader. Standalone Debate writes properties, not queries.
-			$result = $content instanceof \TextContent && preg_match(
-				'/\{\{\s*(?:Argument\s*(?:[|}])|#argument\s*:\s*render\s*(?:[|}])|#invoke\s*:\s*Argument\s*\|\s*render\s*(?:[|}]))/iu',
-				$content->getText()
-			) === 1;
-			$sourceDuration = $measure ? (hrtime(true) - $sourceStart) / 1e6 : 0;
+		if ($store->getPropertyValues($subject, new Property('_ASK')) !== []) {
+			return true;
 		}
-		if ($measure) {
-			$caller = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'] ?? 'direct';
-			$root = (string)getenv('WD_SEMANTIC_HTTP_ROOT');
-			if (getenv('WD_SEMANTIC_HTTP_DISPOSABLE') === '1' &&
-				str_starts_with($root, rtrim(sys_get_temp_dir(), '/') . '/wikidebates-')) {
-				file_put_contents($root . '/semantic-http-isquery-profile.jsonl', json_encode([
-					'pid' => getmypid(),
-					'probe' => (string)($_SERVER['HTTP_X_WD_SEMANTIC_PROBE_ID'] ?? ''),
-					'hook' => $caller,
-					'namespace' => $title->getNamespace(),
-					'ask' => $hasAsk,
-					'query_page' => $result,
-					'ask_ms' => round($askDuration, 4),
-					'source_ms' => round($sourceDuration, 4),
-					'total_ms' => round((hrtime(true) - $started) / 1e6, 4)
-				], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n", FILE_APPEND | LOCK_EX);
-			}
+		if ($title->getNamespace() !== NS_MAIN) {
+			return false;
 		}
-		return $result;
+		$page ??= MediaWikiServices::getInstance()->getWikiPageFactory()->newFromTitle($title);
+		$content = $page->getContent();
+		if (!$content instanceof \TextContent) {
+			return false;
+		}
+		// A standalone Debate renderer writes semantic properties; unlike
+		// Argument, it does not read semantic parent queries. Do not
+		// disable full-page caching merely because a page transcludes
+		// Debate or calls #debate:render. Existing _ASK profiles above
+		// still protect debates with genuine semantic reads.
+		// Before the first _ASK profile, recognize Argument and its
+		// legacy Lua reader, including invocations nested in a debate.
+		return preg_match(
+			'/\{\{\s*(?:Argument\s*(?:[|}])|#argument\s*:\s*render\s*(?:[|}])|#invoke\s*:\s*Argument\s*\|\s*render\s*(?:[|}]))/iu',
+			$content->getText()
+		) === 1;
 	}
 }

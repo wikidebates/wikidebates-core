@@ -27,12 +27,15 @@ class AuditSemanticCacheSources extends Maintenance {
 		$this->addOption('batch-size', 'Pages per SELECT (default 100; max 500)', false, true);
 		$this->addOption('namespaces', 'Comma-separated numeric namespace IDs (default 0,10)', false, true);
 		$this->addOption('ids', 'Optional comma-separated page IDs to inspect', false, true);
+		$this->addOption('profile-reads', 'Measure read-only semantic-query page checks (extra SQL work)', false, false);
 	}
 
 	public function execute() {
 		$after = (int)$this->getOption('after', 0);
 		$limit = (int)$this->getOption('limit', 200);
 		$batchSize = (int)$this->getOption('batch-size', 100);
+		$profileReads = (bool)$this->getOption('profile-reads', false);
+		$timings = ['arguments' => [], 'debates' => [], 'other' => []];
 		if ($after < 0 || $limit < 1 || $limit > 5000 ||
 			$batchSize < 1 || $batchSize > 500) {
 			$this->fatalError('Invalid --after, --limit (1-5000) or --batch-size (1-500).');
@@ -94,6 +97,15 @@ class AuditSemanticCacheSources extends Maintenance {
 				$scanned++;
 				$title = Title::makeTitle((int)$row->page_namespace, $row->page_title);
 				try {
+					$semanticCheckMs = null;
+					$semanticQueryPage = null;
+					if ($profileReads) {
+						// Run first, before content hydration, like the early full-page
+						// file-cache gate. This is read-only, but adds SQL per page.
+						$started = hrtime(true);
+						$semanticQueryPage = \MediaWiki\Extension\Wikidebates\Reading\SemanticPageCacheHooks::isQueryPage($title);
+						$semanticCheckMs = round((hrtime(true) - $started) / 1e6, 3);
+					}
 					$revision = $revisions->getRevisionByTitle($title);
 					if (!$revision) {
 						$missing++;
@@ -124,6 +136,10 @@ class AuditSemanticCacheSources extends Maintenance {
 					);
 					$hasProfiles = $profiles !== [];
 					$debateOnly = $debateRenderer && !$argumentReader;
+					if ($profileReads) {
+						$group = $argumentReader ? 'arguments' : ($debateOnly ? 'debates' : 'other');
+						$timings[$group][] = $semanticCheckMs;
+					}
 					$nocacheCount += (int)$nocache;
 					$profileCount += (int)$hasProfiles;
 					$unprofiledArgument += (int)($argumentReader && !$hasProfiles);
@@ -132,7 +148,7 @@ class AuditSemanticCacheSources extends Maintenance {
 					$indirectProfiles += (int)($hasProfiles && !$direct);
 					if ($nocache || $direct || $hasProfiles) {
 						$matched++;
-						$this->emit([
+						$record = [
 							'type' => 'page',
 							'page_id' => $after,
 							'namespace' => $title->getNamespace(),
@@ -158,7 +174,12 @@ class AuditSemanticCacheSources extends Maintenance {
 							'debate_only_without_profiles' => $debateOnly && !$hasProfiles,
 							'nocache_in_debate_only_source' => $debateOnly && $nocache,
 							'profile_without_direct_reader' => $hasProfiles && !$direct,
-						]);
+						];
+						if ($profileReads) {
+							$record['semantic_query_page'] = $semanticQueryPage;
+							$record['semantic_check_ms'] = $semanticCheckMs;
+						}
+						$this->emit($record);
 					}
 					if ($scanned % 100 === 0) {
 						$store->clear();
@@ -178,7 +199,7 @@ class AuditSemanticCacheSources extends Maintenance {
 			]);
 		} while ($found > 0 && $scanned < $limit);
 
-		$this->emit([
+		$summary = [
 			'type' => 'summary',
 			'scanned' => $scanned, 'matched' => $matched,
 			'nocache_pages' => $nocacheCount,
@@ -190,7 +211,30 @@ class AuditSemanticCacheSources extends Maintenance {
 			'profiles_without_direct_readers' => $indirectProfiles,
 			'nontext' => $nontext, 'missing' => $missing,
 			'errors' => $errors, 'resume_after' => $after,
-		]);
+		];
+		if ($profileReads) {
+			$stats = static function(array $durations): array {
+				sort($durations, SORT_NUMERIC);
+				$count = count($durations);
+				if (!$count) {
+					return ['count' => 0];
+				}
+				return [
+					'count' => $count,
+					'median_ms' => $durations[(int)ceil($count * 0.5) - 1],
+					'p95_ms' => $durations[(int)ceil($count * 0.95) - 1],
+					'total_ms' => round(array_sum($durations), 3),
+				];
+			};
+			$summary['semantic_check_timings'] = [
+				'all' => $stats(array_merge(...array_values($timings))),
+				'arguments' => $stats($timings['arguments']),
+				'debates' => $stats($timings['debates']),
+				'other' => $stats($timings['other']),
+			];
+			$summary['semantic_check_scope'] = 'CLI, cold first check per page, not an HTTP benchmark';
+		}
+		$this->emit($summary);
 		if ($errors || $missing) {
 			$this->fatalError('Inventory incomplete: some pages could not be inspected.');
 		}

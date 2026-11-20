@@ -223,6 +223,36 @@ dans un ordre croisé A/B puis B/A :
 
 [Validation complète : 6 jobs / 6, 20 novembre 2026](https://github.com/wikidebates/wikidebates-core/actions/runs/44735081479).
 
+### Profilage ciblé de la vérification des pages de débats
+
+Une instrumentation **temporaire et limitée au laboratoire jetable** a
+enregistré les appels exacts à `SemanticPageCacheHooks::isQueryPage()`
+sur cinq réponses HTTP répétées du débat de 25 titres, pour chaque base.
+Le diagnostic n'était activé que sur ces cinq requêtes et ne faussait
+pas les médianes du banc A/B.
+
+| Vérification | SQLite : moyenne | MariaDB : moyenne |
+| --- | ---: | ---: |
+| Lecture des profils SMW `_ASK` | 0,76 ms | 0,82 ms |
+| Chargement et inspection du wikicode | 1,27 ms | 2,08 ms |
+| **Classification totale** | **2,31 ms** | **3,10 ms** |
+
+Les cinq réponses ont déclenché chacune **un seul appel** depuis
+`HTMLFileCache::useFileCache`, sans requête `_ASK` enregistrée sur
+le débat, ni classification positive. Les hooks ultérieurs n'ont pas
+refait ce contrôle sur ces réponses servies par le cache de fichier.
+Les durées du contrôle comprennent une légère instrumentation : ne
+pas les comparer directement comme des benchmarks absolus.
+
+[Journal de profilage : CI 6/6 SQLite et MariaDB](https://github.com/wikidebates/wikidebates-core/actions/runs/44738225385).
+
+**Conclusion :** le coût provient principalement de la lecture du
+wikicode pour détecter un appel Argument **avant l'enregistrement de son
+premier profil `_ASK`**. Il ne suffit pas de supprimer cette vérification :
+cela exposerait des arguments fraîchement créés ou réindexés à un cache
+potentiellement périmé. Aucun raccourci de ce type n'est accepté dans
+la PR. Le code d'instrumentation temporaire a été retiré après mesure.
+
 **Interprétation prudente :** ces écarts positifs signalent un coût
 possible des contrôles activés sur une page qui n'effectue pas de
 recherche sémantique. Il faut profiler précisément les accès
@@ -361,6 +391,23 @@ Reprendre avec `--after=ID` (valeur `resume_after` du dernier résumé),
 et adapter `--namespaces=0,10` ou `--ids=123,456` pour des sondages ciblés.
 L'option `--limit` est bornée à 5000 pages par invocation afin de ne pas
 lancer accidentellement une analyse sans limite sur une grosse base.
+
+Pour obtenir une estimation **en lecture seule** du coût du classement
+sémantique des pages, ajouter `--profile-reads` sur un lot réduit,
+par exemple :
+
+```sh
+php maintenance/run.php Wikidebates:AuditSemanticCacheSources --wiki=fr --limit=25 --profile-reads
+php maintenance/run.php Wikidebates:AuditSemanticCacheSources --wiki=en --limit=25 --profile-reads
+```
+
+L'option ajoute `semantic_check_ms` aux pages signalées et
+`semantic_check_timings` dans le résumé (arguments, débats, autres).
+Elle appelle le contrôle sur la page **avant de lire son contenu pour
+l'inventaire**, mais augmente le nombre de lectures SQL. Ne pas
+l'exécuter sans limite ni sur la production : une mesure CLI n'est
+pas directement comparable à une requête HTTP publique, et les
+caches/connexions propres à la préproduction influencent le résultat.
 
 Le rapport distingue `argument_reader` (requêtes parentes réelles)
 et `debate_renderer` (écriture sémantique, sans requête de parent).
