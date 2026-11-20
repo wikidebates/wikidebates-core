@@ -161,6 +161,16 @@ $publicOutput->considerCacheSettingsFinal();
 check(!$publicOutput->couldBePublicCached(),
 	'Query-containing full HTML pages cannot enter public HTTP/CDN caches');
 
+$internalParseContext = new RequestContext();
+$internalParseContext->setRequest(new FauxRequest(['action' => 'parse']));
+$internalParseContext->setTitle(Title::newFromText('WD Cache query A'));
+$internalParseOutput = new \MediaWiki\Output\OutputPage($internalParseContext);
+SemanticPageCacheHooks::onBeforePageDisplay($internalParseOutput, null);
+$internalParseOutput->considerCacheSettingsFinal();
+check($internalParseOutput->couldBePublicCached(),
+	'Internal ApiParse OutputPage remains eligible to publish a private reading fragment');
+
+
 $fullPageContext->setTitle(Title::newFromText('WD Cache A'));
 check(SemanticPageCacheHooks::onHTMLFileCache__useFileCache($fullPageContext),
 	'An unrelated ordinary page retains its normal file cache');
