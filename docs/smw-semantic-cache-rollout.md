@@ -200,6 +200,43 @@ d'ajouter un TTL ou une révalidation réseau à chaque réouverture.
 Les modifications dans un formulaire AJAX intégré à la page, sans
 navigation, restent à vérifier séparément sur la préproduction.
 
+### Essai HTTP avec 25 titres d'arguments issus du corpus Wikidébats
+
+Le laboratoire utilise le fichier déjà conservé
+`debatephp/tests/fixtures/pages.json` pour extraire les 12 arguments
+pour et 13 arguments contre du débat « Dieu existe-t-il ? ». Il
+les insère dans un rendu natif `#debate:render` et ouvre séparément
+le fragment de l'argument « Dieu est une invention ». Les vérifications
+confirment que les titres sont bien présents dans le débat, que le
+résumé de l'argument n'y est pas inclus, et qu'une édition de cet
+argument invalide son fragment avant purge sans modifier le débat.
+
+Le HTML du débat représente environ 63 Ko. Pour mesurer l'effet
+propre du suivi sémantique sur les pages de débat, les essais
+préchauffent les deux modes et alternent huit requêtes par mode,
+dans un ordre croisé A/B puis B/A :
+
+| Base | Suivi actif (médiane) | Suivi inactif (médiane) | Écart |
+| --- | ---: | ---: | ---: |
+| SQLite | 8,07 ms | 6,48 ms | +1,59 ms |
+| MariaDB | 14,20 ms | 10,67 ms | +3,53 ms |
+
+[Validation complète : 6 jobs / 6, 20 novembre 2026](https://github.com/wikidebates/wikidebates-core/actions/runs/44735081479).
+
+**Interprétation prudente :** ces écarts positifs signalent un coût
+possible des contrôles activés sur une page qui n'effectue pas de
+recherche sémantique. Il faut profiler précisément les accès
+`_ASK` et les appels répétés aux hooks, puis quantifier ce coût
+sur la préproduction avant de chercher à le supprimer. Ne pas
+introduire de raccourci qui ignorerait une vraie requête `_ASK`
+ou ferait réutiliser un fichier HTML périmé.
+
+Le corpus apporte des **titres réels**, mais les pages de test et leur
+configuration restent synthétiques et indépendantes du site.
+Les durées de GitHub Actions ne sont ni des mesures de production
+ni un critère de performance absolu. Le suivi expérimental reste
+désactivé par défaut, et `__NOCACHE__` reste sur les arguments.
+
 ## Limites exigeant validation
 
 - **Course avec les jobs différés :** les tests utilisent de véritables
