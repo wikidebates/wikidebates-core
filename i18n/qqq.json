@@ -393,6 +393,8 @@
 	"wk-reading-siblings-aria-label": "Interface message: wk-reading-siblings-aria-label.",
 	"wk-breadcrumb-aria-label": "Interface message: wk-breadcrumb-aria-label.",
 	"wk-summary-delete-generic": "Interface message: wk-summary-delete-generic.",
+	"wk-expand-load-error": "Displayed after an AJAX error while loading extra content or recent debate changes. The original button stays visible and can be used to retry.",
+	"wk-expand-loading": "Visible status while an extra-content or recent-debate-changes request is pending.",
 	"wk-interlanguage-label": "Label of the Minerva link for editing interlanguage links.",
 	"apihelp-wikidebatesreading-summary": "API module summary for Wikidebates reading fragments.",
 	"apihelp-wikidebatesreading-param-page": "API parameter: title of the argument page.",

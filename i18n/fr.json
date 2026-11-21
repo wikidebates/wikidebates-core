@@ -393,6 +393,8 @@
 	"wk-reading-siblings-aria-label": "Arguments connexes",
 	"wk-breadcrumb-aria-label": "Sommaire",
 	"wk-summary-delete-generic": "Suppression d’un élément",
+	"wk-expand-load-error": "Impossible de charger ce contenu. Cliquez de nouveau sur le bouton pour réessayer.",
+	"wk-expand-loading": "Chargement…",
 	"wk-interlanguage-label": "Interlangue",
 	"apihelp-wikidebatesreading-summary": "Renvoie l’extrait HTML préparé pour le mode lecture de Wikidébats.",
 	"apihelp-wikidebatesreading-param-page": "Titre de la page d’argument.",
