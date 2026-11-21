@@ -130,6 +130,16 @@ try {
 		$audit['sameIdentityHtmlDuplicates'] === 2 &&
 		$audit['comparablePages'] === 1,
 		'Audit never mixes differing revision identities in HTML comparison');
+	check($store->analyzeVariants(30000, 250)['validEntries'] >= 5,
+		'Full-wiki audit limits support large sites with over 10k directories and 200 variants');
+	foreach ([[50001, 20], [100, 251]] as [$invalidPages, $invalidVariants]) {
+		try {
+			$store->analyzeVariants($invalidPages, $invalidVariants);
+			throw new RuntimeException('Oversize audit limits accepted');
+		} catch (InvalidArgumentException $e) {
+			check(true, 'Unbounded audit limits are rejected');
+		}
+	}
 	$audit = $store->analyzeVariants(1, 2);
 	check($audit['truncatedPages'] === 1 && $audit['validEntries'] === 2,
 		'Variant audit respects the per-page file limit');
