@@ -1,68 +1,160 @@
-name: Wikidebates 1.43 regression checks
-
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-
-permissions:
-  contents: read
-
-jobs:
-  php:
-    runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        php: ['8.3', '8.4']
-    steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: ${{ matrix.php }}
-          extensions: mbstring, intl, xml
-          coverage: none
-      - name: PHP syntax
-        run: |
-          find debatephp/src src tests maintenance -name '*.php' -print0 | xargs -0 -n1 php -l > /tmp/php-lint.log
-          tail -n 5 /tmp/php-lint.log
-      - name: Standalone regression tests
-        run: php tests/run.php
-  mediawiki-143:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.3'
-          extensions: mbstring, intl, xml, pdo_sqlite, sqlite3
-          coverage: none
-          tools: composer
-      - name: MediaWiki 1.43.11 checkout
-        uses: actions/checkout@v4
-        with:
-          repository: wikimedia/mediawiki
-          ref: '1.43.11'
-          path: .mw-lab
-      - name: MediaWiki vendor dependencies
-        working-directory: .mw-lab
-        run: composer install --no-interaction --prefer-dist --no-progress
-      - name: MediaWiki 1.43 isolated integration
-        env:
-          MW_INSTALL_PATH: ${{ github.workspace }}/.mw-lab
-        run: php tests/mediawiki.php
-  javascript:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: tests/package-lock.json
-      - name: Install isolated JavaScript test dependencies
-        run: npm ci --prefix tests --ignore-scripts
-      - name: JavaScript unit tests (including the AJAX client)
-        run: npm test --prefix tests
+{
+	"name": "Wikidebates 1.43 regression checks",
+	"on": {
+		"push": {
+			"branches": [
+				"main"
+			]
+		},
+		"pull_request": null
+	},
+	"permissions": {
+		"contents": "read"
+	},
+	"jobs": {
+		"php": {
+			"runs-on": "ubuntu-24.04",
+			"strategy": {
+				"fail-fast": false,
+				"matrix": {
+					"php": [
+						"8.3",
+						"8.4"
+					]
+				}
+			},
+			"steps": [
+				{
+					"uses": "actions/checkout@v4"
+				},
+				{
+					"uses": "shivammathur/setup-php@v2",
+					"with": {
+						"php-version": "${{ matrix.php }}",
+						"extensions": "mbstring, intl, xml",
+						"coverage": "none"
+					}
+				},
+				{
+					"name": "PHP syntax",
+					"run": "find debatephp/src src tests maintenance -name '*.php' -print0 | xargs -0 -n1 php -l > /tmp/php-lint.log\ntail -n 5 /tmp/php-lint.log\n"
+				},
+				{
+					"name": "Standalone regression tests",
+					"run": "php tests/run.php"
+				},
+				{
+					"name": "Translation generation and catalog checks",
+					"run": "php tools/buildI18n.php --check\npython3 tests/checkI18n.py"
+				}
+			],
+			"timeout-minutes": 10
+		},
+		"mediawiki-143": {
+			"runs-on": "ubuntu-24.04",
+			"timeout-minutes": 20,
+			"steps": [
+				{
+					"uses": "actions/checkout@v4"
+				},
+				{
+					"uses": "shivammathur/setup-php@v2",
+					"with": {
+						"php-version": "${{ matrix.php }}",
+						"extensions": "mbstring, intl, xml, pdo_sqlite, sqlite3",
+						"coverage": "none",
+						"tools": "composer"
+					}
+				},
+				{
+					"name": "MediaWiki 1.43.11 checkout",
+					"uses": "actions/checkout@v4",
+					"with": {
+						"repository": "wikimedia/mediawiki",
+						"ref": "1.43.11",
+						"path": ".mw-lab"
+					}
+				},
+				{
+					"name": "MediaWiki vendor dependencies",
+					"working-directory": ".mw-lab",
+					"run": "composer install --no-interaction --prefer-dist --no-progress"
+				},
+				{
+					"name": "MediaWiki 1.43 isolated integration",
+					"env": {
+						"MW_INSTALL_PATH": "${{ github.workspace }}/.mw-lab"
+					},
+					"run": "php tests/mediawiki.php"
+				}
+			],
+			"strategy": {
+				"fail-fast": false,
+				"matrix": {
+					"php": [
+						"8.3",
+						"8.4"
+					]
+				}
+			}
+		},
+		"javascript": {
+			"runs-on": "ubuntu-24.04",
+			"steps": [
+				{
+					"uses": "actions/checkout@v4"
+				},
+				{
+					"uses": "actions/setup-node@v4",
+					"with": {
+						"node-version": "22",
+						"cache": "npm",
+						"cache-dependency-path": "tests/package-lock.json"
+					}
+				},
+				{
+					"name": "Install isolated JavaScript test dependencies",
+					"run": "npm ci --prefix tests --ignore-scripts"
+				},
+				{
+					"name": "JavaScript unit tests (including the AJAX client)",
+					"run": "npm test --prefix tests"
+				},
+				{
+					"name": "JavaScript message checks",
+					"run": "node tests/i18n.js"
+				}
+			],
+			"timeout-minutes": 10
+		},
+		"browser": {
+			"runs-on": "ubuntu-24.04",
+			"timeout-minutes": 15,
+			"steps": [
+				{
+					"uses": "actions/checkout@v4"
+				},
+				{
+					"uses": "actions/setup-node@v4",
+					"with": {
+						"node-version": "22",
+						"cache": "npm",
+						"cache-dependency-path": "tests/package-lock.json"
+					}
+				},
+				{
+					"name": "Install locked browser test dependencies",
+					"run": "npm ci --prefix tests --ignore-scripts"
+				},
+				{
+					"name": "Install Chromium matching the locked Playwright version",
+					"run": "node tests/node_modules/playwright-core/cli.js install --with-deps chromium"
+				},
+				{
+					"name": "Vector and Minerva browser regressions",
+					"run": "CHROMIUM_PATH=\"$(node -p 'require(\"./tests/node_modules/playwright-core\").chromium.executablePath()')\"\nexport CHROMIUM_PATH\ntest -x \"$CHROMIUM_PATH\"\nnpm run test:browser --prefix tests"
+				}
+			]
+		}
+	}
+}

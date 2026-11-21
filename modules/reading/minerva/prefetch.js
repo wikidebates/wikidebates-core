@@ -74,11 +74,14 @@
 				var key = WKReadingParseCache.key( params );
 
 				if ( WKReadingParseCache.get( key ) ) return;
-				WK.wkParsePage( params );
+				WK.wkParsePage( params, { prefetch: true } ).fail( function () {
+					// Speculative failures/cancellations are silent; a click can retry.
+				} );
 			} catch ( e ) {}
 		}
 
 		function prefetchSiblings() {
+			if ( !ui.root || !ui.root.isConnected || !document.documentElement.classList.contains( 'wk-reading-active' ) ) return;
 			var t = getSiblingTargets();
 			if ( t.next ) prefetchPage( t.next );
 			if ( t.prev ) prefetchPage( t.prev );

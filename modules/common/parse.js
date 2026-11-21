@@ -31,6 +31,12 @@
 	var wkParseActive = 0;
 	var wkPageParseCache = new Map();
 	var wkPageParseInFlight = new Map();
+	var wkPageParseQueue = [];
+	var wkPageParseActive = 0;
+	var wkPagePrefetchActive = 0;
+	var wkPageParsePumping = false;
+	var WK_PAGE_PARSE_CONCURRENCY = 2;
+	var WK_PAGE_PREFETCH_CONCURRENCY = 1;
 	var WK_PAGE_PARSE_CACHE_MAX = 50;
 
 	var WK_PARSE_FAIL_TTL_MS = 15000;
@@ -90,13 +96,105 @@
 		} ) );
 	}
 
-	/* Foreground, sibling prefetch and swipe preview share the same response. */
-	function wkParsePage( params ) {
+	/* Foreground, sibling prefetch and swipe preview share the same promise. */
+	function wkParsePage( params, options ) {
 		var key = wkPageParseKey( params );
 		var cached = wkCacheGetLRU( wkPageParseCache, key );
 		if ( cached !== null ) return jQuery.Deferred().resolve( cached ).promise();
-		if ( wkPageParseInFlight.has( key ) ) return wkPageParseInFlight.get( key );
+		var prefetch = !!( options && options.prefetch );
+		var job = wkPageParseInFlight.get( key );
+		if ( job ) {
+			// A click promotes the queued request instead of downloading it twice.
+			if ( !prefetch ) job.prefetch = false;
+			wkPageParsePump();
+			return job.promise;
+		}
+		job = {
+			key: key, params: Object.assign( {}, params ), prefetch: prefetch,
+			deferred: jQuery.Deferred(), startedAsPrefetch: false, finished: false
+		};
+		job.promise = job.deferred.promise();
+		// Register before dispatch, including for synchronously settled API doubles.
+		wkPageParseInFlight.set( key, job );
+		wkPageParseQueue.push( job );
+		wkPageParsePump();
+		return job.promise;
+	}
 
+	function wkPageParseFinish( job, success, context, args ) {
+		if ( job.finished ) return;
+		job.finished = true;
+		wkPageParseInFlight.delete( job.key );
+		wkPageParseActive--;
+		if ( job.startedAsPrefetch ) wkPagePrefetchActive--;
+		try {
+			var data = args[ 0 ];
+			if ( success ) {
+				if ( data && ( data.parse || data.reading ) ) {
+					wkCacheSetLRU( wkPageParseCache, WK_PAGE_PARSE_CACHE_MAX, job.key, data );
+				}
+				job.deferred.resolveWith( context, args );
+				if ( data && ( data.parse || data.reading ) ) mw.hook( 'wikidebates.pageParsed' ).fire( job.key );
+			} else {
+				job.deferred.rejectWith( context, args );
+			}
+		} finally {
+			wkPageParsePump();
+		}
+	}
+
+	function wkPageParseStart( job ) {
+		wkPageParseActive++;
+		job.startedAsPrefetch = job.prefetch;
+		if ( job.startedAsPrefetch ) wkPagePrefetchActive++;
+		var request;
+		try {
+			request = wkPageParseRequest( job.params );
+		} catch ( error ) {
+			wkPageParseFinish( job, false, null, [ 'http', { exception: error } ] );
+			return;
+		}
+		request.done( function () {
+			wkPageParseFinish( job, true, this, arguments );
+		} ).fail( function () {
+			wkPageParseFinish( job, false, this, arguments );
+		} );
+	}
+
+	function wkPageParsePump() {
+		if ( wkPageParsePumping ) return;
+		wkPageParsePumping = true;
+		try {
+			while ( wkPageParseActive < WK_PAGE_PARSE_CONCURRENCY && wkPageParseQueue.length ) {
+				var index = wkPageParseQueue.findIndex( function ( job ) { return !job.prefetch; } );
+				if ( index === -1 ) {
+					// Leave one slot available to a reader even during background work.
+					if ( wkPagePrefetchActive >= WK_PAGE_PREFETCH_CONCURRENCY ) break;
+					index = 0;
+				}
+				wkPageParseStart( wkPageParseQueue.splice( index, 1 )[ 0 ] );
+			}
+		} finally {
+			wkPageParsePumping = false;
+		}
+	}
+
+	function wkCancelPagePrefetch( keepKeys ) {
+		var keep = new Set( keepKeys || [] );
+		var cancelled = [];
+		wkPageParseQueue = wkPageParseQueue.filter( function ( job ) {
+			if ( !job.prefetch || keep.has( job.key ) ) return true;
+			wkPageParseInFlight.delete( job.key );
+			cancelled.push( job );
+			return false;
+		} );
+		// Never abort an active request or a request promoted by another consumer.
+		cancelled.forEach( function ( job ) {
+			job.deferred.reject( 'wikidebates-prefetch-cancelled' );
+		} );
+	}
+
+	function wkPageParseRequest( params ) {
 		var useFragment = mw.config.get( 'wgWikidebatesReadingFragments' ) !== false && !wkReadingEndpointUnavailable &&
 			params.action === 'parse' && params.page && params.prop === 'text' &&
 			params.formatversion === 2 && params.usearticle === 1 && params.redirects === 1 &&
@@ -126,15 +224,6 @@
 				return jQuery.Deferred().reject( code, details ).promise();
 			} );
 		}
-		wkPageParseInFlight.set( key, request );
-		request.always( function () {
-			wkPageParseInFlight.delete( key );
-		} ).done( function ( data ) {
-			if ( data && ( data.parse || data.reading ) ) {
-				wkCacheSetLRU( wkPageParseCache, WK_PAGE_PARSE_CACHE_MAX, key, data );
-				mw.hook( 'wikidebates.pageParsed' ).fire( key );
-			}
-		} );
 		return request;
 	}
 
@@ -284,6 +373,7 @@
 	WK.wkParseWikitext = wkParseWikitext;
 	WK.wkParseCancel = wkParseCancel;
 	WK.wkParsePage = wkParsePage;
+	WK.wkCancelPagePrefetch = wkCancelPagePrefetch;
 	WK.wkPageParseCache = {
 		key: wkPageParseKey,
 		get: function ( key ) { return wkCacheGetLRU( wkPageParseCache, key ); },

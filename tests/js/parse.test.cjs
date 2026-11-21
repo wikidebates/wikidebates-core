@@ -108,7 +108,11 @@ test( 'failed requests retry and skin/language variants do not share results', a
 	WK.wkParsePage( params( 'Argument' ) );
 	WK.wkParsePage( params( 'Argument', { uselang: 'en' } ) );
 	WK.wkParsePage( params( 'Argument', { useskin: 'minerva' } ) );
+	assert.equal( gets.length, 3, 'two active requests; the third variant waits' );
+	gets[ 1 ].request.resolve( { parse: { text: 'French Vector' } } );
 	assert.equal( gets.length, 4 );
+	assert.equal( gets[ 2 ].params.uselang, 'en' );
+	assert.equal( gets[ 3 ].params.useskin, 'minerva' );
 } );
 
 test( 'page response cache is bounded and evicts least recently used entries', async ( t ) => {
