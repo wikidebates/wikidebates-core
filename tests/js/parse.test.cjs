@@ -201,8 +201,10 @@ async function readingEnvironment( t ) {
 	const html = ( text ) => '<h2 id="Summary">Summary</h2><p>' + text + '</p><h2 id="Parent_debates">Parents</h2>';
 	async function reply( text ) {
 		env.gets.at( -1 ).request.resolve( { parse: { text: html( text ) } } );
-		await tick();
-		await tick();
+		const expected = env.WK.wkReadingExtractFragment( html( text ) );
+		// Wait for actual insertion, not an assumed number of jQuery timer turns.
+		for ( let i = 0; i < 100 && content.innerHTML !== expected; i++ ) await tick();
+		assert.equal( content.innerHTML, expected, 'the requested fragment has been inserted' );
 	}
 	return { ...env, config, content, open, reply,
 		setSkin: ( value ) => { skin = value; }, setExtra: ( value ) => { extra = value; } };
