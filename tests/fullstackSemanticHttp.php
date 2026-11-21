@@ -953,11 +953,13 @@ try {
 		'debate_mobile_second_state' => $debateMobileSecond['headers']['x-minerva-file-cache'][0] ?? '',
 	];
 
-	// A targeted MediaWiki refreshLinks job, not a page edit or browser
-	// view, must register durable _ASK profiles and SQL dependencies for
-	// an already-published unprofiled native Argument. Model a 0 -> 1 ->
-	// 0 semantic parent change through INDEPENDENT HTTP worker requests.
-	// No eager purge jobs are allowed to hide a faulty revision guard.
+	// Model a direct native Argument with no registered _ASK and a warm
+	// untracked mobile cache. Ordinary refreshLinks reparses the current
+	// revision, but SMW can skip persisting the annotations when no
+	// template-triggered forced-update marker is present. The explicit
+	// SMW forced UpdateJob must backfill a durable graph WITHOUT adding a
+	// revision. Then verify 0 -> 1 -> 0 semantic parent changes over real
+	// independent HTTP workers with eager purge disabled.
 	$originalEager = $GLOBALS['wgWikidebatesSemanticCacheEagerPurge'];
 	$disableEagerFile = $temporary . '/semantic-http-disable-eager-purge';
 	check(file_put_contents($disableEagerFile, 'disposable only') !== false,
@@ -1014,18 +1016,43 @@ try {
 			$backfilledPage->getContent()->getText() === $oldContent,
 			'Targeted _ASK backfill preserves both the Argument revision and its source');
 
+		$profilesAfterRefreshLinks = $store->getPropertyValues(
+			$unprofiledSubject, new Property('_ASK'));
+		// A successful refreshLinks is NOT a universal semantic backfill:
+		// SMW 7.3.1 skips data already recorded for the current revision
+		// unless it has a forced-update marker (e.g. a template link).
+		// This direct native Argument contains no transcluded template.
+		// Its parser output can carry four profiles while its stored _ASK
+		// remains empty. Record the result, then use SMW's explicit forced
+		// update, which is safe even for other direct native readers.
+		check(count($refreshParseEvents) >= 1 &&
+			end($refreshParseEvents)['tracked_query_marker'] === true &&
+			end($refreshParseEvents)['output_profile_count'] > 0,
+			'refreshLinks parsed native tracked queries even if SMW skipped its store update');
+
+		$forcedUpdate = $services->getJobFactory()->newJob('smw.update', [
+			'namespace' => $unprofiledTitle->getNamespace(),
+			'title' => $unprofiledTitle->getDBkey(),
+			\SMW\MediaWiki\Jobs\UpdateJob::FORCED_UPDATE => true,
+			'origin' => 'WikidebatesSemanticHTTPForcedProfileBackfillTest',
+		]);
+		check($forcedUpdate->run() !== false,
+			'SMW 7.3.1 forced single-page update executes without a content revision');
+		fsFlush();
+		$store->clear();
 		$askProfiles = $store->getPropertyValues(
 			$unprofiledSubject, new Property('_ASK'));
 		check(count($askProfiles) > 0,
-			'Targeted refreshLinks persists missing _ASK profiles with an empty parent result; ' .
+			'SMW forced update persists missing _ASK profiles even for an initially empty query; ' .
 			json_encode([
+				'profiles_after_refreshlinks' => count($profilesAfterRefreshLinks),
 				'refresh_parser_events' => $refreshParseEvents,
-				'main_request_action' => \MediaWiki\Context\RequestContext::getMain()->getRequest()
-					->getVal('action', 'view'),
-				'tracking_config' => $services->getMainConfig()->get('WikidebatesSemanticCacheTracking'),
-				'revision' => $backfilledPage->getLatest(),
-				'profile_count' => count($askProfiles),
+				'profiles_after_forced_smw_update' => count($askProfiles),
 			], JSON_UNESCAPED_SLASHES));
+		$backfilledPage = $services->getWikiPageFactory()->newFromTitle($unprofiledTitle);
+		check($backfilledPage->getLatest() === $oldRevision &&
+			$backfilledPage->getContent()->getText() === $oldContent,
+			'Forced SMW update preserves both the Argument revision and its source');
 
 		$queryLinkStore = (new \SMW\SQLStore\QueryDependencyLinksStoreFactory())
 			->newQueryDependencyLinksStore($store);
@@ -1047,7 +1074,7 @@ try {
 			$edgeCounts[(int)$edgeRow->s_id] = (int)$edgeRow->edge_count;
 		}
 		check(count(array_filter($edgeCounts, static fn(int $count): bool => $count === 0)) === 0,
-			'Every refreshed query ID has real SQL dependencies, including empty parent queries');
+			'Every forced-updated query ID has real SQL dependencies, including empty parent queries');
 		$store->clear();
 		$beforeParentFingerprint = SemanticRevisionStore::fingerprint(
 			$store, $unprofiledSubject);
@@ -1140,7 +1167,9 @@ try {
 			'Genuine debate-only Minerva HIT survives both external semantic changes');
 
 		$backfillObservation = [
-			'backfill_via_refreshlinks' => true,
+			'backfill_via_forced_smw_update' => true,
+			'profiles_after_refreshlinks' => count($profilesAfterRefreshLinks),
+			'refresh_parse_output_profiles' => end($refreshParseEvents)['output_profile_count'],
 			'argument_revision_unchanged' => true,
 			'ask_profiles' => count($askProfiles),
 			'query_ids' => count($queryIds),
@@ -1358,7 +1387,7 @@ try {
 		'corpus_debate' => $corpusMeasurements,
 		'untracked_minerva_semantic_baseline' => $untrackedMinervaObservation,
 		'unprofiled_native_argument_migration' => $unprofiledArgumentObservation,
-		'targeted_refreshlinks_argument_backfill' => $backfillObservation,
+		'targeted_forced_smw_update_argument_backfill' => $backfillObservation,
 		'benchmark' => [
 			'samples_each' => count($hitSamples),
 			'fragment_hit_median_ms' => $percentile($hitSamples, .5),
