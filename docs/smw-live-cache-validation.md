@@ -100,6 +100,39 @@ Le script relève `CF-Cache-Status`, `Age`, `Cache-Control`, `X-Cache`,
 `ETag` et `Vary` lorsqu'ils existent. L'absence d'un en-tête n'est
 pas un résultat « HIT » implicite.
 
+## 2 bis. Limiter les requêtes sur les pages Débat et diagnostiquer HTTP 429
+
+La sonde accepte `--surfaces=vector,minerva` pour ne demander que les
+deux HTML complets : les fragments `wikidebatesreading` sont conçus pour
+les pages Argument, avec des bornes `Summary` et `Parent_debates`, et
+peuvent donc être vides sur les pages Débat. Les surfaces disponibles sont
+`vector`, `minerva`, `fragment_vector`, `fragment_minerva`.
+
+`--delay-ms=1000` ajoute une seconde entre deux requêtes successives
+(intervalle configurable de 0 à 5000 ms). Pour un contrôle strictement
+en lecture seule, une seule itération suffit à vérifier l'accessibilité :
+
+```sh
+node maintenance/probeSemanticHttp.cjs \
+	--base=https://fr.wikidebates.org \
+	--title="Dieu existe-t-il ?" \
+	--surfaces=vector,minerva \
+	--iterations=1 \
+	--delay-ms=1000 \
+	--out=/tmp/smw-fr-debat-readonly.json
+```
+
+Si une requête échoue, notamment par HTTP 429, le rapport JSON conserve
+les mesures déjà effectuées et ajoute le statut et, lorsqu'ils sont
+présents, les en-têtes `Retry-After`, `CF-Ray` et `CF-Cache-Status`.
+La sonde s'arrête immédiatement et ne contourne pas la limitation par
+des reprises automatiques. Elle sort avec un code d'échec.
+
+Un contrôle sur une page Débat en production ne valide **pas** la
+fraîcheur après modification d'une relation parentale. Les en-têtes
+`Cache-Control: private` des URL `index.php?useskin=...` ne prouvent
+pas le comportement des URL publiques canoniques.
+
 ## 3. Changer une relation sémantique en préproduction uniquement
 
 Dans la copie de préproduction, modifier une relation de parent sur une

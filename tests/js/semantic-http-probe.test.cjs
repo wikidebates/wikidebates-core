@@ -72,6 +72,67 @@ test('HTTP cache probe reads real GET surfaces without editing pages', async () 
 	}
 });
 
+
+test('HTTP cache probe scopes surfaces, paces requests and preserves partial 429 diagnostics', async () => {
+	const opts = parseOptions([
+		'--base=https://example.org', '--title=Dieu existe-t-il ?',
+		'--surfaces=vector,minerva', '--iterations=2', '--delay-ms=1000'
+	]);
+	assert.deepEqual(makeSurfaces(opts).map(surface => surface.name), ['vector', 'minerva']);
+	const requests = [];
+	const delays = [];
+	const fetchFn = async (url, options) => {
+		requests.push({ url: String(url), method: options.method });
+		if (requests.length === 2) {
+			return new Response('Rate limit', {
+				status: 429,
+				headers: { 'retry-after': '718', 'cf-ray': 'sample-ray', server: 'cloudflare' }
+			});
+		}
+		return new Response('<html><main>Test</main></html>', {
+			status: 200, headers: { 'content-type': 'text/html' }
+		});
+	};
+	const report = await runProbe(opts, {
+		fetchFn,
+		sleep: async ms => { delays.push(ms); }
+	});
+	assert.equal(report.passed, false);
+	assert.equal(report.interrupted, true);
+	assert.deepEqual(report.surfaces, ['vector', 'minerva']);
+	assert.deepEqual(delays, [1000]);
+	assert.equal(requests.length, 2, '429 stops further requests without retrying');
+	assert.ok(requests.every(request => request.method === 'GET'));
+	assert.equal(report.results.vector.samples.length, 1);
+	assert.equal(report.results.vector.last.status, 200);
+	assert.equal(report.results.vector.error.status, 429);
+	assert.equal(report.results.vector.error.headers['retry-after'], '718');
+	assert.equal(report.results.vector.error.headers['cf-ray'], 'sample-ray');
+	assert.equal(report.results.minerva, undefined);
+	assert.match(report.failures[0], /HTTP 429 for vector/);
+});
+
+test('HTTP cache probe can limit a Debate observation to two HTML GETs', async () => {
+	const opts = parseOptions([
+		'--base=https://example.org', '--title=Dieu existe-t-il ?',
+		'--surfaces=vector,minerva', '--iterations=1'
+	]);
+	const requested = [];
+	const fetchFn = async (url, options) => {
+		requested.push({ url: String(url), method: options.method });
+		return new Response('<html><main>Debate page</main></html>', {
+			status: 200, headers: { 'content-type': 'text/html' }
+		});
+	};
+	const report = await runProbe(opts, { fetchFn });
+	assert.equal(report.passed, true);
+	assert.equal(report.interrupted, false);
+	assert.deepEqual(Object.keys(report.results), ['vector', 'minerva']);
+	assert.equal(requested.length, 2);
+	assert.ok(requested.every(request =>
+		request.method === 'GET' && request.url.includes('/index.php?')));
+});
+
 test('HTTP cache probe rejects unsafe or ambiguous options', () => {
 	assert.throws(() => parseOptions(['--base=http://example.org', '--title=Example']), /HTTPS/);
 	assert.throws(() => parseOptions(['--base=https://example.org/secret', '--title=Example']), /origin/);
@@ -84,4 +145,20 @@ test('HTTP cache probe rejects unsafe or ambiguous options', () => {
 	assert.throws(() => parseOptions([
 		'--base=https://example.org', '--title=Example', '--script-path=/w/../admin'
 	]), /script-path/);
+	assert.throws(() => parseOptions([
+		'--base=https://example.org', '--title=Example', '--surfaces=vector,vector'
+	]), /surfaces/);
+	assert.throws(() => parseOptions([
+		'--base=https://example.org', '--title=Example', '--surfaces=unknown'
+	]), /surfaces/);
+	assert.throws(() => parseOptions([
+		'--base=https://example.org', '--title=Example', '--delay-ms=-1'
+	]), /delay-ms/);
+	assert.throws(() => parseOptions([
+		'--base=https://example.org', '--title=Example', '--delay-ms=9000'
+	]), /delay-ms/);
+	assert.throws(() => parseOptions([
+		'--base=https://example.org', '--title=Example', '--surfaces=vector',
+		'--baseline=before.json', '--require-changed=minerva'
+	]), /selected surface/);
 });

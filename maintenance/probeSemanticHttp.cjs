@@ -11,7 +11,8 @@ const MOBILE_UA = 'Mozilla/5.0 (Linux; Android 12; Mobile) AppleWebKit/537.36 Ch
 function parseOptions(args) {
 	const allowed = new Set([
 		'base', 'title', 'script-path', 'iterations', 'expect-html',
-		'expect-fragment', 'baseline', 'out', 'require-changed'
+		'expect-fragment', 'baseline', 'out', 'require-changed',
+		'surfaces', 'delay-ms'
 	]);
 	const input = {};
 	for (const item of args) {
@@ -46,10 +47,22 @@ function parseOptions(args) {
 	if (!Number.isInteger(iterations) || iterations < 1 || iterations > 4) {
 		throw new Error('--iterations must be 1..4.');
 	}
+	const surfaces = input.surfaces === undefined ? SURFACE_NAMES : input.surfaces.split(',');
+	if (!surfaces.length || surfaces.some(name => !SURFACE_NAMES.includes(name)) ||
+		new Set(surfaces).size !== surfaces.length) {
+		throw new Error('--surfaces must contain unique names from: ' + SURFACE_NAMES.join(','));
+	}
+	const delayMs = input['delay-ms'] === undefined ? 0 : Number(input['delay-ms']);
+	if (!Number.isInteger(delayMs) || delayMs < 0 || delayMs > 5000) {
+		throw new Error('--delay-ms must be an integer from 0 to 5000.');
+	}
 	const requireChanged = input['require-changed']
 		? input['require-changed'].split(',') : [];
 	if (requireChanged.some(name => !SURFACE_NAMES.includes(name))) {
 		throw new Error('--require-changed contains an unknown surface.');
+	}
+	if (requireChanged.some(name => !surfaces.includes(name))) {
+		throw new Error('--require-changed must refer to a selected surface.');
 	}
 	if (requireChanged.length && !input.baseline) {
 		throw new Error('--require-changed requires --baseline=previous.json.');
@@ -59,6 +72,8 @@ function parseOptions(args) {
 		title: input.title,
 		scriptPath,
 		iterations,
+		surfaces,
+		delayMs,
 		expectHtml: input['expect-html'] || null,
 		expectFragment: input['expect-fragment'] || null,
 		baseline: input.baseline || null,
@@ -95,7 +110,7 @@ function makeSurfaces(options) {
 			userAgent: skin === 'minerva' ? MOBILE_UA : null
 		});
 	}
-	return surfaces;
+	return surfaces.filter(surface => !options.surfaces || options.surfaces.includes(surface.name));
 }
 
 async function fetchSurface(surface, origin, fetchFn) {
@@ -128,7 +143,17 @@ async function fetchSurface(surface, origin, fetchFn) {
 		throw new Error('Too many redirects for ' + surface.name);
 	}
 	if (!response.ok) {
-		throw new Error('HTTP ' + response.status + ' for ' + surface.name);
+		const error = new Error('HTTP ' + response.status + ' for ' + surface.name);
+		error.status = response.status;
+		error.headers = {};
+		for (const header of ['retry-after', 'cf-ray', 'cf-cache-status', 'cf-mitigated', 'server']) {
+			const value = response.headers.get(header);
+			if (value !== null) {
+				error.headers[header] = value;
+			}
+		}
+		await response.body?.cancel();
+		throw error;
 	}
 	const body = await response.text();
 	let html = body;
@@ -178,15 +203,40 @@ async function runProbe(options, overrides = {}) {
 	}
 	const results = {};
 	const failures = [];
-	for (const surface of makeSurfaces(options)) {
+	const surfaces = makeSurfaces(options);
+	const pause = overrides.sleep || (ms => new Promise(resolve => setTimeout(resolve, ms)));
+	let requests = 0;
+	let interrupted = false;
+	for (const surface of surfaces) {
 		const samples = [];
 		const expected = surface.api ? options.expectFragment : options.expectHtml;
 		for (let i = 0; i < options.iterations; i++) {
-			const result = await fetchSurface(surface, options.base, fetchFn);
+			if (requests > 0 && options.delayMs > 0) {
+				await pause(options.delayMs);
+			}
+			requests++;
+			let result;
+			try {
+				result = await fetchSurface(surface, options.base, fetchFn);
+			} catch (error) {
+				const diagnostic = Number.isInteger(error.status)
+					? { status: error.status, headers: error.headers || {} }
+					: { message: error.message };
+				results[surface.name] = {
+					stable: null, changed_from_baseline: null, samples,
+					last: samples.at(-1) || null, error: diagnostic
+				};
+				failures.push('Request failed: ' + error.message);
+				interrupted = true;
+				break;
+			}
 			samples.push({
 				...result.metadata,
 				marker_present: expected === null ? null : result.html.includes(expected)
 			});
+		}
+		if (interrupted) {
+			break;
 		}
 		const last = samples[samples.length - 1];
 		const stable = samples.every(sample => sample.sha256 === samples[0].sha256);
@@ -207,11 +257,12 @@ async function runProbe(options, overrides = {}) {
 		title: options.title,
 		script_path: options.scriptPath,
 		iterations: options.iterations,
-		surfaces: SURFACE_NAMES,
+		surfaces: SURFACE_NAMES.filter(name => surfaces.some(surface => surface.name === name)),
 		results,
+		interrupted,
 		passed: failures.length === 0,
 		failures,
-		note: 'Anonymous GET-only observations; unchanged hashes alone do not prove stale content. Use controlled staging edits and explicit expected markers.'
+		note: 'Anonymous GET-only observations. A failed request stops further probing without retries; 429 diagnostics include Retry-After when supplied. Unchanged hashes do not prove freshness without controlled staging edits.'
 	};
 }
 
