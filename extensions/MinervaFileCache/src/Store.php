@@ -36,29 +36,46 @@ class Store {
 		return $handle;
 	}
 
+	/** Validate entries consistently for ordinary reads and fragment fallback. */
+	private function validEntry(?array $entry, string $generation, array $identity): bool {
+		return $entry !== null &&
+			($entry['generation'] ?? null) === $generation &&
+			($entry['identity'] ?? null) === $identity &&
+			is_int($entry['expires'] ?? null) &&
+			is_int($entry['created'] ?? null) &&
+			min($entry['expires'], $entry['created'] + $this->ttl) > time() &&
+			is_string($entry['body'] ?? null) &&
+			is_array($entry['headers'] ?? null);
+	}
+
 	/** @return array{generation:string,entry:?array} */
 	public function read(string $page, string $variant, array $identity): array {
 		$dir = $this->pageDirectory($page);
-		$lock = $this->lock($dir, 'page.lock', LOCK_EX);
+		// Ordinary hits may read in parallel; writers and invalidations remain exclusive.
+		$lock = $this->lock($dir, 'page.lock', LOCK_SH);
 		if (!$lock) { throw new \RuntimeException('Cannot lock page cache'); }
 		try {
 			$generation = @file_get_contents($dir . '/generation');
 			if (!$generation) {
-				$generation = bin2hex(random_bytes(16));
-				if (@file_put_contents($dir . '/generation', $generation) === false) {
-					throw new \RuntimeException('Cannot initialize cache generation');
+				// Never upgrade SH to EX while holding SH: two first readers could deadlock.
+				fclose($lock);
+				$lock = $this->lock($dir, 'page.lock', LOCK_EX);
+				if (!$lock) { throw new \RuntimeException('Cannot initialize page cache lock'); }
+				$generation = @file_get_contents($dir . '/generation');
+				if (!$generation) {
+					$generation = bin2hex(random_bytes(16));
+					if (@file_put_contents($dir . '/generation', $generation) === false) {
+						throw new \RuntimeException('Cannot initialize cache generation');
+					}
 				}
 			}
 			$path = $dir . '/' . hash('sha256', $variant) . '.cache';
 			$entry = $this->decode($path);
-			if (!$entry || ($entry['generation'] ?? null) !== $generation ||
-				($entry['identity'] ?? null) !== $identity ||
-				min($entry['expires'] ?? 0, ($entry['created'] ?? 0) + $this->ttl) <= time() ||
-				!is_string($entry['body'] ?? null) || !is_array($entry['headers'] ?? null)) {
-				$entry = null;
-			}
-			return ['generation' => $generation, 'entry' => $entry];
-		} finally { fclose($lock); }
+			return ['generation' => $generation,
+				'entry' => $this->validEntry($entry, $generation, $identity) ? $entry : null];
+		} finally {
+			if (is_resource($lock)) { fclose($lock); }
+		}
 	}
 
 	/** Reuse only validated same-origin, content-language anonymous view entries. */
@@ -67,21 +84,30 @@ class Store {
 		$server = parse_url($context->getConfig()->get('Server'));
 		$host = $context->getRequest()->getHeader('Host') ?: (($server['host'] ?? '') .
 			(isset($server['port']) ? ':' . $server['port'] : ''));
-		foreach (glob($dir . '/*.cache') as $path) {
-			// Publication is atomic; read() below repeats identity, generation and TTL checks.
-			$entry = $this->decode($path);
-			$variant = $entry['variant'] ?? null;
-			$v = is_string($variant) ? json_decode($variant, true) : null;
-			if (!is_array($v) || count($v) !== 8 ||
-				$v[1] !== $context->getRequest()->getProtocol() ||
-				$v[2] !== $context->getConfig()->get('Server') ||
-				$v[3] !== $context->getLanguage()->getCode() ||
-				strtolower((string)$v[4]) !== strtolower($host) ||
-				(string)$v[7] !== (string)$context->getRequest()->getHeader('X-Subdomain')) { continue; }
-			$valid = $this->read($page, $variant, $identity)['entry'];
-			if ($valid) { $valid['expires'] = min($valid['expires'], $valid['created'] + $this->ttl); return $valid; }
-		}
-		return null;
+		// One shared-lock pass: validate the decoded candidate without reading it twice.
+		$lock = $this->lock($dir, 'page.lock', LOCK_SH);
+		if (!$lock) { throw new \RuntimeException('Cannot lock fragment cache'); }
+		try {
+			$generation = @file_get_contents($dir . '/generation');
+			if (!$generation) { return null; }
+			foreach (glob($dir . '/*.cache') ?: [] as $path) {
+				$entry = $this->decode($path);
+				if (!$this->validEntry($entry, $generation, $identity)) { continue; }
+				$variant = $entry['variant'] ?? null;
+				$v = is_string($variant) ? json_decode($variant, true) : null;
+				if (!is_array($v) || count($v) !== 8 ||
+					$v[1] !== $context->getRequest()->getProtocol() ||
+					$v[2] !== $context->getConfig()->get('Server') ||
+					$v[3] !== $context->getLanguage()->getCode() ||
+					strtolower((string)$v[4]) !== strtolower($host) ||
+					(string)$v[7] !== (string)$context->getRequest()->getHeader('X-Subdomain')) {
+					continue;
+				}
+				$entry['expires'] = min($entry['expires'], $entry['created'] + $this->ttl);
+				return $entry;
+			}
+			return null;
+		} finally { fclose($lock); }
 	}
 
 	private function decode(string $path): ?array {
@@ -102,23 +128,33 @@ class Store {
 		string $body, array $headers, int $expires = PHP_INT_MAX): bool {
 		if (strlen($body) > $this->maxBytes) { return false; }
 		$dir = $this->pageDirectory($page);
-		$lock = $this->lock($dir, 'page.lock', LOCK_EX);
-		if (!$lock) { return false; }
-		$temp = null;
+		$created = time();
+		$expires = min($created + $this->ttl, $expires);
+		if ($expires <= $created) { return false; }
+		$entry = ['generation' => $generation, 'identity' => $identity, 'created' => $created,
+			'expires' => $expires, 'variant' => $variant, 'body' => $body, 'headers' => $headers];
+		$json = json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+		if ($json === false || strlen($json) > $this->maxBytes * 2) { return false; }
+		// Prepare and compress outside the exclusive page lock.
+		$payload = gzencode($json, 3);
+		if ($payload === false) { return false; }
+		$temp = @tempnam($dir, '.write-');
+		if (!$temp || dirname($temp) !== $dir) { return false; }
 		try {
-			if (@file_get_contents($dir . '/generation') !== $generation) { return false; }
-			$entry = ['generation' => $generation, 'identity' => $identity, 'created' => time(),
-				'expires' => min(time() + $this->ttl, $expires), 'variant' => $variant, 'body' => $body, 'headers' => $headers];
-			$json = json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-			if ($json === false || strlen($json) > $this->maxBytes * 2) { return false; }
-			$payload = gzencode($json, 3);
-			$temp = @tempnam($dir, '.write-');
-			if (!$temp || dirname($temp) !== $dir || @file_put_contents($temp, $payload) !== strlen($payload)) { return false; }
-			if (!@chmod($temp, 0600)) { return false; }
-			return @rename($temp, $dir . '/' . hash('sha256', $variant) . '.cache');
+			if (@file_put_contents($temp, $payload) !== strlen($payload) || !@chmod($temp, 0600)) {
+				return false;
+			}
+			$lock = $this->lock($dir, 'page.lock', LOCK_EX);
+			if (!$lock) { return false; }
+			try {
+				// A concurrent purge must prevent an older rendering from being published.
+				if (@file_get_contents($dir . '/generation') !== $generation || $expires <= time()) {
+					return false;
+				}
+				return @rename($temp, $dir . '/' . hash('sha256', $variant) . '.cache');
+			} finally { fclose($lock); }
 		} finally {
-			if ($temp && is_file($temp)) { @unlink($temp); }
-			fclose($lock);
+			if (is_file($temp)) { @unlink($temp); }
 		}
 	}
 
@@ -151,5 +187,32 @@ class Store {
 			} finally { fclose($lock); }
 		}
 		return $count;
+	}
+
+	/**
+	 * Read-only maintenance diagnostics. This scans metadata only, not compressed HTML.
+	 * Never invoke it on a visitor request.
+	 * @return array{pages:int,files:int,bytes:int,maxVariantsPerPage:int}
+	 */
+	public function statistics(): array {
+		$stats = ['pages' => 0, 'files' => 0, 'bytes' => 0, 'maxVariantsPerPage' => 0];
+		if (!is_dir($this->root)) { return $stats; }
+		$prefixes = new \FilesystemIterator($this->root, \FilesystemIterator::SKIP_DOTS);
+		foreach ($prefixes as $prefix) {
+			if (!$prefix->isDir() || $prefix->isLink()) { continue; }
+			foreach (new \FilesystemIterator($prefix->getPathname(), \FilesystemIterator::SKIP_DOTS) as $page) {
+				if (!$page->isDir() || $page->isLink()) { continue; }
+				$stats['pages']++;
+				$variants = 0;
+				foreach (new \FilesystemIterator($page->getPathname(), \FilesystemIterator::SKIP_DOTS) as $file) {
+					if (!$file->isFile() || $file->isLink() || $file->getExtension() !== 'cache') { continue; }
+					$variants++;
+					$stats['files']++;
+					$stats['bytes'] += $file->getSize();
+				}
+				$stats['maxVariantsPerPage'] = max($stats['maxVariantsPerPage'], $variants);
+			}
+		}
+		return $stats;
 	}
 }

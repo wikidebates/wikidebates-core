@@ -1,0 +1,28 @@
+name: MinervaFileCache checks
+
+on:
+  push:
+    paths:
+      - 'extensions/MinervaFileCache/**'
+      - '.github/workflows/minerva-file-cache-tests.yml'
+  pull_request:
+    paths:
+      - 'extensions/MinervaFileCache/**'
+      - '.github/workflows/minerva-file-cache-tests.yml'
+
+jobs:
+  standalone:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP version
+        run: php -v
+      - name: Lint extension PHP
+        run: |
+          find extensions/MinervaFileCache -type f -name '*.php' -print0 | xargs -0 -n 1 php -l
+      - name: Standalone tests
+        run: |
+          php extensions/MinervaFileCache/tests/unit.php
+          php extensions/MinervaFileCache/tests/prewarm-unit.php
+          php extensions/MinervaFileCache/tests/prewarm-command-unit.php
+          php extensions/MinervaFileCache/tests/prewarm-category-unit.php
