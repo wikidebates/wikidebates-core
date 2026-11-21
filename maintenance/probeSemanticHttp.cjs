@@ -257,7 +257,7 @@ async function runProbe(options, overrides = {}) {
 		title: options.title,
 		script_path: options.scriptPath,
 		iterations: options.iterations,
-		surfaces: surfaces.map(surface => surface.name),
+		surfaces: SURFACE_NAMES.filter(name => surfaces.some(surface => surface.name === name)),
 		results,
 		interrupted,
 		passed: failures.length === 0,
