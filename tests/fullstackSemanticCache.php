@@ -691,7 +691,12 @@ fsSave($historicalParent, 'No parent relation yet');
 fsFlush();
 
 $originalTracking = $GLOBALS['wgWikidebatesSemanticCacheTracking'];
+$originalEagerPurge = $GLOBALS['wgWikidebatesSemanticCacheEagerPurge'];
 try {
+	// A staging migration uses tracking without eager purge jobs.
+	$GLOBALS['wgWikidebatesSemanticCacheEagerPurge'] = false;
+	check($services->getMainConfig()->get('WikidebatesSemanticCacheEagerPurge') === false,
+		'Historical Argument migration does not require eager purges');
 	$GLOBALS['wgWikidebatesSemanticCacheTracking'] = false;
 	fsSave($historicalArgument,
 		'{{Argument|résumé=Un argument historique sans profil enregistré}}');
@@ -821,6 +826,7 @@ try {
 	fsFlush();
 } finally {
 	$GLOBALS['wgWikidebatesSemanticCacheTracking'] = $originalTracking;
+	$GLOBALS['wgWikidebatesSemanticCacheEagerPurge'] = $originalEagerPurge;
 }
 
 echo "OK: SMW 7.3.1 native profiles, empty results, inserts, moves, deletes and fragment invalidation\n";
