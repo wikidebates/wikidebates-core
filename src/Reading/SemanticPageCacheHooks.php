@@ -33,6 +33,11 @@ final class SemanticPageCacheHooks {
 		if (!self::enabled()) {
 			return true;
 		}
+		// MinervaFileCache independently validates the anonymous request before its
+		// file lookup. Do not query SMW on a valid mobile HTML-file HIT.
+		if (self::isAnonymousMobileFileCandidate($context)) {
+			return true;
+		}
 		$title = $context->getTitle();
 		if (!$title || !$title->canExist()) {
 			return false;
@@ -60,6 +65,13 @@ final class SemanticPageCacheHooks {
 		// expiry to zero and prevent any anonymous fragment publication.
 		// Restrict this veto to an actual action=view HTML response.
 		if ($out->getContext()->getRequest()->getVal('action', 'view') !== 'view') {
+			return;
+		}
+		// A Minerva cache MISS has passed the other extension vetoes and
+		// will store only if the final HTML/headers are public-safe. Its own
+		// output handler prevents upstream HTTP caches on success or failure.
+		if (self::isAnonymousMobileFileCandidate($out->getContext()) &&
+			\\MediaWiki\\Extension\\MinervaFileCache\\Hooks::isCandidateOutput($out)) {
 			return;
 		}
 		try {
@@ -134,7 +146,20 @@ final class SemanticPageCacheHooks {
 		}
 	}
 
-	private static function enabled(): bool {
+	/**
+	 * This short-circuit is only for Minerva's own guarded file-cache pipeline.
+	 * A desktop view and a registered mobile view keep semantic validation.
+	 */
+	private static function isAnonymousMobileFileCandidate($context): bool {
+		return class_exists(\\MediaWiki\\Extension\\MinervaFileCache\\Hooks::class) &&
+			class_exists(\\MobileContext::class) &&
+			$context->getConfig()->get('MinervaFileCacheEnabled') &&
+			!$context->getUser()->isRegistered() &&
+			$context->getSkin()->getSkinName() === 'minerva' &&
+			\\MobileContext::singleton()->shouldDisplayMobileView();
+	}
+
+		private static function enabled(): bool {
 		return (bool)MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesSemanticCacheTracking');
 	}
 
