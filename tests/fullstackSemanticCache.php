@@ -56,7 +56,7 @@ require __DIR__ . '/fullstackSupport.php';
 $fsUser = \MediaWiki\User\User::newSystemUser('Wikidebates semantic cache lab', ['steal' => false]);
 check($fsUser !== null, 'Disposable test writer');
 check($services->getMainConfig()->get('WikidebatesSemanticCacheEagerPurge') === true,
-	'Eager purge stays enabled by default');
+	'Disposable semantic cache lab explicitly enables eager purge');
 $jobTitle = Title::newFromText('WD Cache child');
 $jobA = new SemanticCachePurgeJob($jobTitle, ['dependencyIds' => [31, 12, 31], 'cursor' => 0]);
 $jobB = new SemanticCachePurgeJob($jobTitle, ['dependencyIds' => [12, 31], 'cursor' => 0]);

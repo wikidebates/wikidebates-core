@@ -17,8 +17,11 @@ Ne pas effacer ni remplacer les jobs existants.
 Les workers anglais habituels doivent toujours exclure
 `smw.update` et `wikidebatesSemanticCachePurge`. Pour toute
 execution des purges, utiliser `WD_SEMANTIC_PURGE_MANUAL=1`.
-Lancer un purge job sans cette variable lorsque EagerPurge=false
-l'acquitte sans purger.
+Le manifeste laisse desormais Tracking=false ET EagerPurge=false par defaut.
+Lorsque EagerPurge=false, un job refuse l'execution avec une erreur
+reessayable (il ne doit plus etre acquitte comme termine). La variable
+WD_SEMANTIC_PURGE_MANUAL ne change pas a elle seule cette configuration :
+CheckSemanticCache doit prouver les preconditions effectives avant tout essai.
 
 ## Diagnostic et lot de cinq jobs
 

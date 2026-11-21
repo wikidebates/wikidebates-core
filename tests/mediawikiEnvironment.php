@@ -73,6 +73,8 @@ function wikidebatesTestConfig($settings): void {
 		'JobRunRate' => 0,
 		'WikidebatesReadingFragments' => getenv('WD_TEST_SEMANTIC_BASELINE') === '1' || getenv('WD_TEST_SEMANTIC_TRACKING') === '1',
 		'WikidebatesSemanticCacheTracking' => getenv('WD_TEST_SEMANTIC_TRACKING') === '1',
+		// Opt in ONLY in disposable lab tests exercising active purge execution.
+		'WikidebatesSemanticCacheEagerPurge' => getenv('WD_TEST_SEMANTIC_TRACKING') === '1',
 		'WikidebatesReadingCacheDirectory' => (getenv('WD_TEST_SEMANTIC_BASELINE') === '1' || getenv('WD_TEST_SEMANTIC_TRACKING') === '1') ? $temporary : false,
 		'ShowExceptionDetails' => true
 	]);
