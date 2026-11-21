@@ -141,6 +141,63 @@ live site's complete template set, CDN rules, every semantic query,
 concurrent external edits, or long-running migration/rebuild behavior.
 The existing launch checklist and rollback safeguards still apply.
 
+### Forced SMW profile backfill without a page revision (disposable test)
+
+The existing `tests/fullstackSemanticCache.php` regression establishes that
+ordinary `action=view` and `action=wikidebatesreading` parses can annotate
+a transient `ParserOutput` **without persisting** its `_ASK` profile.
+Merely visiting an unprofiled Argument does not backfill its SMW subject.
+
+A normal MediaWiki 1.43 `RefreshLinksJob` also **cannot be treated as a
+universal backfill**. It reparses the existing revision but SMW 7.3.1's
+`LinksUpdateComplete` may skip the store update when it deems the same
+revision already processed. For a transclusion such as
+`{{Argument|résumé=...}}`, MediaWiki's template links mark the update
+as forced; the earlier single-process fullstack test verified that it
+persists profiles without editing the page.
+
+The extended real-HTTP regression also covers a **direct native
+`#argument:render`** with no template links. In the disposable lab, its
+`RefreshLinksJob` completes and the new `ParserOutput` contains four
+tracked profiles, **but SMW's stored `_ASK` stays empty**. This is a
+dangerous false positive for migration scripts that check only whether
+`RefreshLinksJob::run()` succeeded.
+
+For robust targeted backfills, the test therefore uses **SMW's registered
+`smw.update` job with `UpdateJob::FORCED_UPDATE => true`**. This
+reparses and writes the semantic data even if MediaWiki's current
+content revision is unchanged. The disposable regression verifies:
+
+- `_ASK` is persisted, query IDs are resolvable, and every registered
+  query ID has actual rows in `smw_query_links`, **including the
+  initially empty parent queries**.
+- The Argument's wikitext and content revision stay unchanged.
+- The semantic fingerprint is valid and consecutive independent real
+  HTTP reading-API requests eventually obtain a genuine
+  `fragment-cache` HIT.
+- External additions and removals of a parent (`0 → 1 → 0`)
+  advance the fingerprint, reject obsolete fragments and produce
+  fresh Minerva-bypassed full Argument HTML.
+- Both the CLI writer and HTTP workers use
+  `WikidebatesSemanticCacheEagerPurge=false`; no asynchronous
+  eager-purge job is needed for freshness.
+- Unrelated debate-only pages keep Minerva `HIT` responses despite
+  those external semantic edits.
+
+The `targeted_forced_smw_update_argument_backfill` report includes
+the observed `profiles_after_refreshlinks` and the measured SQL
+dependency rows. These cache-freshness and selectivity checks are
+**hard assertions** and make CI fail if broken.
+
+**No automatic production migration is included.** This test is run
+only against disposable SQLite/MariaDB installations of MediaWiki
+1.43 and SMW 7.3.1. A real rollout must independently verify the
+ledger/schema, existing SMW jobs, user-facing templates, production
+cache policy and a safe staging/rollback plan. Although no article
+content revision is created, a forced SMW update **does write
+semantic secondary data** and can trigger cache invalidations.
+
+
 ## Production source inventory (read-only)
 
 After updating the extension, the following command scans at most 200 records

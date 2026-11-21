@@ -953,6 +953,243 @@ try {
 		'debate_mobile_second_state' => $debateMobileSecond['headers']['x-minerva-file-cache'][0] ?? '',
 	];
 
+	// Model a direct native Argument with no registered _ASK and a warm
+	// untracked mobile cache. Ordinary refreshLinks reparses the current
+	// revision, but SMW can skip persisting the annotations when no
+	// template-triggered forced-update marker is present. The explicit
+	// SMW forced UpdateJob must backfill a durable graph WITHOUT adding a
+	// revision. Then verify 0 -> 1 -> 0 semantic parent changes over real
+	// independent HTTP workers with eager purge disabled.
+	$originalEager = $GLOBALS['wgWikidebatesSemanticCacheEagerPurge'];
+	$disableEagerFile = $temporary . '/semantic-http-disable-eager-purge';
+	check(file_put_contents($disableEagerFile, 'disposable only') !== false,
+		'Isolated HTTP workers switch off semantic eager purges for migration test');
+	$GLOBALS['wgWikidebatesSemanticCacheEagerPurge'] = false;
+	try {
+		check($services->getMainConfig()->get('WikidebatesSemanticCacheTracking') === true &&
+			$services->getMainConfig()->get('WikidebatesSemanticCacheEagerPurge') === false,
+			'Backfill runs with tracking on and eager semantic purges off');
+		// Remove the existing parent before registering _ASK so the SQL
+		// dependency graph must include initially EMPTY query results.
+		fsSave($unprofiledParentName, 'No semantic parent relation before _ASK backfill');
+		fsFlush();
+		$store->clear();
+		check($store->getPropertyValues($unprofiledSubject, new Property('_ASK')) === [],
+			'No _ASK profile exists immediately before the isolated backfill');
+
+		$oldRevision = $services->getWikiPageFactory()
+			->newFromTitle($unprofiledTitle)->getLatest();
+		$oldContent = $services->getWikiPageFactory()
+			->newFromTitle($unprofiledTitle)->getContent()->getText();
+
+		$refreshParseEvents = [];
+		$refreshObserver = $services->getHookContainer()->scopedRegister(
+			'ParserAfterParse',
+			static function($parser, &$text, $stripState) use (&$refreshParseEvents, $unprofiledTitle): bool {
+				$title = $parser->getTitle();
+				if ($title && $title->getPrefixedDBkey() === $unprofiledTitle->getPrefixedDBkey()) {
+					$output = $parser->getOutput();
+					$semanticData = $output->getExtensionData(\SMW\ParserData::DATA_ID);
+					$refreshParseEvents[] = [
+						'title' => $title->getPrefixedText(),
+						'tracked_query_marker' => $output->getExtensionData(
+							\MediaWiki\Extension\DebatePHP\TrackedSemanticQuery::OUTPUT_MARKER) === true,
+						'output_profile_count' => $semanticData instanceof \SMW\SemanticData ?
+							count($semanticData->getPropertyValues(new Property('_ASK'))) : -1,
+					];
+				}
+				return true;
+			}
+		);
+		$refresh = new \RefreshLinksJob($unprofiledTitle, [
+			'causeAction' => 'WikidebatesSemanticHTTPBackfillTest',
+			'causeAgent' => 'Isolated MediaWiki 1.43 SMW regression',
+		]);
+		check($refresh->run() !== false,
+			'MediaWiki refreshLinks job executes for one published Argument without editing');
+		$refreshObserver = null;
+		fsFlush();
+		$store->clear();
+
+		$backfilledPage = $services->getWikiPageFactory()->newFromTitle($unprofiledTitle);
+		check($backfilledPage->getLatest() === $oldRevision &&
+			$backfilledPage->getContent()->getText() === $oldContent,
+			'Targeted _ASK backfill preserves both the Argument revision and its source');
+
+		$profilesAfterRefreshLinks = $store->getPropertyValues(
+			$unprofiledSubject, new Property('_ASK'));
+		// A successful refreshLinks is NOT a universal semantic backfill:
+		// SMW 7.3.1 skips data already recorded for the current revision
+		// unless it has a forced-update marker (e.g. a template link).
+		// This direct native Argument contains no transcluded template.
+		// Its parser output can carry four profiles while its stored _ASK
+		// remains empty. Record the result, then use SMW's explicit forced
+		// update, which is safe even for other direct native readers.
+		check(count($refreshParseEvents) >= 1 &&
+			end($refreshParseEvents)['tracked_query_marker'] === true &&
+			end($refreshParseEvents)['output_profile_count'] > 0,
+			'refreshLinks parsed native tracked queries even if SMW skipped its store update');
+
+		$forcedUpdate = $services->getJobFactory()->newJob('smw.update', [
+			'namespace' => $unprofiledTitle->getNamespace(),
+			'title' => $unprofiledTitle->getDBkey(),
+			\SMW\MediaWiki\Jobs\UpdateJob::FORCED_UPDATE => true,
+			'origin' => 'WikidebatesSemanticHTTPForcedProfileBackfillTest',
+		]);
+		check($forcedUpdate->run() !== false,
+			'SMW 7.3.1 forced single-page update executes without a content revision');
+		fsFlush();
+		$store->clear();
+		$askProfiles = $store->getPropertyValues(
+			$unprofiledSubject, new Property('_ASK'));
+		check(count($askProfiles) > 0,
+			'SMW forced update persists missing _ASK profiles even for an initially empty query; ' .
+			json_encode([
+				'profiles_after_refreshlinks' => count($profilesAfterRefreshLinks),
+				'refresh_parser_events' => $refreshParseEvents,
+				'profiles_after_forced_smw_update' => count($askProfiles),
+			], JSON_UNESCAPED_SLASHES));
+		$backfilledPage = $services->getWikiPageFactory()->newFromTitle($unprofiledTitle);
+		check($backfilledPage->getLatest() === $oldRevision &&
+			$backfilledPage->getContent()->getText() === $oldContent,
+			'Forced SMW update preserves both the Argument revision and its source');
+
+		$queryLinkStore = (new \SMW\SQLStore\QueryDependencyLinksStoreFactory())
+			->newQueryDependencyLinksStore($store);
+		$queryIds = array_values(array_unique(array_filter(array_map(
+			'intval', array_values($queryLinkStore->findEmbeddedQueryIdListBySubject(
+				$unprofiledSubject))
+		), static fn(int $id): bool => $id > 0)));
+		check($queryIds !== [],
+			'Persisted _ASK profiles resolve to durable SMW query IDs');
+		$edgeCounts = array_fill_keys($queryIds, 0);
+		$edgeRows = $store->getConnection('mw.db')->newSelectQueryBuilder()
+			->select(['s_id', 'edge_count' => 'COUNT(*)'])
+			->from(\SMW\SQLStore\SQLStore::QUERY_LINKS_TABLE)
+			->where(['s_id' => $queryIds])
+			->groupBy('s_id')
+			->caller(__FILE__)
+			->fetchResultSet();
+		foreach ($edgeRows as $edgeRow) {
+			$edgeCounts[(int)$edgeRow->s_id] = (int)$edgeRow->edge_count;
+		}
+		check(count(array_filter($edgeCounts, static fn(int $count): bool => $count === 0)) === 0,
+			'Every forced-updated query ID has real SQL dependencies, including empty parent queries');
+		$store->clear();
+		$beforeParentFingerprint = SemanticRevisionStore::fingerprint(
+			$store, $unprofiledSubject);
+		check(\MediaWiki\Extension\Wikidebates\Reading\SemanticCacheGuard::safeForRead(
+			$unprofiledTitle, $backfilledPage),
+			'The once-unprofiled Argument becomes eligible for fingerprint-guarded fragments');
+
+		$backfillSources = [];
+		$backfillWarm = null;
+		for ($attempt = 0; $attempt < 10; $attempt++) {
+			$sample = $fragment($unprofiledArgumentName);
+			$backfillSources[] = $sample['fragment']['source'] ?? 'unknown';
+			check(str_contains($sample['fragment']['html'], 'WD_HTTP_UNPROFILED_SUMMARY'),
+				'After backfill the Argument summary is still rendered normally');
+			if (($sample['fragment']['source'] ?? '') === 'fragment-cache') {
+				$backfillWarm = $sample;
+				break;
+			}
+		}
+		check($backfillWarm !== null,
+			'Real HTTP fragment reaches a verified cache HIT after targeted backfill: ' .
+			json_encode($backfillSources));
+
+		// No owner-page edit, and no eager purge: the transactionally updated
+		// semantic revision must invalidate an existing cached fragment.
+		fsSave($unprofiledParentName,
+			'{{#set:WD HTTP Parent=' . $unprofiledAnchorName .
+			'|' . $proProperty . '=' . $unprofiledArgumentName . '}}');
+		fsFlush();
+		$store->clear();
+		check($backfilledPage->getLatest() === $oldRevision,
+			'Adding the external parent leaves the backfilled Argument revision unchanged');
+		$afterAdditionFingerprint = SemanticRevisionStore::fingerprint(
+			$store, $unprofiledSubject);
+		check($afterAdditionFingerprint !== $beforeParentFingerprint,
+			'Adding the first parent changes fingerprint even when the old query returned zero rows');
+		$afterAddition = $fragment($unprofiledArgumentName);
+		check(($afterAddition['fragment']['source'] ?? '') !== 'fragment-cache' &&
+			str_contains($afterAddition['fragment']['html'], 'WD_HTTP_UNPROFILED_SUMMARY'),
+			'Real HTTP refuses the pre-parent fragment after an external 0-to-1 semantic update');
+
+		$afterAdditionMobile = $http('index.php', $unprofiledUrl, $unprofiledHeaders);
+		check($afterAdditionMobile['status'] === 200 &&
+			str_starts_with($afterAdditionMobile['headers']['x-minerva-file-cache'][0] ?? '',
+				'BYPASS; reason=extension-veto') &&
+			str_contains($afterAdditionMobile['body'], 'WD_HTTP_MATCHES=1') &&
+			(str_contains($afterAdditionMobile['body'], $unprofiledParentName) ||
+				str_contains($afterAdditionMobile['body'],
+					str_replace(' ', '_', $unprofiledParentName))),
+			'Full mobile Argument HTML and real parent link are fresh after the external addition');
+
+		$rewarmedAfterAddition = false;
+		for ($attempt = 0; $attempt < 10; $attempt++) {
+			$sample = $fragment($unprofiledArgumentName);
+			if (($sample['fragment']['source'] ?? '') === 'fragment-cache') {
+				$rewarmedAfterAddition = true;
+				break;
+			}
+		}
+		check($rewarmedAfterAddition,
+			'New parent-state fragment becomes cacheable again, not permanently bypassed');
+
+		fsSave($unprofiledParentName, 'Removed the previously matching parent');
+		fsFlush();
+		$store->clear();
+		check($backfilledPage->getLatest() === $oldRevision,
+			'Removing the external parent also leaves the Argument revision unchanged');
+		check(SemanticRevisionStore::fingerprint($store, $unprofiledSubject) !==
+			$afterAdditionFingerprint,
+			'Removing the final parent changes the durable semantic fingerprint');
+		$afterRemoval = $fragment($unprofiledArgumentName);
+		check(($afterRemoval['fragment']['source'] ?? '') !== 'fragment-cache',
+			'Real HTTP rejects the fragment holding the removed parent');
+		$afterRemovalMobile = $http('index.php', $unprofiledUrl, $unprofiledHeaders);
+		check($afterRemovalMobile['status'] === 200 &&
+			str_starts_with($afterRemovalMobile['headers']['x-minerva-file-cache'][0] ?? '',
+				'BYPASS; reason=extension-veto') &&
+			str_contains($afterRemovalMobile['body'], 'WD_HTTP_MATCHES=0') &&
+			!str_contains($afterRemovalMobile['body'], $unprofiledParentName) &&
+			!str_contains($afterRemovalMobile['body'],
+				str_replace(' ', '_', $unprofiledParentName)),
+			'Full mobile Argument HTML removes the former parent without waiting for a purge');
+
+		// An unrelated Debate must keep its previously published Minerva
+		// file across both semantic edits to the Argument parent.
+		$unrelatedDebateAfter = $http('index.php', $pureDebateUrl, $unprofiledHeaders);
+		check($unrelatedDebateAfter['status'] === 200 &&
+			str_starts_with($unrelatedDebateAfter['headers']['x-minerva-file-cache'][0] ?? '',
+				'HIT'),
+			'Genuine debate-only Minerva HIT survives both external semantic changes');
+
+		$backfillObservation = [
+			'backfill_via_forced_smw_update' => true,
+			'profiles_after_refreshlinks' => count($profilesAfterRefreshLinks),
+			'refresh_parse_output_profiles' => end($refreshParseEvents)['output_profile_count'],
+			'argument_revision_unchanged' => true,
+			'ask_profiles' => count($askProfiles),
+			'query_ids' => count($queryIds),
+			'actual_sql_dependency_rows' => array_sum($edgeCounts),
+			'zero_dependency_query_ids' => 0,
+			'fragment_sources_until_first_hit' => $backfillSources,
+			'fragment_hit_after_backfill' => true,
+			'fragment_refused_after_first_external_parent' => true,
+			'fragment_hit_after_rewarm' => true,
+			'fragment_refused_after_parent_removed' => true,
+			'debate_minerva_remains_hit' => true,
+			'eager_purge_disabled' => true,
+		];
+	} finally {
+		$GLOBALS['wgWikidebatesSemanticCacheEagerPurge'] = $originalEager;
+		if (is_file($disableEagerFile)) {
+			unlink($disableEagerFile);
+		}
+	}
+
 	// Content authorization must remain ahead of any prepared cache.
 	touch($temporary . '/semantic-http-deny-read');
 	try {
@@ -1150,6 +1387,7 @@ try {
 		'corpus_debate' => $corpusMeasurements,
 		'untracked_minerva_semantic_baseline' => $untrackedMinervaObservation,
 		'unprofiled_native_argument_migration' => $unprofiledArgumentObservation,
+		'targeted_forced_smw_update_argument_backfill' => $backfillObservation,
 		'benchmark' => [
 			'samples_each' => count($hitSamples),
 			'fragment_hit_median_ms' => $percentile($hitSamples, .5),
