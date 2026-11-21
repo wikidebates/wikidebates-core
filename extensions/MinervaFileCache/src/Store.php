@@ -177,15 +177,36 @@ class Store {
 		} finally { fclose($lock); }
 	}
 
+
+	/**
+	 * Stream page-cache directories instead of materializing every generation
+	 * path into a potentially enormous glob() array.
+	 * @return \Generator<int,string>
+	 */
+	private function cachedPageDirectories(): \Generator {
+		if (!is_dir($this->root)) { return; }
+		foreach (new \FilesystemIterator($this->root, \FilesystemIterator::SKIP_DOTS) as $prefix) {
+			if (!$prefix->isDir() || $prefix->isLink()) { continue; }
+			foreach (new \FilesystemIterator($prefix->getPathname(), \FilesystemIterator::SKIP_DOTS) as $page) {
+				if ($page->isDir() && !$page->isLink() &&
+					is_file($page->getPathname() . '/generation')) {
+					yield $page->getPathname();
+				}
+			}
+		}
+	}
+
 	public function prune(): int {
 		$count = 0;
 		$now = time();
-		foreach (glob($this->root . '/*/*/generation') ?: [] as $generation) {
-			$dir = dirname($generation);
+		foreach ($this->cachedPageDirectories() as $dir) {
 			$lock = $this->lock($dir, 'page.lock', LOCK_EX | LOCK_NB);
 			if (!$lock) { continue; }
 			try {
-				foreach (glob($dir . '/*.cache') ?: [] as $path) {
+				// Iterating over files is bounded-memory even for high variant counts.
+				foreach (new \FilesystemIterator($dir, \FilesystemIterator::SKIP_DOTS) as $file) {
+					if (!$file->isFile() || $file->getExtension() !== 'cache') { continue; }
+					$path = $file->getPathname();
 					clearstatcache(true, $path);
 					$modified = @filemtime($path);
 					// New files carry the expiry in mtime, so most live files
