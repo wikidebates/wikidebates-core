@@ -11,6 +11,58 @@ d'administration. Les réponses brutes ne sont pas enregistrées dans le
 rapport : seuls les empreintes SHA-256, tailles, en-têtes de cache et
 marqueurs attendus sont conservés.
 
+## Option de sécurité transitoire (désactivée par défaut)
+
+Le modèle `Argument` de Wikidébats **ne contient plus `__NOCACHE__`** :
+les pages d'arguments sont maintenant susceptibles d'avoir des fichiers
+HTML complets valides selon `page_touched` et `CacheEpoch`, sans que
+leur fraîcheur par rapport aux relations SMW soit prouvée. C'est un
+constat observé en production pour « Dieu est une invention » :
+une consultation HTTP anonyme a renouvelé son fichier HTML, qui est
+passé de `isCacheGood=false` à `isCacheGood=true`, avec Tracking=false.
+Aucune édition de relation parentale n'a été réalisée sur le site public.
+
+Lorsqu'il est impossible de valider immédiatement le suivi des dépendances SMW,
+une option **distincte**, `$wgWikidebatesSemanticCacheSafeFallback = true;`,
+permet de tester un comportement conservateur **en préproduction seulement**.
+Elle n'active ni `WikidebatesSemanticCacheTracking`, ni les purges anticipées,
+ni les anciens jobs. Tant que le suivi reste désactivé, elle :
+
+- refuse les caches HTML natifs pour les pages reconnues comme exécutant
+	des requêtes sémantiques (dont les pages `{{Argument}}`) ;
+- refuse aussi ces pages dans MinervaFileCache, qui consulte le même veto ;
+- rejette les anciens `ParserOutput` et empêche d'en stocker de nouveaux ;
+- ignore les fragments préparés, le cache des fragments et les sources
+	HTML sur disque ; force une analyse neuve pour l'API de lecture ;
+- retire la cacheabilité HTTP publique de leurs vues complètes.
+
+Les débats ne contenant aucune lecture sémantique restent éligibles aux
+caches existants. Si SMW échoue à la classification, le traitement reste
+conservateur : il renonce au cache plutôt que de réutiliser un contenu
+potentiellement périmé.
+
+**Limites et risques :** cette protection ajoute des lectures SMW et des
+analyses PHP sur les arguments, donc doit être mesurée sur une préproduction
+représentative avant déploiement. Elle reconnaît les profils `_ASK` ainsi
+que les appels Argument connus dans la source ; une lecture sémantique
+effectuée par un autre modèle sans profil pourrait échapper au diagnostic.
+Les en-têtes applicatifs ne peuvent pas invalider une éventuelle règle
+Cloudflare « Cache Everything » déjà forcée sur le domaine. Ne pas
+activer `$wgUseCdn` ou une règle de cache HTML Cloudflare pour tester cette
+option. Ne pas réintroduire `__NOCACHE__` comme substitut : il ne protège
+pas à lui seul le cache HTML complet, et bloquerait inutilement le cache
+du parseur. Ne pas modifier les règles Cloudflare en production sur la
+base de cette expérience.
+
+Le laboratoire HTTP jetable teste automatiquement Vector, Minerva et les
+fragments, avec un changement réel de relation SMW pendant que les jobs
+de purge restent en attente. Il vérifie aussi que le veto Minerva est
+bien `BYPASS; reason=extension-veto` et non un contournement
+accidentel lié à des en-têtes de débogage. Les pages sans requête
+sémantique doivent conserver de vrais HIT MinervaFileCache.
+Il ne remplace pas une validation de préproduction avec les
+modèles et caches du site public.
+
 ## 1. Préparer une copie de préproduction
 
 - Copier les **configurations et contenus représentatifs** des deux wikis

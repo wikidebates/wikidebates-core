@@ -76,8 +76,15 @@ class FragmentService {
 			'uselang', 'format', 'formatversion', 'maxlag', 'requestid', 'errorformat', 'errorlang', 'errorsuselocal', 'origin']) &&
 			!preg_match('/no-cache|no-store/i', (string)$request->getHeader('Cache-Control'));
 		$semanticTracking = (bool)$config->get('WikidebatesSemanticCacheTracking');
+		$conservativeFallback = !$semanticTracking &&
+			SemanticPageCacheHooks::needsConservativeFallback($title, $page);
+		if ($conservativeFallback) {
+			// The untracked fragment cache has no semantic dependency identity.
+			// Do not reuse prepared data or full-page files for query pages.
+			$eligible = false;
+		}
 		$semanticRevision = null;
-		$forceFreshSemanticParse = $semanticTracking && !$eligible;
+		$forceFreshSemanticParse = $conservativeFallback || ($semanticTracking && !$eligible);
 		if ($semanticTracking) {
 			// Check the semantic graph even on a cookie-bearing fallback.
 			// When the guard fails, no parser HTML cache may be consulted.
@@ -123,7 +130,7 @@ class FragmentService {
 		}
 		try {
 			$result = ($eligible && !$forceFreshSemanticParse ? FileSources::read($context, $title, $page) : null) ??
-				($semanticTracking ? null : $prepared);
+				(($semanticTracking || $conservativeFallback) ? null : $prepared);
 			if ($result) { unset($result['_generation'], $result['_touched']); }
 			$result ??= self::render($context, $title->getPrefixedText(), $eligible ? 'vector' : $skin,
 				$forceFreshSemanticParse);

@@ -12,8 +12,9 @@ use SMW\Services\ServicesFactory as SemanticServices;
  *
  * File-cache hits happen before ArticleViewHeader, so a semantic revision
  * check in FragmentService alone cannot protect the desktop/mobile article
- * view. Temporarily veto full-page file caches for query-owning pages and
- * use MediaWiki's parser cache with an explicit semantic revision fence.
+ * view. Veto full-page file caches for query-owning pages under opt-in
+ * protection. Tracked mode fences the parser cache with a semantic revision;
+ * conservative mode rejects parser caching for these pages altogether.
  */
 final class SemanticPageCacheHooks {
 	public const OUTPUT_REVISION = 'wikidebates-semantic-revision';
@@ -38,7 +39,7 @@ final class SemanticPageCacheHooks {
 	/**
 	 * Full HTML output may also pass through a reverse proxy or browser cache.
 	 * Until those caches understand semantic revisions, never advertise
-	 * query-owning pages as publicly cacheable in the opt-in tracking mode.
+	 * query-owning pages as publicly cacheable in either opt-in safety mode.
 	 */
 	public static function onBeforePageDisplay($out, $skin): void {
 		if (!self::enabled()) {
@@ -67,7 +68,21 @@ final class SemanticPageCacheHooks {
 	 * Only the canonical traced PHP queries need this additional marker.
 	 */
 	public static function onParserAfterParse($parser, &$text, $stripState): bool {
-		if (!self::enabled() ||
+		if (self::safeFallbackEnabled()) {
+			// With no semantic revision ledger, query-dependent output cannot
+			// safely enter MediaWiki's parser cache. Production Argument
+			// templates no longer rely on the __NOCACHE__ magic word.
+			try {
+				if (self::isQueryPage($parser->getTitle())) {
+					$parser->getOutput()->updateCacheExpiry(0);
+				}
+			} catch (\Throwable $e) {
+				FragmentService::log($e);
+				$parser->getOutput()->updateCacheExpiry(0);
+			}
+			return true;
+		}
+		if (!self::trackingEnabled() ||
 			$parser->getOutput()->getExtensionData(\MediaWiki\Extension\DebatePHP\TrackedSemanticQuery::OUTPUT_MARKER) !== true) {
 			return true;
 		}
@@ -103,6 +118,11 @@ final class SemanticPageCacheHooks {
 		}
 		try {
 			$title = $page->getTitle();
+			if (self::safeFallbackEnabled()) {
+				// No fingerprint exists when tracking is disabled. Reject any
+				// existing ParserOutput for semantic-query pages.
+				return !self::isQueryPage($title, $page);
+			}
 			if (!self::isQueryPage($title, $page)) {
 				return true;
 			}
@@ -123,7 +143,30 @@ final class SemanticPageCacheHooks {
 	}
 
 	private static function enabled(): bool {
+		return self::trackingEnabled() || self::safeFallbackEnabled();
+	}
+
+	private static function trackingEnabled(): bool {
 		return (bool)MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesSemanticCacheTracking');
+	}
+
+	private static function safeFallbackEnabled(): bool {
+		$config = MediaWikiServices::getInstance()->getMainConfig();
+		return !$config->get('WikidebatesSemanticCacheTracking') &&
+			(bool)$config->get('WikidebatesSemanticCacheSafeFallback');
+	}
+
+	/** Read-only classification. If SMW fails, prefer re-rendering to a stale fragment. */
+	public static function needsConservativeFallback($title, $page = null): bool {
+		if (!self::safeFallbackEnabled()) {
+			return false;
+		}
+		try {
+			return self::isQueryPage($title, $page);
+		} catch (\Throwable $e) {
+			FragmentService::log($e);
+			return true;
+		}
 	}
 
 	/** Semantic data first; template identification covers pre-migration pages. */
