@@ -87,6 +87,17 @@ class Prewarm {
 		return in_array($state, ['MISS', 'HIT', 'BYPASS'], true) ? $state : 'UNKNOWN_HEADER';
 	}
 
+	/** Extract only a safe diagnostic reason from an actual BYPASS response. */
+	public static function bypassReason(int $httpStatus, ?string $header): ?string {
+		if (self::responseState($httpStatus, $header) !== 'BYPASS') {
+			return null;
+		}
+		if (preg_match('/(?:^|;)\\s*reason=([a-z][a-z0-9-]*)\\s*(?:;|$)/D', (string)$header, $matches)) {
+			return $matches[1];
+		}
+		return 'unspecified';
+	}
+
 	/**
 	 * Calculate a bounded retry delay for transient HTTP failures.
 	 * Never retry a Retry-After longer than two minutes: stop and let the
