@@ -82,6 +82,11 @@ try {
 			return new class { public function getCode(): string { return 'fr'; } };
 		}
 	};
+	$emptyFragmentStore = new Store($dir, 'fragment-only-wiki', 300, 4096);
+	check($emptyFragmentStore->readForFragment('Never_cached', $identity, $fragmentContext) === null,
+		'A fragment lookup safely misses without an existing page directory');
+	check($emptyFragmentStore->statistics()['pages'] === 0,
+		'A fragment-only MISS does not allocate cache directories or lock files');
 	check($store->readForFragment('A', $identity, $fragmentContext)['body'] === 'FRAGMENT',
 		'Fragment reuses a validated mobile variant');
 	check($store->readForFragment('A', ['revision' => 99], $fragmentContext) === null,
