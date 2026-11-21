@@ -1,13 +1,14 @@
 const assert = require( 'node:assert/strict' );
 const test = require( 'node:test' );
 const path = require( 'node:path' );
+const http = require( 'node:http' );
 const { chromium } = require( 'playwright-core' );
 const { resourceModuleFiles } = require( '../resourceModuleFiles.cjs' );
 
 const root = path.resolve( __dirname, '../..' );
 const longTitle = 'Un argument avec un titre particulièrement long qui doit rester lisible sur plusieurs lignes pendant la lecture et défiler naturellement avec son contenu sur mobile';
 
-async function fixture( t, skin = 'minerva', prepared = false ) {
+async function fixture( t, skin = 'minerva', prepared = false, localOrigin = false ) {
 	const browser = await chromium.launch( {
 		executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium',
 		headless: true, args: [ '--no-sandbox' ]
@@ -16,6 +17,15 @@ async function fixture( t, skin = 'minerva', prepared = false ) {
 	const errors = [];
 	page.on( 'pageerror', ( error ) => errors.push( error.message ) );
 	t.after( async () => { await browser.close(); assert.deepEqual( errors, [] ); } );
+	if ( localOrigin ) {
+		const server = http.createServer( ( request, response ) => {
+			response.writeHead( 200, { 'Content-Type': 'text/html' } );
+			response.end( '<!doctype html><body></body>' );
+		} );
+		await new Promise( ( resolve ) => server.listen( 0, '127.0.0.1', resolve ) );
+		t.after( () => new Promise( ( resolve ) => { server.closeAllConnections(); server.close( resolve ); } ) );
+		await page.goto( 'http://127.0.0.1:' + server.address().port + '/wiki/Debate' );
+	}
 	await page.setContent( '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body class="skin-' + skin + ' action-view"><div id="bodyContent"></div></body></html>' );
 	await page.addStyleTag( { content: 'html,body { margin:0; font:16px Arial,sans-serif; } :root { --wd-arg-icon-size:20px; --background-color-base:#fff; --background-color-neutral-subtle:#fff; }' } );
 	for ( const file of [ 'base.css', skin === 'minerva' ? 'minerva.css' : 'vector-2022.css' ] ) {
@@ -345,13 +355,18 @@ test( 'resize, argument replacement and reopening preserve the fixed toolbar and
 test( 'toolbar actions, copy, contents sheet and close still work after the title fades', async ( t ) => {
 	const { page, open, metrics, scroll } = await fixture( t );
 	await page.evaluate( () => {
-		Wikidebates.WK_READING.state.h1Links = {
-			editHref: 'https://example.test/edit-title', detailHref: 'https://example.test/argument'
-		};
 		Object.defineProperty( navigator, 'clipboard', { configurable: true,
 			value: { writeText: ( text ) => { window.copied = text; return Promise.resolve(); } } } );
 	} );
 	await open();
+	// This toolbar-only fixture supplies artificial links after navigation. Real
+	// navigation now derives them from the current chain occurrence.
+	await page.evaluate( () => {
+		Wikidebates.WK_READING.state.h1Links = {
+			editHref: 'https://example.test/edit-title', detailHref: 'https://example.test/argument'
+		};
+		Wikidebates.minervaReading.header.updateActions( { panel: document.getElementById( 'wk-reading-panel' ) } );
+	} );
 	await scroll( ( await metrics() ).exit + 32 );
 	const before = await metrics();
 	await page.click( '.wk-h1-more > .wk-icon-more' );
@@ -884,3 +899,55 @@ test( 'Minerva keyboard contents exclude the collapsed sheet, navigate parents a
 	assert.equal( await page.evaluate( () => document.activeElement.id ), 'wk-reading-navbtn' );
 	assert.equal( await page.locator( '#wk-reading-left' ).getAttribute( 'aria-hidden' ), 'true' );
 } );
+
+for ( const skin of [ 'vector', 'minerva' ] ) {
+	test( skin + ': parent actions, copied URL and browser history follow the displayed page, including percent titles', async ( t ) => {
+		const { page } = await fixture( t, skin, true, true );
+		await page.evaluate( () => {
+			window.copiedLinks = [];
+			Object.defineProperty( navigator, 'clipboard', { configurable: true, value: {
+				writeText: ( value ) => { copiedLinks.push( value ); return Promise.resolve(); }
+			} } );
+			window.argumentHTML = '<h2 id="Summary">Summary</h2><p>Test argument</p><h2 id="Parent_debates">Parents</h2>';
+			const source = document.createElement( 'div' );
+			source.innerHTML = '<h1 id="firstHeading">Debate</h1>' +
+				'<h2><span class="bouton-modifier"><a href="/edit/debate-pro">Edit parent list</a></span></h2>' +
+				'<ul class="argument-list pour"><li class="argument level-1">' +
+				'<div class="argument-title"><a href="/w/index.php?title=Parent_A">Parent label</a></div>' +
+				'<div class="argument-wrapper"><h2><span class="bouton-modifier"><a href="/edit/parent-objections">Edit child list</a></span></h2>' +
+				'<ul class="argument-list contre"><li class="argument"><div id="test-child" class="argument-title">' +
+				'<a href="/w/index.php?title=Hausse%20de%2010%20%25">Child label</a>' +
+				'</div></li></ul></div></li></ul>';
+			document.getElementById( 'bodyContent' ).appendChild( source );
+			Wikidebates.wkOpenReadingModeFromTitleEl( document.getElementById( 'test-child' ) );
+		} );
+		const current = async ( title ) => page.waitForFunction( ( title ) =>
+			Wikidebates.WK_READING.state._wkCurrentPage === title &&
+			!document.getElementById( 'wk-reading-content' ).hasAttribute( 'aria-busy' ), title );
+		const editSelector = skin === 'minerva' ? '.wk-h1-menu__edit' : '.wk-h1-btn.bouton-modifier a';
+		await current( 'Hausse de 10 %' );
+		assert.equal( await page.locator( editSelector ).getAttribute( 'href' ), '/edit/parent-objections' );
+		if ( skin === 'minerva' ) await page.locator( '#wk-reading-navbtn' ).click();
+		await page.evaluate( () => { window.deferRead = true; } );
+		await page.locator( '#wk-reading-stack button[data-page="Parent A"]' ).click();
+		assert.equal( await page.locator( '.wk-h1-menu__detail' ).getAttribute( 'href' ), '/w/index.php?title=Parent_A' );
+		assert.equal( await page.locator( editSelector ).getAttribute( 'href' ), '/edit/debate-pro' );
+		await page.evaluate( () => {
+			window.deferRead = false;
+			pendingRead.resolve( { wikidebatesreading: { html: '<p>Parent content</p>' } } );
+		} );
+		await current( 'Parent A' );
+		await page.locator( '.wk-icon-more' ).click();
+		await page.locator( '.wk-h1-menu__copy' ).click();
+		await page.waitForFunction( () => copiedLinks.length === 1 );
+		assert.deepEqual( await page.evaluate( () => copiedLinks ), [ new URL( '/w/index.php?title=Parent_A', page.url() ).href ] );
+		await page.goBack();
+		await current( 'Hausse de 10 %' );
+		assert.equal( await page.locator( '.wk-h1-menu__detail' ).getAttribute( 'href' ), '/w/index.php?title=Hausse%20de%2010%20%25' );
+		assert.equal( await page.locator( editSelector ).getAttribute( 'href' ), '/edit/parent-objections' );
+		await page.goForward();
+		await current( 'Parent A' );
+		assert.equal( await page.locator( '.wk-h1-menu__detail' ).getAttribute( 'href' ), '/w/index.php?title=Parent_A' );
+		assert.equal( await page.locator( editSelector ).getAttribute( 'href' ), '/edit/debate-pro' );
+	} );
+}

@@ -112,7 +112,9 @@
 			var title = wkGetArgumentTitleFromNode( curTitle ) || ( curTitle.textContent || '' ).trim();
 			var type = wkReadingGetTypeFromTitleEl( curTitle );
 
-			chain.push( { page: page, title: title, type: type } );
+			chain.push( { page: page, title: title, type: type,
+				editHref: wkReadingGetEditDisplayedTitleHrefFromTitleEl( curTitle ),
+				detailHref: wkReadingGetLinkFromTitleEl( curTitle ).href } );
 
 			var ul = curTitle.closest( 'ul.argument-list' );
 			var parentWrap = ul ? ul.closest( '.argument-wrapper' ) : null;
@@ -449,7 +451,10 @@
 				chain[ idxLast ] = {
 					page: page,
 					title: title || chain[ idxLast ].title || '',
-					type: chain[ idxLast ].type || 'pour'
+					type: chain[ idxLast ].type || 'pour',
+					// Neighbors belong to the same editable list in the parent.
+					editHref: chain[ idxLast ].editHref || '#',
+					detailHref: href || mw.util.getUrl( page )
 				};
 			} else {
 				var debateTitle = wkGetDebateTitleFromHeading() || '';
@@ -458,15 +463,6 @@
 			}
 
 			WK_READING.state.chain = chain;
-
-			if ( !WK_READING.state.h1Links ) WK_READING.state.h1Links = { editHref: '#', detailHref: '' };
-			WK_READING.state.h1Links.detailHref = href || mw.util.getUrl( page );
-			if ( !WK_READING.state.h1Links.editHref ) WK_READING.state.h1Links.editHref = '#';
-
-			if ( ui && ui.panel ) {
-				ui.panel.dataset.wkEditTitleHref = WK_READING.state.h1Links.editHref;
-				ui.panel.dataset.wkDetailHref = WK_READING.state.h1Links.detailHref;
-			}
 
 			wkOpenReadingModeFromPageTitle( page, chain );
 		}, true );
@@ -680,7 +676,9 @@
 			chain2.push( {
 				page: argPage,
 				title: wkGetArgumentTitleFromNode( titleEl ) || ( titleEl.textContent || '' ).trim(),
-				type: combinedType
+				type: combinedType,
+				editHref: wkReadingGetEditDisplayedTitleHrefFromTitleEl( titleEl ),
+				detailHref: wkReadingGetLinkFromTitleEl( titleEl ).href
 			} );
 
 			return { chain: chain2, mode: 'append' };
@@ -689,13 +687,25 @@
 		return { chain: wkReadingBuildChainFromDom( titleEl ), mode: 'rebuild' };
 	}
 
-	function wkReadingSetH1LinksFromTitleEl( titleEl ) {
-		var editHref = wkReadingGetEditDisplayedTitleHrefFromTitleEl( titleEl );
-		var link = wkReadingGetLinkFromTitleEl( titleEl );
-		var detailHref = link ? link.href : '';
-
-		WK_READING.state.h1Links.editHref = editHref || '#';
-		WK_READING.state.h1Links.detailHref = detailHref || '';
+	// Action context belongs to a chain occurrence, not a globally remembered page:
+	// the same argument may be displayed in different editable parent lists.
+	function wkReadingUpdateH1Links( argPage, ui ) {
+		var chain = WK_READING.state.chain;
+		var current = chain[ chain.length - 1 ];
+		var links = { editHref: '#', detailHref: mw.util.getUrl( argPage ) };
+		if ( current && current.page === argPage ) {
+			links.editHref = current.editHref || '#';
+			if ( current.detailHref && WK.hrefToPageTitle( current.detailHref ) === argPage ) {
+				links.detailHref = current.detailHref;
+			}
+		}
+		WK_READING.state.h1Links = links;
+		if ( ui.panel ) {
+			ui.panel.dataset.wkEditTitleHref = links.editHref;
+			ui.panel.dataset.wkDetailHref = links.detailHref;
+		}
+		// Update existing controls immediately, including while the next load is pending.
+		if ( UI.updateH1Actions ) UI.updateH1Actions( ui );
 	}
 
 	function wkReadingHistoryIsOn() {
@@ -721,11 +731,11 @@
 			var it = chain[ i ];
 			if ( !it ) continue;
 
-			out.push( {
-				page: it.page || '',
-				title: it.title || '',
-				type: it.type || ''
-			} );
+			var entry = { page: it.page || '', title: it.title || '', type: it.type || '' };
+			// Absence is retained so older browser-history entries remain recognizable.
+			if ( typeof it.editHref === 'string' ) entry.editHref = it.editHref;
+			if ( typeof it.detailHref === 'string' ) entry.detailHref = it.detailHref;
+			out.push( entry );
 		}
 
 		return out;
@@ -757,7 +767,7 @@
 	function wkReadingHistoryBuildState( argPage, chain, step ) {
 		return {
 			wkReading: 1,
-			wkReadingVersion: 2,
+			wkReadingVersion: 3,
 			wkReadingSession: WK_READING.state._wkHistorySession || '',
 			wkReadingStep: step,
 			page: argPage,
@@ -796,10 +806,14 @@
 		WK_READING.state._wkHistorySession = st.wkReadingSession || wkReadingHistoryNewSessionId();
 		WK_READING.state._wkHistoryStep = Number( st.wkReadingStep ) || 1;
 		WK_READING.state.chain = chain;
-		WK_READING.state.h1Links = {
-			editHref: ( st.h1Links && st.h1Links.editHref ) || '#',
-			detailHref: ( st.h1Links && st.h1Links.detailHref ) || mw.util.getUrl( st.page )
-		};
+		var current = chain[ chain.length - 1 ];
+		// Older history stored links only for the current entry. Recover them only
+		// when their destination matches; a stale child's edit link is not safe.
+		if ( current && current.page === st.page && typeof current.editHref !== 'string' &&
+			st.h1Links && WK.hrefToPageTitle( st.h1Links.detailHref ) === st.page ) {
+			current.editHref = st.h1Links.editHref || '#';
+			current.detailHref = st.h1Links.detailHref;
+		}
 
 		if ( st.siblings && st.siblings.length ) {
 			wkReadingStoreSiblingsAtDepth( wkReadingGetDepthFromChain( chain ), st.siblings );
@@ -864,6 +878,8 @@
 		wkReadingBindSiblingsDelegation( ui );
 
 		if ( chainOpt && chainOpt.length ) WK_READING.state.chain = wkReadingHistoryCloneChain( chainOpt );
+
+		wkReadingUpdateH1Links( argPage, ui );
 
 		wkReadingMarkLevel1Visited( argPage );
 
@@ -936,8 +952,6 @@
 
 	function wkOpenReadingModeFromTitleEl( titleEl ) {
 		if ( !titleEl ) return;
-
-		wkReadingSetH1LinksFromTitleEl( titleEl );
 
 		var ownArg = titleEl.closest ? titleEl.closest( '.argument' ) : null;
 		if ( ownArg && ownArg.classList.contains( 'level-1' ) ) {

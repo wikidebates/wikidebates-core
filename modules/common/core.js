@@ -116,7 +116,8 @@
 			var url = new URL( href, W.location.origin );
 
 			var t = url.searchParams.get( 'title' );
-			if ( t ) return decodeURIComponent( t ).replace( /_/g, ' ' );
+			// URLSearchParams already decoded the query value, including literal %.
+			if ( t ) return t.replace( /_/g, ' ' );
 
 			var path = url.pathname || '';
 			var articlePath = mw.config.get( 'wgArticlePath' ) || '/wiki/$1';
