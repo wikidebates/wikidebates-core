@@ -268,8 +268,13 @@ actif (seul le booleen false desactive ce profilage).
 Ce controle ne certifie pas la fraicheur de chaque page, les permissions du
 stockage des fragments, les workers, les profils `_ASK` complets ni le CDN.
 Il ne modifie pas la configuration. En execution ordinaire, EagerPurge doit
-rester false. Le comportement historique d'un job avec EagerPurge=false retourne
-true sans purge : les exclusions du worker general restent donc indispensables.
+rester false. Un job lance alors qu'EagerPurge=false retourne desormais
+**false** : le JobRunner de MediaWiki 1.43 ne l'acquitte pas car le job autorise
+les nouvelles tentatives. Cela evite de perdre les travaux historiques, mais
+peut provoquer des reprises/erreurs repetees si un worker les selectionne.
+**Les exclusions du worker general restent donc indispensables**. La variable
+WD_SEMANTIC_PURGE_MANUAL ne suffit pas a elle seule : le diagnostic doit
+confirmer EagerPurge=true dans la configuration effective du processus.
 
 Pour les versions ne contenant pas encore la nouvelle commande, utiliser ce
 repli. **MediaWiki 1.43 eval evalue chaque ligne separement** : conserver une

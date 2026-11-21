@@ -43,3 +43,14 @@ Un compteur inchangé est attendu si chaque job donne une continuation
 nouvelle. Comparer curseurs ET identifiants des jobs pour les mêmes titres.
 Ne pas traiter de lots plus importants avant de contrôler la fraîcheur
 de pages représentatives dans les deux wikis.
+
+## Protection contre la perte de jobs par erreur de configuration
+
+MediaWiki 1.43 acquitte un job dont `run()` renvoie `true` ; l'ancien
+comportement d'un purge job desactive supprimait donc silencieusement le
+travail de la file. Le garde-fou renvoie maintenant `false` et conserve
+`allowRetries()=true` lorsque Tracking ou EagerPurge sont desactives.
+Ne pas laisser pour autant un worker general selectionner ce type : des
+reprises repetees finissent par saturer la file ou etre abandonnees.
+Le preflight doit afficher EagerPurge=true dans le processus manuel ; la
+variable `WD_SEMANTIC_PURGE_MANUAL` seule ne modifie pas cette valeur.

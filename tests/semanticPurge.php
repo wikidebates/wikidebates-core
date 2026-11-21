@@ -12,6 +12,7 @@ namespace {
 		public function setLastError($error): void { $this->error = $error; }
 		public function getParams(): array { return $this->params; }
 		public function ignoreDuplicates(): bool { return $this->removeDuplicates; }
+		public function allowRetries(): bool { return true; }
 	}
 	function check($condition, string $message): void {
 		if (!$condition) { throw new \RuntimeException($message); }

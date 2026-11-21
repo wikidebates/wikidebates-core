@@ -67,8 +67,9 @@ check($fragments->reads === 0 && $legacy->getMetrics()['generation_reads'] === 0
 [$db, $services, $fragments] = countingPurgeSetup();
 $services->settings['WikidebatesSemanticCacheEagerPurge'] = false;
 $disabled = job();
-check($disabled->run() && $disabled->getMetrics()['status'] === 'disabled',
-	'Historical disabled-job behavior remains explicit');
+check(!$disabled->run() && $disabled->getMetrics()['status'] === 'disabled' &&
+	$disabled->allowRetries() && $disabled->error !== '',
+	'Disabled purge returns a retryable failure rather than acknowledging and losing the job');
 check($db->reads === 0 && $fragments->reads === 0 && $fragments->invalidations === 0 && !$services->queue,
 	'Disabled jobs do not access SQL/fragments or enqueue continuations');
 

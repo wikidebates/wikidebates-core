@@ -96,6 +96,12 @@ try {
 	$disabledReport = $inspector->inspectConfiguration();
 	check(!$disabledReport['purge_preconditions_met'] && $disabledReport['blockers'] !== [],
 		'Disabled EagerPurge prevents a ready result');
+	$disabledJob = new SemanticCachePurgeJob($owners[0], [
+		'dependencyIds' => [$depId], 'cursor' => 0
+	]);
+	check(!$disabledJob->run() && $disabledJob->allowRetries() &&
+		$disabledJob->getMetrics()['status'] === 'disabled',
+		'Actual MediaWiki must not acknowledge disabled semantic purges');
 	$GLOBALS['wgWikidebatesSemanticCacheEagerPurge'] = true;
 	$GLOBALS['wgWikidebatesSemanticCacheTracking'] = false;
 	check(!$inspector->inspectConfiguration()['purge_preconditions_met'],
