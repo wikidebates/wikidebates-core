@@ -114,6 +114,9 @@
 		if ( !href ) return '';
 		try {
 			var url = new URL( href, W.location.origin );
+			// Identical /wiki paths on another host are not local wiki pages.
+			if ( ( url.protocol !== 'http:' && url.protocol !== 'https:' ) ||
+				url.origin !== W.location.origin ) return '';
 
 			var t = url.searchParams.get( 'title' );
 			// URLSearchParams already decoded the query value, including literal %.

@@ -951,3 +951,65 @@ for ( const skin of [ 'vector', 'minerva' ] ) {
 		assert.equal( await page.locator( editSelector ).getAttribute( 'href' ), '/edit/debate-pro' );
 	} );
 }
+
+test( 'dynamically inserted collapsible roots keep hidden links out of the real keyboard tab order', async ( t ) => {
+	const { page } = await fixture( t, 'vector' );
+	await page.addScriptTag( { path: path.join( root, 'modules/features/frCollapsible.js' ) } );
+	await page.evaluate( () => {
+		const section = document.createElement( 'section' );
+		section.className = 'fr-collapsible fr-collapsed';
+		section.id = 'dynamic-section';
+		section.innerHTML = '<div class="fr-collapsible-toggle" id="dynamic-toggle">Toggle</div>' +
+			'<div class="fr-collapsible-content" id="dynamic-content"><a id="hidden-link" href="#nested">Hidden link</a></div>';
+		document.body.appendChild( section );
+		const after = document.createElement( 'a' );
+		after.id = 'after-toggle';
+		after.href = '#after';
+		after.textContent = 'After section';
+		document.body.appendChild( after );
+		mw.hook( 'wikipage.content' ).fire( jQuery( section ) );
+	} );
+	assert.equal( await page.locator( '#dynamic-content' ).getAttribute( 'inert' ), '' );
+	await page.focus( '#dynamic-toggle' );
+	await page.keyboard.press( 'Tab' );
+	assert.equal( await page.evaluate( () => document.activeElement.id ), 'after-toggle' );
+	await page.focus( '#dynamic-toggle' );
+	await page.keyboard.press( 'Enter' );
+	assert.equal( await page.locator( '#dynamic-content' ).getAttribute( 'inert' ), null );
+	await page.keyboard.press( 'Tab' );
+	assert.equal( await page.evaluate( () => document.activeElement.id ), 'hidden-link' );
+	await page.evaluate( () => document.getElementById( 'dynamic-toggle' ).click() );
+	assert.equal( await page.evaluate( () => document.activeElement.id ), 'dynamic-toggle' );
+	assert.equal( await page.locator( '#dynamic-content' ).getAttribute( 'inert' ), '' );
+} );
+
+test( 'an early title click in Chromium is remembered until the lazy UI resolves', async ( t ) => {
+	const { page } = await fixture( t, 'vector' );
+	await page.evaluate( () => {
+		Wikidebates.hrefToPageTitle = () => 'Argument'; // Isolate module readiness from about:blank URL parsing.
+		Wikidebates.wkOpenReadingModeFromTitleEl = null;
+		window.openedLazyTitles = [];
+		window.lazyUi = jQuery.Deferred();
+		window.lazyUiCalls = [];
+		mw.loader = { using: ( module ) => {
+			window.lazyUiCalls.push( module );
+			return window.lazyUi.promise();
+		} };
+		const node = document.createElement( 'div' );
+		node.id = 'lazy-click';
+		node.className = 'argument-title';
+		node.innerHTML = '<a href="https://wiki.test/wiki/Argument">Argument</a>';
+		document.getElementById( 'bodyContent' ).appendChild( node );
+	} );
+	await page.addScriptTag( { path: path.join( root, 'modules/features/view.ns0.js' ) } );
+	await page.click( '#lazy-click' );
+	await page.waitForFunction( () => lazyUiCalls.length === 1 );
+	assert.equal( await page.locator( '#lazy-click' ).getAttribute( 'aria-busy' ), 'true' );
+	await page.evaluate( () => {
+		Wikidebates.wkOpenReadingModeFromTitleEl = ( el ) => openedLazyTitles.push( el.id );
+		lazyUi.resolve();
+	} );
+	await page.waitForFunction( () => openedLazyTitles.length === 1 );
+	assert.deepEqual( await page.evaluate( () => openedLazyTitles ), [ 'lazy-click' ] );
+	assert.equal( await page.locator( '#lazy-click' ).getAttribute( 'aria-busy' ), null );
+} );

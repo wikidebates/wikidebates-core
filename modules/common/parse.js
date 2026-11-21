@@ -44,13 +44,15 @@
 	var WK_PARSE_FAIL_MAX = 128;
 	var wkParseFailUntil = new Map();
 
+	// Explicit clicks outrank speculative hover work only while queued.
+	// Running requests are never aborted; FIFO is retained within a priority.
 	var WK_PARSE_PRIORITY = {
-		hover: 0,
+		latest: 0,
+		more: 0,
 		bc: 1,
-		latest: 2,
-		more: 2,
-		arg: 3,
-		def: 4
+		arg: 2,
+		def: 3,
+		hover: 4
 	};
 
 	function wkGetApi() {

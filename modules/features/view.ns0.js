@@ -8,6 +8,90 @@
 	var $D = $( D );
 
 	var WK = W.Wikidebates || ( W.Wikidebates = {} );
+	var readingUiPending = null;
+	var readingClickToken = 0;
+	var readingPendingTitle = null;
+
+	function readingUiModule() {
+		try {
+			var skin = mw.config.get( 'skin' );
+			if ( skin === 'minerva' || skin === 'minervaneue' || skin === 'minervaNeue' ) {
+				return 'ext.wikidebates.reading.ui.minerva';
+			}
+			if ( skin === 'vector' || skin === 'vector-2022' ) return 'ext.wikidebates.reading.ui.vector';
+		} catch ( e ) {}
+		return '';
+	}
+
+	function setPendingTitle( titleEl ) {
+		if ( readingPendingTitle ) {
+			readingPendingTitle.removeAttribute( 'aria-busy' );
+			readingPendingTitle.classList.remove( 'wk-reading-open-pending' );
+		}
+		readingPendingTitle = titleEl;
+		if ( titleEl ) {
+			titleEl.setAttribute( 'aria-busy', 'true' );
+			titleEl.classList.add( 'wk-reading-open-pending' );
+		}
+	}
+
+	function waitForReadingUi( module ) {
+		if ( readingUiPending && readingUiPending.module === module ) return readingUiPending.promise;
+		var pending = { module: module, promise: null };
+		// ResourceLoader joins a module already being downloaded by the idle loader.
+		pending.promise = Promise.resolve().then( function () {
+			return mw.loader.using( module );
+		} ).then( function () {
+			if ( readingUiPending === pending ) readingUiPending = null;
+		}, function ( error ) {
+			if ( readingUiPending === pending ) readingUiPending = null;
+			throw error;
+		} );
+		readingUiPending = pending;
+		return pending.promise;
+	}
+
+	// Keep the idle loading strategy. A first click joins/starts that same module,
+	// and only the last click may open a reader after the asynchronous load.
+	function openReadingTitle( titleEl ) {
+		var module = readingUiModule();
+		var link = titleEl && titleEl.querySelector ? titleEl.querySelector( 'a[href]' ) : null;
+		if ( !module || !link || !WK.hrefToPageTitle( link.href ) ||
+			!mw.loader || typeof mw.loader.using !== 'function' ) return false;
+
+		var token = ++readingClickToken;
+		var originPage = W.location.href;
+		var fallbackHref = link.href;
+		function currentClick() {
+			return token === readingClickToken && titleEl.isConnected && W.location.href === originPage;
+		}
+		function clearPending() {
+			if ( token === readingClickToken ) setPendingTitle( null );
+		}
+		function open() {
+			clearPending();
+			if ( !currentClick() ) return;
+			if ( typeof WK.wkOpenReadingModeFromTitleEl === 'function' ) {
+				WK.wkOpenReadingModeFromTitleEl( titleEl );
+			} else {
+				W.location.assign( fallbackHref );
+			}
+		}
+		function fallback() {
+			clearPending();
+			if ( !currentClick() ) return;
+			W.location.assign( fallbackHref );
+		}
+
+		if ( typeof WK.wkOpenReadingModeFromTitleEl === 'function' &&
+			mw.loader.getState && mw.loader.getState( module ) === 'ready' ) {
+			open();
+		} else {
+			setPendingTitle( titleEl );
+			waitForReadingUi( module ).then( open, fallback );
+		}
+		return true;
+	}
 
 	function argumentMapContentCall() {
 		if ( WK.wkOnce && !WK.wkOnce( 'wk:mapOpenInit' ) ) return;
@@ -19,9 +103,6 @@
 		$( D ).on( 'click.wkMapOpen', '#Argument_map .argument-title--map', function ( e ) {
 			// laisser passer nouvel onglet / intentions nav
 			if ( e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button === 1 ) return;
-
-			e.preventDefault();
-			e.stopPropagation();
 
 			var id = $( this ).attr( 'id' );
 			id = id ? id.slice( 0, -4 ) : ''; // "..._map"
@@ -36,9 +117,9 @@
 
 			if ( !titleEl ) return;
 
-			if ( typeof WK.wkOpenReadingModeFromTitleEl === 'function' ) {
-				WK.wkOpenReadingModeFromTitleEl( titleEl );
-			}
+			if ( !openReadingTitle( titleEl ) ) return;
+			e.preventDefault();
+			e.stopPropagation();
 
 			// visité
 			$( this ).addClass( 'visited' );
@@ -79,12 +160,9 @@
 		$D.on( 'click.wkArgOpen', '.argument-title', function ( e ) {
 			if ( e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button === 1 ) return;
 
+			if ( !openReadingTitle( this ) ) return;
 			e.preventDefault();
 			e.stopPropagation();
-
-			if ( typeof WK.wkOpenReadingModeFromTitleEl === 'function' ) {
-				WK.wkOpenReadingModeFromTitleEl( this );
-			}
 
 			try {
 				var arg = this.closest( '.argument.level-1[id]' );

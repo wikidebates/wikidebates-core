@@ -28,3 +28,32 @@ test( 'query plus-as-space, encoded plus and underscores keep their established 
 	assert.equal( get( '/unrelated' ), '' );
 	assert.equal( get( '' ), '' );
 } );
+
+test( 'matching wiki-looking paths and title parameters on another origin are not local pages', async ( t ) => {
+	const env = await environment(); t.after( env.close );
+	const get = env.window.Wikidebates.hrefToPageTitle;
+	for ( const href of [
+		'https://example.com/wiki/Foreign_page',
+		'https://example.com/w/index.php?title=Foreign_page',
+		'https://wiki.test/wiki/Wrong_scheme',
+		'//evil.test/wiki/Foreign_page',
+		'javascript:alert(1)',
+		'data:text/plain,/wiki/False',
+		'https://wiki.test/wiki/Wrong_port',
+		'https://wiki.test/w/index.php?title=Wrong_port'
+	] ) {
+		assert.equal( get( href ), '', href );
+	}
+	assert.equal( get( 'http://wiki.test/wiki/Local_page' ), 'Local page' );
+	assert.equal( get( '/w/index.php?title=Hausse%20de%2010%20%25' ), 'Hausse de 10 %' );
+	assert.equal( get( 'https://wiki.test:443/wiki/Different_scheme' ), '' );
+} );
+
+
+test( 'fragment-only links never inherit a page title from the current query URL', async ( t ) => {
+	const env = await environment(); t.after( env.close );
+	env.window.history.replaceState( null, '', '/w/index.php?title=Debate' );
+	const get = env.window.Wikidebates.hrefToPageTitle;
+	assert.equal( get( '#Summary' ), '' );
+	assert.equal( get( '/w/index.php?title=Debate#Summary' ), 'Debate' );
+} );
