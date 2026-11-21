@@ -107,8 +107,9 @@ class FragmentService {
 			}
 		}
 		try {
-			// Only the mode-lecture lookup may reuse a semantically old ParserOutput.
-			// Full-page requests retain the ordinary SMW ParserCache validator.
+			// Only reading fragments bypass our own SMW freshness checks.
+			// An unavailable fragment/file still needs an uncached parse because
+			// MediaWiki 1.43's ParserCache invokes SMW's independent validator.
 			$result = SemanticPageCacheHooks::forReadingFragment(static function () use ($eligible, $context, $title, $page, $prepared, $skin) {
 				$result = ($eligible ? FileSources::read($context, $title, $page) : null) ?? $prepared;
 				if ($result) { unset($result['_generation'], $result['_touched']); }
@@ -124,7 +125,7 @@ class FragmentService {
 		} finally { if (is_resource($fill)) { fclose($fill); } }
 	}
 
-	/** Run ApiParse transforms without consulting SMW's ParserCache freshness validator. */
+	/** Cold fallback: preserve ApiParse transforms without consulting SMW's ParserCache validator. */
 	private static function render(IContextSource $context, string $page, string $skin, bool $forceFresh = true): array {
 		$derived = new DerivativeContext($context);
 		$derived->setRequest(new DerivativeRequest($context->getRequest(), ['action' => 'parse', 'page' => $page,
@@ -198,6 +199,6 @@ class FragmentService {
 
 	public static function log(\Throwable $e): void {
 		\MediaWiki\Logger\LoggerFactory::getInstance('WikidebatesReading')->warning(
-			'Reading cache unavailable ({type}); parser cache remains available.', ['type' => get_class($e)]);
+			'Reading cache unavailable ({type}); normal rendering remains available.', ['type' => get_class($e)]);
 	}
 }
