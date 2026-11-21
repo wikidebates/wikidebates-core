@@ -338,6 +338,24 @@ supplémentaires identiques à l'intérieur de ces groupes après
 neutralisation. Les pages avec champs absents, multiples ou non reconnus
 restent hors de cette comparaison : aucun résultat n'est extrapolé.
 
+Pour déterminer si les différences restantes sont limitées aux scripts,
+l'audit compare également, **en mémoire seulement**, une empreinte du HTML
+neutralisé dont tous les éléments `<script>` ont été retirés. Il ajoute :
+
+- `pagesWithResidualScriptOnlyDifferences` : pages ayant des différences
+  après neutralisation des deux champs, mais aucun écart en dehors des scripts
+  dans les groupes comparables ;
+- `pagesWithResidualOutsideScripts` : pages présentant au moins un écart
+  situé en dehors des scripts dans ces groupes ;
+- `sameIdentityHtmlDuplicatesIgnoringScripts` : entrées HTML supplémentaires
+  identiques lorsque les scripts entiers sont exclus de l'empreinte.
+
+Retirer les scripts ici est **uniquement une méthode de localisation des écarts** :
+les scripts peuvent contenir des données importantes pour le navigateur ou
+pour l'utilisateur. Ces indicateurs ne sont pas une preuve que les variantes
+sont interchangeables. Les pages dont certains fichiers n'ont pas les deux
+champs de configuration attendus sont exclues de cette comparaison.
+
 **Aucun HTML n'est modifié sur disque ou lors de l'affichage**, et ces
 statistiques ne justifient pas de regrouper automatiquement les navigateurs.
 Une même empreinte après neutralisation ne signifie pas que le
