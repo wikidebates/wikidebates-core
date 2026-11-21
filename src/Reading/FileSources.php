@@ -4,7 +4,6 @@ namespace MediaWiki\Extension\Wikidebates\Reading;
 
 use MediaWiki\Context\IContextSource;
 use MediaWiki\MediaWikiServices;
-use MediaWiki\Parser\ParserOptions;
 
 /** Read-only adapters: never make an HTTP request or build a full file on a miss. */
 class FileSources {
@@ -13,13 +12,10 @@ class FileSources {
 		if (!$config->get('UseFileCache') ||
 			$context->getLanguage()->getCode() !== $config->get('LanguageCode')) { return null; }
 		try {
+			// The HTML file already passed its public-response checks at publication.
+			// Avoid ParserCache::get here: SMW has a second RejectParserCacheValue
+			// handler that would inspect semantic freshness on every file lookup.
 			if (!self::extensionsAllow($context, $title)) { return null; }
-			// The native file cache has no dynamic-content expiry. Require a still-valid
-			// parser-cache record, without asking WikiPage to render on a miss.
-			$output = MediaWikiServices::getInstance()->getParserCache()->get($page, ParserOptions::newFromAnon());
-			if (!$output || !$output->isCacheable()) { return null; }
-			$expires = (int)wfTimestamp(TS_UNIX, $output->getCacheTime()) + $output->getCacheExpiry();
-			if ($expires <= time()) { return null; }
 		} catch (\Throwable $e) { FragmentService::log($e); return null; }
 		try {
 			$cache = new \HTMLFileCache($title, 'view');
@@ -30,7 +26,7 @@ class FileSources {
 				strtolower($host) === strtolower($canonicalHost) &&
 				$cache->isCacheGood($page->getTouched())) {
 				$created = (int)wfTimestamp(TS_UNIX, $cache->cacheTimestamp());
-				$limit = min($expires, $created + $output->getCacheExpiry(), $created + min(2592000, (int)$config->get('WikidebatesReadingCacheTTL')));
+				$limit = $created + min(2592000, (int)$config->get('WikidebatesReadingCacheTTL'));
 				if ($limit > time()) {
 					$html = FragmentExtractor::canonical($cache->fetchText());
 					if ($html !== '') { return self::result($html, $title, $page, 'vector-file', $limit); }
@@ -47,7 +43,7 @@ class FileSources {
 				$title->getPrefixedDBkey(), $identity, $context);
 			if ($entry) {
 				$html = FragmentExtractor::canonical($entry['body']);
-				$limit = min($expires, $entry['expires'], $entry['created'] + $output->getCacheExpiry());
+				$limit = (int)$entry['expires'];
 				if ($html !== '' && $limit > time()) { return self::result($html, $title, $page, 'minerva-file', $limit); }
 			}
 		} catch (\Throwable $e) { FragmentService::log($e); }
