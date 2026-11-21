@@ -147,9 +147,26 @@ trait CacheView {
 				if (!($phase & PHP_OUTPUT_HANDLER_FINAL) || ($phase & PHP_OUTPUT_HANDLER_CLEAN)) {
 					return $html;
 				}
+				// Most non-cacheable pages fail the parser/OutputPage checks.
+				// Skip scanning their full HTML and headers altogether.
+				$reason = null;
+				if (headers_sent()) {
+					$reason = 'headers-sent';
+				} elseif (http_response_code() !== 200) {
+					$reason = 'http-status';
+				} elseif ($expires <= time()) {
+					$reason = 'parser-expiry';
+				} elseif ($context->getOutput()->getRedirect() !== '') {
+					$reason = 'redirect';
+				} elseif (!$context->getOutput()->couldBePublicCached()) {
+					$reason = 'not-public';
+				}
+				if ($reason !== null) {
+					$this->diagnostic('BYPASS', $reason);
+					return $html;
+				}
 				$headers = ResponsePolicy::headersForStorage($html, headers_list(), $reason);
-				if (headers_sent() || http_response_code() !== 200 || $headers === null ||
-					$expires <= time() || $context->getOutput()->getRedirect() !== '' || !$context->getOutput()->couldBePublicCached()) {
+				if ($headers === null) {
 					$this->diagnostic('BYPASS', $reason ?? 'response');
 					return $html;
 				}
