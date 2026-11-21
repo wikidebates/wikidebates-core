@@ -9,6 +9,7 @@ on:
       - 'src/Reading/**'
       - 'sql/**'
       - 'maintenance/CheckSemanticCache.php'
+      - 'docs/smw-semantic-purge-optimization.md'
       - 'tests/*Semantic*'
       - 'tests/semanticPurge*.php'
       - '.github/workflows/semantic-purge.yml'
@@ -99,10 +100,10 @@ jobs:
           if [ "$ready" -ne 1 ]; then docker logs "$container"; exit 1; fi
           echo "WD_TEST_MARIADB_SOCKET=$LAB/mariadb.sock" >> "$GITHUB_ENV"
           echo "WD_TEST_DISPOSABLE_MARIADB=1" >> "$GITHUB_ENV"
-      - name: Real SMW and purge integration
+      - name: Real SMW, purge and maintenance CLI integration
         env:
           MW_INSTALL_PATH: ${{ github.workspace }}/.mw-lab
-        run: php -d memory_limit=768M tests/fullstackSemanticPurgeFollowup.php
+        run: php -d memory_limit=768M tests/fullstackSemanticCacheCli.php
       - name: Existing multiworker HTTP and Minerva freshness regressions
         env:
           MW_INSTALL_PATH: ${{ github.workspace }}/.mw-lab

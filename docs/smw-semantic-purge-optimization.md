@@ -48,7 +48,7 @@ mais ne constitue pas une reservation pouvant faire disparaitre une purge.
 
 Les nouveaux jobs recoivent aussi une signature des revisions des dependances,
 capturee apres leur incrementation et avant le callback differe. Seuls les jobs
-exactement equivalentes en dependances, revisions et curseur peuvent partager
+exactement equivalents en dependances, revisions et curseur peuvent partager
 leur identite entre pages sources. Une nouvelle revision, meme dans la meme
 seconde, donne une autre identite. Les anciens jobs restent des anciens jobs :
 ni ajout obligatoire de parametre, ni remise a zero de leur curseur, ni suppression.
@@ -104,9 +104,21 @@ Les erreurs sont journalisees meme si les compteurs detailles sont desactives.
 Champs : `dependencies`, `cursor`, `batch_size`, `queries_examined` (incluant la
 ligne d'anticipation), `queries_processed`, `pages`, `invalidations`,
 `coalesced_pages`, `continuations`, `coalescing_available`, `status`, `duration_ms`.
+Le suivi complementaire ajoute `next_cursor` (uniquement apres acceptation de la
+continuation), `generation_reads` (appels de lecture explicites du job, pas toutes
+les E/S internes) et `logging_failures` (visible via `getMetrics()` meme si le
+journal est indisponible). Un journaliseur defaillant ne change plus le resultat
+du job et ne masque pas la classe de l'exception originale.
 `getMetrics()` expose les memes compteurs aux tests. Aucun titre ni contenu de
 page n'est ajoute a cet evenement. Ces reglages n'activent ni Tracking ni
 EagerPurge et ne changent pas le dispositif manuel de production.
+
+Le job ne relit plus la generation d'un fragment avant invalidation lorsque son
+recu est absent ou son empreinte deja differente. Une reutilisation candidate
+verifie toujours la generation locale et le graphe complet. Sans table de recus,
+aucune lecture de generation n'est necessaire au job. Chaque objet Title est
+construit une fois par page distincte, sans perdre les identifiants des autres
+requetes de la page. Aucun schema supplementaire n'est ajoute par ce suivi.
 
 ## Tests et portee des mesures
 
@@ -114,13 +126,14 @@ Depuis une copie du depot, hors production :
 
 ```sh
 php tests/run.php
-php tests/semanticPurge.php
+php tests/semanticPurgeFollowup.php
 ```
 
-Le workflow `.github/workflows/semantic-purge.yml` execute aussi, sous PHP 8.4,
-les tests `fullstackSemanticPurge.php` et `fullstackSemanticHttp.php` sur de vrais
-MediaWiki/SMW jetables, avec SQLite et MariaDB. La version `ec4c1cbdad9c` a passe
-les deux jobs complets :
+Le second script execute d'abord `semanticPurge.php`, puis les regressions
+supplementaires. Le workflow `.github/workflows/semantic-purge.yml` execute aussi,
+sous PHP 8.4, `fullstackSemanticCacheCli.php` (qui inclut les tests de purge et de
+journalisation) et `fullstackSemanticHttp.php` sur de vrais MediaWiki/SMW jetables,
+avec SQLite et MariaDB. La version initiale `ec4c1cbdad9c` a passe les deux jobs :
 https://github.com/wikidebates/wikidebates-core/actions/runs/44896149599
 Pour une revision ulterieure, consulter sa propre execution CI dans la PR.
 
@@ -132,6 +145,13 @@ controle de vrais fichiers de fragments, leurs generations, l'eviction effective
 du ParserCache et les hooks HTML. Les tests HTTP existants couvrent aussi Minerva
 et des lectures dans des processus distincts. Les doubles seuls ne sont pas
 presentes comme une preuve de compatibilite SQL.
+
+Les regressions supplementaires verifient les lectures evitees, le maintien du
+controle de generation des recus reutilises, un profil non initial manquant,
+l'echec d'envoi d'une continuation et sa reprise au meme curseur. Les tests reels
+injectent aussi des pannes du fournisseur et de la destination des journaux.
+Le test CLI execute `maintenance/run.php Wikidebates:CheckSemanticCache`, controle
+ses codes de sortie et rejoue l'extrait `eval` de CE document dans un vrai processus.
 
 Le scenario reproductible autonome contient 1200 requetes sur 40 pages et 12
 vagues de jobs qui se recouvrent, sans nouvelle modification semantique :
@@ -150,6 +170,10 @@ MediaWiki ne sont pas tous representes. Les pourcentages de ce scenario ne
 prejugent ni du temps HTTP ni du gain reel sur les 144 jobs anglais. La validation
 sur une copie de production et les cas de panne du CDN ou de retard de replique
 restent distincts de ces tests.
+
+Dans le cas supplementaire de deux pages sans recu reutilisable, le job effectue
+2 lectures explicites de generation au lieu de 4 ; sans table de recus, 0 au lieu
+de 2. Ce sont des comptes d'appels, pas un gain de latence globale mesure.
 
 ## Deploiement propose, uniquement apres validation et accord
 
@@ -177,10 +201,12 @@ git merge --ff-only origin/audit/smw-semantic-cache-invalidation-2026-11 &&
 git log -1 --oneline
 ```
 
-Verifier que le commit obtenu est celui dont les tests ont ete valides. Appliquer
-la migration standard, sur chacun des wikis utilisant ce code, en conservant la
-configuration EagerPurge actuelle. `update` peut aussi appliquer d'autres
-migrations en attente : sauvegarde et fenetre de maintenance restent necessaires.
+Verifier que le commit obtenu est celui dont les tests ont ete valides. Si les
+tables n'ont pas encore ete installees, appliquer la migration standard sur
+chacun des wikis utilisant ce code, en conservant la configuration EagerPurge.
+`update` peut appliquer d'autres migrations en attente : sauvegarde et fenetre de
+maintenance restent necessaires. Si les deux tables sont deja presentes, ce
+suivi n'exige aucune nouvelle migration.
 
 ```sh
 cd /home/users/webmaster/www/farm.wikidebates.org/w &&
@@ -191,32 +217,48 @@ env -u WD_SEMANTIC_PURGE_MANUAL php maintenance/run.php update --wiki=fr
 Ne pas activer EagerPurge globalement. Garder les exclusions du worker anglais
 pour `smw.update` et `wikidebatesSemanticCachePurge`. Ne pas changer le francais.
 
-Verifier les tables et les reglages anglais sans consommer de job :
+### Controle sans consommer de job
+
+```sh
+WD_SEMANTIC_PURGE_MANUAL=1 php maintenance/run.php Wikidebates:CheckSemanticCache \
+	--wiki=en \
+	--require-purge-ready
+```
+
+La commande lit les reglages et l'existence des tables sur la base primaire.
+Elle ne parse aucune page, ne purge aucun cache et ne touche pas a la file.
+`--json` fournit un rapport machine. Sans `--require-purge-ready`, on peut aussi
+inspecter un wiki dont EagerPurge est volontairement desactive.
+
+Attendre Tracking=true, EagerPurge=true, `purge_preconditions_met = true` et les
+deux tables de l'extension OK. Le controle accepte le fonctionnement sans la
+table facultative `wd_smw_purge_state`, mais affiche alors un avertissement :
+installer cette table pour beneficier de la mutualisation. Il refuse les tables
+obligatoires manquantes et considere correctement `smwgQueryProfiler=0` comme
+actif (seul le booleen false desactive ce profilage).
+
+Ce controle ne certifie pas la fraicheur de chaque page, les permissions du
+stockage des fragments, les workers, les profils `_ASK` complets ni le CDN.
+Il ne modifie pas la configuration. En execution ordinaire, EagerPurge doit
+rester false. Le comportement historique d'un job avec EagerPurge=false retourne
+true sans purge : les exclusions du worker general restent donc indispensables.
+
+Pour les versions ne contenant pas encore la nouvelle commande, utiliser ce
+repli. **MediaWiki 1.43 eval evalue chaque ligne separement** : conserver une
+instruction complete par ligne, meme dans un here-document.
 
 ```sh
 WD_SEMANTIC_PURGE_MANUAL=1 php maintenance/run.php eval --wiki=en <<'PHP'
 $services = \MediaWiki\MediaWikiServices::getInstance();
 $config = $services->getMainConfig();
-foreach ([
-	'WikidebatesSemanticCacheTracking',
-	'WikidebatesSemanticCacheEagerPurge',
-	'WikidebatesSemanticCachePurgeBatchSize',
-	'WikidebatesSemanticCachePurgeLog'
-] as $key) {
-	echo $key . ' = ' . json_encode($config->get($key)) . "\n";
-}
+echo 'Tracking = ' . json_encode($config->get('WikidebatesSemanticCacheTracking')) . "\n";
+echo 'EagerPurge = ' . json_encode($config->get('WikidebatesSemanticCacheEagerPurge')) . "\n";
+echo 'BatchSize = ' . json_encode($config->get('WikidebatesSemanticCachePurgeBatchSize')) . "\n";
 $db = \SMW\Services\ServicesFactory::getInstance()->getStore()->getConnection('mw.db');
-foreach (['wd_smw_entity_revisions', 'wd_smw_purge_state'] as $table) {
-	echo $table . ' = ' . ($db->tableExists($table, __METHOD__) ? 'OK' : 'ABSENTE') . "\n";
-}
+echo 'wd_smw_entity_revisions = ' . ($db->tableExists('wd_smw_entity_revisions', __METHOD__) ? 'OK' : 'ABSENTE') . "\n";
+echo 'wd_smw_purge_state = ' . ($db->tableExists('wd_smw_purge_state', __METHOD__) ? 'OK' : 'ABSENTE') . "\n";
 PHP
 ```
-
-Attendre Tracking=true, EagerPurge=true dans CETTE commande, et deux tables OK.
-En execution ordinaire, EagerPurge doit toujours etre false. Ne pas lancer la
-suite si cette verification echoue. Le comportement historique avec
-EagerPurge=false retourne true sans effectuer de purge : un worker execute par
-erreur dans ce mode pourrait acquitter les jobs au lieu de les conserver.
 
 ## Reprise des jobs anglais
 
@@ -226,6 +268,9 @@ la file reelle, y compris les jobs retardes, acquis ou abandonnes.
 
 ```sh
 php maintenance/run.php showJobs --wiki=en --type=wikidebatesSemanticCachePurge --group
+WD_SEMANTIC_PURGE_MANUAL=1 php maintenance/run.php Wikidebates:CheckSemanticCache \
+	--wiki=en \
+	--require-purge-ready &&
 WD_SEMANTIC_PURGE_MANUAL=1 php maintenance/run.php runJobs \
 	--wiki=en \
 	--type=wikidebatesSemanticCachePurge \
@@ -233,6 +278,10 @@ WD_SEMANTIC_PURGE_MANUAL=1 php maintenance/run.php runJobs \
 	--maxtime=60
 php maintenance/run.php showJobs --wiki=en --type=wikidebatesSemanticCachePurge --group
 ```
+
+Le `&&` interdit le lancement manuel si le controle echoue. Les deux processus
+utilisent le meme prefixe d'environnement ; ne pas modifier la configuration
+entre eux. Ce controle n'est pas un verrou et ne remplace pas les exclusions.
 
 Si le pilote est concluant, recommencer par lots bornes, par exemple
 `--maxjobs=100 --maxtime=300`, avec le meme prefixe d'environnement. Ne pas
@@ -259,7 +308,7 @@ env -u WD_SEMANTIC_PURGE_MANUAL php extensions/SemanticMediaWiki/maintenance/reb
 	--force-update
 ```
 
-`-s` est l'identifiant de depart ; `-n` borne le nombre d'identifiants traite.
+`-s` est l'identifiant de depart ; `-n` borne la plage d'identifiants.
 Reprendre selon la progression annoncee par le script, pas en ajoutant
 arbitrairement 50 au dernier ID observe. `--query` attend une vraie requete SMW,
 ce n'est pas une option booleenne pour les profils `_ASK`. Ne pas employer `-f`.
