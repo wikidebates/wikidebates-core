@@ -169,6 +169,7 @@ fsSave('WD HTTP template parent FR', 'No parent relation');
 fsSave('WD HTTP template parent EN', 'No parent relation');
 
 fsSave('WD HTTP public page', str_repeat('This ordinary page contains no semantic query. ', 30));
+fsSave('WD HTTP fallback template marker', 'WD_HTTP_FALLBACK_TEMPLATE_MARKER {{Argument}}');
 fsFlush();
 
 // SMW profiles must belong to already-created query pages.
@@ -983,6 +984,239 @@ try {
 		fwrite(STDERR, "WARNING: untracked mobile HTML retained an old SMW result in the disposable lab.\n");
 	}
 
+	// A real site Argument has no __NOCACHE__ and may have a valid
+	// anonymous HTMLFileCache entry even with Tracking=false. Prove the
+	// lab produces one before asking conservative mode to reject it.
+	$fallbackOff = $temporary . '/semantic-http-disable-tracking';
+	$fallbackOn = $temporary . '/semantic-http-safe-fallback';
+	touch($fallbackOff);
+	try {
+		$untrackedHtml = $http('index.php', ['title' => 'WD_HTTP_query_A']);
+		check($untrackedHtml['status'] === 200 &&
+			str_contains($untrackedHtml['body'], 'WD_HTTP_MATCHES=0'),
+			'Untracked Vector query renders the pre-edit semantic result');
+		$nativeCacheKey = \MediaWiki\Cache\CacheKeyHelper::getKeyForPage(
+			Title::newFromText('WD HTTP query A')
+		);
+		$nativeFile = $temporary . '/semantic-http-full-pages/' .
+			str_replace('.', '%2E', urlencode($nativeCacheKey)) . '.html';
+		$nativeFile = is_file($nativeFile . '.gz') ? $nativeFile . '.gz' : $nativeFile;
+		check(is_file($nativeFile) && filemtime($nativeFile) !== false,
+			'Baseline creates a genuine native full-HTML file for a query page without tracking');
+
+		touch($fallbackOn);
+		try {
+			$beforeFallback = $fragment('WD HTTP query A');
+			check($beforeFallback['fragment']['source'] === 'parser' &&
+				str_contains($beforeFallback['fragment']['html'], 'WD_HTTP_MATCHES=0'),
+				'Fallback ignores any preexisting tracked or untracked Argument fragment');
+			check($fragment('WD HTTP query A')['fragment']['source'] === 'parser',
+				'Fallback never hits or publishes a shared query-dependent fragment');
+			$vectorFallback = $http('index.php', ['title' => 'WD_HTTP_query_A']);
+			check($vectorFallback['status'] === 200 &&
+				str_contains($vectorFallback['body'], 'WD_HTTP_MATCHES=0'),
+				'Fallback renders current Vector HTML despite an existing native HTML file');
+			$mobileFallback = $http('index.php', ['title' => 'WD_HTTP_query_A'],
+				[$mobileUA, 'X-WD-Semantic-Lab-File-Cache-Probe: 1']);
+			check($mobileFallback['status'] === 200 &&
+				str_contains($mobileFallback['body'], 'WD_HTTP_MATCHES=0') &&
+				($mobileFallback['headers']['x-minerva-file-cache'][0] ?? '') ===
+					'BYPASS; reason=extension-veto',
+				'Fallback correctly vetoes MinervaFileCache, not an unrelated lab debug header');
+
+			// An ordinary Debate must retain cache eligibility. Require a
+			// genuine HIT with the test-only worker header suppressed.
+			$debateMobileHeaders = [$mobileUA, 'X-WD-Semantic-Lab-File-Cache-Probe: 1'];
+			$debateMobile = $http('index.php', $debateUrl, $debateMobileHeaders);
+			$debateMobileAgain = $http('index.php', $debateUrl, $debateMobileHeaders);
+			check($debateMobile['status'] === 200 &&
+				$debateMobileAgain['status'] === 200 &&
+				($debateMobileAgain['headers']['x-minerva-file-cache'][0] ?? '') === 'HIT' &&
+				str_contains($debateMobileAgain['body'], 'WD HTTP displayed pro argument'),
+				'An ordinary Debate retains a genuine Minerva full-HTML cache HIT');
+
+			// A pre-migration Argument may have no registered SMW _ASK yet.
+			// The synthetic {{Argument}} transclusion is unresolved in this
+			// lab, intentionally testing source classification alone.
+			$unprofiled = 'WD HTTP fallback template marker';
+			$store->clear();
+			check($store->getPropertyValues(
+				SemanticWikiPage::newFromTitle(Title::newFromText($unprofiled)), new Property('_ASK')
+			) === [], 'Argument source without stored SMW _ASK is recognized');
+			$unprofiledVector = $http('index.php', ['title' => 'WD_HTTP_fallback_template_marker']);
+			check($unprofiledVector['status'] === 200 &&
+				str_contains($unprofiledVector['body'], 'WD_HTTP_FALLBACK_TEMPLATE_MARKER'),
+				'Fallback Vector view handles an unprofiled Argument source');
+			$unprofiledMinerva = $http('index.php', ['title' => 'WD_HTTP_fallback_template_marker'],
+				$debateMobileHeaders);
+			check($unprofiledMinerva['status'] === 200 &&
+				str_contains($unprofiledMinerva['body'], 'WD_HTTP_FALLBACK_TEMPLATE_MARKER') &&
+				($unprofiledMinerva['headers']['x-minerva-file-cache'][0] ?? '') ===
+					'BYPASS; reason=extension-veto',
+				'Fallback vetoes Minerva for an unprofiled Argument source');
+
+			// Separately test a genuine native Argument renderer.
+			$nativeFallback = 'WD HTTP fallback native argument';
+			fsSave($nativeFallback,
+				'{{#argument:render|lang=fr|summary=WD_HTTP_FALLBACK_NATIVE}}');
+			$services->getDBLoadBalancerFactory()->commitPrimaryChanges(__METHOD__);
+			$nativeFragment = $fragment($nativeFallback);
+			check($nativeFragment['fragment']['source'] === 'parser' &&
+				str_contains($nativeFragment['fragment']['html'], 'WD_HTTP_FALLBACK_NATIVE'),
+				'Fallback renders a native Argument without a fragment hit');
+			check($fragment($nativeFallback)['fragment']['source'] === 'parser',
+				'Fallback never caches native Argument fragments');
+			$nativeVector = $http('index.php', ['title' => 'WD_HTTP_fallback_native_argument']);
+			check($nativeVector['status'] === 200 &&
+				str_contains($nativeVector['body'], 'WD_HTTP_FALLBACK_NATIVE'),
+				'Fallback Vector view renders the native Argument');
+			$nativeMinerva = $http('index.php', ['title' => 'WD_HTTP_fallback_native_argument'],
+				$debateMobileHeaders);
+			check($nativeMinerva['status'] === 200 &&
+				str_contains($nativeMinerva['body'], 'WD_HTTP_FALLBACK_NATIVE') &&
+				($nativeMinerva['headers']['x-minerva-file-cache'][0] ?? '') ===
+					'BYPASS; reason=extension-veto',
+				'Fallback Minerva vetoes the native Argument');
+
+			// The external SMW edit does not change the query page's
+			// own revision. Cached representations must be bypassed now.
+			fsSave('WD HTTP child', '{{#set:WD HTTP Parent=WD HTTP parent A}}');
+			fsFlush(['wikidebatesSemanticCachePurge']);
+			$updated = $fragment('WD HTTP query A');
+			check($updated['fragment']['source'] === 'parser' &&
+				str_contains($updated['fragment']['html'], 'WD_HTTP_MATCHES=1'),
+				'Fallback sees the new parent without waiting for semantic purges');
+			$vectorUpdated = $http('index.php', ['title' => 'WD_HTTP_query_A']);
+			check($vectorUpdated['status'] === 200 &&
+				str_contains($vectorUpdated['body'], 'WD_HTTP_MATCHES=1'),
+				'Fallback Vector rejects the old native HTML file after an external SMW edit');
+			$mobileUpdated = $http('index.php', ['title' => 'WD_HTTP_query_A'],
+				$debateMobileHeaders);
+			check($mobileUpdated['status'] === 200 &&
+				str_contains($mobileUpdated['body'], 'WD_HTTP_MATCHES=1') &&
+				($mobileUpdated['headers']['x-minerva-file-cache'][0] ?? '') ===
+					'BYPASS; reason=extension-veto',
+				'Fallback Minerva renders current semantic HTML after the external SMW edit');
+		} finally {
+			unlink($fallbackOn);
+		}
+	} finally {
+		unlink($fallbackOff);
+	}
+	fsFlush();
+
+	// Compare two safe policies on the same native French Argument in
+	// real, independent HTTP workers. Both modes are explicitly warmed.
+	// Avoid an A-then-B timing bias: pairs alternate their order.
+	$performanceToggle = static function(string $mode) use ($fallbackOff, $fallbackOn): void {
+		if ($mode === 'tracked') {
+			if (is_file($fallbackOff)) { unlink($fallbackOff); }
+			if (is_file($fallbackOn)) { unlink($fallbackOn); }
+		} elseif ($mode === 'fallback') {
+			if (!is_file($fallbackOff)) { touch($fallbackOff); }
+			if (!is_file($fallbackOn)) { touch($fallbackOn); }
+		} else {
+			throw new RuntimeException('Unknown isolated performance mode');
+		}
+	};
+	$perfMarker = 'WD_HTTP_CORPUS_ARGUMENT_SECOND';
+	$perfArgument = static function(string $mode) use (
+		$performanceToggle, $fragment, $corpusArgumentTitle, $perfMarker
+	): array {
+		$performanceToggle($mode);
+		$sample = $fragment($corpusArgumentTitle, ['X-Requested-With: XMLHttpRequest']);
+		$expected = $mode === 'tracked' ? 'fragment-cache' : 'parser';
+		check($sample['fragment']['source'] === $expected &&
+			str_contains($sample['fragment']['html'], $perfMarker),
+			'Real Argument benchmark uses current ' . $expected . ' output in ' . $mode);
+		return $sample;
+	};
+	$performanceMobileHeaders = [$mobileUA, 'X-WD-Semantic-Lab-File-Cache-Probe: 1'];
+	$perfDebate = static function(string $mode) use (
+		$performanceToggle, $http, $corpusUrl, $performanceMobileHeaders
+	): array {
+		$performanceToggle($mode);
+		$sample = $http('index.php', $corpusUrl, $performanceMobileHeaders);
+		check($sample['status'] === 200 &&
+			($sample['headers']['x-minerva-file-cache'][0] ?? '') === 'HIT' &&
+			str_contains($sample['body'], 'Il existe des interventions divines') &&
+			str_contains($sample['body'], 'Dieu est une invention'),
+			'Ordinary corpus Debate keeps a genuine Minerva HIT in ' . $mode);
+		return $sample;
+	};
+	$performanceResults = [
+		'tracked' => ['argument_fragment' => [], 'debate_minerva' => []],
+		'fallback' => ['argument_fragment' => [], 'debate_minerva' => []]
+	];
+	try {
+		$performanceToggle('tracked');
+		$trackedReady = false;
+		for ($attempt = 0; $attempt < 12; $attempt++) {
+			$sample = $fragment($corpusArgumentTitle, ['X-Requested-With: XMLHttpRequest']);
+			if (($sample['fragment']['source'] ?? '') === 'fragment-cache' &&
+				str_contains($sample['fragment']['html'], $perfMarker)) {
+				$trackedReady = true;
+				break;
+			}
+		}
+		check($trackedReady, 'Tracked native Argument stabilizes into a real fragment HIT');
+		$performanceToggle('fallback');
+		for ($i = 0; $i < 3; $i++) { $perfArgument('fallback'); }
+		$performanceToggle('tracked');
+		$debateReady = false;
+		for ($attempt = 0; $attempt < 5; $attempt++) {
+			$sample = $http('index.php', $corpusUrl, $performanceMobileHeaders);
+			if ($sample['status'] === 200 &&
+				($sample['headers']['x-minerva-file-cache'][0] ?? '') === 'HIT') {
+				$debateReady = true;
+				break;
+			}
+		}
+		check($debateReady, 'Corpus Debate stabilizes as a genuine Minerva HIT');
+		for ($i = 0; $i < 3; $i++) {
+			$perfArgument('tracked');
+			$perfArgument('fallback');
+			$perfDebate('tracked');
+			$perfDebate('fallback');
+		}
+		for ($i = 0; $i < 12; $i++) {
+			$order = $i % 2 === 0 ? ['tracked', 'fallback'] : ['fallback', 'tracked'];
+			foreach ($order as $mode) {
+				$performanceResults[$mode]['argument_fragment'][] =
+					$perfArgument($mode)['elapsed_ms'];
+				$performanceResults[$mode]['debate_minerva'][] =
+					$perfDebate($mode)['elapsed_ms'];
+			}
+		}
+	} finally {
+		$performanceToggle('tracked');
+	}
+	$performanceComparison = [
+		'context' => 'isolated loopback HTTP; real native French Argument and 25-link debate',
+		'design' => '12 alternating AB/BA pairs, independent HTTP workers, both modes prewarmed',
+		'samples_each' => count($performanceResults['tracked']['argument_fragment']),
+		'argument_fragment' => [
+			'tracked_source' => 'fragment-cache',
+			'fallback_source' => 'parser',
+			'tracked_median_ms' => $percentile($performanceResults['tracked']['argument_fragment'], .5),
+			'tracked_p95_ms' => $percentile($performanceResults['tracked']['argument_fragment'], .95),
+			'fallback_median_ms' => $percentile($performanceResults['fallback']['argument_fragment'], .5),
+			'fallback_p95_ms' => $percentile($performanceResults['fallback']['argument_fragment'], .95),
+			'fallback_over_tracked_median_ratio' => round(
+				$percentile($performanceResults['fallback']['argument_fragment'], .5) /
+				max(.001, $percentile($performanceResults['tracked']['argument_fragment'], .5)), 2),
+		],
+		'debate_minerva' => [
+			'tracked_source' => 'HIT',
+			'fallback_source' => 'HIT',
+			'tracked_median_ms' => $percentile($performanceResults['tracked']['debate_minerva'], .5),
+			'tracked_p95_ms' => $percentile($performanceResults['tracked']['debate_minerva'], .95),
+			'fallback_median_ms' => $percentile($performanceResults['fallback']['debate_minerva'], .5),
+			'fallback_p95_ms' => $percentile($performanceResults['fallback']['debate_minerva'], .95),
+		],
+		'limitations' => 'Synthetic HTTP lab timing, not production CPU, DB load, Cloudflare or staging throughput',
+	];
+
 	$report = [
 		'backend' => $dbType,
 		'mediawiki' => MW_VERSION,
@@ -991,6 +1225,7 @@ try {
 		'transport' => 'real loopback HTTP, three PHP CLI server workers',
 		'corpus_debate' => $corpusMeasurements,
 		'untracked_minerva_semantic_baseline' => $untrackedMinervaObservation,
+		'safe_policy_performance' => $performanceComparison,
 		'benchmark' => [
 			'samples_each' => count($hitSamples),
 			'fragment_hit_median_ms' => $percentile($hitSamples, .5),

@@ -632,6 +632,10 @@
 			"value": false,
 			"description": "Opt-in tracking of native SMW queries and targeted cache invalidation; keep disabled until isolated integration validation."
 		},
+		"WikidebatesSemanticCacheSafeFallback": {
+			"value": false,
+			"description": "Optional conservative safety mode when semantic tracking is disabled: do not read or publish shared file/fragment/parser caches for recognized semantic-query pages. It increases parsing load and does not replace SMW dependency tracking."
+		},
 		"WikidebatesSemanticCacheEagerPurge": {
 			"value": false,
 			"description": "Disabled by default: semantic revision tracking may run without enqueueing background cache purges. Existing queued jobs must not be executed until manually enabled and preflight-checked; disabled jobs remain retryable."
