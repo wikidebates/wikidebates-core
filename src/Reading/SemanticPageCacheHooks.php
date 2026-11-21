@@ -71,7 +71,7 @@ final class SemanticPageCacheHooks {
 		// will store only if the final HTML/headers are public-safe. Its own
 		// output handler prevents upstream HTTP caches on success or failure.
 		if (self::isAnonymousMobileFileCandidate($out->getContext()) &&
-			\\MediaWiki\\Extension\\MinervaFileCache\\Hooks::isCandidateOutput($out)) {
+			\MediaWiki\Extension\MinervaFileCache\Hooks::isCandidateOutput($out)) {
 			return;
 		}
 		try {
@@ -151,12 +151,12 @@ final class SemanticPageCacheHooks {
 	 * A desktop view and a registered mobile view keep semantic validation.
 	 */
 	private static function isAnonymousMobileFileCandidate($context): bool {
-		return class_exists(\\MediaWiki\\Extension\\MinervaFileCache\\Hooks::class) &&
-			class_exists(\\MobileContext::class) &&
+		return class_exists(\MediaWiki\Extension\MinervaFileCache\Hooks::class) &&
+			class_exists(\MobileContext::class) &&
 			$context->getConfig()->get('MinervaFileCacheEnabled') &&
 			!$context->getUser()->isRegistered() &&
 			$context->getSkin()->getSkinName() === 'minerva' &&
-			\\MobileContext::singleton()->shouldDisplayMobileView();
+			\MobileContext::singleton()->shouldDisplayMobileView();
 	}
 
 	private static function enabled(): bool {
