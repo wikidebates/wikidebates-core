@@ -143,8 +143,12 @@
 				var $local = wkEnsureLocalHoverWrapper( $wrap );
 				$local.attr( 'aria-hidden', 'false' );
 
+				// The shared parse cache distinguishes user languages. Keep this
+				// element-local cache equally strict, including the complete query.
+				var language = mw.config.get( 'wgUserLanguage' );
+				var cacheKey = JSON.stringify( [ language, built.query ] );
 				var stored = wkHoverStore ? wkHoverStore.get( el ) : null;
-				if ( stored && stored.key === built.key && stored.html ) {
+				if ( stored && stored.key === cacheKey && stored.html ) {
 					$local.html( stored.html ).show();
 					return;
 				}
@@ -154,9 +158,16 @@
 				WK.wkParseWikitext( built.query, 'hover' ).then( function ( html ) {
 					if ( myToken !== wkHoverToken ) return;
 					if ( !wkHoverCurrent || wkHoverCurrent[ 0 ] !== el ) return;
+					// An in-flight response belongs to the language and query at
+					// submission time, even when the element is reused.
+					if ( mw.config.get( 'wgUserLanguage' ) !== language ) return;
+					var currentInfo = wkGetHoverTypeAndTpl( $wrap );
+					var currentLink = wkGetLinkNode( $wrap );
+					var currentQuery = currentLink && wkBuildHoverQuery( currentInfo, el, currentLink );
+					if ( !currentQuery || currentQuery.query !== built.query ) return;
 
 					if ( wkHoverStore ) {
-						wkHoverStore.set( el, { key: built.key, html: html } );
+						wkHoverStore.set( el, { key: cacheKey, html: html } );
 					}
 
 					$local.html( html ).show();
