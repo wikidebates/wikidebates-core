@@ -833,7 +833,7 @@ try {
 	$historicalAfterRemoval = $historicalPage->getParserOutput(
 		ParserOptions::newFromAnon()
 	);
-	check($historicalAfterRemoval instanceof \\MediaWiki\\Parser\\ParserOutput &&
+	check($historicalAfterRemoval instanceof \MediaWiki\Parser\ParserOutput &&
 		!str_contains($historicalAfterRemoval->getText(), $historicalParent) &&
 		!str_contains($historicalAfterRemoval->getText(),
 			str_replace(' ', '_', $historicalParent)),
