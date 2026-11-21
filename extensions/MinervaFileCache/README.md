@@ -78,6 +78,8 @@ réponse déjà conservée par un intermédiaire ne prouve rien sur ce cache.
 | `variant` / `page` | Langue/skin différent, redirection ou notification personnelle |
 | `extension-veto` | Refus d'une extension, ou intégration MobileFrontend non reconnue |
 | `nonce` / `csp-nonce` | Réponse avec nonce ; elle ne sera pas partagée entre visiteurs |
+| `parser-expiry` | Sortie d'analyse sans expiration cache valide (par exemple avec `__NOCACHE__`) |
+| `not-public` / `redirect` / `http-status` / `headers-sent` | Réponse non publique, redirection, statut différent de 200 ou en-têtes déjà envoyés |
 | `cache-control` / `response` | Réponse non conservable, personnalisée ou autre qu'un succès HTML |
 | `header-…` / `vary` | En-tête ou source de variation non pris en charge |
 | `storage-error` | Répertoire ou stockage indisponible ; détails dans le canal de log `MinervaFileCache` |
@@ -234,6 +236,28 @@ s'arrête et conserve son point de reprise.
 acceptée. Un préchauffage Android ne remplit pas toutes les variantes Safari
 iPhone ou toutes les versions de Chrome. Il est donc surtout utile pour les
 variantes réellement consultées et peut produire beaucoup de fichiers.
+
+## Pages froides et répertoires vides
+
+Sur une page jamais stockée, MinervaFileCache vérifie désormais l'absence de
+génération **sans créer de répertoire ni de verrou**. Si le HTML final est
+non cacheable, aucun fichier n'est créé pour cette simple consultation.
+Lorsqu'il est cacheable, la première publication crée la génération sous
+verrou exclusif ; une purge intervenue pendant le rendu empêche cette
+publication, de la même manière que pour un cache déjà initialisé.
+
+Cette optimisation ne supprime pas les répertoires historiques. Les purges
+et invalidations créent encore un marqueur de génération pour empêcher la
+publication d'un rendu commencé avant leur exécution. Ne pas supprimer
+automatiquement les répertoires contenant des fichiers `page.lock` ou
+`fill.lock` pendant que PHP-FPM ou des jobs utilisent le stockage :
+supprimer un verrou ouvert introduirait une course d'invalidation.
+
+Le nombre de répertoires sans fichiers `.cache` ne suffit donc pas à
+déterminer la source des créations (anciennes lectures, purges ou fichiers
+expirés). Le meilleur indicateur d'efficacité reste l'observation des
+`HIT`, `MISS` et `BYPASS` sur de vrais accès, complétée par les
+statistiques et audits ci-dessous.
 
 ## Diagnostic du stockage
 

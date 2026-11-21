@@ -102,9 +102,9 @@ trait CacheView {
 			$request->getHeader('Accept-Language'), $request->getHeader('X-Subdomain')]);
 		$store = Hooks::store();
 		$page = $this->getTitle()->getPrefixedDBkey();
-		$snapshot = $store->read($page, $variant, $identity);
+		$snapshot = $store->readIfPresent($page, $variant, $identity);
 		$fill = null;
-		if (!$snapshot['entry']) {
+		if (!$snapshot['entry'] && !$snapshot['fresh']) {
 			$fill = $store->startFill($page);
 			if (!$fill) {
 				// A request may have published since our first MISS.
@@ -113,6 +113,10 @@ trait CacheView {
 				if (!$snapshot['entry']) { return $this->bypass('busy'); }
 			}
 		}
+		// On an uninitialized page, skip the fill lock altogether. Only a
+		// cacheable final HTML response will create the page directory.
+		// Concurrent edits/purges are protected by exclusive generation
+		// creation in publish(), which rejects earlier optimistic snapshots.
 		if ($snapshot['entry']) {
 			$entry = $snapshot['entry'];
 			foreach ($entry['headers'] as $name => $values) {
@@ -143,13 +147,31 @@ trait CacheView {
 				if (!($phase & PHP_OUTPUT_HANDLER_FINAL) || ($phase & PHP_OUTPUT_HANDLER_CLEAN)) {
 					return $html;
 				}
+				// Most non-cacheable pages fail the parser/OutputPage checks.
+				// Skip scanning their full HTML and headers altogether.
+				$reason = null;
+				if (headers_sent()) {
+					$reason = 'headers-sent';
+				} elseif (http_response_code() !== 200) {
+					$reason = 'http-status';
+				} elseif ($expires <= time()) {
+					$reason = 'parser-expiry';
+				} elseif ($context->getOutput()->getRedirect() !== '') {
+					$reason = 'redirect';
+				} elseif (!$context->getOutput()->couldBePublicCached()) {
+					$reason = 'not-public';
+				}
+				if ($reason !== null) {
+					$this->diagnostic('BYPASS', $reason);
+					return $html;
+				}
 				$headers = ResponsePolicy::headersForStorage($html, headers_list(), $reason);
-				if (headers_sent() || http_response_code() !== 200 || $headers === null ||
-					$expires <= time() || $context->getOutput()->getRedirect() !== '' || !$context->getOutput()->couldBePublicCached()) {
+				if ($headers === null) {
 					$this->diagnostic('BYPASS', $reason ?? 'response');
 					return $html;
 				}
-				if (!$store->publish($page, $variant, $identity, $snapshot['generation'], $html, $headers, $expires)) {
+				if (!$store->publish($page, $variant, $identity, $snapshot['generation'], $html, $headers,
+					$expires, $snapshot['fresh'] ?? false)) {
 					$this->diagnostic('BYPASS', 'not-stored');
 				} else {
 					$this->privateResponse();

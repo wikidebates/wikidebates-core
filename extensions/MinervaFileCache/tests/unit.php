@@ -19,6 +19,46 @@ mkdir($dir, 0700);
 try {
 	$store = new Store($dir, 'wiki-one', 300, 4096);
 	$identity = ['revision' => 1, 'touched' => '20261022000000'];
+	// A cold page that never becomes cacheable must not allocate a directory,
+	// lock file or generation file simply because it was viewed.
+	$lazy = new Store($dir, 'lazy-wiki', 300, 4096);
+	$unpublished = $lazy->readIfPresent('Uncacheable', 'android', $identity);
+	check($unpublished['entry'] === null && $unpublished['fresh'] === true,
+		'Optimistic cold read misses');
+	check($lazy->statistics()['pages'] === 0, 'Uncacheable cold read creates no directory');
+	$firstCandidate = $lazy->readIfPresent('Cacheable', 'android', $identity);
+	check($lazy->publish('Cacheable', 'android', $identity, $firstCandidate['generation'],
+		'FIRST_HTML', [], PHP_INT_MAX, true), 'Cold publication initializes a generation');
+	$firstHit = $lazy->readIfPresent('Cacheable', 'android', $identity);
+	check($firstHit['fresh'] === false && $firstHit['entry']['body'] === 'FIRST_HTML',
+		'Published cold content becomes an ordinary valid HIT');
+	// A purge between the cold snapshot and the first publish must prevent
+	// stale HTML from ever creating a valid cache generation.
+	$race = $lazy->readIfPresent('Concurrent_purge', 'android', $identity);
+	$lazy->invalidate('Concurrent_purge');
+	check(!$lazy->publish('Concurrent_purge', 'android', $identity, $race['generation'],
+		'STALE_HTML', [], PHP_INT_MAX, true), 'Concurrent invalidation vetoes stale first publication');
+	check($lazy->readIfPresent('Concurrent_purge', 'android', $identity)['entry'] === null,
+		'Purged first render leaves no cached HTML');
+	// Only the first simultaneous cold renderer may initialize an untracked page.
+	$winner = $lazy->readIfPresent('First_wins', 'android', $identity);
+	$loser = $lazy->readIfPresent('First_wins', 'android', $identity);
+	check($lazy->publish('First_wins', 'android', $identity, $winner['generation'],
+		'WINNER', [], PHP_INT_MAX, true), 'First cold renderer publishes');
+	check(!$lazy->publish('First_wins', 'android', $identity, $loser['generation'],
+		'LOSER', [], PHP_INT_MAX, true), 'Second cold renderer cannot overwrite the first');
+	check($lazy->readIfPresent('First_wins', 'android', $identity)['entry']['body'] === 'WINNER',
+		'Concurrent cold publications keep the first valid content');
+	// Pre-existing page generations still use the ordinary locking protocol.
+	$legacy = new Store($dir, 'pre-existing-wiki', 300, 4096);
+	$legacySnapshot = $legacy->read('Existing', 'android', $identity);
+	$legacyPeek = $legacy->readIfPresent('Existing', 'android', $identity);
+	check(!$legacyPeek['fresh'] && $legacyPeek['generation'] === $legacySnapshot['generation'],
+		'Existing page generation is respected by lazy reader');
+	check($legacy->publish('Existing', 'android', $identity, $legacyPeek['generation'], 'LEGACY', []),
+		'Pre-existing page remains writable without first-publication mode');
+
+
 	$first = $store->read('A', 'android', $identity);
 	check($first['entry'] === null, 'Cold read misses');
 	$fill = $store->startFill('A');
@@ -26,7 +66,7 @@ try {
 	check($store->publish('A', 'android', $identity, $first['generation'], '<html>Résumé</html>', ['content-type' => ['text/html']]), 'Atomic publication succeeds');
 	fclose($fill);
 	check($store->read('A', 'android', $identity)['entry']['body'] === '<html>Résumé</html>', 'Body bytes round-trip exactly');
-	$cached = glob($dir . '/*/*/*/*.cache')[0];
+	$cached = glob($dir . '/' . hash('sha256', 'wiki-one') . '/*/*/*.cache')[0];
 	clearstatcache(true, $cached);
 	check(filemtime($cached) > time(), 'New cache files store their expiry in mtime');
 	check($store->prune() === 0, 'Prune preserves fresh files without decoding');
@@ -100,7 +140,7 @@ try {
 	$new = $store->read('A', 'android', $identity);
 	check(!$store->publish('A', 'android', $identity, $new['generation'], str_repeat('x', 4097), []), 'Oversize bodies are not cached');
 	check($store->publish('A', 'android', $identity, $new['generation'], 'CURRENT', []), 'New generation can publish');
-	$paths = glob($dir . '/*/*/*/*.cache');
+	$paths = glob($dir . '/' . hash('sha256', 'wiki-one') . '/*/*/*.cache');
 	$path = $paths[0];
 	$entry = json_decode(gzdecode(file_get_contents($path)), true);
 	$entry['expires'] = time() - 1;
