@@ -396,5 +396,8 @@
 	"wk-interlanguage-label": "Interlangue",
 	"apihelp-wikidebatesreading-summary": "Renvoie l’extrait HTML préparé pour le mode lecture de Wikidébats.",
 	"apihelp-wikidebatesreading-param-page": "Titre de la page d’argument.",
-	"apihelp-wikidebatesreading-param-useskin": "Habillage utilisé pour le rendu de l’extrait."
+	"apihelp-wikidebatesreading-param-useskin": "Habillage utilisé pour le rendu de l’extrait.",
+	"wk-reading-empty-fragment": "Cette page existe, mais son extrait de lecture est indisponible. Vous pouvez réessayer ou ouvrir la page complète.",
+	"wk-reading-load-error": "Impossible de charger cet argument. Vous pouvez réessayer ou ouvrir la page complète.",
+	"wk-reading-retry": "Réessayer"
 }

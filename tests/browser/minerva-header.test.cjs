@@ -689,3 +689,32 @@ test( 'a fresh pull from the top still opens the parent argument', async ( t ) =
 	await settle();
 	assert.equal( await page.textContent( '#wk-reading-content .wk-reading-full-title' ), 'Titre parent' );
 } );
+
+for ( const skin of [ 'minerva', 'vector' ] ) {
+	test( 'reading failure and retry remain usable in the real ' + skin + ' panel', async ( t ) => {
+		const { page, open, beginOpen } = await fixture( t, skin, true );
+		await open( 'Original argument', 900 );
+		await page.evaluate( () => {
+			window.deferRead = true;
+			Wikidebates.wkMsgD = ( key, fallback ) => ( {
+				'wk-reading-load-error': 'The argument could not be loaded.',
+				'wk-reading-retry': 'Retry',
+				'wk-view-detailed-page': 'Open full page'
+			} )[ key ] || fallback || key;
+		} );
+		await beginOpen( 'Requested argument', 900 );
+		await page.evaluate( () => { window.pendingRead.reject( 'http' ); } );
+		await page.waitForSelector( '.wk-reading-error' );
+		const retry = page.locator( '.wk-reading-retry' );
+		assert.equal( await retry.isVisible(), true );
+		assert.equal( await page.locator( '#body-line' ).count(), 0, 'old argument is not displayed beneath the new heading' );
+		assert.equal( await page.textContent( skin === 'minerva' ? '.wk-reading-full-title' : '.wk-reading-h1__title' ), 'Requested argument' );
+		await retry.click();
+		await page.evaluate( () => window.pendingRead.resolve( { wikidebatesreading: {
+			html: '<h2 id="Summary">Summary</h2><p id="recovered-reading">Recovered argument</p>'
+		} } ) );
+		await page.waitForSelector( '#recovered-reading' );
+		assert.equal( await page.locator( '.wk-reading-error' ).count(), 0 );
+		assert.equal( await page.getAttribute( '#wk-reading-content', 'aria-busy' ), null );
+	} );
+}

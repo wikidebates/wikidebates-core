@@ -396,5 +396,8 @@
 	"wk-interlanguage-label": "Label of the Minerva link for editing interlanguage links.",
 	"apihelp-wikidebatesreading-summary": "API module summary for Wikidebates reading fragments.",
 	"apihelp-wikidebatesreading-param-page": "API parameter: title of the argument page.",
-	"apihelp-wikidebatesreading-param-useskin": "API parameter: rendering skin, Vector or Minerva."
+	"apihelp-wikidebatesreading-param-useskin": "API parameter: rendering skin, Vector or Minerva.",
+	"wk-reading-empty-fragment": "Message in the reading panel when the API succeeds but returns no usable extract. The page must not be presented as missing.",
+	"wk-reading-load-error": "Message in the reading panel when loading an argument fails, except for a confirmed missing page.",
+	"wk-reading-retry": "Button in the reading panel to retry the current argument without adding a browser history entry."
 }
