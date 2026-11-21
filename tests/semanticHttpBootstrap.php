@@ -58,6 +58,7 @@ function wdSemanticHttpTestSettings($settings): void {
 		'MinervaFileCacheDebugHeaders' => true,
 		'WikidebatesReadingFragments' => true,
 		'WikidebatesSemanticCacheTracking' => !is_file($root . '/semantic-http-disable-tracking'),
+		'WikidebatesSemanticCacheSafeFallback' => is_file($root . '/semantic-http-safe-fallback'),
 		// The HTTP lab deliberately tests active purges; real defaults stay off.
 		'WikidebatesSemanticCacheEagerPurge' => true,
 		'WikidebatesReadingCacheDirectory' => $root . '/semantic-http-fragments',
