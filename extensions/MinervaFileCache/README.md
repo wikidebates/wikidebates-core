@@ -110,7 +110,7 @@ mettant `$wgMinervaFileCacheDebugHeaders = false` si souhaité.
 - Les fichiers sont compressés sur disque. La compression HTTP reste gérée par
   MediaWiki, PHP ou le serveur web, avec les réglages existants.
 
-La durée maximale est de **300 secondes** par défaut. Les modifications de page,
+La durée maximale est de **2 592 000 secondes (30 jours)** par défaut. Les modifications de page,
 purges et invalidations de dépendances retirent les variantes mobiles via le
 pipeline HTML de MediaWiki. Les jobs de mise à jour des dépendances doivent
 fonctionner, comme pour les autres caches MediaWiki.
@@ -213,7 +213,10 @@ Options principales :
 La commande nécessite `$wgUseFileCache = true`, un stockage accessible et
 `$wgMinervaFileCacheDebugHeaders = true` pour confirmer `MISS` et `HIT`.
 Elle utilise le domaine de `$wgServer` et ne suit pas les redirections.
-Elle s'arrête sur les erreurs HTTP (403, 429, 5xx, etc.), les erreurs de
+Elle signale le statut HTTP réel (par exemple `HTTP_403`, `HTTP_429` ou
+`HTTP_503`) et distingue `TRANSPORT_ERROR` des réponses HTTP. Les réponses
+`HTTP_404` et `HTTP_410` n'interrompent pas le parcours.
+Elle s'arrête sur les autres erreurs HTTP, les erreurs réseau, les erreurs de
 stockage ou plusieurs réponses successives sans en-tête de diagnostic pour
 éviter de surcharger PHP-FPM et Cloudflare. En cas d'interruption, relancer
 la commande avec `--resume` ou reprendre après le dernier `page_id` affiché.
