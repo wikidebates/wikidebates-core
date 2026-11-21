@@ -38,6 +38,45 @@ Choisir au minimum une page Argument française, une anglaise et une page
 Débat avec beaucoup d'arguments. Pour valider un ajout/suppression de
 parent, utiliser une **page d'argument jetable en préproduction**.
 
+## 1 bis. Amorcer les profils SMW des arguments historiques
+
+**Attention : l'activation du suivi ne reconstruit pas à elle seule
+les profils `_ASK` de toutes les pages déjà enregistrées.**
+
+Un nouveau rendu anonyme par l'API ou une lecture canonique de la page
+peut exécuter les requêtes tracées dans `ParserOutput`, sans enregistrer
+leurs profils ni leurs liens de dépendance dans le stockage SQL SMW.
+Le garde-fou doit alors maintenir le cache de lecture de l'argument
+dans un état **non certifié** (`guard_safe_to_read=false`).
+
+Un test d'intégration avec le vrai modèle `Argument`, sous SMW 7.3.1
+et MediaWiki 1.43.11, reproduit ce cas sur SQLite et MariaDB. Dans
+le laboratoire jetable, un **job MediaWiki standard `refreshLinks`
+pour une seule page** reconstruit les données secondaires et enregistre
+les profils `_ASK`, sans créer de nouvelle révision. Après cette
+opération, le fragment suivi devient réutilisable et une modification
+de parent invalide le cache même si la purge ciblée est différée.
+
+Avant de commencer les tests HTTP, sur la **préproduction seulement** :
+
+1. Choisir une page Argument historique sans `_ASK`, confirmer son
+	`page_id`, sa dernière révision et sa configuration effective.
+2. Avec Tracking=true et EagerPurge=false, exécuter une reconstruction
+	**strictement ciblée sur ce page_id**, via le traitement MediaWiki
+	`refreshLinks` (préférer une invocation contrôlée et documentée plutôt
+	qu'une reconstruction générale).
+3. Laisser les mises à jour secondaires SMW se terminer, puis vérifier
+	que `_ASK` et les liens de dépendance sont réellement présents,
+	et que la dernière révision de la page n'a pas changé.
+4. Vérifier `guard_safe_to_read=true`, le comportement du cache, puis
+	les relations parentales après une modification sur la copie.
+
+Si les profils restent absents, **ne pas activer le suivi sur la
+production** et examiner les erreurs SMW. La réussite de la première
+lecture HTML n'est pas un critère suffisant. Ne pas lancer
+`rebuildData.php`, `refreshLinks` ou une purge en masse sur le serveur
+public sans plan de migration et sauvegarde distincts.
+
 ## 2. Relever la situation initiale
 
 Node.js 20+ requis. Remplacer l'origine par l'adresse de préproduction :

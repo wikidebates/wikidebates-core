@@ -670,4 +670,157 @@ check($hasActualParent($fullAfterMoveHtml, $actualParentB) &&
 	substr($fullAfterMoveHtml, -2600));
 fsFlush();
 
+
+// Model a real, old Argument page like production page_id=1220: ordinary
+// {{Argument|résumé=...}} transclusion, initially rendered with tracking OFF.
+// Enabling tracking must reject its old ParserOutput, record the first real
+// _ASK graph, and invalidate a warmed fragment when a parent changes.
+$bundledArgumentTemplate = file_get_contents(
+	__DIR__ . '/../debatephp/resources/Template-Argument.php.wikitext'
+);
+check(is_string($bundledArgumentTemplate) &&
+	!str_contains(strtoupper($bundledArgumentTemplate), '__NOCACHE__'),
+	'Bundled Argument template remains cacheable without the legacy magic word');
+fsSave('Template:Argument',
+	str_replace('{{#argument:render', '{{#argument:render|lang=fr',
+		$bundledArgumentTemplate));
+$historicalArgument = 'WD Cache previously untracked Argument';
+$historicalParent = 'WD Cache previously untracked parent';
+fsSave($historicalArgument, 'Before the Argument transclusion');
+fsSave($historicalParent, 'No parent relation yet');
+fsFlush();
+
+$originalTracking = $GLOBALS['wgWikidebatesSemanticCacheTracking'];
+try {
+	$GLOBALS['wgWikidebatesSemanticCacheTracking'] = false;
+	fsSave($historicalArgument,
+		'{{Argument|résumé=Un argument historique sans profil enregistré}}');
+	fsFlush();
+
+	$historicalTitle = Title::newFromText($historicalArgument);
+	$historicalPage = $services->getWikiPageFactory()->newFromTitle($historicalTitle);
+	$historicalSubject = SemanticWikiPage::newFromTitle($historicalTitle);
+	$store->clear();
+	check($store->getPropertyValues($historicalSubject, new Property('_ASK')) === [],
+		'The actual Argument transclusion has no _ASK profile while tracking is off');
+	$untrackedOutput = $historicalPage->getParserOutput(ParserOptions::newFromAnon());
+	check($untrackedOutput instanceof \MediaWiki\Parser\ParserOutput &&
+		str_contains($untrackedOutput->getText(), 'Un argument historique') &&
+		$untrackedOutput->getExtensionData(SemanticPageCacheHooks::OUTPUT_REVISION) === null,
+		'Previously untracked Argument HTML is parsed without a semantic revision marker');
+
+	// Transition to the opt-in pilot without editing the page again.
+	$GLOBALS['wgWikidebatesSemanticCacheTracking'] = true;
+	$store->clear();
+	check(SemanticPageCacheHooks::isQueryPage($historicalTitle, $historicalPage),
+		'The unprofiled transcluded Argument is recognized before the first traced parse');
+	check(!SemanticPageCacheHooks::onRejectParserCacheValue(
+		$untrackedOutput, $historicalPage, ParserOptions::newFromAnon()
+	), 'Enabling tracking rejects the former untracked Argument parser cache');
+	check(!SemanticCacheGuard::safeForRead($historicalTitle, $historicalPage),
+		'An unprofiled Argument is never treated as safe for fragment cache reuse');
+	$fullPageContext->setTitle($historicalTitle);
+	check(!SemanticPageCacheHooks::onHTMLFileCache__useFileCache($fullPageContext),
+		'Old full-page file caches cannot bypass the first traced Argument parse');
+
+	$observedFirstTrackedOutput = null;
+	$firstTrackedObserver = $services->getHookContainer()->scopedRegister('ParserOutputPostCacheTransform',
+		static function($output, &$text, &$options) use (&$observedFirstTrackedOutput): void {
+			$observedFirstTrackedOutput = $output;
+		});
+	$historicalFirst = $read($historicalArgument);
+	$firstTrackedObserver = null;
+	check($historicalFirst['source'] !== 'fragment-cache' &&
+		str_contains($historicalFirst['html'], 'Un argument historique'),
+		'First tracked Argument reading is freshly rendered with its real summary');
+	fsFlush(['wikidebatesSemanticCachePurge']);
+	$store->clear();
+	$historicalProfilesAfterApi = $store->getPropertyValues(
+		$historicalSubject, new Property('_ASK'));
+	check($observedFirstTrackedOutput instanceof \MediaWiki\Parser\ParserOutput &&
+		$observedFirstTrackedOutput->getExtensionData(TrackedSemanticQuery::OUTPUT_MARKER) === true,
+		'Fresh API parse executes the tracked native Argument query');
+
+	// ApiParse may annotate its temporary ParserOutput without writing the
+	// canonical SMW subject. Exercise a real page-view parse separately
+	// before concluding that a pre-existing argument needs migration.
+	$access = $services->getParserOutputAccess();
+	$local = (new \ReflectionObject($access))->getProperty('localCache');
+	$local->setValue($access, new \MapCacheLRU(10));
+	$canonicalTrackedOutput = $historicalPage->getParserOutput(ParserOptions::newFromAnon());
+	check($canonicalTrackedOutput instanceof \MediaWiki\Parser\ParserOutput &&
+		$canonicalTrackedOutput->getExtensionData(TrackedSemanticQuery::OUTPUT_MARKER) === true,
+		'Canonical Argument parse after enabling tracking executes native traced queries');
+	fsFlush(['wikidebatesSemanticCachePurge']);
+	$store->clear();
+	$historicalProfiles = $store->getPropertyValues($historicalSubject, new Property('_ASK'));
+	check($historicalProfilesAfterApi === [] && $historicalProfiles === [],
+		'Anonymous API and ordinary page reads annotate ParserOutput but do not update SMW storage');
+	// MediaWiki 1.43 RefreshLinksJob performs the actual secondary data
+	// update without a page edit. This is a standard, revision-preserving
+	// recovery path for old Argument pages; exercise it on the disposable
+	// page only, not on production.
+	$revisionBeforeRefresh = $historicalPage->getLatest();
+	$refresh = new \RefreshLinksJob($historicalTitle, [
+		'causeAction' => 'WikidebatesSemanticColdArgumentTest',
+		'causeAgent' => 'Wikidebates disposable integration',
+	]);
+	check($refresh->run() !== false,
+		'Single-page MediaWiki refreshLinks job updates the semantic subject without editing');
+	fsFlush(['wikidebatesSemanticCachePurge']);
+	$store->clear();
+	$historicalProfiles = $store->getPropertyValues($historicalSubject, new Property('_ASK'));
+	check($historicalProfiles !== [],
+		'Standard MediaWiki refreshLinks writes the missing _ASK query profiles; ' . json_encode([
+			'api_marker' => $observedFirstTrackedOutput->getExtensionData(
+				TrackedSemanticQuery::OUTPUT_MARKER),
+			'canonical_marker' => $canonicalTrackedOutput->getExtensionData(
+				TrackedSemanticQuery::OUTPUT_MARKER),
+			'links' => count($links->findEmbeddedQueryIdListBySubject($historicalSubject)),
+			'revision_before' => $revisionBeforeRefresh,
+			'revision_after' => $historicalPage->getLatest(),
+		]));
+	check($historicalPage->getLatest() === $revisionBeforeRefresh,
+		'Refreshing semantic profiles does not create or change the Argument revision');
+	check($links->findEmbeddedQueryIdListBySubject($historicalSubject) !== [],
+		'First traced parse also creates SMW query dependency links');
+
+	$firstTrackedFingerprint = SemanticRevisionStore::fingerprint($store, $historicalSubject);
+	check(SemanticCacheGuard::safeForRead($historicalTitle, $historicalPage),
+		'After the profile is stored, the Argument can safely use a tracked fragment');
+	$warmedHistorical = null;
+	for ($attempt = 0; $attempt < 6; $attempt++) {
+		$candidate = $read($historicalArgument);
+		if ($candidate['source'] === 'fragment-cache') {
+			$warmedHistorical = $candidate;
+			break;
+		}
+	}
+	check($warmedHistorical !== null,
+		'Formerly untracked Argument eventually reuses a verified fragment cache');
+
+	fsSave($historicalParent,
+		'{{#set:' . $proProperty . '=' . $historicalArgument . '}}');
+	// Hold deliberately queued purges. The read guard must detect the change.
+	fsFlush(['wikidebatesSemanticCachePurge']);
+	check(SemanticRevisionStore::fingerprint($store, $historicalSubject) !==
+		$firstTrackedFingerprint,
+		'Tracked Argument fingerprint changes after first new parent relation');
+	$updatedHistorical = $read($historicalArgument);
+	check($updatedHistorical['source'] !== 'fragment-cache',
+		'Parent update invalidates the formerly untracked Argument fragment before purge');
+
+	$historicalParserOutput = $historicalPage->getParserOutput(
+		ParserOptions::newFromAnon()
+	);
+	check($historicalParserOutput instanceof \MediaWiki\Parser\ParserOutput &&
+		(str_contains($historicalParserOutput->getText(), $historicalParent) ||
+			str_contains($historicalParserOutput->getText(),
+				str_replace(' ', '_', $historicalParent))),
+		'Full tracked Argument HTML displays its new parent after the transition');
+	fsFlush();
+} finally {
+	$GLOBALS['wgWikidebatesSemanticCacheTracking'] = $originalTracking;
+}
+
 echo "OK: SMW 7.3.1 native profiles, empty results, inserts, moves, deletes and fragment invalidation\n";
