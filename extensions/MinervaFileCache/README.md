@@ -285,14 +285,43 @@ php maintenance/run.php MinervaFileCache:variants --wiki=fr --limit-pages=100 --
 php maintenance/run.php MinervaFileCache:variants --wiki=en --limit-pages=100 --max-variants=20
 ```
 
+Pour un wiki ayant environ 28 000 répertoires et jusqu'à 206 variantes
+par page, les bornes explicites peuvent être augmentées en maintenance
+(jusqu'à 50 000 répertoires et 250 variantes par page) :
+
+```sh
+php maintenance/run.php MinervaFileCache:variants --wiki=fr --limit-pages=30000 --max-variants=250
+```
+
+Cela parcourt davantage de répertoires et décompresse davantage de réponses :
+choisir un créneau de faible charge si le serveur est sollicité.
+
 `scannedPages` indique le nombre de répertoires visités,
 `pagesWithMultipleFiles` ceux contenant plusieurs fichiers,
-`validEntries` les entrées actuelles décodées et contrôlées,
+`validEntries` les entrées non expirées, décodées et contrôlées,
 `identicalExtraEntries` le nombre de fichiers supplémentaires strictement
-identiques (même identité de révision, mêmes en-têtes et mêmes octets HTML) et
-`divergentPages` les pages ayant au moins deux rendus différents. Les compteurs
-`truncatedPages`, `ignoredEntries` et `racedPages` signalent les limites de
-l'échantillon, les fichiers non valides et les invalidations pendant l'audit.
+identiques (même identité, mêmes en-têtes et mêmes octets HTML) et
+`divergentPages` les pages ayant au moins deux empreintes complètes différentes.
+
+Pour interpréter ces différences, l'audit sépare maintenant leurs causes :
+
+- `comparablePages` : pages possédant au moins deux entrées avec **la même
+  identité** (révision, date de modification, époques de cache et format).
+- `pagesWithIdentityDifferences` : pages avec plusieurs identités d'entrées ;
+  ces identités ne sont jamais comparées entre elles pour conclure sur le HTML.
+- `pagesWithHtmlDifferences` et `pagesWithHeaderDifferences` : pages où
+  respectivement les octets HTML ou les en-têtes diffèrent **pour une même
+  identité**. Une page peut apparaître dans les deux compteurs.
+- `sameIdentityHtmlDuplicates` et `sameIdentityHeaderDuplicates` :
+  fichiers supplémentaires avec respectivement un HTML ou des en-têtes
+  identiques au sein de chaque groupe de même identité. Ces totaux ne
+  prouvent pas à eux seuls que les réponses complètes sont interchangeables.
+
+Les compteurs `truncatedPages`, `ignoredEntries` et `racedPages` signalent
+les limites de l'échantillon, les fichiers non valides et les invalidations
+pendant l'audit. Une entrée dont l'identité interne est cohérente n'est pas
+nécessairement la dernière révision du wiki : seul MediaWiki connaît l'identité
+courante de chaque page lors de sa consultation.
 
 Cette mesure décompresse volontairement un échantillon de fichiers : l'utiliser
 en maintenance, et éviter les très grands seuils sur un serveur occupé. Elle ne
