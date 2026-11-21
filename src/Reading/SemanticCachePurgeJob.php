@@ -59,8 +59,12 @@ final class SemanticCachePurgeJob extends \Job {
 		try {
 			if (!$config->get('WikidebatesSemanticCacheTracking') ||
 				!$config->get('WikidebatesSemanticCacheEagerPurge')) {
+				// A successful run() is ACKNOWLEDGED by MediaWiki's JobRunner.
+				// Returning true here silently discards historic queued purges
+				// while EagerPurge is disabled. Fail retryably instead.
 				$this->metrics['status'] = 'disabled';
-				return true;
+				$this->setLastError('Semantic cache tracking or eager purging disabled; job retained for retry');
+				return false;
 			}
 			if ($ids === []) {
 				return true;
