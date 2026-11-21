@@ -907,6 +907,60 @@ try {
 		unlink($temporary . '/semantic-http-disable-tracking');
 	}
 
+
+	// Conservative safe fallback for operators who cannot enable the semantic
+	// revision ledger yet. HTTP workers use an isolated, disposable database:
+	// no production content, cache or CDN configuration is involved.
+	$fallbackOff = $temporary . '/semantic-http-disable-tracking';
+	$fallbackOn = $temporary . '/semantic-http-safe-fallback';
+	touch($fallbackOff);
+	touch($fallbackOn);
+	try {
+		$beforeFallback = $fragment('WD HTTP query A');
+		check($beforeFallback['fragment']['source'] === 'parser' &&
+			str_contains($beforeFallback['fragment']['html'], 'WD_HTTP_MATCHES=0'),
+			'Fallback ignores any preexisting tracked or untracked Argument fragment');
+		$againFallback = $fragment('WD HTTP query A');
+		check($againFallback['fragment']['source'] === 'parser',
+			'Fallback never hits or publishes a shared query-dependent fragment');
+		$vectorFallback = $http('index.php', ['title' => 'WD_HTTP_query_A']);
+		check($vectorFallback['status'] === 200 &&
+			str_contains($vectorFallback['body'], 'WD_HTTP_MATCHES=0'),
+			'Fallback renders current full Vector query page');
+		$mobileFallback = $http('index.php', ['title' => 'WD_HTTP_query_A'], [$mobileUA]);
+		check($mobileFallback['status'] === 200 &&
+			str_contains($mobileFallback['body'], 'WD_HTTP_MATCHES=0') &&
+			str_starts_with($mobileFallback['headers']['x-minerva-file-cache'][0] ?? '', 'BYPASS'),
+			'Fallback vetoes MinervaFileCache on query-owning pages');
+		$fallbackDebate = $http('index.php', $debateUrl);
+		check($fallbackDebate['status'] === 200 &&
+			str_contains($fallbackDebate['body'], 'WD HTTP displayed pro argument'),
+			'Fallback does not block ordinary debate HTML rendering');
+
+		// This parent edit does not change the query page's own revision or
+		// necessarily page_touched. Even a previously valid file cache must
+		// not override the live SMW result on the next anonymous HTTP GET.
+		fsSave('WD HTTP child', '{{#set:WD HTTP Parent=WD HTTP parent A}}');
+		fsFlush(['wikidebatesSemanticCachePurge']);
+		$newFallback = $fragment('WD HTTP query A');
+		check($newFallback['fragment']['source'] === 'parser' &&
+			str_contains($newFallback['fragment']['html'], 'WD_HTTP_MATCHES=1'),
+			'Fallback reads updated SMW parent without a semantic purge');
+		$vectorUpdated = $http('index.php', ['title' => 'WD_HTTP_query_A']);
+		check($vectorUpdated['status'] === 200 &&
+			str_contains($vectorUpdated['body'], 'WD_HTTP_MATCHES=1'),
+			'Fallback Vector HTML is fresh after a dependent entity changes');
+		$mobileUpdated = $http('index.php', ['title' => 'WD_HTTP_query_A'], [$mobileUA]);
+		check($mobileUpdated['status'] === 200 &&
+			str_contains($mobileUpdated['body'], 'WD_HTTP_MATCHES=1') &&
+			str_starts_with($mobileUpdated['headers']['x-minerva-file-cache'][0] ?? '', 'BYPASS'),
+			'Fallback Minerva HTML is fresh after a dependent entity changes');
+	} finally {
+		unlink($fallbackOn);
+		unlink($fallbackOff);
+	}
+	fsFlush();
+
 	$report = [
 		'backend' => $dbType,
 		'mediawiki' => MW_VERSION,
