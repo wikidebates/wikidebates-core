@@ -1105,6 +1105,118 @@ try {
 	}
 	fsFlush();
 
+	// Compare two safe policies on the same native French Argument in
+	// real, independent HTTP workers. Both modes are explicitly warmed.
+	// Avoid an A-then-B timing bias: pairs alternate their order.
+	$performanceToggle = static function(string $mode) use ($fallbackOff, $fallbackOn): void {
+		if ($mode === 'tracked') {
+			if (is_file($fallbackOff)) { unlink($fallbackOff); }
+			if (is_file($fallbackOn)) { unlink($fallbackOn); }
+		} elseif ($mode === 'fallback') {
+			if (!is_file($fallbackOff)) { touch($fallbackOff); }
+			if (!is_file($fallbackOn)) { touch($fallbackOn); }
+		} else {
+			throw new RuntimeException('Unknown isolated performance mode');
+		}
+	};
+	$perfMarker = 'WD_HTTP_CORPUS_ARGUMENT_SECOND';
+	$perfArgument = static function(string $mode) use (
+		$performanceToggle, $fragment, $corpusArgumentTitle, $perfMarker
+	): array {
+		$performanceToggle($mode);
+		$sample = $fragment($corpusArgumentTitle, ['X-Requested-With: XMLHttpRequest']);
+		$expected = $mode === 'tracked' ? 'fragment-cache' : 'parser';
+		check($sample['fragment']['source'] === $expected &&
+			str_contains($sample['fragment']['html'], $perfMarker),
+			'Real Argument benchmark uses current ' . $expected . ' output in ' . $mode);
+		return $sample;
+	};
+	$performanceMobileHeaders = [$mobileUA, 'X-WD-Semantic-Lab-File-Cache-Probe: 1'];
+	$perfDebate = static function(string $mode) use (
+		$performanceToggle, $http, $corpusUrl, $performanceMobileHeaders
+	): array {
+		$performanceToggle($mode);
+		$sample = $http('index.php', $corpusUrl, $performanceMobileHeaders);
+		check($sample['status'] === 200 &&
+			($sample['headers']['x-minerva-file-cache'][0] ?? '') === 'HIT' &&
+			str_contains($sample['body'], 'Il existe des interventions divines') &&
+			str_contains($sample['body'], 'Dieu est une invention'),
+			'Ordinary corpus Debate keeps a genuine Minerva HIT in ' . $mode);
+		return $sample;
+	};
+	$performanceResults = [
+		'tracked' => ['argument_fragment' => [], 'debate_minerva' => []],
+		'fallback' => ['argument_fragment' => [], 'debate_minerva' => []]
+	];
+	try {
+		$performanceToggle('tracked');
+		$trackedReady = false;
+		for ($attempt = 0; $attempt < 12; $attempt++) {
+			$sample = $fragment($corpusArgumentTitle, ['X-Requested-With: XMLHttpRequest']);
+			if (($sample['fragment']['source'] ?? '') === 'fragment-cache' &&
+				str_contains($sample['fragment']['html'], $perfMarker)) {
+				$trackedReady = true;
+				break;
+			}
+		}
+		check($trackedReady, 'Tracked native Argument stabilizes into a real fragment HIT');
+		$performanceToggle('fallback');
+		for ($i = 0; $i < 3; $i++) { $perfArgument('fallback'); }
+		$performanceToggle('tracked');
+		$debateReady = false;
+		for ($attempt = 0; $attempt < 5; $attempt++) {
+			$sample = $http('index.php', $corpusUrl, $performanceMobileHeaders);
+			if ($sample['status'] === 200 &&
+				($sample['headers']['x-minerva-file-cache'][0] ?? '') === 'HIT') {
+				$debateReady = true;
+				break;
+			}
+		}
+		check($debateReady, 'Corpus Debate stabilizes as a genuine Minerva HIT');
+		for ($i = 0; $i < 3; $i++) {
+			$perfArgument('tracked');
+			$perfArgument('fallback');
+			$perfDebate('tracked');
+			$perfDebate('fallback');
+		}
+		for ($i = 0; $i < 12; $i++) {
+			$order = $i % 2 === 0 ? ['tracked', 'fallback'] : ['fallback', 'tracked'];
+			foreach ($order as $mode) {
+				$performanceResults[$mode]['argument_fragment'][] =
+					$perfArgument($mode)['elapsed_ms'];
+				$performanceResults[$mode]['debate_minerva'][] =
+					$perfDebate($mode)['elapsed_ms'];
+			}
+		}
+	} finally {
+		$performanceToggle('tracked');
+	}
+	$performanceComparison = [
+		'context' => 'isolated loopback HTTP; real native French Argument and 25-link debate',
+		'design' => '12 alternating AB/BA pairs, independent HTTP workers, both modes prewarmed',
+		'samples_each' => count($performanceResults['tracked']['argument_fragment']),
+		'argument_fragment' => [
+			'tracked_source' => 'fragment-cache',
+			'fallback_source' => 'parser',
+			'tracked_median_ms' => $percentile($performanceResults['tracked']['argument_fragment'], .5),
+			'tracked_p95_ms' => $percentile($performanceResults['tracked']['argument_fragment'], .95),
+			'fallback_median_ms' => $percentile($performanceResults['fallback']['argument_fragment'], .5),
+			'fallback_p95_ms' => $percentile($performanceResults['fallback']['argument_fragment'], .95),
+			'fallback_over_tracked_median_ratio' => round(
+				$percentile($performanceResults['fallback']['argument_fragment'], .5) /
+				max(.001, $percentile($performanceResults['tracked']['argument_fragment'], .5)), 2),
+		],
+		'debate_minerva' => [
+			'tracked_source' => 'HIT',
+			'fallback_source' => 'HIT',
+			'tracked_median_ms' => $percentile($performanceResults['tracked']['debate_minerva'], .5),
+			'tracked_p95_ms' => $percentile($performanceResults['tracked']['debate_minerva'], .95),
+			'fallback_median_ms' => $percentile($performanceResults['fallback']['debate_minerva'], .5),
+			'fallback_p95_ms' => $percentile($performanceResults['fallback']['debate_minerva'], .95),
+		],
+		'limitations' => 'Synthetic HTTP lab timing, not production CPU, DB load, Cloudflare or staging throughput',
+	];
+
 	$report = [
 		'backend' => $dbType,
 		'mediawiki' => MW_VERSION,
@@ -1113,6 +1225,7 @@ try {
 		'transport' => 'real loopback HTTP, three PHP CLI server workers',
 		'corpus_debate' => $corpusMeasurements,
 		'untracked_minerva_semantic_baseline' => $untrackedMinervaObservation,
+		'safe_policy_performance' => $performanceComparison,
 		'benchmark' => [
 			'samples_each' => count($hitSamples),
 			'fragment_hit_median_ms' => $percentile($hitSamples, .5),
