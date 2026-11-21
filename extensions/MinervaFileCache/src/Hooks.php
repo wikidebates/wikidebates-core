@@ -22,6 +22,21 @@ class Hooks {
 		}
 	}
 
+	/** Only the OutputPage selected for a public anonymous mobile file can opt out of the full-page semantic veto. */
+	private static ?int $candidateOutputId = null;
+
+	public static function setCandidateOutput($output): void {
+		self::$candidateOutputId = spl_object_id($output);
+	}
+
+	public static function isCandidateOutput($output): bool {
+		return self::$candidateOutputId === spl_object_id($output);
+	}
+
+	public static function clearCandidateOutput(): void {
+		self::$candidateOutputId = null;
+	}
+
 	public static function store($config = null): Store {
 		$config ??= MediaWikiServices::getInstance()->getMainConfig();
 		$directory = $config->get('MinervaFileCacheDirectory');

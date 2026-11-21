@@ -169,6 +169,7 @@ fsSave('WD HTTP template parent FR', 'No parent relation');
 fsSave('WD HTTP template parent EN', 'No parent relation');
 
 fsSave('WD HTTP public page', str_repeat('This ordinary page contains no semantic query. ', 30));
+fsSave('WD HTTP public fragment', "== Summary ==\nWD_HTTP_PUBLIC_FRAGMENT\n== Parent debates ==\nNo relations");
 fsFlush();
 
 // SMW profiles must belong to already-created query pages.
@@ -452,9 +453,9 @@ try {
 	check(SemanticRevisionStore::fingerprint($store, $readingArgSubject) !== $readerPrevious,
 		'Argument semantic revision advances without any edit to the debate page');
 	$readerAfterParent = $fragment('WD HTTP reading argument', ['X-Requested-With: XMLHttpRequest']);
-	check($readerAfterParent['fragment']['source'] !== 'fragment-cache' &&
-		str_contains($readerAfterParent['fragment']['html'], 'WD_HTTP_READING_SUMMARY_FIRST'),
-		'New argument semantic relations invalidate only its cached fragment before purge');
+	check($readerAfterParent['fragment']['source'] === 'fragment-cache' &&
+		$readerAfterParent['fragment']['html'] === $readerWarm['fragment']['html'],
+		'External argument parent relations leave the unchanged reading excerpt in cache');
 	$parentInArgument = $http('index.php', ['title' => 'WD_HTTP_reading_argument']);
 	check($parentInArgument['status'] === 200 &&
 		(str_contains($parentInArgument['body'], 'WD_HTTP_reading_parent') ||
@@ -521,11 +522,10 @@ try {
 		$changed = $fragment($title, ['X-Requested-With: XMLHttpRequest']);
 		$parentUnderscored = str_replace(' ', '_', $parent);
 		// FragmentExtractor deliberately omits Parent_debates: the parent
-		// appears in full HTML, while the separate reading fragment still
-		// carries the summary and MUST bypass its old cache identity.
-		check($changed['fragment']['source'] !== 'fragment-cache' &&
-			str_contains($changed['fragment']['html'], 'WD_HTTP_TEMPLATE_' . $lang . '_SUMMARY'),
-			'Real ' . $lang . ' transcluded Argument fragment is freshly rebuilt before purge');
+		// appears in full HTML; the independently cached excerpt need not change.
+		check($changed['fragment']['source'] === 'fragment-cache' &&
+			$changed['fragment']['html'] === $initialTemplate[$lang],
+			'Real ' . $lang . ' transcluded Argument excerpt stays cached across parent updates');
 		$article = $http('index.php', ['title' => str_replace(' ', '_', $title)]);
 		check($article['status'] === 200 &&
 			(str_contains($article['body'], $parent) ||
@@ -705,17 +705,16 @@ try {
 	check($variant['fragment']['html'] !== '',
 		'Foreign interface language remains separately rendered');
 
-	// Commit the semantic update, but deliberately leave its dependent purge
-	// job pending. A prebuilt fragment from another PHP worker must be refused.
+	// Commit the semantic update, holding its optional dependent purge job.
+	// A valid excerpt from another HTTP worker must remain reusable.
 	fsSave('WD HTTP child', '{{#set:WD HTTP Parent=WD HTTP parent A}}');
 	fsFlush(['wikidebatesSemanticCachePurge']);
 	check($services->getJobQueueGroup()->queuesHaveJobs(),
 		'Targeted semantic purge remains deliberately queued');
 	$beforePurge = $fragment();
-	check($beforePurge['fragment']['source'] !== 'fragment-cache',
-		'Real HTTP refuses old fragment before queued purge');
-	check(str_contains($beforePurge['fragment']['html'], 'WD_HTTP_MATCHES=1'),
-		'Real HTTP reads new relationship with purge job still pending');
+	check($beforePurge['fragment']['source'] === 'fragment-cache' &&
+		str_contains($beforePurge['fragment']['html'], 'WD_HTTP_MATCHES=0'),
+		'Real HTTP reuses the original excerpt despite a pending semantic purge');
 
 	$full = $http('index.php', ['title' => 'WD_HTTP_query_A']);
 	check($full['status'] === 200 &&
@@ -726,17 +725,20 @@ try {
 		str_contains($cacheControl, 'private'),
 		'Semantic full-page HTML is not publicly cacheable through HTTP');
 
-	// A genuinely mobile Article::view must also bypass the MinervaFileCache
-	// full-page file and contain the updated semantic result before purge.
+	// An anonymous mobile Article::view must now store a Minerva snapshot
+	// without an expensive SMW freshness query on subsequent file HITs.
 	$mobileUA = 'User-Agent: Mozilla/5.0 (Linux; Android 14; Pixel 8) ' .
 		'AppleWebKit/537.36 Chrome/130.0.0.0 Mobile Safari/537.36';
 	$mobile = $http('index.php', ['title' => 'WD_HTTP_query_A'], [$mobileUA, 'X-WD-Semantic-Lab-File-Cache-Probe: 1']);
 	check($mobile['status'] === 200 && str_contains($mobile['body'], 'WD_HTTP_MATCHES=1'),
 		'Real mobile HTML page is current with semantic purge still pending');
 	$mobileCache = $mobile['headers']['x-minerva-file-cache'][0] ?? '';
-	check(str_starts_with($mobileCache, 'BYPASS; reason=extension-veto'),
-		'Tracked mobile query is refused by the semantic file-cache veto, not by a lab header: ' .
-		$mobileCache);
+	check(str_starts_with($mobileCache, 'MISS'),
+		'Anonymous tracked query is eligible for MinervaFileCache on its first visit: ' . $mobileCache);
+	$mobileHit = $http('index.php', ['title' => 'WD_HTTP_query_A'], [$mobileUA, 'X-WD-Semantic-Lab-File-Cache-Probe: 1']);
+	check(str_starts_with($mobileHit['headers']['x-minerva-file-cache'][0] ?? '', 'HIT') &&
+		str_contains($mobileHit['body'], 'WD_HTTP_MATCHES=1'),
+		'A valid anonymous Minerva query file is reused on the second visit');
 	$mobileControl = strtolower(implode(', ', $mobile['headers']['cache-control'] ?? []));
 	check(str_contains($mobileControl, 'no-cache') ||
 		str_contains($mobileControl, 'no-store') || str_contains($mobileControl, 'private'),
@@ -754,15 +756,15 @@ try {
 
 	fsSave('WD HTTP child', '{{#set:WD HTTP Parent=WD HTTP parent B}}');
 	fsFlush(['wikidebatesSemanticCachePurge']);
-	check(str_contains($fragment()['fragment']['html'], 'WD_HTTP_MATCHES=0'),
-		'Removing a parent updates HTTP while target purge waits');
+	check(str_contains($fragment()['fragment']['html'], 'WD_HTTP_MATCHES=1'),
+		'Removing an external parent leaves the cached reading excerpt unchanged');
 	check(str_contains($fragment('WD HTTP query B')['fragment']['html'], 'WD_HTTP_MATCHES=1'),
 		'Adding a different parent updates HTTP while target purge waits');
 	fsFlush();
 
 	// Exercise the real Argument parent-query OR form via independent HTTP
 	// workers, without clearing the workers' memory from this CLI process.
-	// The semantics must remain correct while targeted purge jobs are queued.
+	// The full-page semantics remain correct, while a cached excerpt may be older.
 	$orPage = 'WD HTTP OR query';
 	$orEmpty = $fragment($orPage);
 	check(str_contains($orEmpty['fragment']['html'],
@@ -788,11 +790,14 @@ try {
 	check(SemanticRevisionStore::fingerprint($store, $orSubject) !== $beforeOr,
 		'Combined OR first result changes the transaction revision');
 	$orFirst = $fragment($orPage);
-	check($orFirst['fragment']['source'] !== 'fragment-cache' &&
-		str_contains($orFirst['fragment']['html'], 'WD_HTTP_OR_A=1;WD_HTTP_OR_B=0;WD_HTTP_OR_TOTAL=1'),
-		'Combined OR first result appears on another PHP worker before purge: ' .
-		($orFirst['fragment']['html'] ?? ''));
+	check($orFirst['fragment']['source'] === 'fragment-cache' &&
+		$orFirst['fragment']['html'] === $orWarm['fragment']['html'],
+		'Combined OR change retains an independently reusable cached excerpt');
 	fsFlush();
+	$fragment($orPage);
+	check($fragment($orPage)['fragment']['source'] === 'fragment-cache',
+		'Combined OR excerpt can be warmed again after optional purge');
+	$beforeSwitch = $fragment($orPage);
 
 	$beforeOr = SemanticRevisionStore::fingerprint($store, $orSubject);
 	fsSave('WD HTTP OR parent', '{{#set:WD HTTP Con=WD HTTP OR target}}');
@@ -802,11 +807,9 @@ try {
 	check(SemanticRevisionStore::fingerprint($store, $orSubject) !== $beforeOr,
 		'Combined OR same-cardinality switch changes the revision');
 	$orSwitched = $fragment($orPage);
-	check($orSwitched['fragment']['source'] !== 'fragment-cache' &&
-		str_contains($orSwitched['fragment']['html'],
-			'WD_HTTP_OR_A=0;WD_HTTP_OR_B=1;WD_HTTP_OR_TOTAL=1'),
-		'Combined OR prints only the new parent after a real HTTP edit: ' .
-		($orSwitched['fragment']['html'] ?? ''));
+	check($orSwitched['fragment']['source'] === 'fragment-cache' &&
+		$orSwitched['fragment']['html'] === $beforeSwitch['fragment']['html'],
+		'Combined OR excerpt retains the prior snapshot while purge is queued');
 
 	$orDesktop = $http('index.php', ['title' => 'WD_HTTP_OR_query']);
 	check($orDesktop['status'] === 200 &&
@@ -815,10 +818,16 @@ try {
 	$orMobile = $http('index.php', ['title' => 'WD_HTTP_OR_query'], [$mobileUA, 'X-WD-Semantic-Lab-File-Cache-Probe: 1']);
 	check($orMobile['status'] === 200 &&
 		str_contains($orMobile['body'], 'WD_HTTP_OR_A=0;WD_HTTP_OR_B=1;WD_HTTP_OR_TOTAL=1') &&
-		str_starts_with($orMobile['headers']['x-minerva-file-cache'][0] ?? '',
-			'BYPASS; reason=extension-veto'),
-		'Semantic veto protects Minerva during an OR parent switch even without the lab debug header');
+		str_starts_with($orMobile['headers']['x-minerva-file-cache'][0] ?? '', 'MISS'),
+		'Combined OR mobile full-page response is eligible for a file-cache MISS');
+	$orMobileHit = $http('index.php', ['title' => 'WD_HTTP_OR_query'], [$mobileUA, 'X-WD-Semantic-Lab-File-Cache-Probe: 1']);
+	check(str_starts_with($orMobileHit['headers']['x-minerva-file-cache'][0] ?? '', 'HIT'),
+		'Combined OR mobile HTML is reused without semantic freshness checks');
 	fsFlush();
+	$fragment($orPage);
+	check($fragment($orPage)['fragment']['source'] === 'fragment-cache',
+		'Combined OR switched excerpt is cacheable after optional purge');
+	$beforeRemoval = $fragment($orPage);
 
 	$beforeOr = SemanticRevisionStore::fingerprint($store, $orSubject);
 	fsSave('WD HTTP OR parent', 'No parent relation');
@@ -826,11 +835,9 @@ try {
 	check(SemanticRevisionStore::fingerprint($store, $orSubject) !== $beforeOr,
 		'Removing the final OR parent changes its revision before purge');
 	$orRemoved = $fragment($orPage);
-	check($orRemoved['fragment']['source'] !== 'fragment-cache' &&
-		str_contains($orRemoved['fragment']['html'],
-			'WD_HTTP_OR_A=0;WD_HTTP_OR_B=0;WD_HTTP_OR_TOTAL=0'),
-		'Combined OR query returns to empty immediately after removal: ' .
-		($orRemoved['fragment']['html'] ?? ''));
+	check($orRemoved['fragment']['source'] === 'fragment-cache' &&
+		$orRemoved['fragment']['html'] === $beforeRemoval['fragment']['html'],
+		'Combined OR excerpt is unchanged across the final external parent edit');
 	fsFlush();
 
 	// Exact transition observed on production page 1220, but on a completely
@@ -901,26 +908,31 @@ try {
 			unlink($unprofiledToggle);
 		}
 	}
-	// Enable the opt-in safeguards WITHOUT invalidating or deleting the old
-	// untracked Minerva file. Its cached HTML is still present on disk.
+	// Enable semantic tracking without invalidating an anonymous Minerva file.
+	// The stored HTML may have old parent relations by explicit design.
 	$unprofiledProtected = $http('index.php', $unprofiledUrl, $unprofiledHeaders);
 	$protectedState = $unprofiledProtected['headers']['x-minerva-file-cache'][0] ?? '';
 	check($unprofiledProtected['status'] === 200 &&
-		str_starts_with($protectedState, 'BYPASS; reason=extension-veto') &&
-		str_contains($unprofiledProtected['body'], 'WD_HTTP_MATCHES=1') &&
-		!str_contains($unprofiledProtected['body'], 'WD_HTTP_MATCHES=0'),
-		'Tracking veto rejects the old unprofiled mobile HIT and renders the new relation: ' .
-		$protectedState);
-	$expectedParentText = str_contains($unprofiledProtected['body'], $unprofiledParentName) ||
-		str_contains($unprofiledProtected['body'], str_replace(' ', '_', $unprofiledParentName));
-	check($expectedParentText,
-		'Native Argument parent section displays the newly related page before any targeted purge');
+		str_starts_with($protectedState, 'HIT') &&
+		str_contains($unprofiledProtected['body'], 'WD_HTTP_MATCHES=0'),
+		'Tracking must not reject a valid old anonymous Minerva snapshot: ' . $protectedState);
+	$fullDynamic = $http('index.php', $unprofiledUrl);
+	$expectedParentText = str_contains($fullDynamic['body'], $unprofiledParentName) ||
+		str_contains($fullDynamic['body'], str_replace(' ', '_', $unprofiledParentName));
+	check($fullDynamic['status'] === 200 &&
+		str_contains($fullDynamic['body'], 'WD_HTTP_MATCHES=1') && $expectedParentText,
+		'Dynamic full Vector Argument HTML displays the new semantic parent');
 	$unprofiledProtectedAgain = $http('index.php', $unprofiledUrl, $unprofiledHeaders);
 	check($unprofiledProtectedAgain['status'] === 200 &&
-		str_starts_with($unprofiledProtectedAgain['headers']['x-minerva-file-cache'][0] ?? '',
-			'BYPASS; reason=extension-veto') &&
-		str_contains($unprofiledProtectedAgain['body'], 'WD_HTTP_MATCHES=1'),
-		'Repeated tracked Argument requests never reuse the stale unprofiled HTML file');
+		str_starts_with($unprofiledProtectedAgain['headers']['x-minerva-file-cache'][0] ?? '', 'HIT') &&
+		str_contains($unprofiledProtectedAgain['body'], 'WD_HTTP_MATCHES=0'),
+		'Anonymous Minerva HIT remains valid across an unrelated semantic edit');
+	$cookieMobile = $http('index.php', $unprofiledUrl,
+		[$mobileUA, 'Cookie: wd_lab=1', 'X-WD-Semantic-Lab-File-Cache-Probe: 1']);
+	check($cookieMobile['status'] === 200 &&
+		str_starts_with($cookieMobile['headers']['x-minerva-file-cache'][0] ?? '', 'BYPASS; reason=cookie') &&
+		str_contains($cookieMobile['body'], 'WD_HTTP_MATCHES=1'),
+		'Cookie-bearing mobile view never receives a public file and uses dynamic semantic HTML');
 	$unprofiledFragment = $fragment($unprofiledArgumentName);
 	check(str_contains($unprofiledFragment['fragment']['html'], 'WD_HTTP_UNPROFILED_SUMMARY') &&
 		!str_contains($unprofiledFragment['fragment']['html'], 'WD_HTTP_MATCHES=0'),
@@ -1097,9 +1109,16 @@ try {
 		check($backfillWarm !== null,
 			'Real HTTP fragment reaches a verified cache HIT after targeted backfill: ' .
 			json_encode($backfillSources));
+		// A targeted _ASK backfill can legitimately invalidate the older HTML
+		// file. Reestablish a mobile HIT before testing external parent edits.
+		$http('index.php', $unprofiledUrl, $unprofiledHeaders);
+		$beforeExternalMobile = $http('index.php', $unprofiledUrl, $unprofiledHeaders);
+		check($beforeExternalMobile['status'] === 200 &&
+			str_starts_with($beforeExternalMobile['headers']['x-minerva-file-cache'][0] ?? '', 'HIT'),
+			'Minerva is warm after the explicit semantic backfill');
 
-		// No owner-page edit, and no eager purge: the transactionally updated
-		// semantic revision must invalidate an existing cached fragment.
+		// No owner-page edit, and no eager purge: a semantic-only edit
+		// must NOT invalidate the previously stored reading fragment.
 		fsSave($unprofiledParentName,
 			'{{#set:WD HTTP Parent=' . $unprofiledAnchorName .
 			'|' . $proProperty . '=' . $unprofiledArgumentName . '}}');
@@ -1112,19 +1131,15 @@ try {
 		check($afterAdditionFingerprint !== $beforeParentFingerprint,
 			'Adding the first parent changes fingerprint even when the old query returned zero rows');
 		$afterAddition = $fragment($unprofiledArgumentName);
-		check(($afterAddition['fragment']['source'] ?? '') !== 'fragment-cache' &&
-			str_contains($afterAddition['fragment']['html'], 'WD_HTTP_UNPROFILED_SUMMARY'),
-			'Real HTTP refuses the pre-parent fragment after an external 0-to-1 semantic update');
+		check(($afterAddition['fragment']['source'] ?? '') === 'fragment-cache' &&
+			$afterAddition['fragment']['html'] === $backfillWarm['fragment']['html'],
+			'Real HTTP preserves the pre-parent fragment after a semantic-only update');
 
 		$afterAdditionMobile = $http('index.php', $unprofiledUrl, $unprofiledHeaders);
 		check($afterAdditionMobile['status'] === 200 &&
-			str_starts_with($afterAdditionMobile['headers']['x-minerva-file-cache'][0] ?? '',
-				'BYPASS; reason=extension-veto') &&
-			str_contains($afterAdditionMobile['body'], 'WD_HTTP_MATCHES=1') &&
-			(str_contains($afterAdditionMobile['body'], $unprofiledParentName) ||
-				str_contains($afterAdditionMobile['body'],
-					str_replace(' ', '_', $unprofiledParentName))),
-			'Full mobile Argument HTML and real parent link are fresh after the external addition');
+			str_starts_with($afterAdditionMobile['headers']['x-minerva-file-cache'][0] ?? '', 'HIT') &&
+			$afterAdditionMobile['body'] === $beforeExternalMobile['body'],
+			'Valid Minerva snapshot survives an external parent addition');
 
 		$rewarmedAfterAddition = false;
 		for ($attempt = 0; $attempt < 10; $attempt++) {
@@ -1146,17 +1161,13 @@ try {
 			$afterAdditionFingerprint,
 			'Removing the final parent changes the durable semantic fingerprint');
 		$afterRemoval = $fragment($unprofiledArgumentName);
-		check(($afterRemoval['fragment']['source'] ?? '') !== 'fragment-cache',
-			'Real HTTP rejects the fragment holding the removed parent');
+		check(($afterRemoval['fragment']['source'] ?? '') === 'fragment-cache',
+			'Real HTTP keeps the unchanged excerpt after parent removal');
 		$afterRemovalMobile = $http('index.php', $unprofiledUrl, $unprofiledHeaders);
 		check($afterRemovalMobile['status'] === 200 &&
-			str_starts_with($afterRemovalMobile['headers']['x-minerva-file-cache'][0] ?? '',
-				'BYPASS; reason=extension-veto') &&
-			str_contains($afterRemovalMobile['body'], 'WD_HTTP_MATCHES=0') &&
-			!str_contains($afterRemovalMobile['body'], $unprofiledParentName) &&
-			!str_contains($afterRemovalMobile['body'],
-				str_replace(' ', '_', $unprofiledParentName)),
-			'Full mobile Argument HTML removes the former parent without waiting for a purge');
+			str_starts_with($afterRemovalMobile['headers']['x-minerva-file-cache'][0] ?? '', 'HIT') &&
+			$afterRemovalMobile['body'] === $beforeExternalMobile['body'],
+			'Minerva snapshot remains identical after external parent removal');
 
 		// An unrelated Debate must keep its previously published Minerva
 		// file across both semantic edits to the Argument parent.
@@ -1204,6 +1215,18 @@ try {
 
 	$public = $http('index.php', ['title' => 'WD_HTTP_public_page']);
 	check($public['status'] === 200, 'Unrelated public HTTP page still loads');
+
+	// The first full-page render provides its ParserOutput to the reading
+	// prewarmer: there must be no second ParserCache::get/SMW lookup to fill it.
+	$publicPage = $http('index.php', ['title' => 'WD_HTTP_public_fragment']);
+	check($publicPage['status'] === 200 &&
+		str_contains($publicPage['body'], 'WD_HTTP_PUBLIC_FRAGMENT'),
+		'Public summary page renders normally before opportunistic prewarm');
+	$prewarmed = $fragment('WD HTTP public fragment');
+	check($prewarmed['fragment']['source'] === 'fragment-cache' &&
+		str_contains($prewarmed['fragment']['html'], 'WD_HTTP_PUBLIC_FRAGMENT'),
+		'First API read reuses the fragment captured from the full-page ParserOutput: ' .
+		($prewarmed['fragment']['source'] ?? 'missing'));
 
 	// Characterize, do not impose a speed threshold on noisy CI hosts.
 	// Forced re-parses can change page_touched, so measuring HITs
@@ -1279,8 +1302,8 @@ try {
 
 	// Approximate the per-HIT SQL tracking cost. The lab feature flag is read
 	// afresh on every HTTP request, without any external wiki configuration.
-	// No semantic edits occur in this comparison, and the fragment identity
-	// explicitly separates tracked and untracked representations.
+	// No semantic edits occur in this comparison; fragment identities are
+	// independent of whether semantic tracking is enabled.
 	$noTrackingSamples = [];
 	touch($temporary . '/semantic-http-disable-tracking');
 	try {

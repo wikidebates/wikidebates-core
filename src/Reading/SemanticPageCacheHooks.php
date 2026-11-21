@@ -17,9 +17,25 @@ use SMW\Services\ServicesFactory as SemanticServices;
  */
 final class SemanticPageCacheHooks {
 	public const OUTPUT_REVISION = 'wikidebates-semantic-revision';
+	private static bool $readingFragment = false;
+
+	/** Temporarily bypass semantic freshness checks only for a reader fragment lookup. */
+	public static function forReadingFragment(callable $callback) {
+		$previous = self::$readingFragment;
+		self::$readingFragment = true;
+		try { return $callback(); }
+		finally { self::$readingFragment = $previous; }
+	}
+
 
 	public static function onHTMLFileCache__useFileCache($context): bool {
+		if (self::$readingFragment) { return true; }
 		if (!self::enabled()) {
+			return true;
+		}
+		// MinervaFileCache independently validates the anonymous request before its
+		// file lookup. Do not query SMW on a valid mobile HTML-file HIT.
+		if (self::isAnonymousMobileFileCandidate($context)) {
 			return true;
 		}
 		$title = $context->getTitle();
@@ -51,6 +67,13 @@ final class SemanticPageCacheHooks {
 		if ($out->getContext()->getRequest()->getVal('action', 'view') !== 'view') {
 			return;
 		}
+		// A Minerva cache MISS has passed the other extension vetoes and
+		// will store only if the final HTML/headers are public-safe. Its own
+		// output handler prevents upstream HTTP caches on success or failure.
+		if (self::isAnonymousMobileFileCandidate($out->getContext()) &&
+			\MediaWiki\Extension\MinervaFileCache\Hooks::isCandidateOutput($out)) {
+			return;
+		}
 		try {
 			$title = $out->getTitle();
 			if ($title && $title->canExist() && !self::isQueryPage($title)) {
@@ -67,6 +90,9 @@ final class SemanticPageCacheHooks {
 	 * Only the canonical traced PHP queries need this additional marker.
 	 */
 	public static function onParserAfterParse($parser, &$text, $stripState): bool {
+		// ApiParse is suppressed from ParserCache during a reading-only parse;
+		// there is no full-page ParserOutput to bind to a semantic signature.
+		if (self::$readingFragment) { return true; }
 		if (!self::enabled() ||
 			$parser->getOutput()->getExtensionData(\MediaWiki\Extension\DebatePHP\TrackedSemanticQuery::OUTPUT_MARKER) !== true) {
 			return true;
@@ -98,6 +124,7 @@ final class SemanticPageCacheHooks {
 	 * even if SMW's smw_touched timestamps are equal in the same second.
 	 */
 	public static function onRejectParserCacheValue($output, $page, $options): bool {
+		if (self::$readingFragment) { return true; }
 		if (!self::enabled()) {
 			return true;
 		}
@@ -120,6 +147,19 @@ final class SemanticPageCacheHooks {
 			FragmentService::log($e);
 			return false;
 		}
+	}
+
+	/**
+	 * This short-circuit is only for Minerva's own guarded file-cache pipeline.
+	 * A desktop view and a registered mobile view keep semantic validation.
+	 */
+	private static function isAnonymousMobileFileCandidate($context): bool {
+		return class_exists(\MediaWiki\Extension\MinervaFileCache\Hooks::class) &&
+			class_exists(\MobileContext::class) &&
+			$context->getConfig()->get('MinervaFileCacheEnabled') &&
+			!$context->getUser()->isRegistered() &&
+			$context->getSkin()->getSkinName() === 'minerva' &&
+			\MobileContext::singleton()->shouldDisplayMobileView();
 	}
 
 	private static function enabled(): bool {
