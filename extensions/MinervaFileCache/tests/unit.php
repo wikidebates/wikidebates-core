@@ -27,6 +27,10 @@ try {
 	fclose($fill);
 	check($store->read('A', 'android', $identity)['entry']['body'] === '<html>Résumé</html>', 'Body bytes round-trip exactly');
 	check($store->read('A', 'iphone', $identity)['entry'] === null, 'User agent variants are isolated');
+	$stats = $store->statistics();
+	check($stats['pages'] === 1 && $stats['files'] === 1 &&
+		$stats['bytes'] > 0 && $stats['maxVariantsPerPage'] === 1,
+		'Statistics count stored files and variants without decoding payloads');
 	$fragmentVariant = json_encode(['https://fr.example.test/wiki/A', 'https', 'https://fr.example.test',
 		'fr', 'fr.example.test', 'TestBrowser', 'fr', '']);
 	check($store->publish('A', $fragmentVariant, $identity, $first['generation'], 'FRAGMENT',
