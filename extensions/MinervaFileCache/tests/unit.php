@@ -43,10 +43,15 @@ try {
 	check($stats['pages'] === 1 && $stats['files'] === 1 &&
 		$stats['bytes'] > 0 && $stats['maxVariantsPerPage'] === 1,
 		'Statistics count stored files and variants without decoding payloads');
+	check($stats['pagesWithMultipleVariants'] === 0 && $stats['variantDistribution']['one'] === 1,
+		'A page with one variant is classified correctly');
 	$fragmentVariant = json_encode(['https://fr.example.test/wiki/A', 'https', 'https://fr.example.test',
 		'fr', 'fr.example.test', 'TestBrowser', 'fr', '']);
 	check($store->publish('A', $fragmentVariant, $identity, $first['generation'], 'FRAGMENT',
 		['content-type' => ['text/html']]), 'Publish a fragment-compatible variant');
+	$stats = $store->statistics();
+	check($stats['pagesWithMultipleVariants'] === 1 && $stats['variantDistribution']['twoToFive'] === 1 &&
+		$stats['maxVariantsPerPage'] === 2, 'Two distinct variants are counted on one page');
 	$fragmentContext = new class {
 		public function getConfig() {
 			return new class {
