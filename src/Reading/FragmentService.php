@@ -111,7 +111,9 @@ class FragmentService {
 			// An unavailable fragment/file still needs an uncached parse because
 			// MediaWiki 1.43's ParserCache invokes SMW's independent validator.
 			$result = SemanticPageCacheHooks::forReadingFragment(static function () use ($eligible, $context, $title, $page, $prepared, $skin) {
-				$result = ($eligible ? FileSources::read($context, $title, $page) : null) ?? $prepared;
+				// A freshly rendered public page already supplied this excerpt.
+				// Re-reading full HTML files would only add disk I/O and parsing.
+				$result = $prepared ?? ($eligible ? FileSources::read($context, $title, $page) : null);
 				if ($result) { unset($result['_generation'], $result['_touched']); }
 				return $result ?? self::render($context, $title->getPrefixedText(), $eligible ? 'vector' : $skin);
 			});
