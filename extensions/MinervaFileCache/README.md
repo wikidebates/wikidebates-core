@@ -317,6 +317,32 @@ Pour interpréter ces différences, l'audit sépare maintenant leurs causes :
   identiques au sein de chaque groupe de même identité. Ces totaux ne
   prouvent pas à eux seuls que les réponses complètes sont interchangeables.
 
+Les compteurs supplémentaires `volatileMetadataEntries`,
+`volatileComparablePages`, `pagesWithOnlyVolatileHtmlDifferences`,
+`pagesWithResidualHtmlDifferences` et
+`sameIdentityHtmlDuplicatesIgnoringVolatile` servent à vérifier l'hypothèse
+selon laquelle deux champs JavaScript propres à la requête, `wgRequestId`
+et `wgBackendResponseTime`, expliquent les différences HTML. L'audit
+remplace **uniquement en mémoire, pour ses empreintes**, ces deux valeurs
+dans les blocs `<script>` où chacune apparaît exactement une fois. Les
+groupes comparés doivent avoir la même identité de cache et tous leurs
+fichiers doivent contenir ces deux champs exactement une fois.
+
+`pagesWithOnlyVolatileHtmlDifferences` compte les pages dont au moins un
+groupe d'identité diffère en HTML brut mais devient identique après cette
+neutralisation, sans différence résiduelle dans les groupes comparables ;
+`pagesWithResidualHtmlDifferences` compte les pages dont au moins un
+groupe présente encore des différences après neutralisation.
+`sameIdentityHtmlDuplicatesIgnoringVolatile` compte les fichiers HTML
+supplémentaires identiques à l'intérieur de ces groupes après
+neutralisation. Les pages avec champs absents, multiples ou non reconnus
+restent hors de cette comparaison : aucun résultat n'est extrapolé.
+
+**Aucun HTML n'est modifié sur disque ou lors de l'affichage**, et ces
+statistiques ne justifient pas de regrouper automatiquement les navigateurs.
+Une même empreinte après neutralisation ne signifie pas que le
+`wgRequestId` enregistré dans le cache est celui de la requête courante.
+
 Les compteurs `truncatedPages`, `ignoredEntries` et `racedPages` signalent
 les limites de l'échantillon, les fichiers non valides et les invalidations
 pendant l'audit. Une entrée dont l'identité interne est cohérente n'est pas

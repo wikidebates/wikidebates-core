@@ -303,6 +303,42 @@ class Store {
 	}
 
 	/**
+	 * Offline diagnostic only: hash HTML after masking exactly one occurrence
+	 * each of MediaWiki's request ID and backend timing in inline scripts.
+	 * Never use this hash to select or serve a cache variant.
+	 */
+	private function hashWithoutVolatileMetadata(string $html): ?string {
+		$requestIds = 0;
+		$timings = 0;
+		$normalized = preg_replace_callback(
+			'~<script\b[^>]*>.*?</script\s*>~is',
+			static function (array $match) use (&$requestIds, &$timings): string {
+				$script = preg_replace_callback(
+					'~("wgRequestId"\s*:\s*")[^"]*(")~',
+					static function (array $value) use (&$requestIds): string {
+						$requestIds++;
+						return $value[1] . '__REQUEST_ID__' . $value[2];
+					},
+					$match[0]
+				);
+				if ($script === null) { return $match[0]; }
+				$script = preg_replace_callback(
+					'~("wgBackendResponseTime"\s*:\s*)[0-9]+(?:\.[0-9]+)?(?=\s*[,}])~',
+					static function (array $value) use (&$timings): string {
+						$timings++;
+						return $value[1] . '0';
+					},
+					$script
+				);
+				return $script ?? $match[0];
+			},
+			$html
+		);
+		return $normalized !== null && $requestIds === 1 && $timings === 1
+			? hash('sha256', $normalized) : null;
+	}
+
+	/**
 	 * Sample actual stored HTML/header equivalence without exposing page content.
 	 * This is an offline diagnostic, never part of a visitor request.
 	 * It does not prove equivalence of future responses or different browsers.
@@ -323,6 +359,12 @@ class Store {
 			'comparablePages' => 0, 'pagesWithIdentityDifferences' => 0,
 			'pagesWithHtmlDifferences' => 0, 'pagesWithHeaderDifferences' => 0,
 			'sameIdentityHtmlDuplicates' => 0, 'sameIdentityHeaderDuplicates' => 0,
+			// Mask only the two confirmed per-request JavaScript config values,
+			// and only for offline comparison of the existing stored HTML.
+			'volatileMetadataEntries' => 0, 'volatileComparablePages' => 0,
+			'pagesWithOnlyVolatileHtmlDifferences' => 0,
+			'pagesWithResidualHtmlDifferences' => 0,
+			'sameIdentityHtmlDuplicatesIgnoringVolatile' => 0,
 		];
 		if (!is_dir($this->root)) { return $stats; }
 		foreach (new \FilesystemIterator($this->root, \FilesystemIterator::SKIP_DOTS) as $prefix) {
@@ -345,6 +387,7 @@ class Store {
 				$byIdentity = [];
 				$valid = 0;
 				$ignored = 0;
+				$normalizedEntries = 0;
 				foreach (array_slice($paths, 0, $maxVariantsPerPage) as $path) {
 					$entry = is_link($path) ? null : $this->decode($path);
 					$identity = $entry['identity'] ?? null;
@@ -364,7 +407,11 @@ class Store {
 					$headerHash = hash('sha256', $headersJson);
 					$identityHash = hash('sha256', $identityJson);
 					// No HTML, headers, or per-visitor fields leave the process.
-					$byIdentity[$identityHash][] = [$bodyHash, $headerHash];
+					// This normalization is diagnostic only; stored and served HTML
+					// remains byte-for-byte unchanged.
+					$normalizedHash = $this->hashWithoutVolatileMetadata($entry['body']);
+					if ($normalizedHash !== null) { $normalizedEntries++; }
+					$byIdentity[$identityHash][] = [$bodyHash, $headerHash, $normalizedHash];
 					$fingerprint = hash('sha256', $identityHash . $headerHash . $bodyHash);
 					$hashes[$fingerprint] = true;
 					$valid++;
@@ -377,20 +424,41 @@ class Store {
 				$stats['analyzedPages']++;
 				$stats['validEntries'] += $valid;
 				$stats['ignoredEntries'] += $ignored;
+				$stats['volatileMetadataEntries'] += $normalizedEntries;
 				$stats['identicalExtraEntries'] += $valid - count($hashes);
 				if (count($hashes) > 1) { $stats['divergentPages']++; }
 				if (count($byIdentity) > 1) { $stats['pagesWithIdentityDifferences']++; }
 				$comparable = false;
 				$htmlDifferent = false;
 				$headersDifferent = false;
+				$volatileComparable = false;
+				$volatileOnly = false;
+				$residualHtml = false;
 				foreach ($byIdentity as $group) {
 					if (count($group) < 2) { continue; }
 					$comparable = true;
 					$bodyHashes = [];
 					$headerHashes = [];
-					foreach ($group as [$bodyHash, $headerHash]) {
+					$normalizedHashes = [];
+					$normalizedCount = 0;
+					foreach ($group as [$bodyHash, $headerHash, $normalizedHash]) {
 						$bodyHashes[$bodyHash] = true;
 						$headerHashes[$headerHash] = true;
+						if ($normalizedHash !== null) {
+							$normalizedHashes[$normalizedHash] = true;
+							$normalizedCount++;
+						}
+					}
+					// Require every member of this identity group to contain
+					// exactly one of each expected metadata field.
+					if ($normalizedCount === count($group)) {
+						$volatileComparable = true;
+						$stats['sameIdentityHtmlDuplicatesIgnoringVolatile'] +=
+							count($group) - count($normalizedHashes);
+						if (count($bodyHashes) > 1 && count($normalizedHashes) === 1) {
+							$volatileOnly = true;
+						}
+						if (count($normalizedHashes) > 1) { $residualHtml = true; }
 					}
 					$stats['sameIdentityHtmlDuplicates'] += count($group) - count($bodyHashes);
 					$stats['sameIdentityHeaderDuplicates'] += count($group) - count($headerHashes);
@@ -400,6 +468,11 @@ class Store {
 				if ($comparable) { $stats['comparablePages']++; }
 				if ($htmlDifferent) { $stats['pagesWithHtmlDifferences']++; }
 				if ($headersDifferent) { $stats['pagesWithHeaderDifferences']++; }
+				if ($volatileComparable) { $stats['volatileComparablePages']++; }
+				if ($volatileOnly && !$residualHtml) {
+					$stats['pagesWithOnlyVolatileHtmlDifferences']++;
+				}
+				if ($residualHtml) { $stats['pagesWithResidualHtmlDifferences']++; }
 			}
 		}
 		return $stats;

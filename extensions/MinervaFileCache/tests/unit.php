@@ -143,6 +143,47 @@ try {
 	$audit = $store->analyzeVariants(1, 2);
 	check($audit['truncatedPages'] === 1 && $audit['validEntries'] === 2,
 		'Variant audit respects the per-page file limit');
+	// A fresh MediaWiki request varies both its tracing ID and backend timing.
+	// They must be ignored by diagnostics only, never by the serving cache.
+	$volatileStore = new Store($dir, 'volatile-wiki', 300, 4096);
+	$volatileHtml = static function (string $requestId, int $elapsed, string $content): string {
+		return '<html><head><script>var RLCONF={"wgRequestId":"' . $requestId .
+			'"};</script></head><body>' . $content .
+			'</body><script>mw.config.set({"wgBackendResponseTime":' . $elapsed .
+			'});</script></html>';
+	};
+	$volatileSnapshot = $volatileStore->read('Diagnostic', 'android', $identity);
+	check($volatileStore->publish('Diagnostic', 'android', $identity,
+		$volatileSnapshot['generation'], $volatileHtml('abc', 254, 'UNCHANGED'), []),
+		'Publish HTML with per-request MediaWiki configuration');
+	check($volatileStore->publish('Diagnostic', 'iphone', $identity,
+		$volatileSnapshot['generation'], $volatileHtml('def', 247, 'UNCHANGED'), []),
+		'Publish identical HTML except for request ID and backend time');
+	$volatileAudit = $volatileStore->analyzeVariants(20, 20);
+	check($volatileAudit['validEntries'] === 2 &&
+		$volatileAudit['pagesWithHtmlDifferences'] === 1 &&
+		$volatileAudit['volatileMetadataEntries'] === 2 &&
+		$volatileAudit['volatileComparablePages'] === 1 &&
+		$volatileAudit['pagesWithOnlyVolatileHtmlDifferences'] === 1 &&
+		$volatileAudit['pagesWithResidualHtmlDifferences'] === 0 &&
+		$volatileAudit['sameIdentityHtmlDuplicatesIgnoringVolatile'] === 1,
+		'Audit explains otherwise-distinct HTML via the two request-specific config values');
+	check($volatileStore->publish('Diagnostic', 'tablet', $identity,
+		$volatileSnapshot['generation'], $volatileHtml('ghi', 300, 'REAL_DIFFERENCE'), []),
+		'Publish HTML with a real content difference');
+	$volatileAudit = $volatileStore->analyzeVariants(20, 20);
+	check($volatileAudit['pagesWithOnlyVolatileHtmlDifferences'] === 0 &&
+		$volatileAudit['pagesWithResidualHtmlDifferences'] === 1 &&
+		$volatileAudit['sameIdentityHtmlDuplicatesIgnoringVolatile'] === 1,
+		'Normalization cannot conceal unrelated content changes');
+	check($volatileStore->publish('Diagnostic', 'unknown-metadata', $identity,
+		$volatileSnapshot['generation'], '<html><body>NO_METADATA</body></html>', []),
+		'Publish a variant without the expected MediaWiki configuration');
+	$volatileAudit = $volatileStore->analyzeVariants(20, 20);
+	check($volatileAudit['volatileMetadataEntries'] === 3 &&
+		$volatileAudit['volatileComparablePages'] === 0 &&
+		$volatileAudit['pagesWithOnlyVolatileHtmlDifferences'] === 0,
+		'Missing config values do not lead to an unsupported equivalence claim');
 	$fragmentContext = new class {
 		public function getConfig() {
 			return new class {
