@@ -85,6 +85,27 @@ check($exit !== 0 && str_contains($out . $err, 'No jobs were consumed'),
 check($exit === 0 && !json_decode(trim($out), true, 512, JSON_THROW_ON_ERROR)['purge_preconditions_met'],
 	'Read-only inventory still works when eager purging is deliberately disabled');
 
+// Real disposable SQLStore benchmark via the public maintenance command.
+// This is read-only and measures each check separately, not entire HTTP time.
+[$exit, $out, $err] = $cli([
+	'Wikidebates:MeasureSemanticCacheGuard',
+	'--title=' . $owners[0]->getPrefixedText(),
+	'--samples=4', '--warmups=1', '--json'
+], false);
+check($exit === 0, 'Real read-only guard benchmark completes: ' . $out . $err);
+$timings = json_decode(trim($out), true, 512, JSON_THROW_ON_ERROR);
+check($timings['type'] === 'semantic_cache_guard_timings' &&
+	$timings['samples'] === 4 && $timings['warmups'] === 1 &&
+	$timings['tracking_enabled'] && !$timings['eager_purge_enabled'] &&
+	$timings['fingerprints_stable'],
+	'Benchmark reports stable repeated fingerprint reads while eager purge is off');
+foreach (['query_page_classification', 'semantic_fingerprint', 'cache_read_guard'] as $stage) {
+	check($timings['stages'][$stage]['count'] === 4 &&
+		$timings['stages'][$stage]['median_ms'] >= 0 &&
+		$timings['stages'][$stage]['p95_ms'] >= $timings['stages'][$stage]['median_ms'],
+		'Benchmark returns bounded numerical stage statistics: ' . $stage);
+}
+
 // Execute the exact fallback snippet in the deployment documentation, not a
 // second hand-maintained copy. Multi-line blocks would reproduce the reported bug.
 $doc = file_get_contents(__DIR__ . '/../docs/smw-semantic-purge-optimization.md');
