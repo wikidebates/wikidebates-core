@@ -1090,3 +1090,47 @@ test( 'recent-contributions requests operate only on the clicked block in Chromi
 	assert.equal( await page.isVisible( '#recent-B .mw-ui-button' ), false );
 	assert.equal( await page.isVisible( '#recent-A .mw-ui-button' ), true );
 } );
+
+test( 'Vector hover uses the user language in its element-local cache and rejects late stale replies', async ( t ) => {
+	const { page } = await fixture( t, 'vector' );
+	await page.evaluate( () => {
+		const get = mw.config.get;
+		window.tooltipLanguage = 'fr';
+		mw.config.get = ( key ) => key === 'wgUserLanguage' ? window.tooltipLanguage : get( key );
+		window.tooltipRequests = [];
+		mw.Api = function () {
+			this.post = ( params ) => {
+				const deferred = jQuery.Deferred();
+				window.tooltipRequests.push( { params, deferred } );
+				return deferred.promise();
+			};
+		};
+		document.getElementById( 'bodyContent' ).innerHTML =
+			'<div id="browser-hover" class="hover-map" data-argument="Debate" ' +
+			'style="display:block;width:210px;height:40px;">' +
+			'<a href="/wiki/Argument" title="Argument">Hover me</a></div>';
+	} );
+	await page.addScriptTag( { path: path.join( root, 'modules/common/i18n.js' ) } );
+	await page.addScriptTag( { path: path.join( root, 'modules/features/hover.js' ) } );
+	await page.hover( '#browser-hover' );
+	await page.waitForFunction( () => tooltipRequests.length === 1 );
+	assert.equal( await page.evaluate( () => tooltipRequests[ 0 ].params.uselang ), 'fr' );
+	await page.evaluate( () => { tooltipRequests[ 0 ].deferred.resolve( { parse: { text: '<strong>French result</strong>' } } ); } );
+	await page.waitForFunction( () => document.querySelector( '#browser-hover .hover-wrapper' )?.textContent === 'French result' );
+	await page.mouse.move( 350, 680 );
+	await page.evaluate( () => { window.tooltipLanguage = 'en'; } );
+	await page.hover( '#browser-hover' );
+	await page.waitForFunction( () => tooltipRequests.length === 2 );
+	assert.equal( await page.evaluate( () => tooltipRequests[ 1 ].params.uselang ), 'en' );
+	assert.equal( await page.locator( '#browser-hover .hover-wrapper' ).textContent(), '' );
+	await page.evaluate( () => { tooltipRequests[ 1 ].deferred.resolve( { parse: { text: '<strong>English result</strong>' } } ); } );
+	await page.waitForFunction( () => document.querySelector( '#browser-hover .hover-wrapper' )?.textContent === 'English result' );
+	await page.mouse.move( 350, 680 );
+	await page.hover( '#browser-hover' );
+	assert.equal( await page.evaluate( () => tooltipRequests.length ), 2, 'repeat hover uses the local English cache' );
+	await page.mouse.move( 350, 680 );
+	await page.evaluate( () => { window.tooltipLanguage = 'fr'; } );
+	await page.hover( '#browser-hover' );
+	await page.waitForFunction( () => document.querySelector( '#browser-hover .hover-wrapper' )?.textContent === 'French result' );
+	assert.equal( await page.evaluate( () => tooltipRequests.length ), 2, 'the shared parse cache already holds the French response' );
+} );
