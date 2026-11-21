@@ -144,4 +144,60 @@ foreach ($records as $row) {
 check($found, 'A stored legacy cursor is visible without instantiating its job type');
 same(1, count(array_filter($records, static fn($row) => $row['type'] === 'summary')),
 	'Queue inspector reports a single resume cursor');
-echo "OK: actual run.php preflight, serialized job inspection and documented line-by-line eval\n";
+// The source-only audit must not treat a redirect as an independent
+// query owner. SMW resolves _ASK reads on redirected subjects to their
+// canonical target. Verify this in the real disposable SQLStore.
+fsSave('WD Audit redirect', '#REDIRECT [[WD Purge Owner A]]');
+fsFlush(['wikidebatesSemanticCachePurge']);
+$services->getDBLoadBalancerFactory()->commitPrimaryChanges(__FILE__);
+$auditOwnerId = $owners[0]->getArticleID();
+$auditRedirectId = \MediaWiki\Title\Title::newFromText('WD Audit redirect')->getArticleID();
+check($auditOwnerId > 0 && $auditRedirectId > 0, 'Disposable audit pages exist');
+$auditArgs = [
+	'Wikidebates:AuditSemanticFreshness',
+	'--ids=' . $auditOwnerId . ',' . $auditRedirectId,
+	'--limit=10'
+];
+[$exit, $auditOut, $auditErr] = $cli($auditArgs, false);
+check($exit === 0, 'Real read-only semantic audit succeeds: ' . $auditOut . $auditErr);
+$auditRecords = array_values(array_map(
+	static fn(string $line): array => json_decode($line, true, 512, JSON_THROW_ON_ERROR),
+	array_filter(explode("\n", trim($auditOut)))
+));
+$auditSummary = $auditRecords[count($auditRecords) - 1];
+check($auditSummary['type'] === 'summary' && $auditSummary['scanned'] === 2 &&
+	$auditSummary['redirects_skipped'] === 1 && $auditSummary['with_ask_profiles'] === 1 &&
+	$auditSummary['dependency_rows'] > 0 && $auditSummary['query_ids'] > 0 &&
+	$auditSummary['query_ids_without_dependency_rows'] === 0,
+	'Only canonical page contributes genuine SMW edges; redirect is excluded');
+check(count(array_filter($auditRecords,
+	static fn(array $row): bool => $row['type'] === 'redirect')) === 1,
+	'Redirect is reported explicitly without inherited query profiles');
+
+// Deliberately remove one query's SQL edges in the disposable database
+// (never production) and verify the audit detects partial coverage.
+$store->clear();
+$ownerSubject = \SMW\DataItems\WikiPage::newFromTitle($owners[0]);
+$auditLinks = (new \SMW\SQLStore\QueryDependencyLinksStoreFactory())
+	->newQueryDependencyLinksStore($store);
+$auditQueryIds = array_values($auditLinks->findEmbeddedQueryIdListBySubject($ownerSubject));
+$missingQueryId = (int)($auditQueryIds[0] ?? 0);
+check($missingQueryId > 0, 'The disposable page owns a real query ID');
+$store->getConnection('mw.db')->newDeleteQueryBuilder()
+	->deleteFrom(\SMW\SQLStore\SQLStore::QUERY_LINKS_TABLE)
+	->where(['s_id' => $missingQueryId])
+	->caller(__FILE__)
+	->execute();
+$services->getDBLoadBalancerFactory()->commitPrimaryChanges(__FILE__);
+[$exit, $auditOut, $auditErr] = $cli($auditArgs, false);
+check($exit === 0, 'Read-only audit still succeeds with a missing dependency: ' . $auditErr);
+$auditRecords = array_values(array_map(
+	static fn(string $line): array => json_decode($line, true, 512, JSON_THROW_ON_ERROR),
+	array_filter(explode("\n", trim($auditOut)))
+));
+$auditSummary = $auditRecords[count($auditRecords) - 1];
+check($auditSummary['redirects_skipped'] === 1 &&
+	$auditSummary['query_ids_without_dependency_rows'] >= 1 &&
+	$auditSummary['pages_with_incomplete_dependencies'] === 1,
+	'Real SQL edge loss is detected even when _ASK profile IDs still exist');
+echo "OK: actual run.php preflight, serialized job inspection, redirect-safe semantic audit and documented eval\n";

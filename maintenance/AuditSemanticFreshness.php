@@ -77,9 +77,13 @@ class AuditSemanticFreshness extends Maintenance {
 		$store = SemanticServices::getInstance()->getStore();
 		$links = ( new QueryDependencyLinksStoreFactory() )->newQueryDependencyLinksStore( $store );
 		$summary = [
-			'type' => 'summary', 'scanned' => 0, 'arguments' => 0, 'debates_only' => 0,
+			'type' => 'summary', 'scanned' => 0, 'redirects_skipped' => 0,
+			'arguments' => 0, 'debates_only' => 0,
 			'argument_without_ask_profile' => 0, 'profile_without_query_links' => 0,
 			'with_ask_profiles' => 0, 'explicit_nocache' => 0, 'nontext' => 0,
+			'query_ids' => 0, 'dependency_rows' => 0,
+			'query_ids_without_dependency_rows' => 0,
+			'pages_with_incomplete_dependencies' => 0,
 			'template_source_markers' => 0,
 			'missing' => 0, 'errors' => 0, 'resume_after' => $after,
 			'dependency_links_enabled' => (bool)( $GLOBALS['smwgEnabledQueryDependencyLinksStore'] ?? false ),
@@ -92,7 +96,7 @@ class AuditSemanticFreshness extends Maintenance {
 				$where['page_id'] = $ids;
 			}
 			$result = $db->newSelectQueryBuilder()
-				->select( [ 'page_id', 'page_namespace', 'page_title' ] )
+				->select( [ 'page_id', 'page_namespace', 'page_title', 'page_is_redirect' ] )
 				->from( 'page' )->where( $where )->orderBy( 'page_id' )
 				->limit( min( $batch, $limit - $summary['scanned'] ) )
 				->caller( __METHOD__ )->fetchResultSet();
@@ -102,6 +106,18 @@ class AuditSemanticFreshness extends Maintenance {
 				$after = (int)$row->page_id;
 				$summary['scanned']++;
 				$title = Title::makeTitle( (int)$row->page_namespace, (string)$row->page_title );
+				// SMW resolves redirects to the canonical subject when reading
+				// _ASK, so a redirected title can appear to have profiles which
+				// actually belong to its target. Do not count it as an
+				// independently query-owning page.
+				if ( (int)$row->page_is_redirect === 1 ) {
+					$summary['redirects_skipped']++;
+					if ( !$summaryOnly ) {
+						$this->emit( [ 'type' => 'redirect', 'page_id' => $after,
+							'title' => $title->getPrefixedText() ] );
+					}
+					continue;
+				}
 				try {
 					$revision = $revisions->getRevisionByTitle( $title );
 					$content = $revision?->getContent( SlotRecord::MAIN );
@@ -122,12 +138,44 @@ class AuditSemanticFreshness extends Maintenance {
 					$profiles = $store->getPropertyValues( $subject, new Property( '_ASK' ) );
 					$registered = $links->findEmbeddedQueryIdListBySubject( $subject );
 					$hasProfiles = $profiles !== [];
-					$hasLinks = $registered !== [];
+					// SMW's findEmbeddedQueryIdListBySubject() returns ID
+					// references from _ASK; it does NOT read smw_query_links.
+					// Check the actual SQL edges before claiming that a
+					// query has registered dependencies.
+					$queryIds = array_values( array_unique( array_filter(
+						array_map( 'intval', array_values( $registered ) ),
+						static fn ( int $id ): bool => $id > 0
+					) ) );
+					$edgeCounts = array_fill_keys( $queryIds, 0 );
+					if ( $queryIds !== [] ) {
+						$dependencyRows = $store->getConnection( 'mw.db' )
+							->newSelectQueryBuilder()
+							->select( [ 's_id', 'edge_count' => 'COUNT(*)' ] )
+							->from( \SMW\SQLStore\SQLStore::QUERY_LINKS_TABLE )
+							->where( [ 's_id' => $queryIds ] )
+							->groupBy( 's_id' )
+							->caller( __METHOD__ )
+							->fetchResultSet();
+						foreach ( $dependencyRows as $dependencyRow ) {
+							$edgeCounts[(int)$dependencyRow->s_id] = (int)$dependencyRow->edge_count;
+						}
+					}
+					$edgeTotal = array_sum( $edgeCounts );
+					$withoutEdges = count( array_filter(
+						$edgeCounts, static fn ( int $count ): bool => $count === 0
+					) );
+					$hasLinks = $edgeTotal > 0;
 					$summary['arguments'] += (int)$argument;
 					$summary['template_source_markers'] += (int)$markers['template_source'];
 					$summary['debates_only'] += (int)( $debate && !$argument );
 					$summary['argument_without_ask_profile'] += (int)( $argument && !$hasProfiles );
 					$summary['profile_without_query_links'] += (int)( $hasProfiles && !$hasLinks );
+					$summary['query_ids'] += count( $queryIds );
+					$summary['dependency_rows'] += $edgeTotal;
+					$summary['query_ids_without_dependency_rows'] += $withoutEdges;
+					$summary['pages_with_incomplete_dependencies'] += (int)(
+						$hasProfiles && ( $queryIds === [] || $withoutEdges > 0 )
+					);
 					$summary['with_ask_profiles'] += (int)$hasProfiles;
 					$summary['explicit_nocache'] += (int)$nocache;
 					if ( !$summaryOnly && ( $argument || $debate || $markers['template_source'] || $nocache || $hasProfiles || $hasLinks ) ) {
@@ -137,7 +185,12 @@ class AuditSemanticFreshness extends Maintenance {
 							'argument_source_marker' => $argument, 'debate_source_marker' => $debate,
 							'template_source_marker' => $markers['template_source'],
 							'raw_nocache_marker' => $nocache, 'ask_profiles' => count( $profiles ),
+							// Preserve the old key for consumers, but expose the
+							// distinction between query IDs and real SQL rows.
 							'query_links' => count( $registered ),
+							'query_ids' => count( $queryIds ),
+							'dependency_rows' => $edgeTotal,
+							'query_ids_without_dependency_rows' => $withoutEdges,
 						] );
 					}
 				} catch ( Throwable $e ) {
