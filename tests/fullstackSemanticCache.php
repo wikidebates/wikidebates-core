@@ -823,6 +823,28 @@ try {
 			str_contains($historicalParserOutput->getText(),
 				str_replace(' ', '_', $historicalParent))),
 		'Full tracked Argument HTML displays its new parent after the transition');
+
+	// Check the reverse transition on the same formerly untracked Argument.
+	// Delayed eager purges must not permit a stale parent to survive.
+	$parentAddedFingerprint = SemanticRevisionStore::fingerprint($store, $historicalSubject);
+	fsSave($historicalParent, 'Parent relation removed again');
+	fsFlush(['wikidebatesSemanticCachePurge']);
+	check(SemanticRevisionStore::fingerprint($store, $historicalSubject) !==
+		$parentAddedFingerprint,
+		'Removing the parent changes the previously untracked Argument fingerprint');
+	$removedHistorical = $read($historicalArgument);
+	check($removedHistorical['source'] !== 'fragment-cache',
+		'Parent removal invalidates the formerly untracked Argument fragment before purge');
+	$historicalAfterRemoval = $historicalPage->getParserOutput(
+		ParserOptions::newFromAnon()
+	);
+	check($historicalAfterRemoval instanceof \MediaWiki\Parser\ParserOutput &&
+		!str_contains($historicalAfterRemoval->getText(), $historicalParent) &&
+		!str_contains($historicalAfterRemoval->getText(),
+			str_replace(' ', '_', $historicalParent)),
+		'Full tracked Argument HTML no longer displays the removed parent');
+	check(SemanticCacheGuard::safeForRead($historicalTitle, $historicalPage),
+		'Formerly untracked Argument remains eligible for guarded caching after parent removal');
 	fsFlush();
 } finally {
 	$GLOBALS['wgWikidebatesSemanticCacheTracking'] = $originalTracking;
