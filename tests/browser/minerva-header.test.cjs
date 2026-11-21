@@ -1013,3 +1013,80 @@ test( 'an early title click in Chromium is remembered until the lazy UI resolves
 	assert.deepEqual( await page.evaluate( () => openedLazyTitles ), [ 'lazy-click' ] );
 	assert.equal( await page.locator( '#lazy-click' ).getAttribute( 'aria-busy' ), null );
 } );
+
+test( 'a failed extra-content request stays retryable in Chromium without waiting for the throttle', async ( t ) => {
+	const { page } = await fixture( t, 'vector' );
+	await page.evaluate( () => {
+		const originalGet = mw.config.get;
+		mw.config.get = ( key ) => key === 'wgWikidebatesWikiNames'
+			? { 'wk-param-page': 'page', 'wk-tpl-more-content': 'More_content' } : originalGet( key );
+		mw.message = () => ( { exists: () => true } );
+		mw.msg = ( key ) => ( { 'wk-expand-loading': 'Chargement...',
+			'wk-expand-load-error': 'Chargement impossible. Cliquez pour reessayer.' } )[ key ] || key;
+		window.expandCalls = [];
+		mw.Api = function () {
+			this.post = ( params ) => {
+				const deferred = jQuery.Deferred();
+				window.expandCalls.push( { params, deferred } );
+				return deferred.promise();
+			};
+		};
+		document.getElementById( 'bodyContent' ).innerHTML =
+			'<section><div id="browser-more" class="more-content-button" data-page="Example">Show more</div>' +
+			'<div class="more-content-wrapper"></div></section>';
+	} );
+	await page.addScriptTag( { path: path.join( root, 'modules/common/i18n.js' ) } );
+	await page.addScriptTag( { path: path.join( root, 'modules/features/moreContent.js' ) } );
+	await page.click( '#browser-more' );
+	await page.waitForFunction( () => window.expandCalls.length === 1 );
+	assert.equal( await page.getAttribute( '#browser-more', 'aria-busy' ), 'true' );
+	await page.evaluate( () => { expandCalls[ 0 ].deferred.reject( 'http' ); } );
+	await page.waitForSelector( '.wk-expand-status[role="alert"]' );
+	assert.equal( await page.isVisible( '#browser-more' ), true );
+	await page.click( '#browser-more' );
+	await page.waitForFunction( () => window.expandCalls.length === 2 );
+	await page.evaluate( () => { expandCalls[ 1 ].deferred.resolve( { parse: { text: '<p id="recovered-more">Recovered</p>' } } ); } );
+	await page.waitForSelector( '#recovered-more' );
+	assert.equal( await page.isVisible( '#browser-more' ), false );
+	assert.equal( await page.locator( '.wk-expand-status' ).count(), 0 );
+} );
+
+test( 'recent-contributions requests operate only on the clicked block in Chromium', async ( t ) => {
+	const { page } = await fixture( t, 'minerva' );
+	await page.evaluate( () => {
+		const originalGet = mw.config.get;
+		mw.config.get = ( key ) => key === 'wgWikidebatesWikiNames' ? {} : originalGet( key );
+		mw.message = () => ( { exists: () => true } );
+		mw.msg = ( key ) => key;
+		window.expandCalls = [];
+		mw.Api = function () {
+			this.post = ( params ) => {
+				const deferred = jQuery.Deferred();
+				window.expandCalls.push( { params, deferred } );
+				return deferred.promise();
+			};
+		};
+		document.getElementById( 'bodyContent' ).innerHTML = [ 'A', 'B' ].map( ( id ) =>
+			'<section id="recent-' + id + '"><h2 class="latest-changes-button">Recent</h2>' +
+			'<div class="latest-changes-button mw-ui-button" data-page="Debate ' + id + '">Show</div>' +
+			'<div class="latest-changes-wrapper"></div></section>' ).join( '' );
+	} );
+	await page.addScriptTag( { path: path.join( root, 'modules/common/i18n.js' ) } );
+	await page.addScriptTag( { path: path.join( root, 'modules/features/view.ns0.idle.js' ) } );
+	await page.click( '#recent-B h2' );
+	assert.equal( await page.evaluate( () => window.expandCalls.length ), 0 );
+	await page.click( '#recent-B .mw-ui-button' );
+	await page.waitForFunction( () => window.expandCalls.length === 1 );
+	assert.equal( await page.evaluate( () => window.expandCalls[ 0 ].params.text ),
+		'{{#recentdebatechanges: page=Debate B|limit=100}}' );
+	await page.evaluate( () => { window.expandCalls[ 0 ].deferred.reject( 'http' ); } );
+	await page.waitForSelector( '#recent-B .wk-expand-status[role="alert"]' );
+	assert.equal( await page.isVisible( '#recent-A .mw-ui-button' ), true );
+	assert.equal( await page.isVisible( '#recent-B .mw-ui-button' ), true );
+	await page.click( '#recent-B .mw-ui-button' );
+	await page.waitForFunction( () => window.expandCalls.length === 2 );
+	await page.evaluate( () => { window.expandCalls[ 1 ].deferred.resolve( { parse: { text: '<ul id="recovered-latest"><li>New</li></ul>' } } ); } );
+	await page.waitForSelector( '#recent-B #recovered-latest' );
+	assert.equal( await page.isVisible( '#recent-B .mw-ui-button' ), false );
+	assert.equal( await page.isVisible( '#recent-A .mw-ui-button' ), true );
+} );

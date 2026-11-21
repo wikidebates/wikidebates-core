@@ -241,3 +241,22 @@ test( 'already-active hover work completes, while a queued click starts first', 
 	reply( 2 ); reply( 3 );
 	await Promise.all( [ first, second, laterHover, clicked ] );
 } );
+
+
+test( 'explicit retry bypasses a hot failure only for its own request key', async ( t ) => {
+	const { WK, calls, reply } = await fixture( t );
+	const failed = assert.rejects( WK.wkParseWikitext( 'More request', 'more' ), ( error ) => error === 'http' );
+	calls[ 0 ].result.reject( 'http' );
+	await failed;
+	await assert.rejects( WK.wkParseWikitext( 'More request', 'more' ), /wkParse:fail-cached/ );
+	const retry = WK.wkParseWikitext( 'More request', 'more', { retry: true } );
+	assert.equal( calls.length, 2 );
+	reply( 1, 'Recovered' );
+	assert.equal( await retry, 'Recovered' );
+	assert.equal( await WK.wkParseWikitext( 'More request', 'more' ), 'Recovered' );
+	const unrelated = assert.rejects( WK.wkParseWikitext( 'Other request', 'hover' ), ( error ) => error === 'http' );
+	calls[ 2 ].result.reject( 'http' );
+	await unrelated;
+	await assert.rejects( WK.wkParseWikitext( 'Other request', 'hover' ), /wkParse:fail-cached/ );
+	assert.equal( calls.length, 3 );
+} );

@@ -393,6 +393,8 @@
 	"wk-reading-siblings-aria-label": "Related arguments",
 	"wk-breadcrumb-aria-label": "Contents",
 	"wk-summary-delete-generic": "Deleting an item",
+	"wk-expand-load-error": "Unable to load this content. Select the button again to retry.",
+	"wk-expand-loading": "Loading...",
 	"wk-interlanguage-label": "Interlanguage links",
 	"apihelp-wikidebatesreading-summary": "Return the prepared HTML fragment used by Wikidebates reading mode.",
 	"apihelp-wikidebatesreading-param-page": "Title of the argument page.",

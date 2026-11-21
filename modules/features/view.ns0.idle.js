@@ -12,33 +12,16 @@
 	function latestChangesCall() {
 		if ( !WK.wkOnce( 'wkLatestInit' ) ) return;
 
-		$D.on( 'click.wkLatest', '.latest-changes-button', function () {
-
-			var $btn = jQuery( '.latest-changes-button.mw-ui-button' );
-			var btnEl = $btn.get( 0 );
-
-			$btn.hide();
-
+		$D.on( 'click.wkLatest', '.latest-changes-button.mw-ui-button', function () {
+			// The title and trigger share a CSS class. Only the clicked trigger is used.
 			WK.wkWarmI18nCaches();
 
-			var ds = btnEl && btnEl.dataset ? btnEl.dataset : null;
-			var page = ds && ds.page ? ds.page : $btn.data( 'page' );
+			var ds = this.dataset || null;
+			var page = ds && ds.page ? ds.page : jQuery( this ).data( 'page' );
+			if ( !page ) return;
 
-			var $wrapper = $btn.parent().find( '.latest-changes-wrapper' );
-			var query =
-				'{{#recentdebatechanges: page=' + page +
-				'|limit=100' +
-				'}}';
-
-			if ( typeof WK.wkParseWikitext !== 'function' || typeof WK.wkReplaceHtml !== 'function' ) return;
-
-			WK.wkParseWikitext( query, 'latest' ).then( function ( html ) {
-				WK.wkReplaceHtml(
-					$wrapper,
-					'<div class="latest-changes-wrapper"><div class="latest-changes-drop show"></div>' + html + '</div>'
-				);
-			} ).catch( function () {} );
-
+			var query = '{{#recentdebatechanges: page=' + page + '|limit=100}}';
+			WK.wkExpandWikitext( this, 'latest-changes-wrapper', 'latest-changes-drop', query, 'latest' );
 		} );
 	}
 

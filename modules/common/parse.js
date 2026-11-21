@@ -264,7 +264,7 @@
 		}
 	}
 
-	function wkParseWikitext( wikitext, bucket ) {
+	function wkParseWikitext( wikitext, bucket, options ) {
 		bucket = bucket || 'def';
 
 		// Recent changes must not extend the server's 60-second data cache.
@@ -276,6 +276,9 @@
 
 		var cached = wkCacheGetLRU( cache, cacheKey );
 		if ( cached !== null ) return Promise.resolve( cached );
+		// Explicit user retries must not be blocked by the 15-second failure throttle.
+		// Background and speculative requests still respect the throttle.
+		if ( options && options.retry === true ) wkParseFailUntil.delete( inFlightKey );
 		if ( wkFailIsHot( inFlightKey ) ) return Promise.reject( new Error( 'wkParse:fail-cached' ) );
 		if ( wkParseInFlight.has( inFlightKey ) ) return wkParseInFlight.get( inFlightKey ).promise;
 
@@ -389,8 +392,53 @@
 		}
 	}
 
+	/**
+	 * Shared UI for two on-demand wikitext expansions. Keep the trigger available
+	 * on errors, and allow a real retry instead of replaying a throttled failure.
+	 */
+	function wkExpandWikitext( button, wrapperClass, dropClass, wikitext, bucket ) {
+		var $button = jQuery( button );
+		if ( !$button.length || $button.data( 'wk-expand-loading' ) ) return;
+
+		var $wrapper = $button.parent().find( '.' + wrapperClass ).first();
+		if ( !$wrapper.length || !wikitext ) return;
+
+		var $status = $button.next( '.wk-expand-status' );
+		if ( !$status.length ) {
+			$status = jQuery( '<span class="wk-expand-status" role="status" aria-live="polite"></span>' );
+			$status.insertAfter( $button );
+		}
+		var msg = function ( key, fallback ) {
+			return typeof WK.wkMsgD === 'function' ? WK.wkMsgD( key, fallback ) : fallback;
+		};
+		$button.data( 'wk-expand-loading', true ).attr( {
+			'aria-busy': 'true', 'aria-disabled': 'true'
+		} ).prop( 'disabled', true );
+		$status.attr( 'role', 'status' ).text( msg( 'wk-expand-loading', 'Loading...' ) );
+
+		return Promise.resolve().then( function () {
+			return wkParseWikitext( wikitext, bucket, { retry: true } );
+		} ).then( function ( html ) {
+			if ( !$button[ 0 ].isConnected ) return;
+			if ( !$wrapper[ 0 ].isConnected ) throw new Error( 'wkExpand:missing-target' );
+			WK.wkReplaceHtml( $wrapper, '<div class="' + wrapperClass + '"><div class="' +
+				dropClass + ' show"></div>' + html + '</div>' );
+			$button.hide();
+			$status.remove();
+		} ).catch( function () {
+			if ( $button[ 0 ].isConnected ) {
+				$status.attr( 'role', 'alert' ).text( msg( 'wk-expand-load-error',
+					'Unable to load this content. Select the button again to retry.' ) );
+			}
+		} ).then( function () {
+			$button.removeData( 'wk-expand-loading' ).removeAttr( 'aria-busy aria-disabled' )
+				.prop( 'disabled', false );
+		} );
+	}
+
 	WK.wkGetApi = wkGetApi;
 	WK.wkParseWikitext = wkParseWikitext;
+	WK.wkExpandWikitext = wkExpandWikitext;
 	WK.wkParseCancel = wkParseCancel;
 	WK.wkParsePage = wkParsePage;
 	WK.wkCancelPagePrefetch = wkCancelPagePrefetch;
