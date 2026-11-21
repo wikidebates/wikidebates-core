@@ -1,0 +1,133 @@
+{
+	"name": "SMW 7.3.1 native cache baseline (read-only)",
+	"on": {
+		"pull_request": {
+			"paths": [
+				"tests/fullstackSemanticBaseline.php",
+				"tests/mediawikiEnvironment.php",
+				"maintenance/AuditSemanticFreshness.php",
+				"docs/semantic-baseline-audit.md",
+				".github/workflows/semantic-baseline.yml"
+			]
+		},
+		"push": {
+			"branches": [
+				"main"
+			],
+			"paths": [
+				"tests/fullstackSemanticBaseline.php",
+				"tests/mediawikiEnvironment.php",
+				"maintenance/AuditSemanticFreshness.php",
+				".github/workflows/semantic-baseline.yml"
+			]
+		}
+	},
+	"permissions": {
+		"contents": "read"
+	},
+	"jobs": {
+		"semantic-baseline": {
+			"runs-on": "ubuntu-24.04",
+			"timeout-minutes": 30,
+			"strategy": {
+				"fail-fast": false,
+				"matrix": {
+					"database": [
+						"sqlite",
+						"mariadb"
+					]
+				}
+			},
+			"steps": [
+				{
+					"uses": "actions/checkout@v4"
+				},
+				{
+					"uses": "shivammathur/setup-php@v2",
+					"with": {
+						"php-version": "8.4",
+						"extensions": "mbstring, intl, xml, pdo_sqlite, sqlite3, mysqli, pdo_mysql",
+						"coverage": "none",
+						"tools": "composer"
+					}
+				},
+				{
+					"name": "Audit PHP syntax",
+					"run": "php -l maintenance/AuditSemanticFreshness.php\nphp -l tests/fullstackSemanticBaseline.php\nphp -l tests/mediawikiEnvironment.php"
+				},
+				{
+					"name": "MediaWiki 1.43.11 checkout",
+					"uses": "actions/checkout@v4",
+					"with": {
+						"repository": "wikimedia/mediawiki",
+						"ref": "1.43.11",
+						"path": ".mw-lab"
+					}
+				},
+				{
+					"name": "Scribunto for MediaWiki 1.43",
+					"uses": "actions/checkout@v4",
+					"with": {
+						"repository": "wikimedia/mediawiki-extensions-Scribunto",
+						"ref": "REL1_43",
+						"path": ".mw-lab/extensions/Scribunto"
+					}
+				},
+				{
+					"name": "Vector for isolated ApiParse responses",
+					"uses": "actions/checkout@v4",
+					"with": {
+						"repository": "wikimedia/mediawiki-skins-Vector",
+						"ref": "REL1_43",
+						"path": ".mw-lab/skins/Vector"
+					}
+				},
+				{
+					"name": "SMW 7.3.1",
+					"uses": "actions/checkout@v4",
+					"with": {
+						"repository": "SemanticMediaWiki/SemanticMediaWiki",
+						"ref": "7.3.1",
+						"path": ".mw-lab/extensions/SemanticMediaWiki"
+					}
+				},
+				{
+					"name": "SemanticScribunto 2.3.3",
+					"uses": "actions/checkout@v4",
+					"with": {
+						"repository": "SemanticMediaWiki/SemanticScribunto",
+						"ref": "2.3.3",
+						"path": ".mw-lab/extensions/SemanticScribunto"
+					}
+				},
+				{
+					"name": "Isolated PHP dependencies",
+					"run": "composer install --working-dir=.mw-lab --no-interaction --prefer-dist --no-progress\nphp -r '$p=\".mw-lab/extensions/SemanticMediaWiki/composer.json\"; $data=json_decode(file_get_contents($p), true, 512, JSON_THROW_ON_ERROR); unset($data[\"require-dev\"]); file_put_contents($p, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . \"\\n\");'\ncomposer install --working-dir=.mw-lab/extensions/SemanticMediaWiki --no-dev --no-interaction --prefer-dist --no-progress"
+				},
+				{
+					"name": "Disposable MariaDB via private Unix socket",
+					"if": "matrix.database == 'mariadb'",
+					"run": "LAB=\"$(mktemp -d /tmp/wikidebates-lab-XXXXXXXX)\"\nchmod 777 \"$LAB\"\ncontainer=\"$(docker run -d --rm --name \"wd-baseline-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}\" --network none -e MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1 -v \"$LAB:/run/mysqld\" mariadb:11.4 --skip-networking --socket=/run/mysqld/mariadb.sock)\"\nready=0\nfor i in $(seq 1 120); do\n\tif docker logs \"$container\" 2>&1 | grep -q 'MariaDB init process done' && [ -S \"$LAB/mariadb.sock\" ] && php -r 'mysqli_report(MYSQLI_REPORT_OFF); $m = @new mysqli(\"localhost\", \"root\", \"\", \"\", 0, $argv[1]); exit($m->connect_errno ? 1 : 0);' \"$LAB/mariadb.sock\"; then\n\t\tready=1\n\t\tbreak\n\tfi\n\tsleep 1\ndone\nif [ \"$ready\" -ne 1 ]; then docker logs \"$container\"; exit 1; fi\necho \"WD_TEST_MARIADB_SOCKET=$LAB/mariadb.sock\" >> \"$GITHUB_ENV\"\necho \"WD_TEST_DISPOSABLE_MARIADB=1\" >> \"$GITHUB_ENV\""
+				},
+				{
+					"name": "Actual SMW 7.3.1 baseline audit",
+					"env": {
+						"MW_INSTALL_PATH": "${{ github.workspace }}/.mw-lab",
+						"WD_SEMANTIC_BASELINE_REPORT": "${{ github.workspace }}/tests/results/semantic-baseline-${{ matrix.database }}.json"
+					},
+					"run": "php -d memory_limit=768M tests/fullstackSemanticBaseline.php"
+				},
+				{
+					"name": "Retain diagnostic findings",
+					"if": "always()",
+					"uses": "actions/upload-artifact@v4",
+					"with": {
+						"name": "semantic-baseline-${{ matrix.database }}",
+						"path": "tests/results/semantic-baseline-${{ matrix.database }}.json",
+						"if-no-files-found": "ignore"
+					}
+				}
+			]
+		}
+	}
+}
