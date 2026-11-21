@@ -16,6 +16,8 @@ use MediaWiki\Extension\Wikidebates\Reading\SemanticCacheHooks;
 
 $metadata = json_decode(file_get_contents(__DIR__ . '/../extension.json'), true, 512, JSON_THROW_ON_ERROR);
 same(false, $metadata['config']['WikidebatesSemanticCacheTracking']['value'], 'Semantic cache tracking must be opt-in');
+same(false, $metadata['config']['WikidebatesSemanticCacheEagerPurge']['value'],
+	'Semantic eager purges must require a second explicit opt-in');
 check(isset($metadata['Hooks']['SMW::SQLStore::AfterDataUpdateComplete']),
 	'The real SMW 7.3.1 data-update hook is registered');
 check(isset($metadata['JobClasses']['wikidebatesSemanticCachePurge']),

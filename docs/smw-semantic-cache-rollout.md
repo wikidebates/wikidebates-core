@@ -3,9 +3,11 @@
 > **Statut : expérimental, DÉSACTIVÉ PAR DÉFAUT.** Les suites SMW
 > et HTTP multiprocessus sur SQLite et MariaDB, y compris Vector,
 > MobileFrontend et MinervaFileCache, passent sur des wikis jetables.
-> Ne pas fusionner ni retirer `__NOCACHE__` sans validation des
-> requêtes réelles, des performances et d'un pilote en préproduction.
-> La production reste inchangée.
+> Ne pas fusionner le suivi expérimental sans vérification des requêtes
+> réelles, des performances et d'un pilote en préproduction.
+> Sur les wikis réels, `__NOCACHE__` a **déjà été retiré** du modèle
+> Argument ; les anciennes étapes de retrait plus bas sont historiques.
+> Aucun changement automatique des paramètres de production.
 
 ## Architecture expérimentale
 
@@ -34,13 +36,15 @@ réactualisation de nombreuses pages et la création de nombreux jobs
 une boucle infinie. Chaque mise à jour du magasin SMW continue d'avancer
 les compteurs transactionnels `wd_smw_entity_revisions`.
 
-Le nouveau paramètre `$wgWikidebatesSemanticCacheEagerPurge` vaut **true**
-par défaut. Avec `false`, le système conserve les empreintes et la
-vérification à chaque lecture mais **ne programme plus de purges
-anticipées** et considère les jobs de purge déjà présents comme terminés
-sans exécuter leurs effets. Cela réduit fortement le travail durant une
-migration massive, mais il n'y a **pas de rattrapage automatique** de ces
-purges quand on réactive l'option. À réserver aux périodes contrôlées
+Le paramètre `$wgWikidebatesSemanticCacheEagerPurge` vaut désormais
+**false par défaut**, indépendamment du suivi sémantique lui-même. Avec
+`false`, le système conserve les empreintes et les vérifications à chaque
+lecture mais **ne programme plus de purges anticipées**. Les jobs déjà
+enregistrés renvoient un échec réessayable plutôt que d'être acquittés
+sans purge. Les workers généraux doivent néanmoins exclure ce type : des
+échecs répétés peuvent provoquer un abandon. Activer les purges
+explicitement, après un contrôle `CheckSemanticCache --require-purge-ready`
+et une validation des caches représentatifs. À réserver aux périodes contrôlées
 pendant lesquelles le suivi est actif, les profils `_ASK` sont valides,
 les fichiers HTML des pages concernées sont effectivement refusés,
 et aucun cache HTTP/CDN externe ne force leur conservation.
@@ -298,7 +302,8 @@ Le corpus apporte des **titres réels**, mais les pages de test et leur
 configuration restent synthétiques et indépendantes du site.
 Les durées de GitHub Actions ne sont ni des mesures de production
 ni un critère de performance absolu. Le suivi expérimental reste
-désactivé par défaut, et `__NOCACHE__` reste sur les arguments.
+désactivé par défaut ; `__NOCACHE__` a déjà été retiré du modèle Argument
+sur les wikis réels.
 
 ## Limites exigeant validation
 
