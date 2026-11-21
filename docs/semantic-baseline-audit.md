@@ -125,6 +125,50 @@ identifiers, and prints JSON lines. It does **not** save, parse, purge, change
 settings or consume jobs, and does not print source wikitext or semantic
 values. The `resume_after` field identifies the next page boundary.
 
+### Corrections to profile/dependency inventory
+
+SMW 7.3.1 resolves _ASK property reads on redirect titles to the
+**canonical target**. Therefore a redirect may appear to own several
+_ASK profiles and exactly the same query IDs as its target. The audit
+now reads `page_is_redirect`, skips those titles from semantic-page
+counters, reports `redirects_skipped`, and (when not in summary mode)
+prints `type=redirect` records instead. `scanned` still includes
+redirects so its pagination cursor remains stable.
+
+The former `query_links` field was **not a count of SQL dependency
+edges**. It is the number of query ID references obtained by
+`findEmbeddedQueryIdListBySubject()`, which reads _ASK profiles only.
+This legacy field is retained for compatibility but must not be used
+to certify actual registered links.
+
+Each nonredirect page now also counts the actual SQL
+`smw_query_links` rows where `s_id` matches its query IDs, using
+one grouped read per profiled page. The new summary fields are:
+
+- `query_ids`: number of resolvable, distinct positive SMW query IDs;
+- `dependency_rows`: sum of actual registered SQL edges;
+- `query_ids_without_dependency_rows`: count of query IDs with zero
+  SQL edges;
+- `pages_with_incomplete_dependencies`: number of pages with a
+  profile but no usable query IDs, or with at least one ID missing edges;
+- `profile_without_query_links`: now checks **actual** total SQL
+  edges, rather than only whether an _ASK query ID was returned.
+
+The corresponding page records expose `query_ids`,
+`dependency_rows` and `query_ids_without_dependency_rows`.
+A page with no _ASK profiles (for example an actual native PHP
+Argument) still has zero recorded query IDs: its
+`argument_without_ask_profile` signal remains crucial. **Zero
+`query_ids_without_dependency_rows` is not a guarantee of freshness**:
+existing edges can be incomplete or stale, and this audit does not
+compare live semantic relations against rendered HTML, fragment or
+Minerva caches.
+
+Verifying edges performs extra **read-only SMW SQL queries**. Use bounded
+`--limit` and `--after-id` scans on live wikis; no pages, caches,
+jobs or data are altered. The disposable CLI regression covers
+redirect exclusion and a synthetic loss of SQL edges.
+
 `argument_without_ask_profile` is a **risk signal**, not definitive proof
 of stale HTML: the source marker may be inside an inactive template branch,
 and some pages may depend on semantic queries indirectly. Conversely,
