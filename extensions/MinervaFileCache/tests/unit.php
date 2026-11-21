@@ -27,6 +27,30 @@ try {
 	fclose($fill);
 	check($store->read('A', 'android', $identity)['entry']['body'] === '<html>Résumé</html>', 'Body bytes round-trip exactly');
 	check($store->read('A', 'iphone', $identity)['entry'] === null, 'User agent variants are isolated');
+	$fragmentVariant = json_encode(['https://fr.example.test/wiki/A', 'https', 'https://fr.example.test',
+		'fr', 'fr.example.test', 'TestBrowser', 'fr', '']);
+	check($store->publish('A', $fragmentVariant, $identity, $first['generation'], 'FRAGMENT',
+		['content-type' => ['text/html']]), 'Publish a fragment-compatible variant');
+	$fragmentContext = new class {
+		public function getConfig() {
+			return new class {
+				public function get(string $key): string { return $key === 'Server' ? 'https://fr.example.test' : ''; }
+			};
+		}
+		public function getRequest() {
+			return new class {
+				public function getHeader(string $name): string { return $name === 'Host' ? 'fr.example.test' : ''; }
+				public function getProtocol(): string { return 'https'; }
+			};
+		}
+		public function getLanguage() {
+			return new class { public function getCode(): string { return 'fr'; } };
+		}
+	};
+	check($store->readForFragment('A', $identity, $fragmentContext)['body'] === 'FRAGMENT',
+		'Fragment reuses a validated mobile variant');
+	check($store->readForFragment('A', ['revision' => 99], $fragmentContext) === null,
+		'Fragment rejects a mismatched revision');
 	check($store->read('A', 'android', ['revision' => 2])['entry'] === null, 'Revision identity invalidates a file');
 	$other = new Store($dir, 'wiki-two', 300, 4096);
 	check($other->read('A', 'android', $identity)['entry'] === null, 'Wikis are isolated');
