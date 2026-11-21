@@ -135,7 +135,7 @@ chmod( $settingsFile, 0600 );
 $inspect = static function ( array $args = [] ) use ( $settingsFile ): array {
 	$command = array_merge( [
 		PHP_BINARY, MW_INSTALL_PATH . '/maintenance/run.php',
-		'Wikidebates:InspectSemanticPurgeQueue', '--json', '--limit=20'
+		'Wikidebates:InspectSemanticPurgeQueue', '--json'
 	], $args, [ '--conf=' . $settingsFile ] );
 	$process = proc_open( $command, [
 		0 => [ 'pipe', 'r' ], 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ]
