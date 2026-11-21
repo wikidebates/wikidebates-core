@@ -194,8 +194,8 @@ check($second['source'] === 'fragment-cache',
 // same entry. Observe the actual parser output from the API pipeline.
 check($observedParseOutput instanceof \MediaWiki\Parser\ParserOutput,
 	'The real API parse produces a ParserOutput');
-check(is_string($observedParseOutput->getExtensionData(SemanticPageCacheHooks::OUTPUT_REVISION)),
-	'ParserAfterParse recorded its semantic revision on the actual API output');
+check($observedParseOutput->getExtensionData(SemanticPageCacheHooks::OUTPUT_REVISION) === null,
+	'Reading-only ApiParse never computes a semantic freshness fingerprint');
 $parseObserver = null;
 
 
