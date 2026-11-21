@@ -104,6 +104,8 @@ class FragmentStore {
 			$temp = @tempnam($dir, '.write-');
 			if (!$temp || dirname($temp) !== $dir || @file_put_contents($temp, $payload) !== strlen($payload)) { return false; }
 			if (!@chmod($temp, 0600)) { return false; }
+			// Only a pruning hint. Reads always validate the payload and identity.
+			@touch($temp, $entry['expires']);
 			$lock = $this->lock($dir, 'page.lock', LOCK_EX);
 			if (!$lock || @file_get_contents($dir . '/generation') !== $generation || $entry['expires'] <= time()) { return false; }
 			$published = @rename($temp, $dir . '/' . hash('sha256', $variant) . '.cache');
@@ -136,17 +138,42 @@ class FragmentStore {
 		} finally { fclose($lock); }
 	}
 
+	/** Stream the private cache tree without building an unbounded glob array. */
+	private function cachedPageDirectories(): \Generator {
+		if (!is_dir($this->root)) { return; }
+		foreach (new \FilesystemIterator($this->root, \FilesystemIterator::SKIP_DOTS) as $prefix) {
+			if (!$prefix->isDir() || $prefix->isLink()) { continue; }
+			foreach (new \FilesystemIterator($prefix->getPathname(), \FilesystemIterator::SKIP_DOTS) as $page) {
+				if ($page->isDir() && !$page->isLink() && is_file($page->getPathname() . '/generation')) {
+					yield $page->getPathname();
+				}
+			}
+		}
+	}
+
 	public function prune(): int {
 		$count = 0;
-		foreach (glob($this->root . '/*/*/generation') as $generation) {
-			$dir = dirname($generation);
+		$now = time();
+		foreach ($this->cachedPageDirectories() as $dir) {
 			$lock = $this->lock($dir, 'page.lock', LOCK_EX | LOCK_NB);
 			if (!$lock) { continue; }
 			try {
-				foreach (glob($dir . '/*.cache') as $path) {
+				foreach (new \FilesystemIterator($dir, \FilesystemIterator::SKIP_DOTS) as $file) {
+					if (!$file->isFile() || $file->getExtension() !== 'cache') { continue; }
+					$path = $file->getPathname();
+					clearstatcache(true, $path);
+					$modified = @filemtime($path);
+					if ($modified !== false && $modified > $now && $modified <= $now + $this->ttl) {
+						continue;
+					}
 					$entry = $this->decode($path);
-					if (!$entry || min($entry['expires'] ?? 0, ($entry['created'] ?? 0) + $this->ttl) <= time()) {
+					$expires = is_int($entry['expires'] ?? null) && is_int($entry['created'] ?? null)
+						? min($entry['expires'], $entry['created'] + $this->ttl) : 0;
+					if ($expires <= $now) {
 						$count += (int)@unlink($path);
+					} else {
+						// Migrate legacy entries lacking the expiration mtime hint.
+						@touch($path, $expires);
 					}
 				}
 			} finally { fclose($lock); }
