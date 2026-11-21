@@ -38,48 +38,6 @@
 		return null;
 	}
 
-	function wkReadingCloseH1Menu( h1 ) {
-		if ( !h1 ) return;
-
-		var moreBtn = h1.querySelector( '.wk-h1-more > .wk-icon-more' );
-		var menu = h1.querySelector( '.wk-h1-more .wk-h1-menu' );
-
-		if ( menu ) menu.setAttribute( 'hidden', '' );
-		if ( moreBtn ) moreBtn.setAttribute( 'aria-expanded', 'false' );
-	}
-
-	function wkReadingCopyText( text ) {
-		if ( !text ) return false;
-
-		try {
-			if ( navigator.clipboard && navigator.clipboard.writeText ) {
-				navigator.clipboard.writeText( text );
-				return true;
-			}
-		} catch ( e ) {}
-
-		try {
-			var ta = D.createElement( 'textarea' );
-			ta.value = text;
-			ta.setAttribute( 'readonly', '' );
-			ta.style.position = 'fixed';
-			ta.style.left = '-9999px';
-			D.body.appendChild( ta );
-			ta.select();
-			D.execCommand( 'copy' );
-			D.body.removeChild( ta );
-			return true;
-		} catch ( e2 ) {}
-
-		return false;
-	}
-
-	function wkReadingGetAbsoluteUrl( href ) {
-		if ( !href || href === '#' ) return '';
-		try { return ( new URL( href, W.location.href ) ).href; } catch ( e ) {}
-		return href;
-	}
-
 	function wkReadingGetVectorTopContainer() {
 		return D.querySelector( '.mw-page-container' ) || D.body;
 	}
@@ -242,10 +200,10 @@
 			moreWrap.className = 'wk-h1-more';
 
 			moreWrap.innerHTML =
-				'<div class="wk-h1-btn wk-icon-before wk-icon-more" aria-haspopup="true" aria-expanded="false"></div>' +
+				'<button type="button" class="wk-h1-btn wk-icon-before wk-icon-more" aria-expanded="false"></button>' +
 				'<div class="wk-h1-menu" hidden>' +
 					'<a class="wk-h1-menu__detail wk-icon-before wk-icon-page" href="#"></a>' +
-					'<a class="wk-h1-menu__copy wk-icon-before wk-icon-link" href="#"></a>' +
+					'<button type="button" class="wk-h1-menu__copy wk-icon-before wk-icon-link"></button>' +
 				'</div>';
 
 			actions.appendChild( moreWrap );
@@ -276,7 +234,6 @@
 		}
 
 		var moreBtn = h1.querySelector( '.wk-h1-more > .wk-icon-more' );
-		var menu = h1.querySelector( '.wk-h1-more .wk-h1-menu' );
 
 		if ( moreBtn ) {
 			moreBtn.setAttribute( 'title', moreTxt );
@@ -284,36 +241,7 @@
 			moreBtn.setAttribute( 'aria-label', moreTxt );
 		}
 
-		if ( moreBtn && menu ) {
-			if ( !moreBtn.dataset.wkBound ) {
-				moreBtn.dataset.wkBound = '1';
-
-				moreBtn.addEventListener( 'click', function ( e ) {
-					e.preventDefault();
-					e.stopPropagation();
-
-					var open = !menu.hasAttribute( 'hidden' );
-					if ( open ) {
-						menu.setAttribute( 'hidden', '' );
-						moreBtn.setAttribute( 'aria-expanded', 'false' );
-					} else {
-						menu.removeAttribute( 'hidden' );
-						moreBtn.setAttribute( 'aria-expanded', 'true' );
-					}
-				} );
-
-				if (typeof WK.wkOnce === 'function' && WK.wkOnce('wk:reading:h1:docclose')) {
-				  D.addEventListener('click', function (e2) {
-					// fermer tous les menus ouverts (simple & robuste)
-					var menus = D.querySelectorAll('.wk-reading-h1 .wk-h1-menu');
-					for (var i = 0; i < menus.length; i++) menus[i].setAttribute('hidden', '');
-
-					var btns = D.querySelectorAll('.wk-reading-h1 .wk-h1-more > .wk-icon-more');
-					for (var j = 0; j < btns.length; j++) btns[j].setAttribute('aria-expanded', 'false');
-				  }, true);
-				}
-			}
-		}
+		WK.readingActions.bindMenu( h1, wkMsgD );
 
 		var aDetail = h1.querySelector( '.wk-h1-menu__detail' );
 		if ( aDetail ) {
@@ -322,36 +250,7 @@
 		}
 
 		var aCopy = h1.querySelector( '.wk-h1-menu__copy' );
-		if ( aCopy ) {
-			aCopy.textContent = copyTxt;
-			aCopy.href = '#';
-
-			if ( aCopy.dataset.wkBound !== '1' ) {
-				aCopy.dataset.wkBound = '1';
-
-				aCopy.addEventListener( 'click', function ( e ) {
-					e.preventDefault();
-					e.stopPropagation();
-
-					wkReadingCloseH1Menu( h1 );
-
-					var href = ( WK.WK_READING && WK.WK_READING.state && WK.WK_READING.state.h1Links )
-						? ( WK.WK_READING.state.h1Links.detailHref || '' )
-						: '';
-
-					var abs = wkReadingGetAbsoluteUrl( href );
-					if ( !abs ) return;
-
-					if ( wkReadingCopyText( abs ) ) {
-						try {
-							if ( W.mw && typeof W.mw.notify === 'function' ) {
-								W.mw.notify( wkMsgD( 'wk-link-copied' ) );
-							}
-						} catch ( e2 ) {}
-					}
-				} );
-			}
-		}
+		if ( aCopy ) aCopy.textContent = copyTxt;
 	}
 
 	function prependH1( ui, chain ) {

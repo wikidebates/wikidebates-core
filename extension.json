@@ -58,6 +58,7 @@
 				"wk-edit-display-title",
 				"wk-interlanguage-label",
 				"wk-link-copied",
+				"wk-link-copy-manual",
 				"wk-menu-about",
 				"wk-menu-all-debates",
 				"wk-menu-bistro",
@@ -119,6 +120,7 @@
 		},
 		"ext.wikidebates.reading.core": {
 			"scripts": [
+				"reading/actions.js",
 				"reading/core.js"
 			],
 			"dependencies": [
@@ -204,6 +206,7 @@
 				"wk-edit-display-title",
 				"wk-interlanguage-label",
 				"wk-link-copied",
+				"wk-link-copy-manual",
 				"wk-menu-about",
 				"wk-menu-all-debates",
 				"wk-menu-bistro",
@@ -479,6 +482,7 @@
 				"wk-edit-display-title",
 				"wk-interlanguage-label",
 				"wk-link-copied",
+				"wk-link-copy-manual",
 				"wk-menu-about",
 				"wk-menu-all-debates",
 				"wk-menu-bistro",
