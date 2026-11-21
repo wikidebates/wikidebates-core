@@ -356,6 +356,30 @@ pour l'utilisateur. Ces indicateurs ne sont pas une preuve que les variantes
 sont interchangeables. Les pages dont certains fichiers n'ont pas les deux
 champs de configuration attendus sont exclues de cette comparaison.
 
+Un niveau de diagnostic supplémentaire distingue les zones où se situent
+les différences **en dehors des scripts**. Pour chaque groupe partageant la
+même identité de cache, si tous les fichiers contiennent exactement une zone
+`<head>` et une zone `<body>` correctement ordonnées, l'audit ajoute :
+
+- `regionEntries` et `regionComparablePages` : nombres d'entrées et de
+  pages éligibles à cette comparaison par zones ;
+- `pagesWithResidualHeadDifferences` : différences dans `<head>`, hors scripts ;
+- `pagesWithResidualBodyDifferences` : différences dans `<body>`, hors scripts ;
+- `pagesWithResidualShellDifferences` : différences autour de ces deux zones
+  (par exemple attributs de `<html>`) ;
+- `pagesWithResidualBodyTextDifferences` : différences dans le texte extrait
+  du `<body>` après suppression des balises et des blocs `<style>` ;
+- `pagesWithResidualBodyMarkupOnlyDifferences` : différences du `<body>`
+  dont le texte extrait est stable dans tous les groupes comparables de
+  la page, ce qui suggère une variation d'attributs ou de balisage.
+
+Les compteurs par zone peuvent se recouper : une page peut présenter des
+écarts dans `<head>` et dans `<body>`. Le « texte extrait » est une
+approximation fondée sur `strip_tags`, **pas** une comparaison du texte
+effectivement affiché ou du résultat du parseur MediaWiki. Aucun contenu,
+nom de page, User-Agent ou valeur individuelle de la requête n'est publié.
+Un document incomplet ou non reconnu est laissé hors de cette classification.
+
 **Aucun HTML n'est modifié sur disque ou lors de l'affichage**, et ces
 statistiques ne justifient pas de regrouper automatiquement les navigateurs.
 Une même empreinte après neutralisation ne signifie pas que le
