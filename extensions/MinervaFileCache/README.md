@@ -294,7 +294,10 @@ depuis la racine MediaWiki et avec l'utilisateur PHP :
 php maintenance/run.php MinervaFileCache:prune
 ```
 
-Le nettoyage retire les fichiers expirés ou endommagés. Les nouvelles
+Le nettoyage retire les fichiers expirés ou endommagés. Il parcourt
+les répertoires et les variantes progressivement, sans constituer en mémoire
+la liste de tous les fichiers du wiki : son empreinte mémoire reste ainsi
+limitée même si le cache contient de nombreuses pages. Les nouvelles
 entrées enregistrent leur échéance dans l'horodatage du fichier (mtime) :
 le nettoyage horaire peut ainsi ignorer rapidement les fichiers encore valides
 sans les décompresser. Les anciens fichiers restent compatibles : ils sont

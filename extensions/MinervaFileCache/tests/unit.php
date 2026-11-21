@@ -107,6 +107,26 @@ try {
 	file_put_contents($path, gzencode(json_encode($entry)));
 	check($store->read('A', 'android', $identity)['entry'] === null, 'Expired entries miss');
 	check($store->prune() === 1 && !is_file($path), 'Cleanup removes expired payloads');
+	$expiredPaths = [];
+	foreach (['B', 'C', 'D'] as $otherPage) {
+		$otherSnapshot = $store->read($otherPage, 'android', $identity);
+		check($store->publish($otherPage, 'android', $identity, $otherSnapshot['generation'],
+			'TO_BE_PRUNED', []), 'Publish another page for streaming prune');
+		$wikiHash = hash('sha256', 'wiki-one');
+		$pageHash = hash('sha256', $otherPage);
+		$otherPath = $dir . '/' . $wikiHash . '/' . substr($pageHash, 0, 2) . '/' .
+			$pageHash . '/' . hash('sha256', 'android') . '.cache';
+		$otherEntry = json_decode(gzdecode(file_get_contents($otherPath)), true);
+		$otherEntry['expires'] = time() - 1;
+		file_put_contents($otherPath, gzencode(json_encode($otherEntry)));
+		touch($otherPath, time() - 1);
+		$expiredPaths[] = $otherPath;
+	}
+	check($store->prune() === count($expiredPaths), 'Streaming prune removes entries across page directories');
+	foreach ($expiredPaths as $expiredPath) {
+		check(!is_file($expiredPath), 'Streaming prune removed an expired variant');
+	}
+
 	$store->publish('A', 'android', $identity, $new['generation'], 'CURRENT', []);
 	file_put_contents($path, 'corrupt payload');
 	check($store->read('A', 'android', $identity)['entry'] === null, 'Corrupt entries miss without executing data');
