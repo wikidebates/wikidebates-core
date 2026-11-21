@@ -176,11 +176,20 @@ class PrewarmMinervaFileCache extends Maintenance {
 							$header = $request->getResponseHeader('X-Minerva-File-Cache');
 							$state = Prewarm::responseState($code, $header);
 							if (!$result->isOK()) {
-								$state = 'HTTP_ERROR';
+								// Keep the actual HTTP status: do not turn 403/429/500 into HTTP_ERROR.
+								$messages = array_map(
+									static fn($message) => $message->getKey(),
+									$result->getMessages('error')
+								);
+								$this->error("HTTP failure at page_id=$id URL=$url status=$code" .
+									($messages ? ' errors=' . implode(',', $messages) : '') . "\n");
+								if ($code === 200) {
+									$state = 'HTTP_ERROR';
+								}
 							}
 						} catch (\Throwable $e) {
 							$state = 'HTTP_ERROR';
-							$this->error("Request failed at page_id=$id: " . $e->getMessage());
+							$this->error("Request failed at page_id=$id URL=$url: " . $e->getMessage() . "\n");
 						}
 						if ($state === 'NO_HEADER' || $state === 'UNKNOWN_HEADER') {
 							$missingHeaders++;
@@ -190,7 +199,7 @@ class PrewarmMinervaFileCache extends Maintenance {
 						if ((str_starts_with($state, 'HTTP_') && !in_array($state, ['HTTP_404', 'HTTP_410'], true)) ||
 							($state === 'BYPASS' && str_contains((string)$header, 'reason=storage-error')) ||
 							$missingHeaders >= 5) {
-							$this->output("Stopping at page_id=$id state=$state; last completed page_id=$lastId\n");
+							$this->output("Stopping at page_id=$id URL=$url state=$state; last completed page_id=$lastId\n");
 							$this->output("Retry with --resume, or --after-id=$lastId.\n");
 							return false;
 						}

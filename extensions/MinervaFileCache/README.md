@@ -215,7 +215,10 @@ La commande nécessite `$wgUseFileCache = true`, un stockage accessible et
 Elle utilise le domaine de `$wgServer` et ne suit pas les redirections.
 Elle s'arrête sur les erreurs HTTP (403, 429, 5xx, etc.), les erreurs de
 stockage ou plusieurs réponses successives sans en-tête de diagnostic pour
-éviter de surcharger PHP-FPM et Cloudflare. En cas d'interruption, relancer
+éviter de surcharger PHP-FPM et Cloudflare. Lors d'un échec, le rapport
+affiche désormais l'URL, le code HTTP réel lorsqu'il existe (par exemple
+`HTTP_429`) et les clés d'erreur du client HTTP MediaWiki. Une erreur
+`HTTP_404` ou `HTTP_410` propre à une page n'arrête pas le parcours. En cas d'interruption, relancer
 la commande avec `--resume` ou reprendre après le dernier `page_id` affiché.
 
 **Attention :** le cache est indexé par User-Agent complet, URL et langue
