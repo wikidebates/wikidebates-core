@@ -46,6 +46,10 @@ class CheckSemanticCache extends Maintenance {
 		$jobType = 'wikidebatesSemanticCachePurge';
 		$jobClasses = $config->get('JobClasses');
 		$jobClassConfigured = is_array($jobClasses) && isset($jobClasses[$jobType]);
+		// A default runJobs worker selects every non-excluded registered type.
+		// Disabled semantic jobs must remain queued for deliberate manual use.
+		$excluded = $config->get('JobTypesExcludedFromDefaultQueue');
+		$excludedFromDefaultWorker = is_array($excluded) && in_array($jobType, $excluded, true);
 		$jobFactoryReady = false;
 		if ($jobClassConfigured) {
 			try {
@@ -70,7 +74,10 @@ class CheckSemanticCache extends Maintenance {
 			$blockers[] = 'Semantic tracking is disabled.';
 		}
 		if (!$settings['WikidebatesSemanticCacheEagerPurge']) {
-			$blockers[] = 'EagerPurge is disabled; running purge jobs would acknowledge them without purging.';
+			$blockers[] = 'EagerPurge is disabled; purge jobs fail retryably and must not be run yet.';
+		}
+		if (!$excludedFromDefaultWorker) {
+			$blockers[] = 'Exclude wikidebatesSemanticCachePurge from the default worker using $wgJobTypesExcludedFromDefaultQueue[] before enabling or running purges.';
 		}
 		if (!$semantic->getStore() instanceof SQLStore) {
 			$blockers[] = 'SMW SQLStore is required.';
@@ -92,6 +99,7 @@ class CheckSemanticCache extends Maintenance {
 			'tables' => $tables,
 			'job_class_configured' => $jobClassConfigured,
 			'job_factory_ready' => $jobFactoryReady,
+			'excluded_from_default_worker' => $excludedFromDefaultWorker,
 			'effective_batch_size' => max(1, min(5000, (int)$settings['WikidebatesSemanticCachePurgeBatchSize'])),
 			'purge_preconditions_met' => $blockers === [],
 			'coalescing_table_available' => $tables['wd_smw_purge_state'],
@@ -121,6 +129,7 @@ class CheckSemanticCache extends Maintenance {
 			}
 			$this->output('job_class_configured = ' . json_encode($report['job_class_configured']) . "\n");
 			$this->output('job_factory_ready = ' . json_encode($report['job_factory_ready']) . "\n");
+			$this->output('excluded_from_default_worker = ' . json_encode($report['excluded_from_default_worker']) . "\n");
 			$this->output('effective_batch_size = ' . $report['effective_batch_size'] . "\n");
 			$this->output('purge_preconditions_met = ' . json_encode($report['purge_preconditions_met']) . "\n");
 			foreach (array_merge($report['blockers'], $report['warnings'], [$report['scope']]) as $message) {

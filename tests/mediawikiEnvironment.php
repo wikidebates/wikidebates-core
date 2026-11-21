@@ -71,6 +71,9 @@ function wikidebatesTestConfig($settings): void {
 		'ParserCacheType' => (getenv('WD_TEST_SEMANTIC_BASELINE') === '1' || getenv('WD_TEST_SEMANTIC_TRACKING') === '1') ? CACHE_DB : CACHE_NONE,
 		'UseDatabaseMessages' => defined('WD_I18N_TEST'),
 		'JobRunRate' => 0,
+		// Real production workers need this exclusion before installing the pilot.
+		// The isolated lab executes semantic jobs only by explicit type.
+		'JobTypesExcludedFromDefaultQueue' => ['wikidebatesSemanticCachePurge'],
 		'WikidebatesReadingFragments' => getenv('WD_TEST_SEMANTIC_BASELINE') === '1' || getenv('WD_TEST_SEMANTIC_TRACKING') === '1',
 		'WikidebatesSemanticCacheTracking' => getenv('WD_TEST_SEMANTIC_TRACKING') === '1',
 		// Opt in ONLY in disposable lab tests exercising active purge execution.

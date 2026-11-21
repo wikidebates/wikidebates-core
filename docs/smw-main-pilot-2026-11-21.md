@@ -57,3 +57,28 @@ Ne pas laisser pour autant un worker general selectionner ce type : des
 reprises repetees finissent par saturer la file ou etre abandonnees.
 Le preflight doit afficher EagerPurge=true dans le processus manuel ; la
 variable `WD_SEMANTIC_PURGE_MANUAL` seule ne modifie pas cette valeur.
+
+## Exclusion obligatoire des workers généraux (MediaWiki 1.43)
+
+Avant de mettre cette branche sur le serveur, **ajouter dans LocalSettings.php**
+(ou dans la configuration commune aux deux wikis) :
+
+```php
+$wgJobTypesExcludedFromDefaultQueue[] = 'wikidebatesSemanticCachePurge';
+```
+
+Cette option MediaWiki 1.43 permet aux workers habituels `runJobs.php`
+de continuer les autres types de jobs, sans réserver les jobs expérimentaux.
+La branche enregistre la classe de purge même quand Tracking=false et
+EagerPurge=false : sans cette exclusion, un worker général tenterait des
+purges désactivées, qui échouent sans acquittement et peuvent être répétées.
+
+La maintenance `CheckSemanticCache --json` affiche maintenant
+`excluded_from_default_worker`. L'option `--require-purge-ready`
+refuse explicitement l'activation manuelle si cette valeur vaut `false`.
+Une purge contrôlée avec `runJobs --type=wikidebatesSemanticCachePurge`
+reste possible après préflight et activation délibérée.
+
+Ne pas interpréter la disparition de deux anciens IDs dans une inspection
+filtrée comme une preuve que les autres jobs ont tous été exécutés.
+Vérifier le résumé complet de la file et le nombre de jobs avant tout essai.

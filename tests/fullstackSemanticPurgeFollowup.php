@@ -76,6 +76,8 @@ $ledgerBefore = SemanticPurgeState::revisions($store, [$depId]);
 $report = $inspector->inspectConfiguration();
 check($report['job_class_configured'] && $report['job_factory_ready'],
 	'Real MediaWiki JobFactory can construct the registered semantic purge job');
+check($report['excluded_from_default_worker'],
+	'Semantic purge jobs are not selected by ordinary runJobs workers');
 check($report['purge_preconditions_met'] && $report['coalescing_table_available'],
 	'Installed real database and enabled configuration meet the limited preconditions');
 same(0, $report['settings']['smwgQueryProfiler'], 'Integer zero is not strict boolean false');
@@ -88,6 +90,16 @@ try {
 		'Missing effective job registration cannot pass the purge preflight');
 } finally {
 	$GLOBALS['wgJobClasses'] = $jobClassesBefore;
+}
+$excludedBefore = $GLOBALS['wgJobTypesExcludedFromDefaultQueue'];
+try {
+	$GLOBALS['wgJobTypesExcludedFromDefaultQueue'] = [];
+	$unsafe = $inspector->inspectConfiguration();
+	check(!$unsafe['purge_preconditions_met'] && !$unsafe['excluded_from_default_worker'] &&
+		str_contains(implode(' ', $unsafe['blockers']), 'JobTypesExcludedFromDefaultQueue'),
+		'Default worker exclusion is mandatory before manual semantic purges');
+} finally {
+	$GLOBALS['wgJobTypesExcludedFromDefaultQueue'] = $excludedBefore;
 }
 $eagerBefore = $GLOBALS['wgWikidebatesSemanticCacheEagerPurge'];
 $trackingBefore = $GLOBALS['wgWikidebatesSemanticCacheTracking'];
