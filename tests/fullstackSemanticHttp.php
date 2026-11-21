@@ -169,7 +169,7 @@ fsSave('WD HTTP template parent FR', 'No parent relation');
 fsSave('WD HTTP template parent EN', 'No parent relation');
 
 fsSave('WD HTTP public page', str_repeat('This ordinary page contains no semantic query. ', 30));
-fsSave('WD HTTP fallback unprofiled argument', 'Initial page without semantic queries');
+fsSave('WD HTTP fallback template marker', 'WD_HTTP_FALLBACK_TEMPLATE_MARKER {{Argument}}');
 fsFlush();
 
 // SMW profiles must belong to already-created query pages.
@@ -938,31 +938,48 @@ try {
 			str_contains($fallbackDebate['body'], 'WD HTTP displayed pro argument'),
 			'Fallback does not block ordinary debate HTML rendering');
 
-		// Reproduce the most important production migration case: a page
-		// containing an Argument reader, but with no persisted SMW _ASK yet.
-		$unprofiled = 'WD HTTP fallback unprofiled argument';
-		fsSave($unprofiled, '{{#argument:render|lang=fr|summary=WD_HTTP_FALLBACK_UNPROFILED}}');
-		$services->getDBLoadBalancerFactory()->commitPrimaryChanges(__METHOD__);
+		// Recognize a pre-migration Argument page by source even when it
+		// has never registered an SMW _ASK query. This synthetic page has
+		// no installed Template:Argument; the test checks the cache veto,
+		// not a fake semantic query result.
+		$unprofiled = 'WD HTTP fallback template marker';
 		$store->clear();
 		check($store->getPropertyValues(
 			SemanticWikiPage::newFromTitle(Title::newFromText($unprofiled)), new Property('_ASK')
-		) === [], 'Fallback test starts with a real Argument page missing its _ASK profile');
-		$unprofiledFragment = $fragment($unprofiled);
-		check($unprofiledFragment['fragment']['source'] === 'parser' &&
-			str_contains($unprofiledFragment['fragment']['html'], 'WD_HTTP_FALLBACK_UNPROFILED'),
-			'Fallback renders unprofiled native Argument without a fragment hit');
-		check($fragment($unprofiled)['fragment']['source'] === 'parser',
-			'Fallback never caches an unprofiled Argument after the first read');
-		$unprofiledVector = $http('index.php', ['title' => 'WD_HTTP_fallback_unprofiled_argument']);
+		) === [], 'Unresolved Argument transclusion starts without an SMW _ASK profile');
+		$unprofiledVector = $http('index.php', ['title' => 'WD_HTTP_fallback_template_marker']);
 		check($unprofiledVector['status'] === 200 &&
-			str_contains($unprofiledVector['body'], 'WD_HTTP_FALLBACK_UNPROFILED'),
-			'Fallback Vector view remains available for unprofiled Arguments');
+			str_contains($unprofiledVector['body'], 'WD_HTTP_FALLBACK_TEMPLATE_MARKER'),
+			'Fallback Vector view handles a legacy Argument source without _ASK');
 		$unprofiledMinerva = $http('index.php',
-			['title' => 'WD_HTTP_fallback_unprofiled_argument'], [$mobileUA]);
+			['title' => 'WD_HTTP_fallback_template_marker'], [$mobileUA]);
 		check($unprofiledMinerva['status'] === 200 &&
-			str_contains($unprofiledMinerva['body'], 'WD_HTTP_FALLBACK_UNPROFILED') &&
+			str_contains($unprofiledMinerva['body'], 'WD_HTTP_FALLBACK_TEMPLATE_MARKER') &&
 			str_starts_with($unprofiledMinerva['headers']['x-minerva-file-cache'][0] ?? '', 'BYPASS'),
-			'Fallback Minerva view bypasses files for unprofiled Arguments');
+			'Fallback Minerva vetoes files for an unprofiled Argument source');
+
+		// Separately verify the real native Argument renderer through the
+		// complete fragment and full-page pipelines. Its parser may persist
+		// _ASK during save, so never assert a missing profile here.
+		$nativeFallback = 'WD HTTP fallback native argument';
+		fsSave($nativeFallback, '{{#argument:render|lang=fr|summary=WD_HTTP_FALLBACK_NATIVE}}');
+		$services->getDBLoadBalancerFactory()->commitPrimaryChanges(__METHOD__);
+		$nativeFragment = $fragment($nativeFallback);
+		check($nativeFragment['fragment']['source'] === 'parser' &&
+			str_contains($nativeFragment['fragment']['html'], 'WD_HTTP_FALLBACK_NATIVE'),
+			'Fallback renders native Argument without a fragment hit');
+		check($fragment($nativeFallback)['fragment']['source'] === 'parser',
+			'Fallback never caches native Argument fragments after the first read');
+		$nativeVector = $http('index.php', ['title' => 'WD_HTTP_fallback_native_argument']);
+		check($nativeVector['status'] === 200 &&
+			str_contains($nativeVector['body'], 'WD_HTTP_FALLBACK_NATIVE'),
+			'Fallback Vector view renders the native Argument');
+		$nativeMinerva = $http('index.php',
+			['title' => 'WD_HTTP_fallback_native_argument'], [$mobileUA]);
+		check($nativeMinerva['status'] === 200 &&
+			str_contains($nativeMinerva['body'], 'WD_HTTP_FALLBACK_NATIVE') &&
+			str_starts_with($nativeMinerva['headers']['x-minerva-file-cache'][0] ?? '', 'BYPASS'),
+			'Fallback Minerva bypasses the native Argument file cache');
 
 		// This parent edit does not change the query page's own revision or
 		// necessarily page_touched. Even a previously valid file cache must
