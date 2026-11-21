@@ -53,3 +53,12 @@ avec MediaWiki 1.43.11 sous PHP 8.3 et 8.4.
 
 Aucune configuration de cache, schéma SQL, page ou job de production
 n'est modifié par la mise à jour de cette commande.
+
+## Filtrer les véritables pages d'arguments
+
+Depuis la mise à jour du diagnostic, `AuditSemanticFreshness` examine par défaut
+**le seul espace principal** (`--namespaces=0`). Les modèles peuvent être inspectés
+séparément avec `--namespaces=10` ou ensemble avec `--namespaces=0,10` : leurs
+marqueurs de code source figurent alors dans `template_source_marker` et
+`template_source_markers`, **sans gonfler** `arguments` ou
+`argument_without_ask_profile`. Aucune modification des modèles n'est nécessaire.

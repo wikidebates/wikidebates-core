@@ -18,13 +18,13 @@ require_once ( getenv( 'MW_INSTALL_PATH' ) ?: dirname( __DIR__, 3 ) ) . '/mainte
 class AuditSemanticFreshness extends Maintenance {
 	public function __construct() {
 		parent::__construct();
-		$this->addDescription( 'Read-only audit of Argument/Debate sources, SMW _ASK profiles and query dependencies.' );
+		$this->addDescription( 'Read-only audit of actual Argument/Debate pages, SMW _ASK profiles and query dependencies.' );
 		$this->requireExtension( 'Wikidebates' );
 		$this->requireExtension( 'SemanticMediaWiki' );
 		$this->addOption( 'after-id', 'Resume strictly after this page ID (default 0)', false, true );
 		$this->addOption( 'limit', 'Maximum pages (default 200, maximum 2000)', false, true );
 		$this->addOption( 'batch-size', 'Rows per SQL select (default 100, maximum 200)', false, true );
-		$this->addOption( 'namespaces', 'Comma-separated namespace numbers (default 0,10)', false, true );
+		$this->addOption( 'namespaces', 'Comma-separated namespace numbers (default 0; use 0,10 to inspect templates separately)', false, true );
 		$this->addOption( 'ids', 'Optional comma-separated page IDs to inspect', false, true );
 		$this->addOption( 'summary-only', 'Show only progress and aggregate findings', false, false );
 	}
@@ -40,6 +40,18 @@ class AuditSemanticFreshness extends Maintenance {
 		return $ids;
 	}
 
+	/** Distinguish an actual main-namespace Argument from its reusable template source. */
+	public static function sourceMarkers( int $namespace, string $source ): array {
+		$argumentMarker = preg_match( '/\{\{\s*(?:Argument\s*[|}]|#argument\s*:\s*render\s*[|}]|#invoke\s*:\s*Argument\s*\|\s*render\s*[|}])/iu', $source ) === 1;
+		$debateMarker = preg_match( '/\{\{\s*(?:D[e\x{00E9}]bat\s*[|}]|Debate\s*[|}]|#debate\s*:\s*render\s*[|}]|#invoke\s*:\s*Debate\s*\|\s*render\s*[|}])/iu', $source ) === 1;
+		return [
+			'argument' => $namespace === NS_MAIN && $argumentMarker,
+			'debate' => $namespace === NS_MAIN && $debateMarker,
+			'template_source' => $namespace === NS_TEMPLATE && ( $argumentMarker || $debateMarker ),
+			'nocache' => stripos( $source, '__NOCACHE__' ) !== false,
+		];
+	}
+
 	private function emit( array $record ): void {
 		$this->output( json_encode( $record, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) . "\n" );
 	}
@@ -52,7 +64,7 @@ class AuditSemanticFreshness extends Maintenance {
 			$this->fatalError( 'Invalid --after-id, --limit (1-2000), or --batch-size (1-200).' );
 		}
 		try {
-			$namespaces = self::numericList( trim( (string)$this->getOption( 'namespaces', '0,10' ) ), true );
+			$namespaces = self::numericList( trim( (string)$this->getOption( 'namespaces', '0' ) ), true );
 			$idValue = trim( (string)$this->getOption( 'ids', '' ) );
 			$ids = $idValue === '' ? [] : self::numericList( $idValue, false );
 		} catch ( InvalidArgumentException $e ) {
@@ -68,6 +80,7 @@ class AuditSemanticFreshness extends Maintenance {
 			'type' => 'summary', 'scanned' => 0, 'arguments' => 0, 'debates_only' => 0,
 			'argument_without_ask_profile' => 0, 'profile_without_query_links' => 0,
 			'with_ask_profiles' => 0, 'explicit_nocache' => 0, 'nontext' => 0,
+			'template_source_markers' => 0,
 			'missing' => 0, 'errors' => 0, 'resume_after' => $after,
 			'dependency_links_enabled' => (bool)( $GLOBALS['smwgEnabledQueryDependencyLinksStore'] ?? false ),
 			'query_profiler' => $GLOBALS['smwgQueryProfiler'] ?? null,
@@ -101,25 +114,28 @@ class AuditSemanticFreshness extends Maintenance {
 						continue;
 					}
 					$source = $content->getText();
-					$argument = preg_match( '/\{\{\s*(?:Argument\s*[|}]|#argument\s*:\s*render\s*[|}]|#invoke\s*:\s*Argument\s*\|\s*render\s*[|}])/iu', $source ) === 1;
-					$debate = preg_match( '/\{\{\s*(?:D[e\x{00E9}]bat\s*[|}]|Debate\s*[|}]|#debate\s*:\s*render\s*[|}]|#invoke\s*:\s*Debate\s*\|\s*render\s*[|}])/iu', $source ) === 1;
-					$nocache = stripos( $source, '__NOCACHE__' ) !== false;
+					$markers = self::sourceMarkers( $title->getNamespace(), $source );
+					$argument = $markers['argument'];
+					$debate = $markers['debate'];
+					$nocache = $markers['nocache'];
 					$subject = SemanticWikiPage::newFromTitle( $title );
 					$profiles = $store->getPropertyValues( $subject, new Property( '_ASK' ) );
 					$registered = $links->findEmbeddedQueryIdListBySubject( $subject );
 					$hasProfiles = $profiles !== [];
 					$hasLinks = $registered !== [];
 					$summary['arguments'] += (int)$argument;
+					$summary['template_source_markers'] += (int)$markers['template_source'];
 					$summary['debates_only'] += (int)( $debate && !$argument );
 					$summary['argument_without_ask_profile'] += (int)( $argument && !$hasProfiles );
 					$summary['profile_without_query_links'] += (int)( $hasProfiles && !$hasLinks );
 					$summary['with_ask_profiles'] += (int)$hasProfiles;
 					$summary['explicit_nocache'] += (int)$nocache;
-					if ( !$summaryOnly && ( $argument || $debate || $nocache || $hasProfiles || $hasLinks ) ) {
+					if ( !$summaryOnly && ( $argument || $debate || $markers['template_source'] || $nocache || $hasProfiles || $hasLinks ) ) {
 						$this->emit( [
 							'type' => 'page', 'page_id' => $after,
 							'title' => $title->getPrefixedText(),
 							'argument_source_marker' => $argument, 'debate_source_marker' => $debate,
+							'template_source_marker' => $markers['template_source'],
 							'raw_nocache_marker' => $nocache, 'ask_profiles' => count( $profiles ),
 							'query_links' => count( $registered ),
 						] );
