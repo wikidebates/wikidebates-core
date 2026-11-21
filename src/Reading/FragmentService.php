@@ -14,10 +14,20 @@ use MediaWiki\WikiMap\WikiMap;
 
 class FragmentService {
 	public static function store(): FragmentStore {
+		return self::openStore(true);
+	}
+
+	/** Invalidation must not initialize a cache that has never been used. */
+	private static function openStore(bool $create): ?FragmentStore {
 		$config = MediaWikiServices::getInstance()->getMainConfig();
 		$directory = $config->get('WikidebatesReadingCacheDirectory');
-		if (!$directory) {
+		$temporary = !$directory;
+		if ($temporary) {
 			$directory = sys_get_temp_dir() . '/wikidebates-reading-' . hash('sha256', MW_INSTALL_PATH . WikiMap::getCurrentWikiId());
+		}
+		clearstatcache(true, $directory);
+		if (!$create && !is_dir($directory)) { return null; }
+		if ($temporary) {
 			if (!is_dir($directory) && !@mkdir($directory, 0700) && !is_dir($directory)) {
 				throw new \RuntimeException('Cannot initialize reading cache');
 			}
@@ -163,7 +173,9 @@ class FragmentService {
 	}
 
 	public static function invalidate($title): void {
-		try { self::store()->invalidate($title->getPrefixedDBkey()); }
+		// Keep invalidating existing files even while reads are disabled. Otherwise
+		// an explicit purge could be forgotten when the cache is enabled again.
+		try { self::openStore(false)?->invalidate($title->getPrefixedDBkey()); }
 		catch (\Throwable $e) { self::log($e); }
 	}
 

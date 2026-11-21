@@ -561,6 +561,37 @@
 		} );
 	}
 
+	function wkReadingInjectLoadError( ui, argPage, empty, retry ) {
+		if ( !ui || !ui.content ) return;
+		// Never leave the previous argument under the new argument's navigation.
+		ui.content.textContent = '';
+		var notice = D.createElement( 'div' );
+		notice.className = 'wk-reading-error cdx-message cdx-message--block cdx-message--warning';
+		notice.setAttribute( 'role', 'alert' );
+		var message = D.createElement( 'p' );
+		message.textContent = empty ? wkMsgD( 'wk-reading-empty-fragment' ) : wkMsgD( 'wk-reading-load-error' );
+		notice.appendChild( message );
+		var button = D.createElement( 'button' );
+		button.type = 'button';
+		button.className = 'wk-reading-retry mw-ui-button mw-ui-progressive';
+		button.textContent = wkMsgD( 'wk-reading-retry' );
+		button.addEventListener( 'click', function () {
+			button.disabled = true;
+			retry();
+		} );
+		notice.appendChild( button );
+		var paragraph = D.createElement( 'p' );
+		var link = D.createElement( 'a' );
+		link.href = mw.util.getUrl( argPage );
+		link.textContent = wkMsgD( 'wk-view-detailed-page' );
+		paragraph.appendChild( link );
+		notice.appendChild( paragraph );
+		ui.content.appendChild( notice );
+		if ( UI.prependH1 ) UI.prependH1( ui, WK_READING.state.chain );
+		if ( UI.updateH1Actions ) UI.updateH1Actions( ui );
+		ui.content.scrollTop = 0;
+	}
+
 	function wkReadingInjectMissingPageNotice( ui, argPage ) {
 		if ( !ui || !ui.content ) return;
 
@@ -844,13 +875,24 @@
 
 		var parseParams = wkReadingBuildParseRequestParams( argPage );
 		var cacheKey = WK.wkPageParseCache.key( parseParams );
+		var retryChain = wkReadingHistoryCloneChain( WK_READING.state.chain );
+		function retry() {
+			if ( WK_READING.state._wkOpenSeq !== openSeq ||
+				!D.documentElement.classList.contains( 'wk-reading-active' ) ) return;
+			// An empty response may have entered the shared response cache. Evict
+			// only this response, not other pages or a request shared by a prefetch.
+			WK.wkPageParseCache.remove( cacheKey );
+			wkOpenReadingModeFromPageTitle( argPage, retryChain, { history: false } );
+		}
+		ui.content.setAttribute( 'aria-busy', 'true' );
 		wkReadingLoadFragment( parseParams, cacheKey )
 			.then( function ( fragment ) {
 				if ( WK_READING.state._wkOpenSeq !== openSeq ) return;
 				if ( !D.documentElement.classList.contains( 'wk-reading-active' ) ) return;
 
+				ui.content.removeAttribute( 'aria-busy' );
 				if ( !fragment ) {
-					wkReadingInjectMissingPageNotice( ui, argPage );
+					wkReadingInjectLoadError( ui, argPage, true, retry );
 					if ( ui.panel ) ui.panel.classList.remove( 'is-loading' );
 					return;
 				}
@@ -866,8 +908,11 @@
 				if ( WK_READING.state._wkOpenSeq !== openSeq ) return;
 				if ( !D.documentElement.classList.contains( 'wk-reading-active' ) ) return;
 
+				ui.content.removeAttribute( 'aria-busy' );
 				if ( err === 'missingtitle' ) {
 					wkReadingInjectMissingPageNotice( ui, argPage );
+				} else {
+					wkReadingInjectLoadError( ui, argPage, false, retry );
 				}
 
 				if ( ui.panel ) ui.panel.classList.remove( 'is-loading' );

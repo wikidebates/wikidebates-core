@@ -54,3 +54,31 @@ $latestParent = $services->getWikiPageFactory()->newFromTitle( $parentTitle )->g
 check( str_contains( $latestParent, '<!-- New concurrent edit -->' ) && !str_contains( $latestParent, '<!-- Stale write -->' ),
 	'Latest parent text preserves the winning concurrent modification' );
 echo "OK: automatic parent links and PageUpdater conflict detection\n";
+
+// Run exactly the same syntax/identity checks with MediaWiki's real Title class.
+( static function (): void {
+	require __DIR__ . '/autoParentLinkChecks.php';
+} )();
+
+$protectedTitle = Title::newFromText( 'Wikidebates protected syntax parent' );
+$protectedPage = $services->getWikiPageFactory()->newFromTitle( $protectedTitle );
+$protectedText = "{{Debate\n|topic = Keep <!-- }} |fake=1 --> <nowiki>}}|literal=1</nowiki> exactly  \n"
+	. "|pro-arguments={{Pro argument|page=Other target|displayed-title=Wikidebates labelled child}}\n"
+	. "|unrelated= preserve this whitespace  \n}}\n<!-- Page suffix -->";
+$protectedUpdater = $protectedPage->newPageUpdater( $parentUser );
+$protectedUpdater->setContent( SlotRecord::MAIN, new WikitextContent( $protectedText ) );
+$protectedUpdater->saveRevision( CommentStoreComment::newUnsavedComment( 'Create protected syntax fixture' ) );
+check( $protectedUpdater->wasSuccessful(), 'Protected syntax parent created' );
+$labelledTitle = Title::newFromText( 'Wikidebates labelled child' );
+$labelledPage = $services->getWikiPageFactory()->newFromTitle( $labelledTitle );
+$labelledUpdater = $labelledPage->newPageUpdater( $parentUser );
+$labelledUpdater->setContent( SlotRecord::MAIN, new WikitextContent(
+	'{{Argument|initialization=Pro argument@' . $protectedTitle->getArticleID() . '|name=Labelled child}}'
+) );
+$labelledUpdater->saveRevision( CommentStoreComment::newUnsavedComment( 'Create child sharing an existing label' ) );
+check( $labelledUpdater->wasSuccessful(), 'Labelled child created' );
+$linkedText = $services->getWikiPageFactory()->newFromTitle( $protectedTitle )->getContent( SlotRecord::MAIN )->getText();
+$expectedBlock = "{{Pro argument\n|page=Wikidebates labelled child\n|displayed-title=Wikidebates labelled child\n}}";
+same( str_replace( "\n|unrelated=", "\n" . $expectedBlock . "\n|unrelated=", $protectedText ), $linkedText,
+	'Real save hook adds the missing target without altering comments, literals, unrelated fields or suffix' );
+echo "OK: real MediaWiki parent save with comments, nowiki and an unrelated displayed title\n";

@@ -287,6 +287,8 @@
 	WK.wkPageParseCache = {
 		key: wkPageParseKey,
 		get: function ( key ) { return wkCacheGetLRU( wkPageParseCache, key ); },
+		// Explicit retry may discard an unusable response without cancelling shared work.
+		remove: function ( key ) { wkPageParseCache.delete( key ); },
 		// Diagnostic reads must not change which response is evicted next.
 		state: function ( key ) {
 			return wkPageParseCache.has( key ) ? 'response' :

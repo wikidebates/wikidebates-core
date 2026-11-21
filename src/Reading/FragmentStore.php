@@ -18,10 +18,10 @@ class FragmentStore {
 		$this->maxBytes = $maxBytes;
 	}
 
-	private function pageDirectory(string $page): string {
+	private function pageDirectory(string $page, bool $create = true): string {
 		$key = hash('sha256', $page);
 		$dir = $this->root . '/' . substr($key, 0, 2) . '/' . $key;
-		if (!is_dir($dir) && !@mkdir($dir, 0700, true) && !is_dir($dir)) {
+		if ($create && !is_dir($dir) && !@mkdir($dir, 0700, true) && !is_dir($dir)) {
 			throw new \RuntimeException('Cannot create a page cache directory');
 		}
 		return $dir;
@@ -101,11 +101,15 @@ class FragmentStore {
 	}
 
 	public function known(string $page): bool {
-		return is_file($this->pageDirectory($page) . '/known');
+		return is_file($this->pageDirectory($page, false) . '/known');
 	}
 
 	public function invalidate(string $page): void {
-		$dir = $this->pageDirectory($page);
+		$dir = $this->pageDirectory($page, false);
+		// A writer creates this directory before taking its generation snapshot.
+		// Never remove directories/lock files: existing writers share this lock.
+		clearstatcache(true, $dir);
+		if (!is_dir($dir)) { return; }
 		$lock = $this->lock($dir, 'page.lock', LOCK_EX);
 		if (!$lock) { throw new \RuntimeException('Cannot lock page invalidation'); }
 		try {

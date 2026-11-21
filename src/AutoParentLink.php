@@ -7,6 +7,7 @@ use MediaWiki\Content\ContentHandler;
 use MediaWiki\Content\TextContent;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Revision\SlotRecord;
+use MediaWiki\Title\Title;
 
 class AutoParentLink {
 
@@ -206,12 +207,12 @@ class AutoParentLink {
 			return;
 		}
 
-        $trimmedText = ltrim( $text );
-        $expectedStart = '{{' . $config['argumentTemplate'];
+		$trimmedText = ltrim( $text );
+		$expectedStart = '{{' . $config['argumentTemplate'];
 
-        if ( substr( $trimmedText, 0, strlen( $expectedStart ) ) !== $expectedStart ) {
-            return;
-        }
+		if ( substr( $trimmedText, 0, strlen( $expectedStart ) ) !== $expectedStart ) {
+			return;
+		}
 
 		$childTemplate = self::parseTopLevelTemplate( $text );
 		if ( $childTemplate === null ) {
@@ -463,18 +464,27 @@ class AutoParentLink {
 		string $pageName,
 		array $config
 	): bool {
-		$quotedTemplate = preg_quote( $templateName, '/' );
-		$quotedPage = preg_quote( $pageName, '/' );
-		$quotedPageParam = preg_quote( $config['childPageParam'], '/' );
-		$quotedDisplayParam = preg_quote( $config['childDisplayTitleParam'], '/' );
-
-		$patternPage =
-			'/\{\{\s*' . $quotedTemplate . '\b[\s\S]*?\|\s*' . $quotedPageParam . '\s*=\s*' . $quotedPage . '\s*(?:\n|\||\}\})/u';
-
-		$patternDisplay =
-			'/\{\{\s*' . $quotedTemplate . '\b[\s\S]*?\|\s*' . $quotedDisplayParam . '\s*=\s*' . $quotedPage . '\s*(?:\n|\||\}\})/u';
-
-		return (bool)preg_match( $patternPage, $value ) || (bool)preg_match( $patternDisplay, $value );
+		$wanted = Title::newFromText( $pageName, NS_MAIN );
+		$wantedTemplate = Title::newFromText( $templateName, NS_TEMPLATE );
+		if ( !$wanted || !$wantedTemplate ) {
+			return false;
+		}
+		foreach ( TemplateSyntax::templates( $value ) as $template ) {
+			$name = Title::newFromText( $template['name'], NS_TEMPLATE );
+			if ( !$name || !$name->equals( $wantedTemplate ) ) {
+				continue;
+			}
+			$target = self::getParameterValue( $template['parts'], $config['childPageParam'] );
+			// Only the legacy form without an explicit page may use its label.
+			if ( $target === null ) {
+				$target = self::getParameterValue( $template['parts'], $config['childDisplayTitleParam'] );
+			}
+			$title = $target === null ? null : Title::newFromText( $target, NS_MAIN );
+			if ( $title && $title->equals( $wanted ) ) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private static function upsertParameterInParts(
@@ -501,8 +511,8 @@ class AutoParentLink {
 
 			$name = trim( substr( $part, 0, $eqPos ) );
 			if ( $name === $parameterName ) {
+				// MediaWiki uses the last occurrence of a named parameter.
 				$targetIndex = $index;
-				break;
 			}
 		}
 
@@ -512,18 +522,16 @@ class AutoParentLink {
 				return null;
 			}
 
-			$currentRawValue = substr( $parts[$targetIndex], $eqPos + 1 );
-
-			$newValue = trim( $currentRawValue ) === ''
-				? $childBlock
-				: rtrim( $currentRawValue, "\n\r " ) . $childBlock;
-
-			$parts[$targetIndex] = $parameterName . '=' . $newValue;
+			$part = $parts[$targetIndex];
+			$currentRawValue = substr( $part, $eqPos + 1 );
+			$insertAt = strlen( rtrim( $part ) );
+			$separator = trim( $currentRawValue ) === '' ? '' : "\n";
+			$parts[$targetIndex] = substr( $part, 0, $insertAt ) . $separator . $childBlock . substr( $part, $insertAt );
 
 			return $parts;
 		}
 
-		$newPart = $parameterName . '=' . $childBlock;
+		$newPart = $parameterName . '=' . $childBlock . "\n";
 		$insertAt = self::findInsertionIndex( $parts, $order, $parameterName );
 		array_splice( $parts, $insertAt, 0, [ $newPart ] );
 
@@ -559,7 +567,7 @@ class AutoParentLink {
 	}
 
 	private static function getParameterValue( array $parts, string $parameterName ): ?string {
-		foreach ( $parts as $index => $part ) {
+		foreach ( array_reverse( $parts, true ) as $index => $part ) {
 			if ( $index === 0 ) {
 				continue;
 			}
@@ -578,179 +586,16 @@ class AutoParentLink {
 	}
 
 	private static function parseTopLevelTemplate( string $text ): ?array {
-		$start = strpos( $text, '{{' );
-		if ( $start === false ) {
-			return null;
-		}
-
-		$end = self::findMatchingTemplateEnd( $text, $start );
-		if ( $end === null ) {
-			return null;
-		}
-
-		$templateText = substr( $text, $start, $end - $start );
-
-		if ( substr( $templateText, -2 ) !== '}}' ) {
-			return null;
-		}
-
-		$innerText = substr( $templateText, 0, -2 );
-		$parts = self::splitTopLevelPipes( $innerText );
-
-		if ( !$parts ) {
-			return null;
-		}
-
-		if ( !preg_match( '/^\{\{\s*([^\|\}\n]+)/u', trim( $parts[0] ), $m ) ) {
-			return null;
-		}
-
-		return [
-			'start' => $start,
-			'end' => $end,
-			'parts' => $parts,
-			'name' => trim( $m[1] ),
-		];
+		return TemplateSyntax::parse( $text );
 	}
 
 	private static function joinTemplateParts( array $parts ): string {
-		if ( !$parts ) {
-			return '';
-		}
-
-		$first = rtrim( $parts[0] );
-		$first = preg_replace( "/\n+$/u", '', $first );
-
-		$out = $first;
-
-		for ( $i = 1; $i < count( $parts ); $i++ ) {
-			$part = trim( $parts[$i] );
-			$out .= "\n|" . $part;
-		}
-
-		return $out . "\n}}";
-	}
-
-	private static function splitTopLevelPipes( string $templateText ): array {
-		$len = strlen( $templateText );
-		$parts = [];
-		$buffer = '';
-		$depthCurly = 0;
-		$depthSquare = 0;
-
-		for ( $i = 0; $i < $len; $i++ ) {
-			$ch = $templateText[$i];
-			$next = $i + 1 < $len ? $templateText[$i + 1] : '';
-
-			if ( $ch === '{' && $next === '{' ) {
-				$depthCurly++;
-				$buffer .= '{{';
-				$i++;
-				continue;
-			}
-
-			if ( $ch === '}' && $next === '}' ) {
-				$depthCurly = max( 0, $depthCurly - 1 );
-				$buffer .= '}}';
-				$i++;
-				continue;
-			}
-
-			if ( $ch === '[' && $next === '[' ) {
-				$depthSquare++;
-				$buffer .= '[[';
-				$i++;
-				continue;
-			}
-
-			if ( $ch === ']' && $next === ']' ) {
-				$depthSquare = max( 0, $depthSquare - 1 );
-				$buffer .= ']]';
-				$i++;
-				continue;
-			}
-
-			if ( $ch === '|' && $depthCurly === 1 && $depthSquare === 0 ) {
-				$parts[] = $buffer;
-				$buffer = '';
-				continue;
-			}
-
-			$buffer .= $ch;
-		}
-
-		if ( $buffer !== '' ) {
-			$parts[] = $buffer;
-		}
-
-		return $parts;
+		// Keep unrelated whitespace and comments byte-for-byte.
+		return $parts ? implode( '|', $parts ) . '}}' : '';
 	}
 
 	private static function findTopLevelEquals( string $text ): ?int {
-		$len = strlen( $text );
-		$depthCurly = 0;
-		$depthSquare = 0;
-
-		for ( $i = 0; $i < $len; $i++ ) {
-			$ch = $text[$i];
-			$next = $i + 1 < $len ? $text[$i + 1] : '';
-
-			if ( $ch === '{' && $next === '{' ) {
-				$depthCurly++;
-				$i++;
-				continue;
-			}
-
-			if ( $ch === '}' && $next === '}' ) {
-				$depthCurly = max( 0, $depthCurly - 1 );
-				$i++;
-				continue;
-			}
-
-			if ( $ch === '[' && $next === '[' ) {
-				$depthSquare++;
-				$i++;
-				continue;
-			}
-
-			if ( $ch === ']' && $next === ']' ) {
-				$depthSquare = max( 0, $depthSquare - 1 );
-				$i++;
-				continue;
-			}
-
-			if ( $ch === '=' && $depthCurly === 0 && $depthSquare === 0 ) {
-				return $i;
-			}
-		}
-
-		return null;
-	}
-
-	private static function findMatchingTemplateEnd( string $text, int $start ): ?int {
-		$len = strlen( $text );
-		$depth = 0;
-
-		for ( $i = $start; $i < $len - 1; $i++ ) {
-			$pair = $text[$i] . $text[$i + 1];
-
-			if ( $pair === '{{' ) {
-				$depth++;
-				$i++;
-				continue;
-			}
-
-			if ( $pair === '}}' ) {
-				$depth--;
-				$i++;
-
-				if ( $depth === 0 ) {
-					return $i + 1;
-				}
-			}
-		}
-
-		return null;
+		return TemplateSyntax::equalsOffset( $text );
 	}
 
 	private static function logProblem( string $message ): void {
