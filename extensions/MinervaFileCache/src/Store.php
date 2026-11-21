@@ -238,4 +238,74 @@ class Store {
 		}
 		return $stats;
 	}
+
+	/**
+	 * Sample actual stored HTML/header equivalence without exposing page content.
+	 * This is an offline diagnostic, never part of a visitor request.
+	 * It does not prove equivalence of future responses or different browsers.
+	 * @return array<string,int>
+	 */
+	public function analyzeVariants(int $limitPages = 100, int $maxVariantsPerPage = 20): array {
+		if ($limitPages < 1 || $limitPages > 10000 ||
+			$maxVariantsPerPage < 2 || $maxVariantsPerPage > 100) {
+			throw new \InvalidArgumentException('Invalid variant-audit sampling limits');
+		}
+		$stats = [
+			'scannedPages' => 0, 'pagesWithMultipleFiles' => 0,
+			'analyzedPages' => 0, 'validEntries' => 0,
+			'identicalExtraEntries' => 0, 'divergentPages' => 0,
+			'ignoredEntries' => 0, 'truncatedPages' => 0, 'racedPages' => 0,
+		];
+		if (!is_dir($this->root)) { return $stats; }
+		foreach (new \FilesystemIterator($this->root, \FilesystemIterator::SKIP_DOTS) as $prefix) {
+			if (!$prefix->isDir() || $prefix->isLink()) { continue; }
+			foreach (new \FilesystemIterator($prefix->getPathname(), \FilesystemIterator::SKIP_DOTS) as $page) {
+				if (!$page->isDir() || $page->isLink()) { continue; }
+				if ($stats['scannedPages'] >= $limitPages) { return $stats; }
+				$stats['scannedPages']++;
+				$dir = $page->getPathname();
+				$paths = glob($dir . '/*.cache') ?: [];
+				if (count($paths) < 2) { continue; }
+				$stats['pagesWithMultipleFiles']++;
+				if (count($paths) > $maxVariantsPerPage) { $stats['truncatedPages']++; }
+				$generation = @file_get_contents($dir . '/generation');
+				if (!is_string($generation) || $generation === '') {
+					$stats['racedPages']++;
+					continue;
+				}
+				$hashes = [];
+				$valid = 0;
+				$ignored = 0;
+				foreach (array_slice($paths, 0, $maxVariantsPerPage) as $path) {
+					$entry = is_link($path) ? null : $this->decode($path);
+					$identity = $entry['identity'] ?? null;
+					if (!is_array($identity) || !$this->validEntry($entry, $generation, $identity)) {
+						$ignored++;
+						continue;
+					}
+					$metadata = json_encode([$identity, $entry['headers']],
+						JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+					if ($metadata === false) { $ignored++; continue; }
+					$hash = hash_init('sha256');
+					hash_update($hash, $metadata);
+					hash_update($hash, "\0");
+					hash_update($hash, $entry['body']);
+					$fingerprint = hash_final($hash);
+					$hashes[$fingerprint] = true;
+					$valid++;
+				}
+				// Ignore samples interrupted by an invalidation; never block writers.
+				if (@file_get_contents($dir . '/generation') !== $generation) {
+					$stats['racedPages']++;
+					continue;
+				}
+				$stats['analyzedPages']++;
+				$stats['validEntries'] += $valid;
+				$stats['ignoredEntries'] += $ignored;
+				$stats['identicalExtraEntries'] += $valid - count($hashes);
+				if (count($hashes) > 1) { $stats['divergentPages']++; }
+			}
+		}
+		return $stats;
+	}
 }

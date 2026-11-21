@@ -253,6 +253,35 @@ de fichiers de contenu (`files`), leur taille compressée totale en octets
 Elle ne décompresse pas le contenu et ne modifie aucune entrée. Elle parcourt toutefois les fichiers : à exécuter en maintenance,
 pas à chaque requête web. Ces chiffres ne sont pas des taux de HIT/MISS.
 
+Pour mesurer si certaines variantes déjà stockées ont produit le même HTML et
+les mêmes en-têtes, lancer un audit *en lecture seule*, limité en volume :
+
+```sh
+php maintenance/run.php MinervaFileCache:variants --wiki=fr --limit-pages=100 --max-variants=20
+php maintenance/run.php MinervaFileCache:variants --wiki=en --limit-pages=100 --max-variants=20
+```
+
+`scannedPages` indique le nombre de répertoires visités,
+`pagesWithMultipleFiles` ceux contenant plusieurs fichiers,
+`validEntries` les entrées actuelles décodées et contrôlées,
+`identicalExtraEntries` le nombre de fichiers supplémentaires strictement
+identiques (même identité de révision, mêmes en-têtes et mêmes octets HTML) et
+`divergentPages` les pages ayant au moins deux rendus différents. Les compteurs
+`truncatedPages`, `ignoredEntries` et `racedPages` signalent les limites de
+l'échantillon, les fichiers non valides et les invalidations pendant l'audit.
+
+Cette mesure décompresse volontairement un échantillon de fichiers : l'utiliser
+en maintenance, et éviter les très grands seuils sur un serveur occupé. Elle ne
+produit ni URL, ni User-Agent individuel, ni contenu de page ; elle ne modifie
+pas les fichiers. Les répertoires sont parcourus dans l'ordre du système de
+fichiers, sans tirage aléatoire : les résultats ne sont **pas** nécessairement
+représentatifs du trafic.
+
+Une identité HTML observée entre variantes n'autorise **pas** à fusionner
+automatiquement les User-Agents ou les langues : les futures réponses pourraient
+différer. Les regroupements éventuels nécessitent encore des comparaisons sur
+les rendus complets représentatifs et des vérifications de cache en intégration.
+
 La clé stricte par URL, User-Agent et préférences linguistiques est conservée
 pour éviter les collisions de variantes non validées.
 
