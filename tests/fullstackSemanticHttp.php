@@ -790,12 +790,13 @@ try {
 		'Combined OR first result changes the transaction revision');
 	$orFirst = $fragment($orPage);
 	check($orFirst['fragment']['source'] === 'fragment-cache' &&
-		str_contains($orFirst['fragment']['html'], 'WD_HTTP_OR_A=0;WD_HTTP_OR_B=0;WD_HTTP_OR_TOTAL=0'),
+		$orFirst['fragment']['html'] === $orWarm['fragment']['html'],
 		'Combined OR change retains an independently reusable cached excerpt');
 	fsFlush();
 	$fragment($orPage);
 	check($fragment($orPage)['fragment']['source'] === 'fragment-cache',
 		'Combined OR excerpt can be warmed again after optional purge');
+	$beforeSwitch = $fragment($orPage);
 
 	$beforeOr = SemanticRevisionStore::fingerprint($store, $orSubject);
 	fsSave('WD HTTP OR parent', '{{#set:WD HTTP Con=WD HTTP OR target}}');
@@ -806,8 +807,7 @@ try {
 		'Combined OR same-cardinality switch changes the revision');
 	$orSwitched = $fragment($orPage);
 	check($orSwitched['fragment']['source'] === 'fragment-cache' &&
-		str_contains($orSwitched['fragment']['html'],
-			'WD_HTTP_OR_A=1;WD_HTTP_OR_B=0;WD_HTTP_OR_TOTAL=1'),
+		$orSwitched['fragment']['html'] === $beforeSwitch['fragment']['html'],
 		'Combined OR excerpt retains the prior snapshot while purge is queued');
 
 	$orDesktop = $http('index.php', ['title' => 'WD_HTTP_OR_query']);
@@ -826,6 +826,7 @@ try {
 	$fragment($orPage);
 	check($fragment($orPage)['fragment']['source'] === 'fragment-cache',
 		'Combined OR switched excerpt is cacheable after optional purge');
+	$beforeRemoval = $fragment($orPage);
 
 	$beforeOr = SemanticRevisionStore::fingerprint($store, $orSubject);
 	fsSave('WD HTTP OR parent', 'No parent relation');
@@ -834,9 +835,8 @@ try {
 		'Removing the final OR parent changes its revision before purge');
 	$orRemoved = $fragment($orPage);
 	check($orRemoved['fragment']['source'] === 'fragment-cache' &&
-		str_contains($orRemoved['fragment']['html'],
-			'WD_HTTP_OR_A=1;WD_HTTP_OR_B=0;WD_HTTP_OR_TOTAL=1'),
-		'Combined OR cached excerpt remains unchanged across two external parent edits');
+		$orRemoved['fragment']['html'] === $beforeRemoval['fragment']['html'],
+		'Combined OR excerpt is unchanged across the final external parent edit');
 	fsFlush();
 
 	// Exact transition observed on production page 1220, but on a completely
