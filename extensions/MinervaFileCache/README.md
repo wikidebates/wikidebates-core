@@ -78,6 +78,8 @@ réponse déjà conservée par un intermédiaire ne prouve rien sur ce cache.
 | `variant` / `page` | Langue/skin différent, redirection ou notification personnelle |
 | `extension-veto` | Refus d'une extension, ou intégration MobileFrontend non reconnue |
 | `nonce` / `csp-nonce` | Réponse avec nonce ; elle ne sera pas partagée entre visiteurs |
+| `parser-expiry` | Sortie d'analyse sans expiration cache valide (par exemple avec `__NOCACHE__`) |
+| `not-public` / `redirect` / `http-status` / `headers-sent` | Réponse non publique, redirection, statut différent de 200 ou en-têtes déjà envoyés |
 | `cache-control` / `response` | Réponse non conservable, personnalisée ou autre qu'un succès HTML |
 | `header-…` / `vary` | En-tête ou source de variation non pris en charge |
 | `storage-error` | Répertoire ou stockage indisponible ; détails dans le canal de log `MinervaFileCache` |
