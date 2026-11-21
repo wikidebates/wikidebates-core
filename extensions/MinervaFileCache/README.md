@@ -285,6 +285,17 @@ php maintenance/run.php MinervaFileCache:variants --wiki=fr --limit-pages=100 --
 php maintenance/run.php MinervaFileCache:variants --wiki=en --limit-pages=100 --max-variants=20
 ```
 
+Pour un wiki ayant environ 28 000 répertoires et jusqu'à 206 variantes
+par page, les bornes explicites peuvent être augmentées en maintenance
+(jusqu'à 50 000 répertoires et 250 variantes par page) :
+
+```sh
+php maintenance/run.php MinervaFileCache:variants --wiki=fr --limit-pages=30000 --max-variants=250
+```
+
+Cela parcourt davantage de répertoires et décompresse davantage de réponses :
+choisir un créneau de faible charge si le serveur est sollicité.
+
 `scannedPages` indique le nombre de répertoires visités,
 `pagesWithMultipleFiles` ceux contenant plusieurs fichiers,
 `validEntries` les entrées non expirées, décodées et contrôlées,
