@@ -836,7 +836,10 @@ try {
 	check($orRemoved['fragment']['source'] === 'fragment-cache' &&
 		str_contains($orRemoved['fragment']['html'],
 			'WD_HTTP_OR_A=0;WD_HTTP_OR_B=1;WD_HTTP_OR_TOTAL=1'),
-		'Combined OR reading fragment survives the removal of an external parent');
+		'Combined OR reading fragment survives external parent removal: ' . json_encode([
+			'source' => $orRemoved['fragment']['source'] ?? null,
+			'html' => substr($orRemoved['fragment']['html'] ?? '', 0, 600)
+		]));
 	fsFlush();
 
 	// Exact transition observed on production page 1220, but on a completely
