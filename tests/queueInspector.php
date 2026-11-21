@@ -11,8 +11,16 @@ use MediaWiki\MediaWikiServices;
 $services = MediaWikiServices::getInstance();
 $jobType = 'wikidebatesSemanticCachePurge';
 $classes = $services->getMainConfig()->get('JobClasses');
-check( !isset( $classes[$jobType] ),
-	'The read-only command must work without an installed purge JobClass' );
+// Main does not register the experimental class, while the pilot does.
+// In both modes the inspector must read SQL directly without instantiating it.
+if ( $services->getMainConfig()->has( 'WikidebatesSemanticCacheTracking' ) ) {
+	check( ( $classes[$jobType] ?? null ) ===
+		\\MediaWiki\\Extension\\Wikidebates\\Reading\\SemanticCachePurgeJob::class,
+		'Pilot registers the expected purge class without executing it' );
+} else {
+	check( !isset( $classes[$jobType] ),
+		'Main inspector must work without any registered purge JobClass' );
+}
 
 $db = $services->getConnectionProvider()->getPrimaryDatabase();
 $rows = [
