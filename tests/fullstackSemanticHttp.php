@@ -142,6 +142,32 @@ fsSave('WD HTTP parent B', 'Parent B');
 fsSave('WD HTTP child', 'No parent');
 fsSave('WD HTTP query A', 'Initial stub');
 fsSave('WD HTTP query B', 'Initial stub');
+// Reproduce the real French Argument/Debat template wrappers rather than only
+// calling native parser functions directly. The lab runs in English, so set
+// lang=fr on the bundled wrapper; production fr.wikidebates.org supplies it
+// through its content language. Never insert __NOCACHE__ into these templates.
+$argumentTemplate = file_get_contents(
+	__DIR__ . '/../debatephp/resources/Template-Argument.php.wikitext'
+);
+$debateTemplate = file_get_contents(
+	__DIR__ . '/../debatephp/resources/Template-Debat.php.wikitext'
+);
+check(is_string($argumentTemplate) && is_string($debateTemplate) &&
+	!str_contains(strtoupper($argumentTemplate), '__NOCACHE__') &&
+	!str_contains(strtoupper($debateTemplate), '__NOCACHE__'),
+	'Actual bundled Argument/Debat templates contain no __NOCACHE__');
+fsSave('Template:WD HTTP Argument FR',
+	str_replace('{{#argument:render', '{{#argument:render|lang=fr', $argumentTemplate));
+fsSave('Template:WD HTTP Argument EN',
+	str_replace('{{#argument:render', '{{#argument:render|lang=en', $argumentTemplate));
+fsSave('Template:WD HTTP Debate FR',
+	str_replace('{{#debate:render', '{{#debate:render|lang=fr', $debateTemplate));
+fsSave('WD HTTP template argument FR', 'Initial Argument template stub');
+fsSave('WD HTTP template argument EN', 'Initial Argument template stub');
+fsSave('WD HTTP template debate FR', 'Initial Debate template stub');
+fsSave('WD HTTP template parent FR', 'No parent relation');
+fsSave('WD HTTP template parent EN', 'No parent relation');
+
 fsSave('WD HTTP public page', str_repeat('This ordinary page contains no semantic query. ', 30));
 fsFlush();
 
@@ -166,6 +192,13 @@ fsSave('WD HTTP reading debate',
 	'{{#debate:render|lang=fr|topic=Reading flow debate' .
 	'|pro-arguments=WD HTTP reading argument⟬WD HTTP displayed pro argument⟬⟭' .
 	'|con-arguments=WD HTTP alternative argument⟬WD HTTP displayed con argument⟬⟭}}');
+fsSave('WD HTTP template argument FR',
+	'{{WD HTTP Argument FR|résumé=WD_HTTP_TEMPLATE_FR_SUMMARY}}');
+fsSave('WD HTTP template argument EN',
+	'{{WD HTTP Argument EN|résumé=WD_HTTP_TEMPLATE_EN_SUMMARY}}');
+fsSave('WD HTTP template debate FR',
+	'{{WD HTTP Debate FR|sujet=Template debate|arguments-pour=' .
+	'WD HTTP template argument FR⟬Displayed template argument⟬⟭}}');
 fsSave('WD HTTP redirect', '#REDIRECT [[WD HTTP query A]]');
 fsFlush();
 $subjectA = SemanticWikiPage::newFromTitle(Title::newFromText('WD HTTP query A'));
@@ -192,6 +225,20 @@ check($store->getPropertyValues($corpusArgSubject, new Property('_ASK')) !== [],
 check($store->getPropertyValues($corpusDebateSubject, new Property('_ASK')) === [],
 	'The 25-title debate has no Argument query profile');
 
+
+$templateArgFrSubject = SemanticWikiPage::newFromTitle(
+	Title::newFromText('WD HTTP template argument FR'));
+$templateArgEnSubject = SemanticWikiPage::newFromTitle(
+	Title::newFromText('WD HTTP template argument EN'));
+$templateDebateSubject = SemanticWikiPage::newFromTitle(
+	Title::newFromText('WD HTTP template debate FR'));
+$store->clear();
+check($store->getPropertyValues($templateArgFrSubject, new Property('_ASK')) !== [],
+	'Actual transcluded French Argument wrapper creates SMW _ASK profiles');
+check($store->getPropertyValues($templateArgEnSubject, new Property('_ASK')) !== [],
+	'Actual transcluded English Argument wrapper creates SMW _ASK profiles');
+check($store->getPropertyValues($templateDebateSubject, new Property('_ASK')) === [],
+	'Actual transcluded French Debat-only wrapper keeps ordinary cache eligibility');
 
 $marker = $temporary . '/.semantic-http-disposable';
 file_put_contents($marker, "Isolated CI semantic HTTP lab\n");
@@ -393,6 +440,64 @@ try {
 		$debateAfterArgumentEdit['body'] === $debateFirst['body'],
 		'Editing an Argument does not embed content or alter the cached debate view');
 	fsFlush();
+
+	// Exercise transcluded, bundled Argument/Debat templates on both languages,
+	// with genuine HTTP workers and the semantic purge job intentionally held.
+	$templateDebateUrl = ['title' => 'WD_HTTP_template_debate_FR'];
+	$templatedDebate = $http('index.php', $templateDebateUrl);
+	check($templatedDebate['status'] === 200 &&
+		str_contains($templatedDebate['body'], 'Displayed template argument'),
+		'Bundled French Debat template renders an argument link');
+	$initialTemplate = [];
+	foreach (['FR', 'EN'] as $lang) {
+		$title = 'WD HTTP template argument ' . $lang;
+		$marker = 'WD_HTTP_TEMPLATE_' . $lang . '_SUMMARY';
+		$read = $fragment($title, ['X-Requested-With: XMLHttpRequest']);
+		check(str_contains($read['fragment']['html'], $marker),
+			'Bundled Argument wrapper renders the ' . $lang . ' summary');
+		$warm = null;
+		for ($attempt = 0; $attempt < 6; $attempt++) {
+			$candidate = $fragment($title, ['X-Requested-With: XMLHttpRequest']);
+			if ($candidate['fragment']['source'] === 'fragment-cache') {
+				$warm = $candidate;
+				break;
+			}
+		}
+		check($warm !== null, 'Bundled Argument ' . $lang . ' reuses private fragments');
+		$initialTemplate[$lang] = $warm['fragment']['html'];
+	}
+
+	$enProProperty = $props->message('Argument.props', 'en', 'arg_pro');
+	foreach (['FR', 'EN'] as $lang) {
+		$title = 'WD HTTP template argument ' . $lang;
+		$parent = 'WD HTTP template parent ' . $lang;
+		$property = $lang === 'FR' ? $proProperty : $enProProperty;
+		$subject = $lang === 'FR' ? $templateArgFrSubject : $templateArgEnSubject;
+		$revisionBefore = SemanticRevisionStore::fingerprint($store, $subject);
+		fsSave($parent, '{{#set:' . $property . '=' . $title . '}}');
+		fsFlush(['wikidebatesSemanticCachePurge']);
+		check($services->getJobQueueGroup()->queuesHaveJobs(),
+			'Real ' . $lang . ' template parent change leaves its purge job pending');
+		check(SemanticRevisionStore::fingerprint($store, $subject) !== $revisionBefore,
+			'Real ' . $lang . ' transcluded template has an advancing semantic fingerprint');
+		$changed = $fragment($title, ['X-Requested-With: XMLHttpRequest']);
+		$parentUnderscored = str_replace(' ', '_', $parent);
+		check($changed['fragment']['source'] !== 'fragment-cache' &&
+			str_contains($changed['fragment']['html'], 'WD_HTTP_TEMPLATE_' . $lang . '_SUMMARY') &&
+			(str_contains($changed['fragment']['html'], $parent) ||
+				str_contains($changed['fragment']['html'], $parentUnderscored)),
+			'Real ' . $lang . ' transcluded Argument HTML shows new parent before purge');
+		$article = $http('index.php', ['title' => str_replace(' ', '_', $title)]);
+		check($article['status'] === 200 &&
+			(str_contains($article['body'], $parent) ||
+				str_contains($article['body'], $parentUnderscored)),
+			'Real ' . $lang . ' transcluded Argument full article is fresh before purge');
+		fsFlush();
+	}
+	$afterTemplate = $http('index.php', $templateDebateUrl);
+	check($afterTemplate['status'] === 200 &&
+		$afterTemplate['body'] === $templatedDebate['body'],
+		'Bundled French Debat-only HTML stays unchanged when parent links change');
 
 	// Representative corpus size: 25 actual pro/con titles from the
 	// retained "Dieu existe-t-il ?" fixture. A separate Argument page
