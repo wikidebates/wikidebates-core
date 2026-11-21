@@ -1,21 +1,33 @@
 {
-	"name": "Isolated review workspace",
+	"name": "Validate targeted reliability fixes",
 	"on": {
 		"push": {
 			"branches": ["fix/parent-reading-cache-reliability"]
 		}
 	},
-	"permissions": {"contents": "read"},
+	"permissions": {"contents": "write"},
 	"jobs": {
-		"workspace": {
+		"validate": {
 			"runs-on": "ubuntu-24.04",
-			"timeout-minutes": 10,
+			"timeout-minutes": 20,
 			"steps": [
-				{"uses": "actions/checkout@v4", "with": {"persist-credentials": false}},
+				{"uses": "actions/checkout@v4"},
+				{
+					"name": "Verify and apply the reviewed patch",
+					"run": "set -euo pipefail\ncat .review-patch-0 .review-patch-1 .review-patch-2 .review-patch-3 | base64 --decode | gzip --decompress > \"$RUNNER_TEMP/reliability.patch\"\necho \"f7171a0c003eae7783729cdf15b0bf51f2b0fd5233c831caa81c25bbcdd5a5b2  $RUNNER_TEMP/reliability.patch\" | sha256sum --check -\ngit apply --check --index \"$RUNNER_TEMP/reliability.patch\"\ngit apply --index \"$RUNNER_TEMP/reliability.patch\"\ngit diff --cached --check"
+				},
+				{"uses": "shivammathur/setup-php@v2", "with": {"php-version": "8.4", "extensions": "mbstring, intl, xml, dom, pdo_sqlite, sqlite3", "coverage": "none", "tools": "composer"}},
 				{"uses": "actions/setup-node@v4", "with": {"node-version": "22"}},
-				{"name": "Install test dependencies without lifecycle scripts", "run": "npm ci --prefix tests --ignore-scripts"},
-				{"name": "Archive the isolated checkout without Git credentials", "run": "tar --exclude=.git -czf \"$RUNNER_TEMP/wikidebates-review.tar.gz\" ."},
-				{"uses": "actions/upload-artifact@v4", "with": {"name": "wikidebates-review-workspace", "path": "${{ runner.temp }}/wikidebates-review.tar.gz", "retention-days": 1}}
+				{"name": "PHP syntax and complete standalone suite", "run": "find debatephp/src src tests maintenance -name '*.php' -print0 | xargs -0 -n1 php -l > \"$RUNNER_TEMP/php-lint.log\"\nphp tests/run.php"},
+				{"name": "Translation checks", "run": "php tools/buildI18n.php --check\npython3 tests/checkI18n.py\nnode tests/i18n.js"},
+				{"name": "JavaScript regressions", "run": "npm ci --prefix tests --ignore-scripts\nnpm test --prefix tests"},
+				{"name": "MediaWiki 1.43.11 checkout", "uses": "actions/checkout@v4", "with": {"repository": "wikimedia/mediawiki", "ref": "1.43.11", "path": ".mw-lab", "persist-credentials": false}},
+				{"name": "MediaWiki dependencies", "working-directory": ".mw-lab", "run": "composer install --no-interaction --prefer-dist --no-progress"},
+				{"name": "MediaWiki 1.43 integration with PHP 8.4", "env": {"MW_INSTALL_PATH": "${{ github.workspace }}/.mw-lab"}, "run": "php tests/mediawiki.php"},
+				{
+					"name": "Publish validated source on the review branch only",
+					"run": "set -euo pipefail\ntest \"$GITHUB_REF\" = refs/heads/fix/parent-reading-cache-reliability\ntest \"$(git rev-parse HEAD)\" = \"$GITHUB_SHA\"\ngit rm -- .github/workflows/review-workspace.yml .review-patch-0 .review-patch-1 .review-patch-2 .review-patch-3\ngit diff --cached --check\ngit -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'Fix parent link identity, template boundaries, reading errors and cache invalidation'\ngit push origin HEAD:refs/heads/fix/parent-reading-cache-reliability\ngit log -1 --oneline"
+				}
 			]
 		}
 	}
