@@ -214,13 +214,30 @@ test( 'synchronous responses drain queued work without recursive pumping or phan
 	await Promise.all( [ first, second ] );
 } );
 
-test( 'the existing hover priority, FIFO ties and two-active limit remain unchanged', async ( t ) => {
+test( 'queued explicit clicks outrank hover work without preempting active work or changing FIFO ties', async ( t ) => {
 	const { WK, calls, reply } = await fixture( t );
 	const pending = [ WK.wkParseWikitext( 'Active A' ), WK.wkParseWikitext( 'Active B' ),
+		WK.wkParseWikitext( 'Hover first', 'hover' ), WK.wkParseWikitext( 'Hover second', 'hover' ),
 		WK.wkParseWikitext( 'Default' ), WK.wkParseWikitext( 'Breadcrumb', 'bc' ),
-		WK.wkParseWikitext( 'Hover first', 'hover' ), WK.wkParseWikitext( 'Hover second', 'hover' ) ];
-	assert.equal( calls.length, 2 );
-	for ( let i = 0; i < 6; i++ ) reply( i );
-	assert.deepEqual( calls.map( ( c ) => c.params.text ), [ 'Active A', 'Active B', 'Hover first', 'Hover second', 'Breadcrumb', 'Default' ] );
+		WK.wkParseWikitext( 'Click more', 'more' ), WK.wkParseWikitext( 'Click latest', 'latest' ) ];
+	assert.equal( calls.length, 2, 'only two requests may run simultaneously' );
+	for ( let i = 0; i < pending.length; i++ ) reply( i );
+	assert.deepEqual( calls.map( ( c ) => c.params.text ), [ 'Active A', 'Active B',
+		'Click more', 'Click latest', 'Breadcrumb', 'Default', 'Hover first', 'Hover second' ] );
 	await Promise.all( pending );
+} );
+
+test( 'already-active hover work completes, while a queued click starts first', async ( t ) => {
+	const { WK, calls, reply } = await fixture( t );
+	const first = WK.wkParseWikitext( 'Running hover 1', 'hover' );
+	const second = WK.wkParseWikitext( 'Running hover 2', 'hover' );
+	const laterHover = WK.wkParseWikitext( 'Queued hover', 'hover' );
+	const clicked = WK.wkParseWikitext( 'Clicked content', 'more' );
+	assert.equal( calls.length, 2 );
+	reply( 0 );
+	assert.equal( calls[ 2 ].params.text, 'Clicked content' );
+	reply( 1 );
+	assert.equal( calls[ 3 ].params.text, 'Queued hover' );
+	reply( 2 ); reply( 3 );
+	await Promise.all( [ first, second, laterHover, clicked ] );
 } );
