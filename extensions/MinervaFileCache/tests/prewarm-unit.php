@@ -63,6 +63,22 @@ try {
 		checkPrewarm(Prewarm::responseState($code, $header) === $expected,
 			'Cache response classified as ' . $expected);
 	}
+	foreach ([
+		['HTTP_429', '0', 1, 0], ['HTTP_429', '60', 1, 60],
+		['HTTP_429', '180', 1, null], ['HTTP_429', null, 1, 5],
+		['HTTP_503', null, 2, 2], ['HTTP_500', null, 3, 4],
+		['TRANSPORT_ERROR', null, 1, 1], ['HTTP_403', null, 1, null],
+		['HTTP_404', null, 1, null], ['HTTP_429', null, 4, null]
+	] as [$state, $retryAfter, $attempt, $expected]) {
+		checkPrewarm(Prewarm::retryDelaySeconds($state, $retryAfter, $attempt) === $expected,
+			'Bounded retry policy for ' . $state . ' attempt ' . $attempt);
+	}
+	$future = gmdate('D, d M Y H:i:s', time() + 300) . ' GMT';
+	checkPrewarm(Prewarm::retryDelaySeconds('HTTP_429', $future, 1) === null,
+		'HTTP-date Retry-After beyond the limit stops instead of retrying prematurely');
+	$immediate = gmdate('D, d M Y H:i:s', time() - 10) . ' GMT';
+	checkPrewarm(Prewarm::retryDelaySeconds('HTTP_429', $immediate, 1) === 0,
+		'Expired Retry-After date allows immediate retry');
 	echo json_encode(['assertions' => $assertions, 'result' => 'PASS']) . "\n";
 } finally {
 	foreach (glob($directory . '/*') as $path) {

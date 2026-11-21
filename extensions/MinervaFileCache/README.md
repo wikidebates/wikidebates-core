@@ -197,6 +197,7 @@ Options principales :
 - `--limit=N` : s'arrêter après N pages ; 0 = aucune limite (défaut).
 - `--delay-ms=N` : délai entre deux requêtes (1000 ms par défaut, minimum 250).
 - `--timeout=N` : délai maximal HTTP en secondes (30 par défaut).
+- `--retries=N` : jusqu'à N tentatives supplémentaires (0 à 3, **0 par défaut**) uniquement pour les erreurs transitoires `HTTP_429`, `HTTP_500`, `HTTP_502`, `HTTP_503`, `HTTP_504` et les erreurs réseau. Respecte `Retry-After` (secondes ou date HTTP) jusqu'à 120 secondes ; au-delà, s'arrête pour permettre une reprise manuelle sans insister prématurément.
 - `--device=android|iphone` : User-Agent à préchauffer (Android par défaut).
 - `--namespace=N` : ne parcourir qu'un espace de noms numérique.
 - `--category="Nom"` : ne parcourir que les membres directs de cette catégorie.
@@ -220,6 +221,14 @@ Elle s'arrête sur les autres erreurs HTTP, les erreurs réseau, les erreurs de
 stockage ou plusieurs réponses successives sans en-tête de diagnostic pour
 éviter de surcharger PHP-FPM et Cloudflare. En cas d'interruption, relancer
 la commande avec `--resume` ou reprendre après le dernier `page_id` affiché.
+
+Pour un préchauffage soumis ponctuellement aux limites HTTP, préférer un
+nombre réduit de nouvelles tentatives (par exemple
+`php maintenance/run.php MinervaFileCache:prewarm --wiki=fr --resume --retries=1`).
+Les refus permanents (notamment 403) ne sont jamais réessayés automatiquement.
+Si l'en-tête `Retry-After` impose plus de deux minutes d'attente, le préchauffage
+s'arrête et conserve son point de reprise.
+
 
 **Attention :** le cache est indexé par User-Agent complet, URL et langue
 acceptée. Un préchauffage Android ne remplit pas toutes les variantes Safari
