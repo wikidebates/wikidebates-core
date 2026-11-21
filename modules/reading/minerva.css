@@ -13,7 +13,7 @@
 	--wk-reading-h1-title-top: calc( ( 56px - 1em * var( --wk-reading-h1-title-line-height ) ) / 2 );
 	--wk-reading-h1-title-padding-left: calc( var( --wd-arg-icon-size ) + 6px );
 	--wk-reading-h1-title-margin-left: 0;
-	--wk-reading-h1-title-icon-size: 20px;
+	--wk-reading-h1-title-icon-size: 19px;
 	--wk-reading-h1-title-icon-top: calc(0.5 * var( --wk-reading-h1-title-line-height ) * 1em);
 	--wk-reading-h2-size: 110%;
 	--wk-reading-menu-link-color: var( --color-subtle, #54595d );
@@ -271,4 +271,11 @@
 
 .wk-h1-more {
 	margin-right: 0;
+}
+
+.wk-reading-panel h2.wk-icon-argument {
+	--wd-icon-size: 19px;
+}
+#wk-reading-content h2 {
+  font-size: var(--wk-reading-h2-size) !important;
 }
