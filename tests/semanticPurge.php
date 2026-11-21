@@ -97,7 +97,8 @@ namespace {
 		public function newPrimarySelectQueryBuilder() { return new Builder($this); }
 		public function tableExists($table, $caller): bool { return $this->schema; }
 		public function escape_bytea($value) { return $value; }
-		public function replace($table, $keys, $rows, $caller): void {
+		public function newReplaceQueryBuilder() { return new Replacement($this); }
+		public function storeReceipts($rows): void {
 			if ($this->failWrite) { throw new \RuntimeException('SQL write failure'); }
 			$this->writes++;
 			foreach ($rows as $row) { $this->receipts[$row['page_id']] = (object)$row; }
@@ -112,6 +113,15 @@ namespace {
 			}
 			$this->revisions = [100 => '1', 200 => '1'];
 		}
+	}
+	class Replacement {
+		private array $rows = [];
+		public function __construct(private Lab $db) {}
+		public function replaceInto($table) { check($table === SemanticPurgeState::TABLE, 'Receipt table'); return $this; }
+		public function uniqueIndexFields($keys) { check($keys === ['page_id'], 'Receipt primary key'); return $this; }
+		public function rows($rows) { $this->rows = $rows; return $this; }
+		public function caller($caller) { return $this; }
+		public function execute(): void { $this->db->storeReceipts($this->rows); }
 	}
 	class Builder {
 		private string $table = '', $alias = '';
@@ -243,8 +253,9 @@ namespace {
 	check($b->getMetrics()['coalesced_pages'] === 2 && $b->getMetrics()['invalidations'] === 0, 'Overlap reuses exact completed state');
 	$db->revisions[100] = '2'; $c = job(); check($c->run() && $c->getMetrics()['invalidations'] === 2, 'Next same-second semantic revision is never suppressed');
 	$db->revisions[100] = '3'; $services->duringPurge = static function() use ($db) { $db->revisions[100] = '4'; };
+	$previousReceipts = $db->receipts;
 	check(job()->run(), 'Mutation during purge handled');
-	check(array_reduce($db->receipts, static fn($ok, $row) => $ok && $row->fingerprint !== '', true), 'Previous receipts still well-formed');
+	check($db->receipts === $previousReceipts, 'Mutation during purge records no new completion');
 	$services->duringPurge = null; $c = job(); check($c->run() && $c->getMetrics()['invalidations'] === 2, 'Interrupted revision was not certified');
 
 	[$db, $services] = setup(6, 2); $services->settings['WikidebatesSemanticCachePurgeBatchSize'] = 2;
@@ -305,8 +316,9 @@ namespace {
 	}
 	$baselineJobs = 12 * (intdiv(1200, 150) + 1);
 	check($total['jobs'] === 24 && $total['invalidations'] === 40, 'Batch/page coalescing performance regression');
-	check($db->reads < 2 * $baselineJobs, 'Fewer explicit SQL reads even including receipt snapshots');
-	echo json_encode(['baseline_jobs' => $baselineJobs, 'optimized' => $total, 'optimized_sql_reads' => $db->reads,
+	$baselineReads = $baselineJobs + 12 * (int)ceil(1200 / 150);
+	check($db->reads < $baselineReads, 'Fewer explicit SQL reads even including receipt snapshots');
+	echo json_encode(['baseline_jobs' => $baselineJobs, 'baseline_sql_reads_minimum' => $baselineReads, 'optimized' => $total, 'optimized_sql_reads' => $db->reads,
 		'scope' => 'standalone doubles; real SQL/HTTP validation is separate'], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR), "\n";
 	echo "OK: semantic purge orchestration, overlap, revisions, concurrency, legacy cursors, failures and cache effects\n";
 }

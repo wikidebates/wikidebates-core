@@ -163,11 +163,14 @@ final class SemanticPurgeState {
 	/** No lock/lease: concurrent workers may repeat work, never suppress it. */
 	public function remember(array $rows): void {
 		if ($rows !== []) {
-			// A disposable receipt has no foreign-key consumers. REPLACE is
-			// portable across the supported MW MariaDB/SQLite backends.
-			$this->store->getConnection('mw.db')->replace(
-				self::TABLE, ['page_id'], $rows, __METHOD__
-			);
+			// SMW 7.3.1 exposes builders, not IDatabase::replace().
+			// Receipts have no foreign-key consumers and are disposable.
+			$this->store->getConnection('mw.db')->newReplaceQueryBuilder()
+				->replaceInto(self::TABLE)
+				->uniqueIndexFields(['page_id'])
+				->rows($rows)
+				->caller(__METHOD__)
+				->execute();
 		}
 	}
 }
