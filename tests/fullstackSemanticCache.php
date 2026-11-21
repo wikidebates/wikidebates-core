@@ -735,16 +735,35 @@ try {
 		'First tracked Argument reading is freshly rendered with its real summary');
 	fsFlush(['wikidebatesSemanticCachePurge']);
 	$store->clear();
+	$historicalProfilesAfterApi = $store->getPropertyValues(
+		$historicalSubject, new Property('_ASK'));
+	check($observedFirstTrackedOutput instanceof \MediaWiki\Parser\ParserOutput &&
+		$observedFirstTrackedOutput->getExtensionData(TrackedSemanticQuery::OUTPUT_MARKER) === true,
+		'Fresh API parse executes the tracked native Argument query');
+
+	// ApiParse may annotate its temporary ParserOutput without writing the
+	// canonical SMW subject. Exercise a real page-view parse separately
+	// before concluding that a pre-existing argument needs migration.
+	$access = $services->getParserOutputAccess();
+	$local = (new \ReflectionObject($access))->getProperty('localCache');
+	$local->setValue($access, new \MapCacheLRU(10));
+	$canonicalTrackedOutput = $historicalPage->getParserOutput(ParserOptions::newFromAnon());
+	check($canonicalTrackedOutput instanceof \MediaWiki\Parser\ParserOutput &&
+		$canonicalTrackedOutput->getExtensionData(TrackedSemanticQuery::OUTPUT_MARKER) === true,
+		'Canonical Argument parse after enabling tracking executes native traced queries');
+	fsFlush(['wikidebatesSemanticCachePurge']);
+	$store->clear();
 	$historicalProfiles = $store->getPropertyValues($historicalSubject, new Property('_ASK'));
 	check($historicalProfiles !== [],
-		'The formerly unprofiled Argument now persists native _ASK profiles; ' . json_encode([
-			'source' => $historicalFirst['source'],
-			'tracking' => $services->getMainConfig()->get('WikidebatesSemanticCacheTracking'),
-			'observed_output' => $observedFirstTrackedOutput instanceof \MediaWiki\Parser\ParserOutput,
-			'query_tracked_marker' => $observedFirstTrackedOutput instanceof \MediaWiki\Parser\ParserOutput
-				? $observedFirstTrackedOutput->getExtensionData(TrackedSemanticQuery::OUTPUT_MARKER) : null,
-			'parse_cache_expiry' => $observedFirstTrackedOutput instanceof \MediaWiki\Parser\ParserOutput
-				? $observedFirstTrackedOutput->getCacheExpiry() : null,
+		'Canonical parse persists the previously missing _ASK profiles; ' . json_encode([
+			'api_profiles' => count($historicalProfilesAfterApi),
+			'api_source' => $historicalFirst['source'],
+			'api_marker' => $observedFirstTrackedOutput->getExtensionData(
+				TrackedSemanticQuery::OUTPUT_MARKER),
+			'api_expiry' => $observedFirstTrackedOutput->getCacheExpiry(),
+			'canonical_marker' => $canonicalTrackedOutput->getExtensionData(
+				TrackedSemanticQuery::OUTPUT_MARKER),
+			'canonical_expiry' => $canonicalTrackedOutput->getCacheExpiry(),
 			'links' => count($links->findEmbeddedQueryIdListBySubject($historicalSubject)),
 		]));
 	check($links->findEmbeddedQueryIdListBySubject($historicalSubject) !== [],
