@@ -127,6 +127,7 @@ class PrewarmMinervaFileCache extends Maintenance {
 
 		$count = 0;
 		$stats = [];
+		$bypassReasons = [];
 		$missingHeaders = 0;
 		$lastId = $afterId;
 		$finished = false;
@@ -208,6 +209,10 @@ class PrewarmMinervaFileCache extends Maintenance {
 						}
 					}
 					$stats[$state] = ($stats[$state] ?? 0) + 1;
+					if (!$dryRun && $state === 'BYPASS') {
+						$reason = Prewarm::bypassReason(200, $header);
+						$bypassReasons[$reason] = ($bypassReasons[$reason] ?? 0) + 1;
+					}
 					$count++;
 					$lastId = $id;
 					if ($checkpoint !== null) {
@@ -215,11 +220,11 @@ class PrewarmMinervaFileCache extends Maintenance {
 					}
 					if ($count % 25 === 0) {
 						$this->output("Processed $count pages; last page_id=$lastId; " .
-							json_encode($stats, JSON_UNESCAPED_SLASHES) . "\n");
+							json_encode($stats + ['bypassReasons' => $bypassReasons], JSON_UNESCAPED_SLASHES) . "\n");
 					}
 					if ($limit > 0 && $count >= $limit) {
 						$this->output("Stopped at --limit=$limit; last page_id=$lastId.\n");
-						$this->output(json_encode($stats) . "\n");
+						$this->output(json_encode($stats + ['bypassReasons' => $bypassReasons]) . "\n");
 						return true;
 					}
 					if (!$dryRun) {
@@ -231,7 +236,7 @@ class PrewarmMinervaFileCache extends Maintenance {
 					break;
 				}
 			}
-			$this->output("Completed $count pages; " . json_encode($stats) . "\n");
+			$this->output("Completed $count pages; " . json_encode($stats + ['bypassReasons' => $bypassReasons]) . "\n");
 			return true;
 		} finally {
 			if ($finished && $checkpoint !== null) {
