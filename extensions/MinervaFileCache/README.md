@@ -190,6 +190,14 @@ chaque catégorie et pour les modes direct/récursif. Si les appartenances
 changent pendant un parcours interrompu, utiliser `--reset --resume` pour
 reprendre depuis le début et inclure les nouvelles pages anciennes.
 
+Le délai par défaut de 6 secondes évite qu'un préchauffage continu non exempté
+dépasse, à lui seul, la limite individuelle courante de CrawlerBurstProtection
+(80 consultations anonymes par 300 secondes). D'autres requêtes partageant
+la même adresse IP peuvent néanmoins déclencher une limitation. Un HTTP 429
+interrompt le parcours ; si le serveur fournit un délai `Retry-After` en
+secondes, celui-ci figure dans le message d'arrêt. Attendre la fin du
+blocage avant de reprendre avec `--after-id` ou `--resume`.
+
 Le préchauffage ne remplace pas les invalidations ni les contrôles habituels
 de MinervaFileCache. Les très grandes arborescences peuvent occasionner des
 requêtes de base de données coûteuses : commencer par `--limit=20`.
@@ -197,7 +205,7 @@ requêtes de base de données coûteuses : commencer par `--limit=20`.
 Options principales :
 
 - `--limit=N` : s'arrêter après N pages ; 0 = aucune limite (défaut).
-- `--delay-ms=N` : délai entre deux requêtes (1000 ms par défaut, minimum 250).
+- `--delay-ms=N` : délai entre deux requêtes (6000 ms par défaut, minimum 250).
 - `--timeout=N` : délai maximal HTTP en secondes (30 par défaut).
 - `--retries=N` : jusqu'à N tentatives supplémentaires (0 à 3, **0 par défaut**) uniquement pour les erreurs transitoires `HTTP_429`, `HTTP_500`, `HTTP_502`, `HTTP_503`, `HTTP_504` et les erreurs réseau. Respecte `Retry-After` (secondes ou date HTTP) jusqu'à 120 secondes ; au-delà, s'arrête pour permettre une reprise manuelle sans insister prématurément.
 - `--device=android|iphone` : User-Agent à préchauffer (Android par défaut).
