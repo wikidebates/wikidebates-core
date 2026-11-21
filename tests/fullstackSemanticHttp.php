@@ -240,6 +240,44 @@ check($store->getPropertyValues($templateArgEnSubject, new Property('_ASK')) !==
 check($store->getPropertyValues($templateDebateSubject, new Property('_ASK')) === [],
 	'Actual transcluded French Debat-only wrapper keeps ordinary cache eligibility');
 
+// Recreate the production page-1220 state on disposable data: a native
+// Argument saved while semantic tracking is OFF, with no _ASK profiles.
+// Its mobile HTML will be warmed in the untracked HTTP configuration,
+// then an external parent edit will occur before turning tracking ON.
+$unprofiledArgumentName = 'WD HTTP unprofiled argument';
+$unprofiledParentName = 'WD HTTP unprofiled parent';
+$unprofiledAnchorName = 'WD HTTP unprofiled anchor';
+$unprofiledDebateName = 'WD HTTP cacheable debate';
+fsSave($unprofiledParentName, 'Initially no semantic relation');
+fsSave($unprofiledAnchorName, 'Target of a parent query');
+fsSave($unprofiledArgumentName, 'Initial argument stub');
+fsSave($unprofiledDebateName,
+	'{{#debate:render|lang=fr|topic=Unrelated cacheable debate}}');
+fsFlush();
+check($services->getMainConfig()->get('WikidebatesSemanticCacheTracking') === true,
+	'Disposable HTTP writer starts with tracking enabled');
+$GLOBALS['wgWikidebatesSemanticCacheTracking'] = false;
+try {
+	check($services->getMainConfig()->get('WikidebatesSemanticCacheTracking') === false,
+		'Disposable writer can emulate a legacy untracked Argument revision');
+	fsSave($unprofiledArgumentName,
+		"{{#argument:render|lang=fr|summary=WD_HTTP_UNPROFILED_SUMMARY}}\n" .
+		"== Parent debates ==\n" .
+		"<wd-http-parents>$unprofiledAnchorName</wd-http-parents>");
+	fsFlush();
+} finally {
+	$GLOBALS['wgWikidebatesSemanticCacheTracking'] = true;
+}
+$unprofiledTitle = Title::newFromText($unprofiledArgumentName);
+$unprofiledSubject = SemanticWikiPage::newFromTitle($unprofiledTitle);
+$unprofiledDebateSubject = SemanticWikiPage::newFromTitle(
+	Title::newFromText($unprofiledDebateName));
+$store->clear();
+check($store->getPropertyValues($unprofiledSubject, new Property('_ASK')) === [],
+	'Untracked native Argument has no _ASK, reproducing the production page-1220 state');
+check($store->getPropertyValues($unprofiledDebateSubject, new Property('_ASK')) === [],
+	'Unrelated native Debate needs no parent-query profile');
+
 $marker = $temporary . '/.semantic-http-disposable';
 file_put_contents($marker, "Isolated CI semantic HTTP lab\n");
 foreach (['semantic-http-full-pages', 'semantic-http-fragments', 'semantic-http-minerva-files'] as $dir) {
@@ -795,6 +833,126 @@ try {
 		($orRemoved['fragment']['html'] ?? ''));
 	fsFlush();
 
+	// Exact transition observed on production page 1220, but on a completely
+	// synthetic lab page: a native Argument with no _ASK can have an
+	// already-warm Minerva HIT; an edit to another page then changes its
+	// semantic parent query without editing the Argument revision.
+	$unprofiledUrl = ['title' => str_replace(' ', '_', $unprofiledArgumentName)];
+	$unprofiledHeaders = [$mobileUA, 'X-WD-Semantic-Lab-File-Cache-Probe: 1'];
+	$unprofiledToggle = $temporary . '/semantic-http-disable-tracking';
+	touch($unprofiledToggle);
+	try {
+		$unprofiledCold = $http('index.php', $unprofiledUrl, $unprofiledHeaders);
+		$unprofiledWarm = $http('index.php', $unprofiledUrl, $unprofiledHeaders);
+		check($unprofiledCold['status'] === 200 && $unprofiledWarm['status'] === 200 &&
+			str_contains($unprofiledCold['body'], 'WD_HTTP_MATCHES=0') &&
+			str_contains($unprofiledWarm['body'], 'WD_HTTP_MATCHES=0') &&
+			str_contains($unprofiledWarm['body'], 'WD_HTTP_UNPROFILED_SUMMARY'),
+			'Real untracked Argument starts with an empty parent query and genuine mobile HTML');
+		check(str_starts_with($unprofiledWarm['headers']['x-minerva-file-cache'][0] ?? '', 'HIT'),
+			'Unprofiled native Argument has a genuine warm Minerva HIT with tracking off');
+
+		$writer = $services->getConnectionProvider()->getPrimaryDatabase();
+		$unprofiledPageId = $unprofiledTitle->getArticleID();
+		$unprofiledBefore = $writer->newSelectQueryBuilder()
+			->select(['page_latest', 'page_touched'])
+			->from('page')
+			->where(['page_id' => $unprofiledPageId])
+			->caller(__FILE__)
+			->fetchRow();
+		check($unprofiledBefore !== false, 'Unprofiled Argument row exists');
+
+		// The real Argument renderer uses a parent property, and the
+		// supplementary diagnostic marker makes the 0-to-1 transition
+		// independently observable in the full HTML.
+		fsSave($unprofiledParentName,
+			'{{#set:WD HTTP Parent=' . $unprofiledAnchorName .
+			'|' . $proProperty . '=' . $unprofiledArgumentName . '}}');
+		fsFlush(['wikidebatesSemanticCachePurge']);
+		$store->clear();
+		$direct = (new \SMW\Scribunto\LibraryFactory($store))->newQueryResultFrom([
+			'[[WD HTTP Parent::' . $unprofiledAnchorName . ']]',
+			'limit=200', 'link=none'
+		]);
+		check(count($direct->getResults()) === 1,
+			'Direct SMW parent query sees external 0-to-1 relation');
+
+		$unprofiledAfter = $writer->newSelectQueryBuilder()
+			->select(['page_latest', 'page_touched'])
+			->from('page')
+			->where(['page_id' => $unprofiledPageId])
+			->caller(__FILE__)
+			->fetchRow();
+		check($unprofiledAfter !== false &&
+			$unprofiledBefore->page_latest === $unprofiledAfter->page_latest &&
+			$unprofiledBefore->page_touched === $unprofiledAfter->page_touched,
+			'External SMW edit does not update the cached Argument revision or page_touched');
+		check($store->getPropertyValues($unprofiledSubject, new Property('_ASK')) === [],
+			'Query owner still has no _ASK when its unrelated parent changes');
+
+		$unprofiledStale = $http('index.php', $unprofiledUrl, $unprofiledHeaders);
+		check($unprofiledStale['status'] === 200 &&
+			str_starts_with($unprofiledStale['headers']['x-minerva-file-cache'][0] ?? '', 'HIT') &&
+			str_contains($unprofiledStale['body'], 'WD_HTTP_MATCHES=0') &&
+			!str_contains($unprofiledStale['body'], 'WD_HTTP_MATCHES=1'),
+			'Expected untracked control reproduces an actual stale Minerva HIT on an unprofiled Argument');
+	} finally {
+		if (is_file($unprofiledToggle)) {
+			unlink($unprofiledToggle);
+		}
+	}
+	// Enable the opt-in safeguards WITHOUT invalidating or deleting the old
+	// untracked Minerva file. Its cached HTML is still present on disk.
+	$unprofiledProtected = $http('index.php', $unprofiledUrl, $unprofiledHeaders);
+	$protectedState = $unprofiledProtected['headers']['x-minerva-file-cache'][0] ?? '';
+	check($unprofiledProtected['status'] === 200 &&
+		str_starts_with($protectedState, 'BYPASS; reason=extension-veto') &&
+		str_contains($unprofiledProtected['body'], 'WD_HTTP_MATCHES=1') &&
+		!str_contains($unprofiledProtected['body'], 'WD_HTTP_MATCHES=0'),
+		'Tracking veto rejects the old unprofiled mobile HIT and renders the new relation: ' .
+		$protectedState);
+	$expectedParentText = str_contains($unprofiledProtected['body'], $unprofiledParentName) ||
+		str_contains($unprofiledProtected['body'], str_replace(' ', '_', $unprofiledParentName));
+	check($expectedParentText,
+		'Native Argument parent section displays the newly related page before any targeted purge');
+	$unprofiledProtectedAgain = $http('index.php', $unprofiledUrl, $unprofiledHeaders);
+	check($unprofiledProtectedAgain['status'] === 200 &&
+		str_starts_with($unprofiledProtectedAgain['headers']['x-minerva-file-cache'][0] ?? '',
+			'BYPASS; reason=extension-veto') &&
+		str_contains($unprofiledProtectedAgain['body'], 'WD_HTTP_MATCHES=1'),
+		'Repeated tracked Argument requests never reuse the stale unprofiled HTML file');
+	$unprofiledFragment = $fragment($unprofiledArgumentName);
+	check(str_contains($unprofiledFragment['fragment']['html'], 'WD_HTTP_UNPROFILED_SUMMARY') &&
+		!str_contains($unprofiledFragment['fragment']['html'], 'WD_HTTP_MATCHES=0'),
+		'Independent Argument reading API does not expose the former parent count');
+	$store->clear();
+	$profilesAfterTrackedRead = count($store->getPropertyValues(
+		$unprofiledSubject, new Property('_ASK')));
+	fsFlush();
+
+	// The guard must remain selective: a normal Debate with no semantic
+	// parent queries should still produce a genuine Minerva MISS then HIT
+	// with tracking enabled, rather than a global cache shutdown.
+	$pureDebateUrl = ['title' => str_replace(' ', '_', $unprofiledDebateName)];
+	$debateMobileFirst = $http('index.php', $pureDebateUrl, $unprofiledHeaders);
+	$debateMobileSecond = $http('index.php', $pureDebateUrl, $unprofiledHeaders);
+	check($debateMobileFirst['status'] === 200 && $debateMobileSecond['status'] === 200 &&
+		str_starts_with($debateMobileFirst['headers']['x-minerva-file-cache'][0] ?? '', 'MISS') &&
+		str_starts_with($debateMobileSecond['headers']['x-minerva-file-cache'][0] ?? '', 'HIT'),
+		'Debate-only mobile HTML remains genuinely file-cacheable with semantic tracking enabled');
+
+	$unprofiledArgumentObservation = [
+		'initial_ask_profiles' => 0,
+		'old_mobile_file_state' => $unprofiledWarm['headers']['x-minerva-file-cache'][0] ?? '',
+		'after_external_edit_untracked_file_state' => $unprofiledStale['headers']['x-minerva-file-cache'][0] ?? '',
+		'external_edit_changed_argument_page_touched' => false,
+		'protected_mobile_file_state' => $protectedState,
+		'protected_full_html_has_new_parent' => true,
+		'ask_profiles_after_protected_read' => $profilesAfterTrackedRead,
+		'debate_mobile_first_state' => $debateMobileFirst['headers']['x-minerva-file-cache'][0] ?? '',
+		'debate_mobile_second_state' => $debateMobileSecond['headers']['x-minerva-file-cache'][0] ?? '',
+	];
+
 	// Content authorization must remain ahead of any prepared cache.
 	touch($temporary . '/semantic-http-deny-read');
 	try {
@@ -991,6 +1149,7 @@ try {
 		'transport' => 'real loopback HTTP, three PHP CLI server workers',
 		'corpus_debate' => $corpusMeasurements,
 		'untracked_minerva_semantic_baseline' => $untrackedMinervaObservation,
+		'unprofiled_native_argument_migration' => $unprofiledArgumentObservation,
 		'benchmark' => [
 			'samples_each' => count($hitSamples),
 			'fragment_hit_median_ms' => $percentile($hitSamples, .5),
