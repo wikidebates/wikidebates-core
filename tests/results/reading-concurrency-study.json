@@ -1,0 +1,428 @@
+{
+	"baseline_commit": "bc8a0af510fc3a6707946b105903908d29f4bd48",
+	"baseline_tree": "51f9f24c2d67e4867c540929ca2250760820c091",
+	"scope": "Synthetic isolated tests, not a production or phone benchmark. Storage order: before, after, after, before. Scheduler: eight alternating pairs.",
+	"storage": {
+		"before": {
+			"runs": [
+				{
+					"php": "8.4.24",
+					"source_sha256": "df8573e3c59fa18bf536bcd78ffe000fdfa9685969f07d8a4db0a4ce5b098701",
+					"body_bytes": 612000,
+					"iterations_per_worker": 80,
+					"samples": [
+						{
+							"workers": 1,
+							"wall_ms": 69.238303,
+							"worker_ms": [
+								66.694467
+							]
+						},
+						{
+							"workers": 1,
+							"wall_ms": 64.719066,
+							"worker_ms": [
+								62.445507
+							]
+						},
+						{
+							"workers": 1,
+							"wall_ms": 73.693103,
+							"worker_ms": [
+								71.774523
+							]
+						},
+						{
+							"workers": 4,
+							"wall_ms": 272.643264,
+							"worker_ms": [
+								270.886022,
+								157.874851,
+								266.158847,
+								248.228
+							]
+						},
+						{
+							"workers": 4,
+							"wall_ms": 272.334997,
+							"worker_ms": [
+								249.067042,
+								169.557456,
+								270.374288,
+								73.450793
+							]
+						},
+						{
+							"workers": 4,
+							"wall_ms": 278.201164,
+							"worker_ms": [
+								260.760915,
+								88.737789,
+								266.623676,
+								276.456124
+							]
+						}
+					]
+				},
+				{
+					"php": "8.4.24",
+					"source_sha256": "df8573e3c59fa18bf536bcd78ffe000fdfa9685969f07d8a4db0a4ce5b098701",
+					"body_bytes": 612000,
+					"iterations_per_worker": 80,
+					"samples": [
+						{
+							"workers": 1,
+							"wall_ms": 66.075075,
+							"worker_ms": [
+								63.961843
+							]
+						},
+						{
+							"workers": 1,
+							"wall_ms": 64.729227,
+							"worker_ms": [
+								62.910552
+							]
+						},
+						{
+							"workers": 1,
+							"wall_ms": 64.9308,
+							"worker_ms": [
+								63.018635
+							]
+						},
+						{
+							"workers": 4,
+							"wall_ms": 279.197793,
+							"worker_ms": [
+								225.770712,
+								166.80138,
+								253.356913,
+								276.725632
+							]
+						},
+						{
+							"workers": 4,
+							"wall_ms": 276.500955,
+							"worker_ms": [
+								212.509472,
+								274.569136,
+								100.424671,
+								263.565429
+							]
+						},
+						{
+							"workers": 4,
+							"wall_ms": 267.315687,
+							"worker_ms": [
+								146.222504,
+								200.185671,
+								228.973322,
+								265.575972
+							]
+						}
+					]
+				}
+			],
+			"median_wall_ms": {
+				"1": 65.5029375,
+				"4": 274.5721095
+			}
+		},
+		"after": {
+			"runs": [
+				{
+					"php": "8.4.24",
+					"source_sha256": "ad67aca9248c05adb4f87a7d0f604da3ae70d7770a4bfeceb7cde0074db5ad80",
+					"body_bytes": 612000,
+					"iterations_per_worker": 80,
+					"samples": [
+						{
+							"workers": 1,
+							"wall_ms": 65.993613,
+							"worker_ms": [
+								64.242008
+							]
+						},
+						{
+							"workers": 1,
+							"wall_ms": 71.261426,
+							"worker_ms": [
+								68.892012
+							]
+						},
+						{
+							"workers": 1,
+							"wall_ms": 70.350707,
+							"worker_ms": [
+								68.453052
+							]
+						},
+						{
+							"workers": 4,
+							"wall_ms": 94.16374,
+							"worker_ms": [
+								65.48632,
+								92.178645,
+								62.051435,
+								92.329137
+							]
+						},
+						{
+							"workers": 4,
+							"wall_ms": 71.603901,
+							"worker_ms": [
+								69.570121,
+								60.796076,
+								64.584684,
+								63.97674
+							]
+						},
+						{
+							"workers": 4,
+							"wall_ms": 70.171707,
+							"worker_ms": [
+								63.992183,
+								62.951978,
+								68.02621,
+								63.356226
+							]
+						}
+					]
+				},
+				{
+					"php": "8.4.24",
+					"source_sha256": "ad67aca9248c05adb4f87a7d0f604da3ae70d7770a4bfeceb7cde0074db5ad80",
+					"body_bytes": 612000,
+					"iterations_per_worker": 80,
+					"samples": [
+						{
+							"workers": 1,
+							"wall_ms": 70.879675,
+							"worker_ms": [
+								69.033785
+							]
+						},
+						{
+							"workers": 1,
+							"wall_ms": 71.349068,
+							"worker_ms": [
+								69.547829
+							]
+						},
+						{
+							"workers": 1,
+							"wall_ms": 68.190233,
+							"worker_ms": [
+								65.946975
+							]
+						},
+						{
+							"workers": 4,
+							"wall_ms": 76.4549,
+							"worker_ms": [
+								63.424552,
+								70.995396,
+								60.90942,
+								72.14863
+							]
+						},
+						{
+							"workers": 4,
+							"wall_ms": 105.750257,
+							"worker_ms": [
+								100.661481,
+								72.3419,
+								103.893651,
+								68.102837
+							]
+						},
+						{
+							"workers": 4,
+							"wall_ms": 109.99906,
+							"worker_ms": [
+								108.090897,
+								84.174379,
+								86.927427,
+								107.906896
+							]
+						}
+					]
+				}
+			],
+			"median_wall_ms": {
+				"1": 70.61519100000001,
+				"4": 85.30932
+			}
+		}
+	},
+	"scheduling": {
+		"node": "v22.16.0",
+		"source_sha256": {
+			"before": "90d12613a1913b8a3c743ebba76c5722f88056bf31421bdc729d66b0c72d00c5",
+			"after": "2fe69262af8d010e94a8a1eda2296b98ef175d91c2ce9dc1a068a932d28d1083"
+		},
+		"samples": {
+			"before": [
+				{
+					"click_ms": 116.96747700000003,
+					"sent": [
+						"Next neighbor",
+						"Previous neighbor",
+						"Clicked argument"
+					],
+					"server_slots": 2,
+					"service_ms": 60
+				},
+				{
+					"click_ms": 116.98313400000006,
+					"sent": [
+						"Next neighbor",
+						"Previous neighbor",
+						"Clicked argument"
+					],
+					"server_slots": 2,
+					"service_ms": 60
+				},
+				{
+					"click_ms": 115.82141800000011,
+					"sent": [
+						"Next neighbor",
+						"Previous neighbor",
+						"Clicked argument"
+					],
+					"server_slots": 2,
+					"service_ms": 60
+				},
+				{
+					"click_ms": 113.98401799999988,
+					"sent": [
+						"Next neighbor",
+						"Previous neighbor",
+						"Clicked argument"
+					],
+					"server_slots": 2,
+					"service_ms": 60
+				},
+				{
+					"click_ms": 113.93400300000008,
+					"sent": [
+						"Next neighbor",
+						"Previous neighbor",
+						"Clicked argument"
+					],
+					"server_slots": 2,
+					"service_ms": 60
+				},
+				{
+					"click_ms": 112.79251900000008,
+					"sent": [
+						"Next neighbor",
+						"Previous neighbor",
+						"Clicked argument"
+					],
+					"server_slots": 2,
+					"service_ms": 60
+				},
+				{
+					"click_ms": 116.73276099999998,
+					"sent": [
+						"Next neighbor",
+						"Previous neighbor",
+						"Clicked argument"
+					],
+					"server_slots": 2,
+					"service_ms": 60
+				},
+				{
+					"click_ms": 116.85939899999994,
+					"sent": [
+						"Next neighbor",
+						"Previous neighbor",
+						"Clicked argument"
+					],
+					"server_slots": 2,
+					"service_ms": 60
+				}
+			],
+			"after": [
+				{
+					"click_ms": 61.28412800000001,
+					"sent": [
+						"Next neighbor",
+						"Clicked argument"
+					],
+					"server_slots": 2,
+					"service_ms": 60
+				},
+				{
+					"click_ms": 61.090033999999946,
+					"sent": [
+						"Next neighbor",
+						"Clicked argument"
+					],
+					"server_slots": 2,
+					"service_ms": 60
+				},
+				{
+					"click_ms": 60.640297000000146,
+					"sent": [
+						"Next neighbor",
+						"Clicked argument"
+					],
+					"server_slots": 2,
+					"service_ms": 60
+				},
+				{
+					"click_ms": 60.88927100000001,
+					"sent": [
+						"Next neighbor",
+						"Clicked argument"
+					],
+					"server_slots": 2,
+					"service_ms": 60
+				},
+				{
+					"click_ms": 61.7762560000001,
+					"sent": [
+						"Next neighbor",
+						"Clicked argument"
+					],
+					"server_slots": 2,
+					"service_ms": 60
+				},
+				{
+					"click_ms": 60.82673899999986,
+					"sent": [
+						"Next neighbor",
+						"Clicked argument"
+					],
+					"server_slots": 2,
+					"service_ms": 60
+				},
+				{
+					"click_ms": 61.65198499999997,
+					"sent": [
+						"Next neighbor",
+						"Clicked argument"
+					],
+					"server_slots": 2,
+					"service_ms": 60
+				},
+				{
+					"click_ms": 61.62087100000008,
+					"sent": [
+						"Next neighbor",
+						"Clicked argument"
+					],
+					"server_slots": 2,
+					"service_ms": 60
+				}
+			]
+		},
+		"median_click_ms": {
+			"before": 116.27708950000005,
+			"after": 61.18708099999998
+		}
+	}
+}

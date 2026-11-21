@@ -718,3 +718,32 @@ for ( const skin of [ 'minerva', 'vector' ] ) {
 		assert.equal( await page.getAttribute( '#wk-reading-content', 'aria-busy' ), null );
 	} );
 }
+
+test( 'a real mobile opening promotes its queued neighbor without waiting for another prefetch', async ( t ) => {
+	const f = await fixture( t );
+	await f.open();
+	await f.page.evaluate( () => {
+		window.schedulerCalls = [];
+		Wikidebates.wkGetApi().get = ( params ) => {
+			const reply = jQuery.Deferred();
+			window.schedulerCalls.push( { page: params.page, reply } );
+			return reply.promise();
+		};
+		const navigation = Wikidebates.minervaReading.createNavigation( {
+			root: document.getElementById( 'wk-reading-mode' ),
+			siblings: document.createElement( 'div' )
+		} );
+		navigation.prefetchPage( 'Slow neighbor' );
+		navigation.prefetchPage( 'Argument 2' );
+		navigation.prefetchPage( 'Obsolete neighbor' );
+	} );
+	assert.deepEqual( await f.page.evaluate( () => schedulerCalls.map( ( call ) => call.page ) ), [ 'Slow neighbor' ] );
+	await f.beginOpen( 'Promoted argument' );
+	assert.deepEqual( await f.page.evaluate( () => schedulerCalls.map( ( call ) => call.page ) ), [ 'Slow neighbor', 'Argument 2' ] );
+	await f.page.evaluate( () => schedulerCalls[ 1 ].reply.resolve( { parse: { text: argumentHTML } } ) );
+	await f.page.waitForFunction( () => document.querySelector( '.wk-reading-full-title' ).textContent.includes( 'Promoted argument' ) );
+	assert.equal( await f.page.locator( '#body-line' ).textContent(), 'Contenu de l\u2019argument' );
+	await f.page.evaluate( () => schedulerCalls[ 0 ].reply.resolve( { parse: { text: '<p>Unused neighbor</p>' } } ) );
+	await f.settle();
+	assert.deepEqual( await f.page.evaluate( () => schedulerCalls.map( ( call ) => call.page ) ), [ 'Slow neighbor', 'Argument 2' ], 'obsolete queued work was never sent' );
+} );

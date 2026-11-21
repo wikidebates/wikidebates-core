@@ -39,15 +39,25 @@ class FragmentStore {
 	/** @return array{generation:string,entry:?array} */
 	public function read(string $page, string $variant, array $identity): array {
 		$dir = $this->pageDirectory($page);
-		$lock = $this->lock($dir, 'page.lock', LOCK_EX);
+		$lock = $this->lock($dir, 'page.lock', LOCK_SH);
 		if (!$lock) { throw new \RuntimeException('Cannot lock page cache'); }
 		try {
 			$generation = @file_get_contents($dir . '/generation');
 			if (!$generation) {
-				$generation = bin2hex(random_bytes(16));
-				if (@file_put_contents($dir . '/generation', $generation) === false) {
-					throw new \RuntimeException('Cannot initialize cache generation');
+				// Never upgrade a shared lock in place: concurrent initializers must
+				// release it, acquire the writer lock and re-read the generation.
+				fclose($lock);
+				$lock = $this->lock($dir, 'page.lock', LOCK_EX);
+				if (!$lock) { throw new \RuntimeException('Cannot initialize page cache'); }
+				$generation = @file_get_contents($dir . '/generation');
+				if (!$generation) {
+					$generation = bin2hex(random_bytes(16));
+					if (@file_put_contents($dir . '/generation', $generation) !== strlen($generation)) {
+						throw new \RuntimeException('Cannot initialize cache generation');
+					}
 				}
+				// Initialization is rare; keep this exclusive snapshot through the
+				// read. All subsequent reads can share the page lock.
 			}
 			$path = $dir . '/' . hash('sha256', $variant) . '.cache';
 			$entry = $this->decode($path);
@@ -58,7 +68,7 @@ class FragmentStore {
 				$entry = null;
 			}
 			return ['generation' => $generation, 'entry' => $entry];
-		} finally { fclose($lock); }
+		} finally { if (is_resource($lock)) { fclose($lock); } }
 	}
 
 	private function decode(string $path): ?array {
@@ -77,26 +87,31 @@ class FragmentStore {
 
 	public function publish(string $page, string $variant, array $identity, string $generation,
 		string $body, array $metadata, int $expires): bool {
-		if (strlen($body) > $this->maxBytes) { return false; }
+		$created = time();
+		if (strlen($body) > $this->maxBytes || $expires <= $created) { return false; }
+		$entry = ['generation' => $generation, 'identity' => $identity, 'created' => $created,
+			'expires' => min($created + $this->ttl, $expires), 'body' => $body, 'metadata' => $metadata];
+		// Serialization, compression and the private temporary write must not
+		// block readers. Recheck generation and expiry under the publication lock.
+		$json = json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+		if ($json === false || strlen($json) > $this->maxBytes * 2) { return false; }
+		$payload = gzencode($json, 3);
+		if ($payload === false) { return false; }
 		$dir = $this->pageDirectory($page);
-		$lock = $this->lock($dir, 'page.lock', LOCK_EX);
-		if (!$lock) { return false; }
 		$temp = null;
+		$lock = false;
 		try {
-			if (@file_get_contents($dir . '/generation') !== $generation) { return false; }
-			$entry = ['generation' => $generation, 'identity' => $identity, 'created' => time(),
-				'expires' => min(time() + $this->ttl, $expires), 'body' => $body, 'metadata' => $metadata];
-			$json = json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-			if ($json === false || strlen($json) > $this->maxBytes * 2) { return false; }
-			$payload = gzencode($json, 3);
 			$temp = @tempnam($dir, '.write-');
 			if (!$temp || dirname($temp) !== $dir || @file_put_contents($temp, $payload) !== strlen($payload)) { return false; }
 			if (!@chmod($temp, 0600)) { return false; }
-			@touch($dir . '/known');
-			return @rename($temp, $dir . '/' . hash('sha256', $variant) . '.cache');
+			$lock = $this->lock($dir, 'page.lock', LOCK_EX);
+			if (!$lock || @file_get_contents($dir . '/generation') !== $generation || $entry['expires'] <= time()) { return false; }
+			$published = @rename($temp, $dir . '/' . hash('sha256', $variant) . '.cache');
+			if ($published) { @touch($dir . '/known'); }
+			return $published;
 		} finally {
 			if ($temp && is_file($temp)) { @unlink($temp); }
-			fclose($lock);
+			if (is_resource($lock)) { fclose($lock); }
 		}
 	}
 

@@ -875,6 +875,7 @@
 
 		var parseParams = wkReadingBuildParseRequestParams( argPage );
 		var cacheKey = WK.wkPageParseCache.key( parseParams );
+		WK.wkCancelPagePrefetch( [ cacheKey ] );
 		var retryChain = wkReadingHistoryCloneChain( WK_READING.state.chain );
 		function retry() {
 			if ( WK_READING.state._wkOpenSeq !== openSeq ||
@@ -985,6 +986,7 @@
 
 		WK_READING.state._wkOpenSeq = ( WK_READING.state._wkOpenSeq || 0 ) + 1;
 		WK_READING.state._wkCurrentPage = '';
+		WK.wkCancelPagePrefetch();
 		wkReadingSetActive( false );
 
 		try {
