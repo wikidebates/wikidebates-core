@@ -39,7 +39,8 @@ class FragmentService {
 			(int)$config->get('WikidebatesReadingCacheTTL'), 4194304);
 	}
 
-	public static function read(IContextSource $context, string $pageName, string $skin, ?array $prepared = null): array {
+	public static function read(IContextSource $context, string $pageName, string $skin, ?array $prepared = null,
+		?array &$preparation = null): array {
 		$services = MediaWikiServices::getInstance();
 		$title = Title::newFromText($pageName);
 		if (!$title || !$title->canExist()) { throw new \InvalidArgumentException('Invalid page title'); }
@@ -90,6 +91,7 @@ class FragmentService {
 				if ($prepared && ($prepared['_generation'] !== $snapshot['generation'] ||
 					$prepared['revid'] !== (int)$identity['revision'] || $prepared['_touched'] !== $identity['touched'])) { return $prepared; }
 				if ($snapshot['entry']) {
+					$preparation = ['status' => 'already-valid', 'source' => 'fragment-cache'];
 					return $snapshot['entry']['metadata'] + ['html' => $snapshot['entry']['body'], 'source' => 'fragment-cache'];
 				}
 				$fill = $store->startFill($title->getPrefixedDBkey());
@@ -98,10 +100,14 @@ class FragmentService {
 					$snapshot = $store->read($title->getPrefixedDBkey(), $variant, $identity);
 					if ($prepared && $prepared['_generation'] !== $snapshot['generation']) { fclose($fill); return $prepared; }
 					if ($snapshot['entry']) {
+						$preparation = ['status' => 'already-valid', 'source' => 'fragment-cache'];
 						fclose($fill);
 						return $snapshot['entry']['metadata'] + ['html' => $snapshot['entry']['body'], 'source' => 'fragment-cache'];
 					}
-				} elseif (ReadingHooks::$warming) { return ['source' => 'busy']; }
+				} elseif (ReadingHooks::$warming) {
+					$preparation = ['status' => 'busy', 'source' => null];
+					return ['source' => 'busy'];
+				}
 			} catch (\Throwable $e) {
 				self::log($e);
 			}
@@ -117,12 +123,17 @@ class FragmentService {
 				if ($result) { unset($result['_generation'], $result['_touched']); }
 				return $result ?? self::render($context, $title->getPrefixedText(), $eligible ? 'vector' : $skin);
 			});
-			if ($fill && $result['_expires'] > time() && $result['html'] !== '') {
+			$published = false;
+			if ($fill && ($result['_expires'] ?? 0) > time() && ($result['html'] ?? '') !== '') {
 				try {
-					$store->publish($title->getPrefixedDBkey(), $variant, $identity, $snapshot['generation'],
+					$published = $store->publish($title->getPrefixedDBkey(), $variant, $identity, $snapshot['generation'],
 						$result['html'], array_diff_key($result, array_flip(['html', 'source', '_expires'])), $result['_expires']);
 				} catch (\Throwable $e) { self::log($e); }
 			}
+			$preparation = [
+				'status' => $published ? 'created' : (($result['_expires'] ?? 0) <= time() || ($result['html'] ?? '') === '' ? 'not-cacheable' : 'not-stored'),
+				'source' => $result['source'] ?? null
+			];
 			return $result;
 		} finally { if (is_resource($fill)) { fclose($fill); } }
 	}
