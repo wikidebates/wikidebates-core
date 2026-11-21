@@ -209,10 +209,12 @@ class Store {
 	/**
 	 * Read-only maintenance diagnostics. This scans metadata only, not compressed HTML.
 	 * Never invoke it on a visitor request.
-	 * @return array{pages:int,files:int,bytes:int,maxVariantsPerPage:int}
+	 * @return array<string,mixed>
 	 */
 	public function statistics(): array {
-		$stats = ['pages' => 0, 'files' => 0, 'bytes' => 0, 'maxVariantsPerPage' => 0];
+		$stats = ['pages' => 0, 'files' => 0, 'bytes' => 0,
+			'maxVariantsPerPage' => 0, 'pagesWithMultipleVariants' => 0,
+			'variantDistribution' => ['zero' => 0, 'one' => 0, 'twoToFive' => 0, 'sixToTen' => 0, 'overTen' => 0]];
 		if (!is_dir($this->root)) { return $stats; }
 		$prefixes = new \FilesystemIterator($this->root, \FilesystemIterator::SKIP_DOTS);
 		foreach ($prefixes as $prefix) {
@@ -228,6 +230,10 @@ class Store {
 					$stats['bytes'] += $file->getSize();
 				}
 				$stats['maxVariantsPerPage'] = max($stats['maxVariantsPerPage'], $variants);
+				if ($variants > 1) { $stats['pagesWithMultipleVariants']++; }
+				$group = $variants === 0 ? 'zero' : ($variants === 1 ? 'one' :
+					($variants <= 5 ? 'twoToFive' : ($variants <= 10 ? 'sixToTen' : 'overTen')));
+				$stats['variantDistribution'][$group]++;
 			}
 		}
 		return $stats;
