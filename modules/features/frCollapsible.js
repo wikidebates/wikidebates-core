@@ -9,14 +9,14 @@
 	var WK = W.Wikidebates || ( W.Wikidebates = {} );
 
 	function bindFrCollapsible( $root ) {
-		$root.find( '.fr-collapsible' ).each( function () {
+		$root.find( '.fr-collapsible' ).addBack( '.fr-collapsible' ).each( function () {
 			var $box = $( this );
 			if ( $box.data( 'fr-collapsible-bound' ) ) return;
-			$box.data( 'fr-collapsible-bound', true );
 
 			var $toggle = $box.children( '.fr-collapsible-toggle' ).first();
 			var $content = $box.children( '.fr-collapsible-content' ).first();
 			if ( !$toggle.length || !$content.length ) return;
+			$box.data( 'fr-collapsible-bound', true );
 
 			$toggle.attr( { role: 'button', tabindex: 0 } );
 			$content.removeAttr( 'hidden' )[ 0 ].style.display = 'block';
@@ -28,7 +28,7 @@
 				$toggle.attr( 'aria-expanded', 'true' )
 					.removeClass( 'fr-collapsible-toggle-collapsed' )
 					.addClass( 'fr-collapsible-toggle-expanded' );
-				$content.attr( 'aria-hidden', 'false' );
+				$content.attr( 'aria-hidden', 'false' ).removeAttr( 'inert' );
 
 				if ( instant || reduce ) {
 					$content.stop( true, true );
@@ -62,7 +62,10 @@
 				$toggle.attr( 'aria-expanded', 'false' )
 					.removeClass( 'fr-collapsible-toggle-expanded' )
 					.addClass( 'fr-collapsible-toggle-collapsed' );
-				$content.attr( 'aria-hidden', 'true' );
+				// Move focus before making the subtree inert: hidden controls must
+				// never remain tabbable or keep keyboard focus.
+				if ( $content[ 0 ].contains( D.activeElement ) ) $toggle.trigger( 'focus' );
+				$content.attr( 'aria-hidden', 'true' ).attr( 'inert', '' );
 
 				if ( instant || reduce ) {
 					$content.stop( true, true );
@@ -91,12 +94,14 @@
 			}
 
 			$toggle.on( 'click', function ( e ) {
-				if ( $( e.target ).closest( 'a,button,input,select,textarea,label' ).length ) return;
+				var interactive = $( e.target ).closest( 'a,button,input,select,textarea,label' )[ 0 ];
+				if ( interactive && interactive !== this ) return;
 				e.preventDefault();
 				setState( $box.hasClass( 'fr-collapsed' ), false );
 			} );
 
 			$toggle.on( 'keydown', function ( e ) {
+				if ( this.matches( 'button, input[type="button"], input[type="submit"]' ) ) return;
 				if ( e.key === 'Enter' || e.key === ' ' || e.keyCode === 13 || e.keyCode === 32 ) {
 					e.preventDefault();
 					setState( $box.hasClass( 'fr-collapsed' ), false );
