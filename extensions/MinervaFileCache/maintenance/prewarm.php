@@ -16,7 +16,7 @@ class PrewarmMinervaFileCache extends Maintenance {
 		$this->addDescription('Prewarm MinervaFileCache for all non-redirect pages through anonymous mobile HTTP GETs.');
 		$this->requireExtension('MinervaFileCache');
 		$this->addOption('limit', 'Maximum pages to visit (0 = all; default 0).', false, true);
-		$this->addOption('delay-ms', 'Pause between requests in milliseconds (default 1000, minimum 250).', false, true);
+		$this->addOption('delay-ms', 'Pause between requests in milliseconds (default 6000, minimum 250).', false, true);
 		$this->addOption('timeout', 'HTTP request timeout in seconds (default 30).', false, true);
 		$this->addOption('retries', 'Extra retries for transient failures (0-3, default 0); obey Retry-After.', false, true);
 		$this->addOption('device', 'Mobile User-Agent variant: android (default) or iphone.', false, true);
@@ -32,7 +32,7 @@ class PrewarmMinervaFileCache extends Maintenance {
 	public function execute() {
 		try {
 			$limit = Prewarm::number($this->getOption('limit', 0), '--limit', 0, PHP_INT_MAX);
-			$delay = Prewarm::number($this->getOption('delay-ms', 1000), '--delay-ms', 250, 60000);
+			$delay = Prewarm::number($this->getOption('delay-ms', 6000), '--delay-ms', 250, 60000);
 			$timeout = Prewarm::number($this->getOption('timeout', 30), '--timeout', 1, 120);
 			$retries = Prewarm::number($this->getOption('retries', 0), '--retries', 0, 3);
 			$afterId = Prewarm::number($this->getOption('after-id', 0), '--after-id', 0, PHP_INT_MAX);
@@ -203,7 +203,15 @@ class PrewarmMinervaFileCache extends Maintenance {
 							(str_starts_with($state, 'HTTP_') && !in_array($state, ['HTTP_404', 'HTTP_410'], true)) ||
 							($state === 'BYPASS' && str_contains((string)$header, 'reason=storage-error')) ||
 							$missingHeaders >= 5) {
-							$this->output("Stopping at page_id=$id state=$state url=$url; last completed page_id=$lastId\n");
+							$retryHint = '';
+							if ($state === 'HTTP_429' && $retryAfter !== null) {
+								$seconds = filter_var(trim($retryAfter), FILTER_VALIDATE_INT,
+									['options' => ['min_range' => 0]]);
+								if ($seconds !== false) {
+									$retryHint = " retry-after={$seconds}s";
+								}
+							}
+							$this->output("Stopping at page_id=$id state=$state$retryHint url=$url; last completed page_id=$lastId\n");
 							$this->output("Retry with --resume, or --after-id=$lastId.\n");
 							return false;
 						}
