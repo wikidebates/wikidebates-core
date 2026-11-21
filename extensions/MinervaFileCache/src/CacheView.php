@@ -13,6 +13,7 @@ trait CacheView {
 	}
 
 	private function bypass(string $reason): bool {
+		Hooks::clearCandidateOutput();
 		$this->diagnostic('BYPASS', $reason);
 		return false;
 	}
@@ -136,6 +137,7 @@ trait CacheView {
 		// Only a MISS can produce a new cacheable rendering. On HIT this
 		// additional parser hook would add work without affecting the response.
 		$expires = 0;
+		Hooks::setCandidateOutput($context->getOutput());
 		$expiryScope = MediaWikiServices::getInstance()->getHookContainer()->scopedRegister('ParserOutputPostCacheTransform',
 			static function ($output) use (&$expires, $identity) {
 				if ($output->getCacheRevisionId() === $identity['revision'] && $output->isCacheable()) {
@@ -180,7 +182,12 @@ trait CacheView {
 				Hooks::logFailure('write', $e);
 				$this->diagnostic('BYPASS', 'storage-error');
 			} finally {
-				if (($phase & PHP_OUTPUT_HANDLER_FINAL) && is_resource($fill)) { fclose($fill); }
+				// A failed publish is not an invitation to cache this page upstream.
+				if ($phase & PHP_OUTPUT_HANDLER_FINAL) {
+					if (!headers_sent()) { $this->privateResponse(); }
+					Hooks::clearCandidateOutput();
+					if (is_resource($fill)) { fclose($fill); }
+				}
 			}
 			return $html;
 		});
