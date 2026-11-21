@@ -306,7 +306,7 @@ class Store {
 	 * Offline diagnostic only: hash HTML after masking exactly one occurrence
 	 * each of MediaWiki's request ID and backend timing in inline scripts.
 	 * Never use these hashes to select or serve a cache variant.
-	 * @return array{normalized:string,withoutScripts:string}|null
+	 * @return array{normalized:string,withoutScripts:string,regions:?array}|null
 	 */
 	private function hashWithoutVolatileMetadata(string $html): ?array {
 		$requestIds = 0;
@@ -344,6 +344,43 @@ class Store {
 		return $withoutScripts === null ? null : [
 			'normalized' => hash('sha256', $normalized),
 			'withoutScripts' => hash('sha256', $withoutScripts),
+			'regions' => $this->hashHtmlRegions($withoutScripts),
+		];
+	}
+
+	/**
+	 * Partition a scriptless HTML document into head, body, and the remaining
+	 * document shell, without exposing the sections themselves.
+	 * The body-text approximation removes tags and inline CSS; it is not an
+	 * accessibility/rendered-text check and never affects the serving cache.
+	 *
+	 * @return array{head:string,body:string,shell:string,bodyText:string}|null
+	 */
+	private function hashHtmlRegions(string $html): ?array {
+		if (preg_match_all('~<head\b[^>]*>.*?</head\s*>~is',
+				$html, $heads, PREG_OFFSET_CAPTURE) !== 1 ||
+			preg_match_all('~<body\b[^>]*>.*?</body\s*>~is',
+				$html, $bodies, PREG_OFFSET_CAPTURE) !== 1) {
+			return null;
+		}
+		[$head, $headStart] = $heads[0][0];
+		[$body, $bodyStart] = $bodies[0][0];
+		$headEnd = $headStart + strlen($head);
+		$bodyEnd = $bodyStart + strlen($body);
+		if ($headEnd > $bodyStart) { return null; }
+
+		$shell = substr($html, 0, $headStart) .
+			substr($html, $headEnd, $bodyStart - $headEnd) .
+			substr($html, $bodyEnd);
+		$bodyWithoutStyles = preg_replace(
+			'~<style\b[^>]*>.*?</style\s*>~is', '', $body
+		);
+		if ($bodyWithoutStyles === null) { return null; }
+		return [
+			'head' => hash('sha256', $head),
+			'body' => hash('sha256', $body),
+			'shell' => hash('sha256', $shell),
+			'bodyText' => hash('sha256', strip_tags($bodyWithoutStyles)),
 		];
 	}
 
@@ -379,6 +416,14 @@ class Store {
 			'pagesWithResidualScriptOnlyDifferences' => 0,
 			'pagesWithResidualOutsideScripts' => 0,
 			'sameIdentityHtmlDuplicatesIgnoringScripts' => 0,
+			// Subdivide residual HTML changes by document region, and compare
+			// a conservative tag-stripped approximation of the body text.
+			'regionEntries' => 0, 'regionComparablePages' => 0,
+			'pagesWithResidualHeadDifferences' => 0,
+			'pagesWithResidualBodyDifferences' => 0,
+			'pagesWithResidualShellDifferences' => 0,
+			'pagesWithResidualBodyTextDifferences' => 0,
+			'pagesWithResidualBodyMarkupOnlyDifferences' => 0,
 		];
 		if (!is_dir($this->root)) { return $stats; }
 		foreach (new \FilesystemIterator($this->root, \FilesystemIterator::SKIP_DOTS) as $prefix) {
@@ -402,6 +447,7 @@ class Store {
 				$valid = 0;
 				$ignored = 0;
 				$normalizedEntries = 0;
+				$regionEntries = 0;
 				foreach (array_slice($paths, 0, $maxVariantsPerPage) as $path) {
 					$entry = is_link($path) ? null : $this->decode($path);
 					$identity = $entry['identity'] ?? null;
@@ -425,9 +471,11 @@ class Store {
 					// remains byte-for-byte unchanged.
 					$normalizedHashes = $this->hashWithoutVolatileMetadata($entry['body']);
 					if ($normalizedHashes !== null) { $normalizedEntries++; }
+					if (($normalizedHashes['regions'] ?? null) !== null) { $regionEntries++; }
 					$byIdentity[$identityHash][] = [$bodyHash, $headerHash,
 						$normalizedHashes['normalized'] ?? null,
-						$normalizedHashes['withoutScripts'] ?? null];
+						$normalizedHashes['withoutScripts'] ?? null,
+						$normalizedHashes['regions'] ?? null];
 					$fingerprint = hash('sha256', $identityHash . $headerHash . $bodyHash);
 					$hashes[$fingerprint] = true;
 					$valid++;
@@ -441,6 +489,7 @@ class Store {
 				$stats['validEntries'] += $valid;
 				$stats['ignoredEntries'] += $ignored;
 				$stats['volatileMetadataEntries'] += $normalizedEntries;
+				$stats['regionEntries'] += $regionEntries;
 				$stats['identicalExtraEntries'] += $valid - count($hashes);
 				if (count($hashes) > 1) { $stats['divergentPages']++; }
 				if (count($byIdentity) > 1) { $stats['pagesWithIdentityDifferences']++; }
@@ -452,6 +501,12 @@ class Store {
 				$residualHtml = false;
 				$scriptOnly = false;
 				$outsideScripts = false;
+				$regionComparable = false;
+				$headDifferent = false;
+				$bodyDifferent = false;
+				$shellDifferent = false;
+				$bodyTextDifferent = false;
+				$bodyMarkupOnly = false;
 				foreach ($byIdentity as $group) {
 					if (count($group) < 2) { continue; }
 					$comparable = true;
@@ -459,14 +514,23 @@ class Store {
 					$headerHashes = [];
 					$normalizedHashes = [];
 					$scriptlessHashes = [];
+					$regionHashes = ['head' => [], 'body' => [], 'shell' => [], 'bodyText' => []];
 					$normalizedCount = 0;
-					foreach ($group as [$bodyHash, $headerHash, $normalizedHash, $scriptlessHash]) {
+					$regionCount = 0;
+					foreach ($group as [$bodyHash, $headerHash, $normalizedHash, $scriptlessHash, $regions]) {
 						$bodyHashes[$bodyHash] = true;
 						$headerHashes[$headerHash] = true;
 						if ($normalizedHash !== null && $scriptlessHash !== null) {
 							$normalizedHashes[$normalizedHash] = true;
 							$scriptlessHashes[$scriptlessHash] = true;
 							$normalizedCount++;
+						}
+						if ($regions !== null) {
+							foreach ($regionHashes as $part => &$values) {
+								$values[$regions[$part]] = true;
+							}
+							unset($values);
+							$regionCount++;
 						}
 					}
 					// Require every member of this identity group to contain
@@ -489,6 +553,21 @@ class Store {
 							}
 						}
 					}
+					// Region statistics are compared only if every variant in
+					// this revision group was recognized as a full document.
+					if ($regionCount === count($group)) {
+						$regionComparable = true;
+						if (count($regionHashes['head']) > 1) { $headDifferent = true; }
+						if (count($regionHashes['body']) > 1) {
+							$bodyDifferent = true;
+							if (count($regionHashes['bodyText']) > 1) {
+								$bodyTextDifferent = true;
+							} else {
+								$bodyMarkupOnly = true;
+							}
+						}
+						if (count($regionHashes['shell']) > 1) { $shellDifferent = true; }
+					}
 					$stats['sameIdentityHtmlDuplicates'] += count($group) - count($bodyHashes);
 					$stats['sameIdentityHeaderDuplicates'] += count($group) - count($headerHashes);
 					if (count($bodyHashes) > 1) { $htmlDifferent = true; }
@@ -506,6 +585,14 @@ class Store {
 					$stats['pagesWithResidualScriptOnlyDifferences']++;
 				}
 				if ($outsideScripts) { $stats['pagesWithResidualOutsideScripts']++; }
+				if ($regionComparable) { $stats['regionComparablePages']++; }
+				if ($headDifferent) { $stats['pagesWithResidualHeadDifferences']++; }
+				if ($bodyDifferent) { $stats['pagesWithResidualBodyDifferences']++; }
+				if ($shellDifferent) { $stats['pagesWithResidualShellDifferences']++; }
+				if ($bodyTextDifferent) { $stats['pagesWithResidualBodyTextDifferences']++; }
+				if ($bodyMarkupOnly && !$bodyTextDifferent) {
+					$stats['pagesWithResidualBodyMarkupOnlyDifferences']++;
+				}
 			}
 		}
 		return $stats;

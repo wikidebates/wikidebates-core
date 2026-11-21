@@ -202,6 +202,53 @@ try {
 		$volatileAudit['pagesWithResidualOutsideScripts'] === 0 &&
 		$volatileAudit['sameIdentityHtmlDuplicatesIgnoringScripts'] >= 1,
 		'Audit distinguishes residual script variation from actual markup differences');
+	// Residual differences in full HTML are distinguished by region.
+	// Request IDs and backend timings differ in every fixture, but must not
+	// influence these region comparisons.
+	$regionStore = new Store($dir, 'region-wiki', 300, 4096);
+	$regionHtml = static function (
+		string $id, int $ms, string $head, string $bodyClass, string $bodyText, string $lang = 'fr'
+	): string {
+		return '<!doctype html><html lang="' . $lang . '"><head><meta name="study" content="' .
+			$head . '"><script>var RLCONF={"wgRequestId":"' . $id .
+			'"};</script></head><body class="' . $bodyClass . '"><p>' . $bodyText .
+			'</p><script>mw.config.set({"wgBackendResponseTime":' . $ms .
+			'});</script></body></html>';
+	};
+	$regionCases = [
+		'Head_change' => [
+			$regionHtml('id1', 101, 'light', 'mobile', 'Same text'),
+			$regionHtml('id2', 102, 'dark', 'mobile', 'Same text'),
+		],
+		'Body_attribute_change' => [
+			$regionHtml('id3', 103, 'light', 'mobile', 'Same text'),
+			$regionHtml('id4', 104, 'light', 'tablet', 'Same text'),
+		],
+		'Body_text_change' => [
+			$regionHtml('id5', 105, 'light', 'mobile', 'Text A'),
+			$regionHtml('id6', 106, 'light', 'mobile', 'Text B'),
+		],
+		'Document_shell_change' => [
+			$regionHtml('id7', 107, 'light', 'mobile', 'Same text', 'fr'),
+			$regionHtml('id8', 108, 'light', 'mobile', 'Same text', 'en'),
+		],
+	];
+	foreach ($regionCases as $regionPage => [$html1, $html2]) {
+		$regionSnapshot = $regionStore->read($regionPage, 'android', $identity);
+		check($regionStore->publish($regionPage, 'android', $identity,
+			$regionSnapshot['generation'], $html1, []), 'Store first regional audit variant');
+		check($regionStore->publish($regionPage, 'iphone', $identity,
+			$regionSnapshot['generation'], $html2, []), 'Store second regional audit variant');
+	}
+	$regionAudit = $regionStore->analyzeVariants(20, 20);
+	check($regionAudit['regionEntries'] === 8 &&
+		$regionAudit['regionComparablePages'] === 4 &&
+		$regionAudit['pagesWithResidualHeadDifferences'] === 1 &&
+		$regionAudit['pagesWithResidualBodyDifferences'] === 2 &&
+		$regionAudit['pagesWithResidualShellDifferences'] === 1 &&
+		$regionAudit['pagesWithResidualBodyTextDifferences'] === 1 &&
+		$regionAudit['pagesWithResidualBodyMarkupOnlyDifferences'] === 1,
+		'Regional audit correctly separates head, body text, body attributes and HTML shell');
 	$fragmentContext = new class {
 		public function getConfig() {
 			return new class {
