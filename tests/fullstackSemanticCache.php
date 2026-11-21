@@ -393,6 +393,17 @@ check($parser->getOutput()->getExtensionData(\SMW\ParserData::DATA_ID) instanceo
 
 check(!$services->getJobQueueGroup()->queuesHaveJobs(), 'Invalidation jobs drained');
 
+// A valid revision-keyed fragment must exist before corrupting SMW links.
+$warmBeforeCorruption = null;
+for ($attempt = 0; $attempt < 6; $attempt++) {
+	$candidate = $read('WD Cache query A');
+	if ($candidate['source'] === 'fragment-cache') {
+		$warmBeforeCorruption = $candidate;
+		break;
+	}
+}
+check($warmBeforeCorruption !== null, 'Synthetic semantic page is cached before link corruption');
+
 // A dropped query-link registration must fail closed, even when the
 // corresponding _ASK profile still exists. This simulates a failed SMW
 // dependency flush without introducing any persistent production changes.
