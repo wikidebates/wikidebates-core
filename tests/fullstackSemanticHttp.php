@@ -169,6 +169,7 @@ fsSave('WD HTTP template parent FR', 'No parent relation');
 fsSave('WD HTTP template parent EN', 'No parent relation');
 
 fsSave('WD HTTP public page', str_repeat('This ordinary page contains no semantic query. ', 30));
+fsSave('WD HTTP fallback unprofiled argument', 'Initial page without semantic queries');
 fsFlush();
 
 // SMW profiles must belong to already-created query pages.
@@ -936,6 +937,32 @@ try {
 		check($fallbackDebate['status'] === 200 &&
 			str_contains($fallbackDebate['body'], 'WD HTTP displayed pro argument'),
 			'Fallback does not block ordinary debate HTML rendering');
+
+		// Reproduce the most important production migration case: a page
+		// containing an Argument reader, but with no persisted SMW _ASK yet.
+		$unprofiled = 'WD HTTP fallback unprofiled argument';
+		fsSave($unprofiled, '{{#argument:render|lang=fr|summary=WD_HTTP_FALLBACK_UNPROFILED}}');
+		$services->getDBLoadBalancerFactory()->commitPrimaryChanges(__METHOD__);
+		$store->clear();
+		check($store->getPropertyValues(
+			SemanticWikiPage::newFromTitle(Title::newFromText($unprofiled)), new Property('_ASK')
+		) === [], 'Fallback test starts with a real Argument page missing its _ASK profile');
+		$unprofiledFragment = $fragment($unprofiled);
+		check($unprofiledFragment['fragment']['source'] === 'parser' &&
+			str_contains($unprofiledFragment['fragment']['html'], 'WD_HTTP_FALLBACK_UNPROFILED'),
+			'Fallback renders unprofiled native Argument without a fragment hit');
+		check($fragment($unprofiled)['fragment']['source'] === 'parser',
+			'Fallback never caches an unprofiled Argument after the first read');
+		$unprofiledVector = $http('index.php', ['title' => 'WD_HTTP_fallback_unprofiled_argument']);
+		check($unprofiledVector['status'] === 200 &&
+			str_contains($unprofiledVector['body'], 'WD_HTTP_FALLBACK_UNPROFILED'),
+			'Fallback Vector view remains available for unprofiled Arguments');
+		$unprofiledMinerva = $http('index.php',
+			['title' => 'WD_HTTP_fallback_unprofiled_argument'], [$mobileUA]);
+		check($unprofiledMinerva['status'] === 200 &&
+			str_contains($unprofiledMinerva['body'], 'WD_HTTP_FALLBACK_UNPROFILED') &&
+			str_starts_with($unprofiledMinerva['headers']['x-minerva-file-cache'][0] ?? '', 'BYPASS'),
+			'Fallback Minerva view bypasses files for unprofiled Arguments');
 
 		// This parent edit does not change the query page's own revision or
 		// necessarily page_touched. Even a previously valid file cache must
