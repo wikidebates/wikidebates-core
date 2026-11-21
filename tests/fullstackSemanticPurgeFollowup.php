@@ -129,3 +129,17 @@ echo json_encode(['backend' => $backend, 'cold_generation_reads' => $first->getM
 	'overlap_generation_reads' => $overlap->getMetrics()['generation_reads'],
 	'logger_failure_checks' => 'PASS', 'configuration_inspector_checks' => 'PASS'], JSON_THROW_ON_ERROR) . "\n";
 echo "OK: actual logger failures, unchanged purge retries and read-only configuration inspection\n";
+
+// Source-level audit flags describe actual argument/debate pages, not models.
+require_once __DIR__ . '/../maintenance/AuditSemanticFreshness.php';
+$actual = AuditSemanticFreshness::sourceMarkers(NS_MAIN, '{{#argument:render|lang=en}}');
+check($actual['argument'] && !$actual['template_source'] && !$actual['debate'],
+	'Native argument render in the main namespace is audited as an argument');
+$template = AuditSemanticFreshness::sourceMarkers(NS_TEMPLATE, '{{#argument:render|lang=en}}');
+check(!$template['argument'] && $template['template_source'],
+	'Template source is not misreported as an argument without an _ASK profile');
+$debate = AuditSemanticFreshness::sourceMarkers(NS_MAIN, '{{#debate:render|lang=en}}');
+check(!$debate['argument'] && $debate['debate'], 'Standalone debate remains classified separately');
+$ignored = AuditSemanticFreshness::sourceMarkers(NS_HELP, '{{#argument:render|lang=en}}');
+check(!$ignored['argument'] && !$ignored['template_source'],
+	'Other namespaces never count as argument pages');
