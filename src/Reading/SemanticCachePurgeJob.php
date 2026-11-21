@@ -4,116 +4,184 @@ namespace MediaWiki\Extension\Wikidebates\Reading;
 
 use MediaWiki\Logger\LoggerFactory;
 use MediaWiki\MediaWikiServices;
-use SMW\DataItems\WikiPage as SemanticWikiPage;
+use MediaWiki\Title\Title;
 use SMW\Services\ServicesFactory as SemanticServices;
 use SMW\SQLStore\SQLStore;
 
-/**
- * Purges the pages whose registered SMW queries depend on changed entities.
- * Work is paginated by a monotonically increasing query-subobject ID, so
- * query registrations changing during a purge cannot invalidate an offset.
- */
+/** Primary keyset scan; existing dependencyIds/cursor jobs remain executable. */
 final class SemanticCachePurgeJob extends \Job {
-	private const BATCH_SIZE = 150;
+	private array $metrics = [];
 
 	public function __construct($title, array $params = []) {
-		// A canonical set makes exactly equivalent jobs deduplicable without
-		// dropping distinct chunks or distinct cursor continuations.
 		if (isset($params['dependencyIds'])) {
 			$params['dependencyIds'] = SemanticCacheHooks::changedIds((array)$params['dependencyIds']);
 			sort($params['dependencyIds'], SORT_NUMERIC);
+		}
+		if (isset($params['semanticRevision'])) {
+			ksort($params, SORT_STRING);
 		}
 		parent::__construct('wikidebatesSemanticCachePurge', $title, $params);
 		$this->removeDuplicates = true;
 	}
 
-	public function run(): bool {
-		$config = MediaWikiServices::getInstance()->getMainConfig();
-		if (!$config->get('WikidebatesSemanticCacheTracking') ||
-			!$config->get('WikidebatesSemanticCacheEagerPurge')) {
-			return true;
+	public function getDeduplicationInfo() {
+		$info = parent::getDeduplicationInfo();
+		// Only new, revision-stamped jobs may coalesce across source titles.
+		// Legacy jobs retain their original identity, including their cursor.
+		if (isset($this->params['semanticRevision'])) {
+			unset($info['params']['namespace'], $info['params']['title']);
 		}
-		$ids = SemanticCacheHooks::changedIds(
-			(array)($this->params['dependencyIds'] ?? [])
-		);
-		if ($ids === []) {
-			return true;
-		}
-		$cursor = max(0, (int)($this->params['cursor'] ?? 0));
+		return $info;
+	}
 
+	/** Diagnostic counters; also lets tests assert effects rather than only true. */
+	public function getMetrics(): array {
+		return $this->metrics;
+	}
+
+	public function run(): bool {
+		$started = microtime(true);
+		$services = MediaWikiServices::getInstance();
+		$config = $services->getMainConfig();
+		$ids = SemanticCacheHooks::changedIds((array)($this->params['dependencyIds'] ?? []));
+		$cursor = max(0, (int)($this->params['cursor'] ?? 0));
+		$batchSize = max(1, min(5000, (int)($config->has('WikidebatesSemanticCachePurgeBatchSize') ?
+			$config->get('WikidebatesSemanticCachePurgeBatchSize') : 1000)));
+		$log = $config->has('WikidebatesSemanticCachePurgeLog') &&
+			$config->get('WikidebatesSemanticCachePurgeLog');
+		$this->metrics = [
+			'dependencies' => count($ids), 'cursor' => $cursor, 'batch_size' => $batchSize,
+			'queries_examined' => 0, 'queries_processed' => 0, 'pages' => 0,
+			'invalidations' => 0, 'coalesced_pages' => 0, 'continuations' => 0,
+			'coalescing_available' => false, 'status' => 'completed'
+		];
 		try {
+			if (!$config->get('WikidebatesSemanticCacheTracking') ||
+				!$config->get('WikidebatesSemanticCacheEagerPurge')) {
+				$this->metrics['status'] = 'disabled';
+				return true;
+			}
+			if ($ids === []) {
+				return true;
+			}
 			$store = SemanticServices::getInstance()->getStore();
 			if (!$store instanceof SQLStore) {
 				throw new \RuntimeException('SMW SQLStore is required for targeted dependency invalidation');
 			}
-			$database = $store->getConnection('mw.db');
-			// A newly committed semantic update might not yet be visible
-			// on a replica; do not drop dependent purges due to lag.
-			$rows = $database->newPrimarySelectQueryBuilder()
-				->select('s_id')
-				->distinct()
-				->from(SQLStore::QUERY_LINKS_TABLE)
+			$db = $store->getConnection('mw.db');
+			$rows = $db->newPrimarySelectQueryBuilder()
+				->select('s_id')->distinct()->from(SQLStore::QUERY_LINKS_TABLE)
 				->where(['o_id' => $ids, 's_id > ' . $cursor])
-				->orderBy('s_id')
-				->limit(self::BATCH_SIZE)
-				->caller(__METHOD__)
-				->fetchResultSet();
-
+				->orderBy('s_id')->limit($batchSize + 1)
+				->caller(__METHOD__)->fetchResultSet();
 			$queryIds = [];
 			foreach ($rows as $row) {
 				$queryIds[] = (int)$row->s_id;
 			}
+			$this->metrics['queries_examined'] = count($queryIds);
+			$more = count($queryIds) > $batchSize;
+			if ($more) {
+				array_pop($queryIds);
+			}
+			$this->metrics['queries_processed'] = count($queryIds);
 			if ($queryIds === []) {
 				return true;
 			}
 
-			$targets = $store->getObjectIds()->getDataItemsFromList($queryIds);
-			$titles = [];
-			foreach ($targets as $target) {
-				if (!$target instanceof SemanticWikiPage) {
-					continue;
-				}
-				$title = $target->getTitle();
-				if ($title !== null && $title->canExist() && $title->exists()) {
-					$titles[$title->getPrefixedDBkey()] = $title;
+			// Resolve owners in ONE primary query. SMW's object-ID cache and
+			// Title::exists() can otherwise use stale request/replica state.
+			$rows = $db->newPrimarySelectQueryBuilder()
+				->select(['page.*', 'purge_query_id' => 'query.smw_id'])
+				->from(SQLStore::ID_TABLE, 'query')
+				->join('page', 'page', [
+					'page.page_namespace=query.smw_namespace',
+					'page.page_title=query.smw_title'
+				])
+				->where(['query.smw_id' => $queryIds, 'query.smw_iw' => ''])
+				->caller(__METHOD__)->fetchResultSet();
+			$pages = $titles = $requiredQueries = [];
+			foreach ($rows as $row) {
+				$title = Title::newFromRow($row);
+				if ($title && $title->canExist()) {
+					$id = (int)$row->page_id;
+					$pages[$id] = $row;
+					$titles[$id] = $title;
+					$requiredQueries[$id][] = (int)$row->purge_query_id;
 				}
 			}
-
-			// Requeue before purging: if a purge triggers a reparse, it may
-			// change the query-link table. A stable ID cursor avoids skips.
-			if (count($queryIds) === self::BATCH_SIZE) {
-				MediaWikiServices::getInstance()->getJobQueueGroup()->push(
-					new self($this->title, [
-						'dependencyIds' => $ids,
-						'cursor' => max($queryIds)
-					])
-				);
+			$this->metrics['pages'] = count($titles);
+			if ($titles !== []) {
+				$state = new SemanticPurgeState($store);
+				$available = $state->available();
+				$this->metrics['coalescing_available'] = $available;
+				$before = $available ? $state->snapshots($pages, $requiredQueries) : [];
+				$receipts = $available ? $state->receipts(array_keys($pages)) : [];
+				$fragments = FragmentService::store();
+				$pending = [];
+				foreach ($titles as $id => $title) {
+					$generation = $fragments->read($title->getPrefixedDBkey(), 'semantic-purge', [])['generation'];
+					$receipt = $receipts[$id] ?? null;
+					if (isset($before[$id]) && $receipt &&
+						$receipt->fingerprint === $before[$id] && $receipt->generation === $generation) {
+						$this->metrics['coalesced_pages']++;
+						continue;
+					}
+					// Unlike FragmentService::invalidate(), this strict call must
+					// propagate a filesystem failure: do not certify a failed purge.
+					$fragments->invalidate($title->getPrefixedDBkey());
+					$page = $services->getWikiPageFactory()->newFromTitle($title);
+					$title->invalidateCache();
+					$services->getParserCache()->deleteOptionsKey($page);
+					$pending[$id] = $title;
+				}
+				if ($pending !== []) {
+					// Immediate file/CDN dispatch, as in core HTMLCacheUpdateJob.
+					// Still fires TitleSquidURLs (including Minerva), NOT ArticlePurge.
+					$htmlCache = $services->getHtmlCacheUpdater();
+					$htmlCache->purgeTitleUrls(array_values($pending), $htmlCache::PURGE_NAIVE);
+					$this->metrics['invalidations'] = count($pending);
+					if ($available) {
+						$after = $state->snapshots($state->pages(array_keys($pending)), $requiredQueries);
+						$completed = [];
+						foreach ($pending as $id => $title) {
+							if (isset($before[$id], $after[$id]) && $before[$id] === $after[$id]) {
+								$completed[] = [
+									'page_id' => $id, 'fingerprint' => $before[$id],
+									'generation' => $fragments->read(
+										$title->getPrefixedDBkey(), 'semantic-purge', []
+									)['generation']
+								];
+							}
+						}
+						$state->remember($completed);
+					}
+				}
 			}
-
-			$factory = MediaWikiServices::getInstance()->getWikiPageFactory();
-			foreach ($titles as $title) {
-				// Invalidate HTML/file/CDN caches without ArticlePurge: SMW's
-				// ArticlePurge hook otherwise marks this page for a forced semantic
-				// rewrite at its next parse, creating a purge-refresh feedback loop.
-				// HTMLCacheUpdater still fires TitleSquidURLs (reading fragments
-				// and MinervaFileCache). Do not mutate semantic data here.
-				FragmentService::invalidate($title);
-				$page = $factory->newFromTitle($title);
-				$title->invalidateCache();
-				$htmlCache = MediaWikiServices::getInstance()->getHtmlCacheUpdater();
-				$htmlCache->purgeTitleUrls($title, $htmlCache::PURGE_PRESEND);
-				// page_touched is second-resolution; evict the parser cache key
-				// even for multiple purges in the same second.
-				MediaWikiServices::getInstance()->getParserCache()->deleteOptionsKey($page);
+			// Only acknowledge a successor AFTER successful invalidation. A
+			// retry preserves this cursor; completed pages can reuse receipts.
+			if ($more) {
+				$params = $this->params;
+				$params['dependencyIds'] = $ids;
+				$params['cursor'] = max($queryIds);
+				$services->getJobQueueGroup()->push(new self($this->title, $params));
+				$this->metrics['continuations'] = 1;
 			}
 			return true;
 		} catch (\Throwable $e) {
+			$this->metrics['status'] = 'failed';
 			LoggerFactory::getInstance('WikidebatesSemanticCache')->error(
-				'Failed to purge semantic dependents ({type})',
-				['type' => get_class($e)]
+				'Failed to purge semantic dependents ({type})', ['type' => get_class($e)]
 			);
 			$this->setLastError(get_class($e));
 			return false;
+		} finally {
+			$this->metrics['duration_ms'] = round((microtime(true) - $started) * 1000, 3);
+			if ($log) {
+				LoggerFactory::getInstance('WikidebatesSemanticCache')->info(
+					'Semantic purge batch {metrics}',
+					['metrics' => json_encode($this->metrics, JSON_THROW_ON_ERROR)]
+				);
+			}
 		}
 	}
 }

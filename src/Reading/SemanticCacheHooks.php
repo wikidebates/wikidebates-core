@@ -12,10 +12,7 @@ use SMW\DataModel\SemanticData;
 use SMW\SQLStore\ChangeOp\ChangeOp;
 use SMW\Store;
 
-/**
- * Build the invalidation set from SMW's own changed entity IDs and query
- * dependency links, not from a second, Wikidebates-specific relation graph.
- */
+/** Use SMW's changed entities and dependency graph, not a second graph. */
 final class SemanticCacheHooks {
 	public static function onSMW__SQLStore__AfterDataUpdateComplete(
 		Store $store, SemanticData $semanticData, ChangeOp $changeOp
@@ -24,8 +21,7 @@ final class SemanticCacheHooks {
 		if (!$config->get('WikidebatesSemanticCacheTracking')) {
 			return true;
 		}
-		$subject = $semanticData->getSubject();
-		$title = $subject->getTitle();
+		$title = $semanticData->getSubject()->getTitle();
 		if (!$title) {
 			return true;
 		}
@@ -33,42 +29,21 @@ final class SemanticCacheHooks {
 		if ($ids === []) {
 			return true;
 		}
-
-		// SMW 7.3.1 invokes this hook INSIDE the SQLStore section
-		// transaction, before endSectionTransaction(). Write the durable
-		// revision ledger here so a concurrent reader cannot observe new
-		// semantic data with an old watermark. Jobs remain asynchronous.
+		// This hook runs INSIDE SMW's section transaction. Both the ledger
+		// increment and its enqueue identity must describe that transaction.
 		SemanticRevisionStore::record($store, $ids);
-		if (!$config->get('WikidebatesSemanticCacheEagerPurge')) {
-			return true;
+		if ($config->get('WikidebatesSemanticCacheEagerPurge')) {
+			self::schedule($store, $title, $ids);
 		}
-
-		// The SQLStore callback can run inside a transaction. Queue jobs only
-		// after the request's transaction has finished, never purge against
-		// uncommitted semantic results.
-		DeferredUpdates::addCallableUpdate(static function () use ($title, $ids): void {
-			$group = MediaWikiServices::getInstance()->getJobQueueGroup();
-			foreach (array_chunk($ids, 128) as $chunk) {
-				$group->push(new SemanticCachePurgeJob($title, ['dependencyIds' => $chunk, 'cursor' => 0]));
-			}
-		});
 		return true;
 	}
 
-
-	/**
-	 * A page move is handled partly by SMW's PageMoveComplete hook and may
-	 * change a query's result subjects without a corresponding table diff
-	 * reaching AfterDataUpdateComplete. Include both the old and new IDs:
-	 * stored query links can still refer to the old subject at move time.
-	 *
-	 * This is intentionally guarded by the same opt-in as normal updates.
-	 */
+	/** Moves can change query results without an ordinary property-table diff. */
 	public static function onPageMoveComplete($old, $new, $user, $pageid, $redirid, $reason, $revision): bool {
-		if (!MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesSemanticCacheTracking')) {
+		$config = MediaWikiServices::getInstance()->getMainConfig();
+		if (!$config->get('WikidebatesSemanticCacheTracking')) {
 			return true;
 		}
-
 		$oldTitle = Title::newFromLinkTarget($old);
 		$newTitle = Title::newFromLinkTarget($new);
 		$store = SemanticServices::getInstance()->getStore();
@@ -77,10 +52,8 @@ final class SemanticCacheHooks {
 		foreach ([$oldTitle, $newTitle] as $title) {
 			$subject = WikiPage::newFromTitle($title);
 			$affectedIds[] = $objectIds->getId($subject);
-			// Query links for newly created matches may not yet include the
-			// result subject (SMW can defer re-registering query links).
-			// The property link is already present even for an empty query,
-			// so include all properties of both old/new semantic subjects.
+			// Empty queries already depend on their properties, even before
+			// newly matching result subjects acquire their own query links.
 			foreach ($store->getSemanticData($subject)->getProperties() as $property) {
 				if ($property instanceof Property) {
 					$affectedIds[] = $objectIds->getId($property->getCanonicalDiWikiPage());
@@ -91,19 +64,28 @@ final class SemanticCacheHooks {
 		if ($ids === []) {
 			return true;
 		}
-
-		// A move is a semantic identity mutation even if no property values
-		// differ. A revision fence makes old fragments unsafe immediately.
 		SemanticRevisionStore::record($store, $ids);
-		if (!MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesSemanticCacheEagerPurge')) {
-			return true;
+		if ($config->get('WikidebatesSemanticCacheEagerPurge')) {
+			self::schedule($store, $oldTitle, $ids);
 		}
-		DeferredUpdates::addCallableUpdate(static function () use ($oldTitle, $ids): void {
-			MediaWikiServices::getInstance()->getJobQueueGroup()->push(
-				new SemanticCachePurgeJob($oldTitle, ['dependencyIds' => $ids, 'cursor' => 0])
-			);
-		});
 		return true;
+	}
+
+	private static function schedule(Store $store, Title $title, array $ids): void {
+		// Capture NOW, not in the deferred callback: a later change must
+		// never share the enqueue identity of an older semantic revision.
+		$revisions = SemanticPurgeState::revisions($store, $ids);
+		sort($ids, SORT_NUMERIC);
+		DeferredUpdates::addCallableUpdate(static function () use ($title, $ids, $revisions): void {
+			$group = MediaWikiServices::getInstance()->getJobQueueGroup();
+			foreach (array_chunk($ids, 128) as $chunk) {
+				$group->push(new SemanticCachePurgeJob($title, [
+					'dependencyIds' => $chunk,
+					'cursor' => 0,
+					'semanticRevision' => SemanticPurgeState::revisionToken($revisions, $chunk)
+				]));
+			}
+		});
 	}
 
 	/** @return int[] */

@@ -1,0 +1,115 @@
+name: Semantic purge regression (PHP 8.4)
+
+on:
+  push:
+    branches:
+      - audit/smw-semantic-cache-invalidation-2026-11
+  pull_request:
+    paths:
+      - 'src/Reading/**'
+      - 'sql/**'
+      - 'tests/*Semantic*'
+      - 'tests/semanticPurge.php'
+      - '.github/workflows/semantic-purge.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: semantic-purge-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  semantic-purge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        database: ['sqlite', 'mariadb']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, intl, xml, pdo_sqlite, sqlite3, mysqli, pdo_mysql
+          coverage: none
+          tools: composer
+      - name: Syntax and standalone tests
+        run: |
+          find src tests -name '*.php' -print0 | xargs -0 -n1 php -l > /tmp/purge-lint.log
+          php tests/run.php
+          php tests/semanticPurge.php
+      - name: MediaWiki 1.43.11
+        uses: actions/checkout@v4
+        with:
+          repository: wikimedia/mediawiki
+          ref: '1.43.11'
+          path: .mw-lab
+      - uses: actions/checkout@v4
+        with:
+          repository: wikimedia/mediawiki-extensions-Scribunto
+          ref: REL1_43
+          path: .mw-lab/extensions/Scribunto
+      - uses: actions/checkout@v4
+        with:
+          repository: wikimedia/mediawiki-skins-Vector
+          ref: REL1_43
+          path: .mw-lab/skins/Vector
+      - uses: actions/checkout@v4
+        with:
+          repository: wikimedia/mediawiki-extensions-MobileFrontend
+          ref: REL1_43
+          path: .mw-lab/extensions/MobileFrontend
+      - uses: actions/checkout@v4
+        with:
+          repository: wikimedia/mediawiki-skins-MinervaNeue
+          ref: REL1_43
+          path: .mw-lab/skins/MinervaNeue
+      - uses: actions/checkout@v4
+        with:
+          repository: SemanticMediaWiki/SemanticMediaWiki
+          ref: 7.3.1
+          path: .mw-lab/extensions/SemanticMediaWiki
+      - uses: actions/checkout@v4
+        with:
+          repository: SemanticMediaWiki/SemanticScribunto
+          ref: 2.3.3
+          path: .mw-lab/extensions/SemanticScribunto
+      - name: Isolated dependency installs
+        run: |
+          composer install --working-dir=.mw-lab --no-interaction --prefer-dist --no-progress
+          php -r '$p=".mw-lab/extensions/SemanticMediaWiki/composer.json"; $data=json_decode(file_get_contents($p), true, 512, JSON_THROW_ON_ERROR); unset($data["require-dev"]); file_put_contents($p, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n");'
+          composer install --working-dir=.mw-lab/extensions/SemanticMediaWiki --no-dev --no-interaction --prefer-dist --no-progress
+      - name: Disposable MariaDB (Unix socket only)
+        if: matrix.database == 'mariadb'
+        run: |
+          LAB="$(mktemp -d /tmp/wikidebates-lab-XXXXXXXX)"
+          chmod 777 "$LAB"
+          container="$(docker run -d --rm --name "wd-purge-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" --network none -e MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1 -v "$LAB:/run/mysqld" mariadb:11.4 --skip-networking --socket=/run/mysqld/mariadb.sock)"
+          ready=0
+          for i in $(seq 1 120); do
+            if docker logs "$container" 2>&1 | grep -q 'MariaDB init process done' && [ -S "$LAB/mariadb.sock" ] && php -r 'mysqli_report(MYSQLI_REPORT_OFF); $m = @new mysqli("localhost", "root", "", "", 0, $argv[1]); exit($m->connect_errno ? 1 : 0);' "$LAB/mariadb.sock"; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then docker logs "$container"; exit 1; fi
+          echo "WD_TEST_MARIADB_SOCKET=$LAB/mariadb.sock" >> "$GITHUB_ENV"
+          echo "WD_TEST_DISPOSABLE_MARIADB=1" >> "$GITHUB_ENV"
+      - name: Real SMW and purge integration
+        env:
+          MW_INSTALL_PATH: ${{ github.workspace }}/.mw-lab
+        run: php -d memory_limit=768M tests/fullstackSemanticPurge.php
+      - name: Existing multiworker HTTP and Minerva freshness regressions
+        env:
+          MW_INSTALL_PATH: ${{ github.workspace }}/.mw-lab
+        run: php -d memory_limit=768M tests/fullstackSemanticHttp.php
+      - name: Preserve HTTP measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semantic-purge-http-${{ matrix.database }}
+          path: tests/results/semantic-http-*.json
+          if-no-files-found: warn

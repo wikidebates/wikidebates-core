@@ -28,6 +28,10 @@ final class SemanticRevisionStore {
 			self::TABLE,
 			dirname(__DIR__, 2) . '/sql/' . $type . '/wd_smw_entity_revisions.sql'
 		);
+		$updater->addExtensionTable(
+			SemanticPurgeState::TABLE,
+			dirname(__DIR__, 2) . '/sql/' . $type . '/wd_smw_purge_state.sql'
+		);
 	}
 
 	/** Increment every changed entity once, as part of SMW's own transaction. */
