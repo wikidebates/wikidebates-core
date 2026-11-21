@@ -63,8 +63,11 @@ function wdSemanticHttpTestSettings($settings): void {
 		'MinervaFileCacheDebugHeaders' => true,
 		'WikidebatesReadingFragments' => true,
 		'WikidebatesSemanticCacheTracking' => !is_file($root . '/semantic-http-disable-tracking'),
-		// The HTTP lab deliberately tests active purges; real defaults stay off.
-		'WikidebatesSemanticCacheEagerPurge' => true,
+		// Ordinary HTTP tests exercise active purges. The isolated backfill
+		// pilot explicitly disables them in BOTH writer and web workers,
+		// proving that freshness does not depend on asynchronous purge jobs.
+		'WikidebatesSemanticCacheEagerPurge' =>
+			!is_file($root . '/semantic-http-disable-eager-purge'),
 		'WikidebatesReadingCacheDirectory' => $root . '/semantic-http-fragments',
 		'WikidebatesReadingCacheTTL' => 300,
 		'WikidebatesReadingCacheEpoch' => 'semantic-http-lab-1',
