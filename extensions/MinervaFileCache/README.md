@@ -226,6 +226,26 @@ acceptée. Un préchauffage Android ne remplit pas toutes les variantes Safari
 iPhone ou toutes les versions de Chrome. Il est donc surtout utile pour les
 variantes réellement consultées et peut produire beaucoup de fichiers.
 
+## Diagnostic du stockage
+
+Avant d'envisager un regroupement des navigateurs et langues, mesurer la
+fragmentation réelle du stockage par wiki :
+
+```sh
+php maintenance/run.php MinervaFileCache:stats --wiki=fr
+php maintenance/run.php MinervaFileCache:stats --wiki=en
+```
+
+La commande renvoie le nombre de répertoires de pages (`pages`), le nombre
+de fichiers de contenu (`files`), leur taille compressée totale en octets
+(`bytes`) et le maximum de variantes dans un répertoire de page
+(`maxVariantsPerPage`). Elle ne décompresse pas le contenu et ne modifie
+aucune entrée. Elle parcourt toutefois les fichiers : à exécuter en maintenance,
+pas à chaque requête web. Ces chiffres ne sont pas des taux de HIT/MISS.
+
+La clé stricte par URL, User-Agent et préférences linguistiques est conservée
+pour éviter les collisions de variantes non validées.
+
 ## Nettoyage et désactivation
 
 Planifier une exécution régulière du nettoyage, par exemple toutes les heures,
