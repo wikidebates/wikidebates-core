@@ -8,8 +8,9 @@ on:
     paths:
       - 'src/Reading/**'
       - 'sql/**'
+      - 'maintenance/CheckSemanticCache.php'
       - 'tests/*Semantic*'
-      - 'tests/semanticPurge.php'
+      - 'tests/semanticPurge*.php'
       - '.github/workflows/semantic-purge.yml'
 
 permissions:
@@ -37,9 +38,9 @@ jobs:
           tools: composer
       - name: Syntax and standalone tests
         run: |
-          find src tests -name '*.php' -print0 | xargs -0 -n1 php -l > /tmp/purge-lint.log
+          find src tests maintenance -name '*.php' -print0 | xargs -0 -n1 php -l > /tmp/purge-lint.log
           php tests/run.php
-          php tests/semanticPurge.php
+          php tests/semanticPurgeFollowup.php
       - name: MediaWiki 1.43.11
         uses: actions/checkout@v4
         with:
@@ -101,7 +102,7 @@ jobs:
       - name: Real SMW and purge integration
         env:
           MW_INSTALL_PATH: ${{ github.workspace }}/.mw-lab
-        run: php -d memory_limit=768M tests/fullstackSemanticPurge.php
+        run: php -d memory_limit=768M tests/fullstackSemanticPurgeFollowup.php
       - name: Existing multiworker HTTP and Minerva freshness regressions
         env:
           MW_INSTALL_PATH: ${{ github.workspace }}/.mw-lab

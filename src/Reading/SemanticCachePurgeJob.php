@@ -53,6 +53,7 @@ final class SemanticCachePurgeJob extends \Job {
 			'dependencies' => count($ids), 'cursor' => $cursor, 'batch_size' => $batchSize,
 			'queries_examined' => 0, 'queries_processed' => 0, 'pages' => 0,
 			'invalidations' => 0, 'coalesced_pages' => 0, 'continuations' => 0,
+			'next_cursor' => null, 'generation_reads' => 0, 'logging_failures' => 0,
 			'coalescing_available' => false, 'status' => 'completed'
 		];
 		try {
@@ -101,14 +102,20 @@ final class SemanticCachePurgeJob extends \Job {
 				->caller(__METHOD__)->fetchResultSet();
 			$pages = $titles = $requiredQueries = [];
 			foreach ($rows as $row) {
-				$title = Title::newFromRow($row);
-				if ($title && $title->canExist()) {
-					$id = (int)$row->page_id;
+				$id = (int)$row->page_id;
+				if (!isset($titles[$id])) {
+					// Several query subobjects can belong to the same page.
+					// Hydrate its Title once while retaining EVERY query ID.
+					$title = Title::newFromRow($row);
+					if (!$title || !$title->canExist()) {
+						continue;
+					}
 					$pages[$id] = $row;
 					$titles[$id] = $title;
-					$requiredQueries[$id][] = (int)$row->purge_query_id;
 				}
+				$requiredQueries[$id][] = (int)$row->purge_query_id;
 			}
+			unset($rows);
 			$this->metrics['pages'] = count($titles);
 			if ($titles !== []) {
 				$state = new SemanticPurgeState($store);
@@ -119,12 +126,17 @@ final class SemanticCachePurgeJob extends \Job {
 				$fragments = FragmentService::store();
 				$pending = [];
 				foreach ($titles as $id => $title) {
-					$generation = $fragments->read($title->getPrefixedDBkey(), 'semantic-purge', [])['generation'];
 					$receipt = $receipts[$id] ?? null;
-					if (isset($before[$id]) && $receipt &&
-						$receipt->fingerprint === $before[$id] && $receipt->generation === $generation) {
-						$this->metrics['coalesced_pages']++;
-						continue;
+					// A missing or semantically obsolete receipt cannot be reused.
+					// Avoid a filesystem read and exclusive lock in that case.
+					// A candidate still MUST pass the local generation check.
+					if (isset($before[$id]) && $receipt && $receipt->fingerprint === $before[$id]) {
+						$this->metrics['generation_reads']++;
+						$generation = $fragments->read($title->getPrefixedDBkey(), 'semantic-purge', [])['generation'];
+						if ($receipt->generation === $generation) {
+							$this->metrics['coalesced_pages']++;
+							continue;
+						}
 					}
 					// Unlike FragmentService::invalidate(), this strict call must
 					// propagate a filesystem failure: do not certify a failed purge.
@@ -145,6 +157,7 @@ final class SemanticCachePurgeJob extends \Job {
 						$completed = [];
 						foreach ($pending as $id => $title) {
 							if (isset($before[$id], $after[$id]) && $before[$id] === $after[$id]) {
+								$this->metrics['generation_reads']++;
 								$completed[] = [
 									'page_id' => $id, 'fingerprint' => $before[$id],
 									'generation' => $fragments->read(
@@ -165,23 +178,31 @@ final class SemanticCachePurgeJob extends \Job {
 				$params['cursor'] = max($queryIds);
 				$services->getJobQueueGroup()->push(new self($this->title, $params));
 				$this->metrics['continuations'] = 1;
+				$this->metrics['next_cursor'] = $params['cursor'];
 			}
 			return true;
 		} catch (\Throwable $e) {
 			$this->metrics['status'] = 'failed';
-			LoggerFactory::getInstance('WikidebatesSemanticCache')->error(
-				'Failed to purge semantic dependents ({type})', ['type' => get_class($e)]
-			);
 			$this->setLastError(get_class($e));
+			$this->log('error', 'Failed to purge semantic dependents ({type})', ['type' => get_class($e)]);
 			return false;
 		} finally {
 			$this->metrics['duration_ms'] = round((microtime(true) - $started) * 1000, 3);
 			if ($log) {
-				LoggerFactory::getInstance('WikidebatesSemanticCache')->info(
-					'Semantic purge batch {metrics}',
-					['metrics' => json_encode($this->metrics, JSON_THROW_ON_ERROR)]
-				);
+				$this->log('info', 'Semantic purge batch {metrics}', [
+					'metrics' => json_encode($this->metrics, JSON_THROW_ON_ERROR)
+				]);
 			}
+		}
+	}
+
+	/** Telemetry must neither turn success into failure nor mask the original failure. */
+	private function log(string $level, string $message, array $context): void {
+		try {
+			LoggerFactory::getInstance('WikidebatesSemanticCache')->$level($message, $context);
+		} catch (\Throwable $e) {
+			// Do not try another logger here: that can recurse into the same sink.
+			$this->metrics['logging_failures']++;
 		}
 	}
 }
