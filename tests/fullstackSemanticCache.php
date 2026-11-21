@@ -740,10 +740,10 @@ try {
 		'The formerly unprofiled Argument now persists native _ASK profiles; ' . json_encode([
 			'source' => $historicalFirst['source'],
 			'tracking' => $services->getMainConfig()->get('WikidebatesSemanticCacheTracking'),
-			'observed_output' => $observedFirstTrackedOutput instanceof \\MediaWiki\\Parser\\ParserOutput,
-			'query_tracked_marker' => $observedFirstTrackedOutput instanceof \\MediaWiki\\Parser\\ParserOutput
+			'observed_output' => $observedFirstTrackedOutput instanceof \MediaWiki\Parser\ParserOutput,
+			'query_tracked_marker' => $observedFirstTrackedOutput instanceof \MediaWiki\Parser\ParserOutput
 				? $observedFirstTrackedOutput->getExtensionData(TrackedSemanticQuery::OUTPUT_MARKER) : null,
-			'parse_cache_expiry' => $observedFirstTrackedOutput instanceof \\MediaWiki\\Parser\\ParserOutput
+			'parse_cache_expiry' => $observedFirstTrackedOutput instanceof \MediaWiki\Parser\ParserOutput
 				? $observedFirstTrackedOutput->getCacheExpiry() : null,
 			'links' => count($links->findEmbeddedQueryIdListBySubject($historicalSubject)),
 		]));
