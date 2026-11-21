@@ -754,18 +754,34 @@ try {
 	fsFlush(['wikidebatesSemanticCachePurge']);
 	$store->clear();
 	$historicalProfiles = $store->getPropertyValues($historicalSubject, new Property('_ASK'));
+	check($historicalProfilesAfterApi === [] && $historicalProfiles === [],
+		'Anonymous API and ordinary page reads annotate ParserOutput but do not update SMW storage');
+	// MediaWiki 1.43 RefreshLinksJob performs the actual secondary data
+	// update without a page edit. This is a standard, revision-preserving
+	// recovery path for old Argument pages; exercise it on the disposable
+	// page only, not on production.
+	$revisionBeforeRefresh = $historicalPage->getLatest();
+	$refresh = new \RefreshLinksJob($historicalTitle, [
+		'causeAction' => 'WikidebatesSemanticColdArgumentTest',
+		'causeAgent' => 'Wikidebates disposable integration',
+	]);
+	check($refresh->run() !== false,
+		'Single-page MediaWiki refreshLinks job updates the semantic subject without editing');
+	fsFlush(['wikidebatesSemanticCachePurge']);
+	$store->clear();
+	$historicalProfiles = $store->getPropertyValues($historicalSubject, new Property('_ASK'));
 	check($historicalProfiles !== [],
-		'Canonical parse persists the previously missing _ASK profiles; ' . json_encode([
-			'api_profiles' => count($historicalProfilesAfterApi),
-			'api_source' => $historicalFirst['source'],
+		'Standard MediaWiki refreshLinks writes the missing _ASK query profiles; ' . json_encode([
 			'api_marker' => $observedFirstTrackedOutput->getExtensionData(
 				TrackedSemanticQuery::OUTPUT_MARKER),
-			'api_expiry' => $observedFirstTrackedOutput->getCacheExpiry(),
 			'canonical_marker' => $canonicalTrackedOutput->getExtensionData(
 				TrackedSemanticQuery::OUTPUT_MARKER),
-			'canonical_expiry' => $canonicalTrackedOutput->getCacheExpiry(),
 			'links' => count($links->findEmbeddedQueryIdListBySubject($historicalSubject)),
+			'revision_before' => $revisionBeforeRefresh,
+			'revision_after' => $historicalPage->getLatest(),
 		]));
+	check($historicalPage->getLatest() === $revisionBeforeRefresh,
+		'Refreshing semantic profiles does not create or change the Argument revision');
 	check($links->findEmbeddedQueryIdListBySubject($historicalSubject) !== [],
 		'First traced parse also creates SMW query dependency links');
 
