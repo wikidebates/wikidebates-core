@@ -88,6 +88,34 @@ class Prewarm {
 	}
 
 	/**
+	 * Calculate a bounded retry delay for transient HTTP failures.
+	 * Never retry a Retry-After longer than two minutes: stop and let the
+	 * operator resume later instead of disobeying the origin's rate limit.
+	 */
+	public static function retryDelaySeconds(string $state, ?string $retryAfter, int $attempt): ?int {
+		if ($attempt < 1 || $attempt > 3 ||
+			!in_array($state, ['HTTP_429', 'HTTP_500', 'HTTP_502', 'HTTP_503',
+				'HTTP_504', 'TRANSPORT_ERROR'], true)) {
+			return null;
+		}
+		if (($state === 'HTTP_429' || $state === 'HTTP_503') && $retryAfter !== null) {
+			$value = trim($retryAfter);
+			if ($value !== '') {
+				if (preg_match('/^[0-9]+$/D', $value)) {
+					$delay = filter_var($value, FILTER_VALIDATE_INT);
+					return $delay !== false && $delay <= 120 ? $delay : null;
+				}
+				$timestamp = strtotime($value);
+				if ($timestamp !== false) {
+					$delay = max(0, $timestamp - time());
+					return $delay <= 120 ? $delay : null;
+				}
+			}
+		}
+		return $state === 'HTTP_429' ? 5 * $attempt : 1 << ($attempt - 1);
+	}
+
+	/**
 	 * Resolve subcategories breadth-first. A visited set prevents cycles.
 	 * The categorylinks cl_to keys and page_title values exclude the namespace.
 	 *
