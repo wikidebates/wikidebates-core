@@ -723,14 +723,30 @@ try {
 	check(!SemanticPageCacheHooks::onHTMLFileCache__useFileCache($fullPageContext),
 		'Old full-page file caches cannot bypass the first traced Argument parse');
 
+	$observedFirstTrackedOutput = null;
+	$firstTrackedObserver = $services->getHookContainer()->scopedRegister('ParserOutputPostCacheTransform',
+		static function($output, &$text, &$options) use (&$observedFirstTrackedOutput): void {
+			$observedFirstTrackedOutput = $output;
+		});
 	$historicalFirst = $read($historicalArgument);
+	$firstTrackedObserver = null;
 	check($historicalFirst['source'] !== 'fragment-cache' &&
 		str_contains($historicalFirst['html'], 'Un argument historique'),
 		'First tracked Argument reading is freshly rendered with its real summary');
 	fsFlush(['wikidebatesSemanticCachePurge']);
 	$store->clear();
-	check($store->getPropertyValues($historicalSubject, new Property('_ASK')) !== [],
-		'The formerly unprofiled Argument now persists native _ASK profiles');
+	$historicalProfiles = $store->getPropertyValues($historicalSubject, new Property('_ASK'));
+	check($historicalProfiles !== [],
+		'The formerly unprofiled Argument now persists native _ASK profiles; ' . json_encode([
+			'source' => $historicalFirst['source'],
+			'tracking' => $services->getMainConfig()->get('WikidebatesSemanticCacheTracking'),
+			'observed_output' => $observedFirstTrackedOutput instanceof \\MediaWiki\\Parser\\ParserOutput,
+			'query_tracked_marker' => $observedFirstTrackedOutput instanceof \\MediaWiki\\Parser\\ParserOutput
+				? $observedFirstTrackedOutput->getExtensionData(TrackedSemanticQuery::OUTPUT_MARKER) : null,
+			'parse_cache_expiry' => $observedFirstTrackedOutput instanceof \\MediaWiki\\Parser\\ParserOutput
+				? $observedFirstTrackedOutput->getCacheExpiry() : null,
+			'links' => count($links->findEmbeddedQueryIdListBySubject($historicalSubject)),
+		]));
 	check($links->findEmbeddedQueryIdListBySubject($historicalSubject) !== [],
 		'First traced parse also creates SMW query dependency links');
 
