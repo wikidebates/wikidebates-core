@@ -152,7 +152,7 @@ foreach (array_keys($queries) as $queryTitle) {
 
 // Exercise the reading service with an anonymous context and revision-keyed fragment store.
 // Semantic freshness belongs to full-page ParserOutput, not this API.
-$read = static function(string $name) use ($services, $store): array {
+$read = static function(string $name, ?\MediaWiki\User\User $reader = null) use ($services, $store): array {
 	// A real HTTP request has a fresh SMW store/object cache. This isolated
 	// CLI test reuses one PHP process, so reset that request-local state.
 	// Otherwise a property removed moments earlier may still appear in
@@ -170,7 +170,7 @@ $read = static function(string $name) use ($services, $store): array {
 		'action' => 'wikidebatesreading', 'page' => $name, 'useskin' => 'vector',
 		'format' => 'json', 'formatversion' => 2
 	], false));
-	$context->setUser($services->getUserFactory()->newAnonymous());
+	$context->setUser($reader ?? $services->getUserFactory()->newAnonymous());
 	$context->setLanguage($services->getContentLanguage());
 	$context->setTitle(Title::newFromText($name));
 	return FragmentService::read($context, $name, 'vector');
@@ -188,6 +188,9 @@ check($first['source'] !== 'fragment-cache',
 $second = $read('WD Cache query A');
 check($second['source'] === 'fragment-cache',
 	'Second identical anonymous reading request hits fragment-cache');
+$registered = $read('WD Cache query A', $fsUser);
+check($registered['source'] === 'parser' && str_contains($registered['html'], 'WD_MATCHES=0'),
+	'A registered reader gets the current source content, never the public fragment file');
 
 // MediaWiki's parser-cache keys vary with ApiParse's options; a raw
 // ParserOptions::newFromAnon() lookup does not necessarily address that
