@@ -318,6 +318,11 @@ class Store {
 			'analyzedPages' => 0, 'validEntries' => 0,
 			'identicalExtraEntries' => 0, 'divergentPages' => 0,
 			'ignoredEntries' => 0, 'truncatedPages' => 0, 'racedPages' => 0,
+			// Compare HTML and replayed headers only among entries with identical
+			// identity (revision, touched timestamp, epochs, and format).
+			'comparablePages' => 0, 'pagesWithIdentityDifferences' => 0,
+			'pagesWithHtmlDifferences' => 0, 'pagesWithHeaderDifferences' => 0,
+			'sameIdentityHtmlDuplicates' => 0, 'sameIdentityHeaderDuplicates' => 0,
 		];
 		if (!is_dir($this->root)) { return $stats; }
 		foreach (new \FilesystemIterator($this->root, \FilesystemIterator::SKIP_DOTS) as $prefix) {
@@ -337,6 +342,7 @@ class Store {
 					continue;
 				}
 				$hashes = [];
+				$byIdentity = [];
 				$valid = 0;
 				$ignored = 0;
 				foreach (array_slice($paths, 0, $maxVariantsPerPage) as $path) {
@@ -346,14 +352,20 @@ class Store {
 						$ignored++;
 						continue;
 					}
-					$metadata = json_encode([$identity, $entry['headers']],
+					$identityJson = json_encode($identity,
 						JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-					if ($metadata === false) { $ignored++; continue; }
-					$hash = hash_init('sha256');
-					hash_update($hash, $metadata);
-					hash_update($hash, "\0");
-					hash_update($hash, $entry['body']);
-					$fingerprint = hash_final($hash);
+					$headersJson = json_encode($entry['headers'],
+						JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+					if ($identityJson === false || $headersJson === false) {
+						$ignored++;
+						continue;
+					}
+					$bodyHash = hash('sha256', $entry['body']);
+					$headerHash = hash('sha256', $headersJson);
+					$identityHash = hash('sha256', $identityJson);
+					// No HTML, headers, or per-visitor fields leave the process.
+					$byIdentity[$identityHash][] = [$bodyHash, $headerHash];
+					$fingerprint = hash('sha256', $identityHash . $headerHash . $bodyHash);
 					$hashes[$fingerprint] = true;
 					$valid++;
 				}
@@ -367,6 +379,27 @@ class Store {
 				$stats['ignoredEntries'] += $ignored;
 				$stats['identicalExtraEntries'] += $valid - count($hashes);
 				if (count($hashes) > 1) { $stats['divergentPages']++; }
+				if (count($byIdentity) > 1) { $stats['pagesWithIdentityDifferences']++; }
+				$comparable = false;
+				$htmlDifferent = false;
+				$headersDifferent = false;
+				foreach ($byIdentity as $group) {
+					if (count($group) < 2) { continue; }
+					$comparable = true;
+					$bodyHashes = [];
+					$headerHashes = [];
+					foreach ($group as [$bodyHash, $headerHash]) {
+						$bodyHashes[$bodyHash] = true;
+						$headerHashes[$headerHash] = true;
+					}
+					$stats['sameIdentityHtmlDuplicates'] += count($group) - count($bodyHashes);
+					$stats['sameIdentityHeaderDuplicates'] += count($group) - count($headerHashes);
+					if (count($bodyHashes) > 1) { $htmlDifferent = true; }
+					if (count($headerHashes) > 1) { $headersDifferent = true; }
+				}
+				if ($comparable) { $stats['comparablePages']++; }
+				if ($htmlDifferent) { $stats['pagesWithHtmlDifferences']++; }
+				if ($headersDifferent) { $stats['pagesWithHeaderDifferences']++; }
 			}
 		}
 		return $stats;
