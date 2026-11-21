@@ -62,6 +62,37 @@ be 0 before and after the operation.
 Do not deploy the unfinished mechanism in PR #11 based only on this finding.
 It needs a staged, reversible evaluation with real model dependencies.
 
+## Minerva HTML: observable baseline without semantic tracking
+
+The isolated real-HTTP suite `tests/fullstackSemanticHttp.php` now includes
+a separate, synthetic Minerva query page observed with
+`WikidebatesSemanticCacheTracking=false` in its HTTP workers, matching the
+current opt-in default. A direct SMW query must see a newly added relation,
+while `wikidebatesSemanticCachePurge` is deliberately held in the disposable
+lab. The test records the first and second `X-Minerva-File-Cache` states,
+the state after the external edit, and whether the full HTML still renders the
+old value.
+
+The `untracked_minerva_semantic_baseline` JSON section reports
+`stale_minerva_hit_observed` and `stale_full_html_observed`. The second
+indicator also catches stale parser-produced HTML after a MISS or BYPASS.
+A stale result produces an explicit **WARNING** but does not fail the
+diagnostic suite: the purpose is to reveal the current baseline, **not to
+pretend that the disabled-by-default experimental tracking is active**.
+Conversely, a fresh result in the disposable lab does not prove that every
+SMW query or production Minerva variant remains fresh.
+
+This additional experiment neither edits the production wiki nor changes
+the runtime caching policies. The test-side semantic writer still exercises
+the experimental code; only the independent HTTP readers disable it. This
+is therefore a comparative diagnostic, not a perfect simulation of a
+production deployment that never enabled tracking.
+
+The existing active-tracking HTTP suite separately verifies that query-owning
+pages bypass the complete Minerva file cache and display new relations even
+while a targeted semantic purge remains queued. This is intentionally distinct
+from verifying the disabled-tracking production baseline.
+
 ## Production source inventory (read-only)
 
 After updating the extension, the following command scans at most 200 records
