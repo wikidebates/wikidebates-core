@@ -980,12 +980,32 @@ try {
 		$oldContent = $services->getWikiPageFactory()
 			->newFromTitle($unprofiledTitle)->getContent()->getText();
 
+		$refreshParseEvents = [];
+		$refreshObserver = $services->getHookContainer()->scopedRegister(
+			'ParserAfterParse',
+			static function($parser, &$text, $stripState) use (&$refreshParseEvents, $unprofiledTitle): bool {
+				$title = $parser->getTitle();
+				if ($title && $title->getPrefixedDBkey() === $unprofiledTitle->getPrefixedDBkey()) {
+					$output = $parser->getOutput();
+					$semanticData = $output->getExtensionData(\SMW\ParserData::DATA_ID);
+					$refreshParseEvents[] = [
+						'title' => $title->getPrefixedText(),
+						'tracked_query_marker' => $output->getExtensionData(
+							\MediaWiki\Extension\DebatePHP\TrackedSemanticQuery::OUTPUT_MARKER) === true,
+						'output_profile_count' => $semanticData instanceof \SMW\SemanticData ?
+							count($semanticData->getPropertyValues(new Property('_ASK'))) : -1,
+					];
+				}
+				return true;
+			}
+		);
 		$refresh = new \RefreshLinksJob($unprofiledTitle, [
 			'causeAction' => 'WikidebatesSemanticHTTPBackfillTest',
 			'causeAgent' => 'Isolated MediaWiki 1.43 SMW regression',
 		]);
 		check($refresh->run() !== false,
 			'MediaWiki refreshLinks job executes for one published Argument without editing');
+		$refreshObserver = null;
 		fsFlush();
 		$store->clear();
 
@@ -997,7 +1017,15 @@ try {
 		$askProfiles = $store->getPropertyValues(
 			$unprofiledSubject, new Property('_ASK'));
 		check(count($askProfiles) > 0,
-			'Targeted refreshLinks persists missing _ASK profiles with an empty parent result');
+			'Targeted refreshLinks persists missing _ASK profiles with an empty parent result; ' .
+			json_encode([
+				'refresh_parser_events' => $refreshParseEvents,
+				'main_request_action' => \MediaWiki\Context\RequestContext::getMain()->getRequest()
+					->getVal('action', 'view'),
+				'tracking_config' => $services->getMainConfig()->get('WikidebatesSemanticCacheTracking'),
+				'revision' => $backfilledPage->getLatest(),
+				'profile_count' => count($askProfiles),
+			], JSON_UNESCAPED_SLASHES));
 
 		$queryLinkStore = (new \SMW\SQLStore\QueryDependencyLinksStoreFactory())
 			->newQueryDependencyLinksStore($store);
