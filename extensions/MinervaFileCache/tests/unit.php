@@ -174,6 +174,8 @@ try {
 	$volatileAudit = $volatileStore->analyzeVariants(20, 20);
 	check($volatileAudit['pagesWithOnlyVolatileHtmlDifferences'] === 0 &&
 		$volatileAudit['pagesWithResidualHtmlDifferences'] === 1 &&
+		$volatileAudit['pagesWithResidualOutsideScripts'] === 1 &&
+		$volatileAudit['pagesWithResidualScriptOnlyDifferences'] === 0 &&
 		$volatileAudit['sameIdentityHtmlDuplicatesIgnoringVolatile'] === 1,
 		'Normalization cannot conceal unrelated content changes');
 	check($volatileStore->publish('Diagnostic', 'unknown-metadata', $identity,
@@ -184,6 +186,22 @@ try {
 		$volatileAudit['volatileComparablePages'] === 0 &&
 		$volatileAudit['pagesWithOnlyVolatileHtmlDifferences'] === 0,
 		'Missing config values do not lead to an unsupported equivalence claim');
+	// Identify a residual HTML difference confined to an additional inline
+	// script without confusing it with a difference in page markup.
+	$scriptSnapshot = $volatileStore->read('Script_variation', 'android', $identity);
+	foreach (['android' => 1, 'iphone' => 2] as $device => $counter) {
+		$scriptHtml = $volatileHtml($device, 100 + $counter, 'SAME_MARKUP');
+		$scriptHtml = str_replace('</body>', '<script>window.counter=' . $counter .
+			';</script></body>', $scriptHtml);
+		check($volatileStore->publish('Script_variation', $device, $identity,
+			$scriptSnapshot['generation'], $scriptHtml, []),
+			'Publish diagnostic HTML whose residual difference is script-only');
+	}
+	$volatileAudit = $volatileStore->analyzeVariants(20, 20);
+	check($volatileAudit['pagesWithResidualScriptOnlyDifferences'] === 1 &&
+		$volatileAudit['pagesWithResidualOutsideScripts'] === 0 &&
+		$volatileAudit['sameIdentityHtmlDuplicatesIgnoringScripts'] >= 1,
+		'Audit distinguishes residual script variation from actual markup differences');
 	$fragmentContext = new class {
 		public function getConfig() {
 			return new class {
