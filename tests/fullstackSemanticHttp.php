@@ -482,11 +482,12 @@ try {
 			'Real ' . $lang . ' transcluded template has an advancing semantic fingerprint');
 		$changed = $fragment($title, ['X-Requested-With: XMLHttpRequest']);
 		$parentUnderscored = str_replace(' ', '_', $parent);
+		// FragmentExtractor deliberately omits Parent_debates: the parent
+		// appears in full HTML, while the separate reading fragment still
+		// carries the summary and MUST bypass its old cache identity.
 		check($changed['fragment']['source'] !== 'fragment-cache' &&
-			str_contains($changed['fragment']['html'], 'WD_HTTP_TEMPLATE_' . $lang . '_SUMMARY') &&
-			(str_contains($changed['fragment']['html'], $parent) ||
-				str_contains($changed['fragment']['html'], $parentUnderscored)),
-			'Real ' . $lang . ' transcluded Argument HTML shows new parent before purge');
+			str_contains($changed['fragment']['html'], 'WD_HTTP_TEMPLATE_' . $lang . '_SUMMARY'),
+			'Real ' . $lang . ' transcluded Argument fragment is freshly rebuilt before purge');
 		$article = $http('index.php', ['title' => str_replace(' ', '_', $title)]);
 		check($article['status'] === 200 &&
 			(str_contains($article['body'], $parent) ||
