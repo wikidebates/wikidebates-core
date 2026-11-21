@@ -174,6 +174,20 @@ check(count(array_filter($auditRecords,
 	static fn(array $row): bool => $row['type'] === 'redirect')) === 1,
 	'Redirect is reported explicitly without inherited query profiles');
 
+
+	// One healthy profiled owner and one redirect must not flood an
+	// issues-only scan. The summary still covers both physical rows.
+	[$exit, $out, $err] = $cli(array_merge($auditArgs, ['--issues-only']), false);
+	check($exit === 0, 'Filtered read-only audit succeeds: ' . $out . $err);
+	$onlyIssues = array_values(array_map(
+		static fn(string $line): array => json_decode($line, true, 512, JSON_THROW_ON_ERROR),
+		array_filter(explode("\n", trim($out)))
+	));
+	check(count($onlyIssues) === 1 && ($onlyIssues[0]['type'] ?? '') === 'summary' &&
+		$onlyIssues[0]['issues_only'] && $onlyIssues[0]['scanned'] === 2 &&
+		$onlyIssues[0]['redirects_skipped'] === 1,
+		'Issues-only audit hides healthy pages and redirect rows, not summary counters');
+
 // Deliberately remove one query's SQL edges in the disposable database
 // (never production) and verify the audit detects partial coverage.
 $store->clear();
@@ -200,4 +214,26 @@ check($auditSummary['redirects_skipped'] === 1 &&
 	$auditSummary['query_ids_without_dependency_rows'] >= 1 &&
 	$auditSummary['pages_with_incomplete_dependencies'] === 1,
 	'Real SQL edge loss is detected even when _ASK profile IDs still exist');
+
+	// A lost real SQL edge must appear as an identifiable page even if
+	// another profile on that same page still has dependencies.
+	[$exit, $out, $err] = $cli(array_merge($auditArgs, ['--issues-only']), false);
+	check($exit === 0, 'Issues-only audit reports SQL edge loss: ' . $out . $err);
+	$onlyIssues = array_values(array_map(
+		static fn(string $line): array => json_decode($line, true, 512, JSON_THROW_ON_ERROR),
+		array_filter(explode("\n", trim($out)))
+	));
+	$issuePages = array_values(array_filter($onlyIssues,
+		static fn(array $row): bool => ($row['type'] ?? '') === 'page'));
+	check(count($issuePages) === 1 && $issuePages[0]['page_id'] === $auditOwnerId &&
+		in_array('query_ids_without_dependency_rows', $issuePages[0]['issue_reasons'], true) &&
+		($onlyIssues[count($onlyIssues) - 1]['type'] ?? '') === 'summary' &&
+		$onlyIssues[count($onlyIssues) - 1]['pages_with_incomplete_dependencies'] === 1,
+		'Issues-only emits the real affected page with machine-readable reasons and complete counters');
+
+	[$exit, $out, $err] = $cli(array_merge($auditArgs, ['--issues-only', '--summary-only']), false);
+	check($exit === 0 && count(array_filter(explode("\n", trim($out)))) === 1 &&
+		json_decode(trim($out), true, 512, JSON_THROW_ON_ERROR)['type'] === 'summary',
+		'Summary-only takes precedence when both read-only output filters are set');
+
 echo "OK: actual run.php preflight, serialized job inspection, redirect-safe semantic audit and documented eval\n";

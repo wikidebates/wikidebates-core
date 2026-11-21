@@ -27,6 +27,7 @@ class AuditSemanticFreshness extends Maintenance {
 		$this->addOption( 'namespaces', 'Comma-separated namespace numbers (default 0; use 0,10 to inspect templates separately)', false, true );
 		$this->addOption( 'ids', 'Optional comma-separated page IDs to inspect', false, true );
 		$this->addOption( 'summary-only', 'Show only progress and aggregate findings', false, false );
+		$this->addOption( 'issues-only', 'Show only pages needing semantic dependency investigation, plus summary.', false, false );
 	}
 
 	private static function numericList( string $value, bool $allowZero ): array {
@@ -71,6 +72,7 @@ class AuditSemanticFreshness extends Maintenance {
 			$this->fatalError( $e->getMessage() );
 		}
 		$summaryOnly = (bool)$this->getOption( 'summary-only', false );
+		$issuesOnly = (bool)$this->getOption( 'issues-only', false );
 		$services = MediaWikiServices::getInstance();
 		$db = $services->getConnectionProvider()->getReplicaDatabase();
 		$revisions = $services->getRevisionLookup();
@@ -78,6 +80,7 @@ class AuditSemanticFreshness extends Maintenance {
 		$links = ( new QueryDependencyLinksStoreFactory() )->newQueryDependencyLinksStore( $store );
 		$summary = [
 			'type' => 'summary', 'scanned' => 0, 'redirects_skipped' => 0,
+			'issues_only' => $issuesOnly,
 			'arguments' => 0, 'debates_only' => 0,
 			'argument_without_ask_profile' => 0, 'profile_without_query_links' => 0,
 			'with_ask_profiles' => 0, 'explicit_nocache' => 0, 'nontext' => 0,
@@ -112,7 +115,7 @@ class AuditSemanticFreshness extends Maintenance {
 				// independently query-owning page.
 				if ( (int)$row->page_is_redirect === 1 ) {
 					$summary['redirects_skipped']++;
-					if ( !$summaryOnly ) {
+					if ( !$summaryOnly && !$issuesOnly ) {
 						$this->emit( [ 'type' => 'redirect', 'page_id' => $after,
 							'title' => $title->getPrefixedText() ] );
 					}
@@ -178,7 +181,20 @@ class AuditSemanticFreshness extends Maintenance {
 					);
 					$summary['with_ask_profiles'] += (int)$hasProfiles;
 					$summary['explicit_nocache'] += (int)$nocache;
-					if ( !$summaryOnly && ( $argument || $debate || $markers['template_source'] || $nocache || $hasProfiles || $hasLinks ) ) {
+					// This only filters emitted rows; all pages still receive
+					// the same read-only SMW/SQL checks and summary accounting.
+					$issueReasons = [];
+					if ( $argument && !$hasProfiles ) {
+						$issueReasons[] = 'argument_without_ask_profile';
+					}
+					if ( $hasProfiles && $queryIds === [] ) {
+						$issueReasons[] = 'ask_profile_without_query_ids';
+					}
+					if ( $withoutEdges > 0 ) {
+						$issueReasons[] = 'query_ids_without_dependency_rows';
+					}
+					if ( !$summaryOnly && ( !$issuesOnly || $issueReasons !== [] ) &&
+						( $argument || $debate || $markers['template_source'] || $nocache || $hasProfiles || $hasLinks ) ) {
 						$this->emit( [
 							'type' => 'page', 'page_id' => $after,
 							'title' => $title->getPrefixedText(),
@@ -191,6 +207,7 @@ class AuditSemanticFreshness extends Maintenance {
 							'query_ids' => count( $queryIds ),
 							'dependency_rows' => $edgeTotal,
 							'query_ids_without_dependency_rows' => $withoutEdges,
+							'issue_reasons' => $issueReasons,
 						] );
 					}
 				} catch ( Throwable $e ) {

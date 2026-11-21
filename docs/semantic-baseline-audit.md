@@ -221,6 +221,38 @@ identifiers, and prints JSON lines. It does **not** save, parse, purge, change
 settings or consume jobs, and does not print source wikitext or semantic
 values. The `resume_after` field identifies the next page boundary.
 
+
+### Inventaire compact des anomalies (sans effet sur les données)
+
+Après installation d'une version contenant l'option `--issues-only`, le
+script peut afficher **uniquement les pages à examiner**, en conservant
+le résumé général et les erreurs :
+
+```sh
+php maintenance/run.php Wikidebates:AuditSemanticFreshness \
+	--wiki=fr --namespaces=0 --after-id=1362 \
+	--limit=200 --batch-size=50 --issues-only
+```
+
+Une ligne `type=page` est émise lorsque :
+
+- la source est reconnue comme Argument et aucun profil `_ASK` n'existe ;
+- un profil `_ASK` ne permet de retrouver aucun ID de requête ;
+- au moins une requête répertoriée ne possède **aucune ligne** dans
+	`smw_query_links`.
+
+Le champ `issue_reasons` donne les motifs sans interprétation implicite
+du compteur historique `query_links`. Les redirections ne sont pas
+affichées avec ce filtre ; elles restent comptées dans
+`redirects_skipped`. Les erreurs sont toujours émises. Avec
+`--summary-only`, le résumé seul est affiché.
+
+**Ce filtre n'accélère pas les lectures SQL** : toutes les pages du
+lot continuent d'être inspectées. Garder les limites et la pagination
+bornées sur la production. Un profil enregistré et des liens présents
+ne prouvent pas à eux seuls que toutes les requêtes natives sont
+couvertes ni que le HTML actuellement servi est frais.
+
 ### Corrections to profile/dependency inventory
 
 SMW 7.3.1 resolves _ASK property reads on redirect titles to the
