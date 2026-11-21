@@ -76,8 +76,10 @@ namespace {
 		public function execute() {
 			$GLOBALS['prewarmRequests'][] = [$this->url, $this->options, $this->headers];
 			if (($GLOBALS['prewarmFailUrl'] ?? null) === $this->url) { $this->status = 429; }
+			if (($GLOBALS['prewarmGoneUrl'] ?? null) === $this->url) { $this->status = 404; }
+			$GLOBALS['prewarmHttpStatus'] = $this->status;
 			return new class {
-				public function isOK(): bool { return true; }
+				public function isOK(): bool { return ($GLOBALS['prewarmHttpStatus'] ?? 200) < 400; }
 			};
 		}
 		public function getStatus(): int { return $this->status; }
@@ -161,6 +163,13 @@ namespace {
 		$runner->setOptions(['resume'=>true,'delay-ms'=>'250']);
 		checkPrewarmCli($runner->execute() === true, 'Retry after rate limit');
 		checkPrewarmCli(!is_file($checkpoint), 'Recovered checkpoint removed');
+		$GLOBALS['prewarmRequests'] = [];
+		$GLOBALS['prewarmGoneUrl'] = 'https://fr.example.test/wiki/Two';
+		$runner = new PrewarmMinervaFileCache();
+		$runner->setOptions(['delay-ms'=>'250']);
+		checkPrewarmCli($runner->execute() === true, '404 does not abort prewarm');
+		checkPrewarmCli(count($GLOBALS['prewarmRequests']) === 4, '404 page is skipped and remaining pages are visited');
+		unset($GLOBALS['prewarmGoneUrl']);
 		$runner = new PrewarmMinervaFileCache();
 		$runner->setOptions(['recursive'=>true]);
 		try {
