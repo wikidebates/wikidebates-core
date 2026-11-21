@@ -204,14 +204,14 @@ class PrewarmMinervaFileCache extends Maintenance {
 							($state === 'BYPASS' && str_contains((string)$header, 'reason=storage-error')) ||
 							$missingHeaders >= 5) {
 							$retryHint = '';
-						if ($state === 'HTTP_429' && $retryAfter !== null) {
-							$seconds = filter_var(trim($retryAfter), FILTER_VALIDATE_INT,
-								['options' => ['min_range' => 0]]);
-							if ($seconds !== false) {
-								$retryHint = " retry-after={$seconds}s";
+							if ($state === 'HTTP_429' && $retryAfter !== null) {
+								$seconds = filter_var(trim($retryAfter), FILTER_VALIDATE_INT,
+									['options' => ['min_range' => 0]]);
+								if ($seconds !== false) {
+									$retryHint = " retry-after={$seconds}s";
+								}
 							}
-						}
-						$this->output("Stopping at page_id=$id state=$state$retryHint url=$url; last completed page_id=$lastId\n");
+							$this->output("Stopping at page_id=$id state=$state$retryHint url=$url; last completed page_id=$lastId\n");
 							$this->output("Retry with --resume, or --after-id=$lastId.\n");
 							return false;
 						}
