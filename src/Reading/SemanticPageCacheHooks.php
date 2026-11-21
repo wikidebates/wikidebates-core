@@ -90,6 +90,9 @@ final class SemanticPageCacheHooks {
 	 * Only the canonical traced PHP queries need this additional marker.
 	 */
 	public static function onParserAfterParse($parser, &$text, $stripState): bool {
+		// ApiParse is suppressed from ParserCache during a reading-only parse;
+		// there is no full-page ParserOutput to bind to a semantic signature.
+		if (self::$readingFragment) { return true; }
 		if (!self::enabled() ||
 			$parser->getOutput()->getExtensionData(\MediaWiki\Extension\DebatePHP\TrackedSemanticQuery::OUTPUT_MARKER) !== true) {
 			return true;
