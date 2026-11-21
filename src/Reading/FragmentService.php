@@ -124,8 +124,8 @@ class FragmentService {
 		} finally { if (is_resource($fill)) { fclose($fill); } }
 	}
 
-	/** Run the actual ApiParse pipeline, including parser cache and third-party transforms. */
-	private static function render(IContextSource $context, string $page, string $skin, bool $forceFresh = false): array {
+	/** Run ApiParse transforms without consulting SMW's ParserCache freshness validator. */
+	private static function render(IContextSource $context, string $page, string $skin, bool $forceFresh = true): array {
 		$derived = new DerivativeContext($context);
 		$derived->setRequest(new DerivativeRequest($context->getRequest(), ['action' => 'parse', 'page' => $page,
 			'prop' => 'text|revid', 'usearticle' => 1, 'redirects' => 1, 'useskin' => $skin,
@@ -141,9 +141,9 @@ class FragmentService {
 			});
 		$outputScope = MediaWikiServices::getInstance()->getHookContainer()->scopedRegister('ApiParseMakeOutputPage',
 			static function ($module, $output) use (&$outputPage) { $outputPage = $output; });
-		// MediaWiki 1.43's ApiParse honors the 'ApiMakeParserOptions' hook for
-		// $suppressCache. A failed SMW freshness check must never reuse an
-		// existing ParserOutput, even when page_touched has second resolution.
+		// ApiParse's suppressCache avoids SMW's own RejectParserCacheValue
+		// handler. This is a cold fallback only; fragment and HTML-file hits
+		// are already handled above without parsing or semantic validation.
 		$parseScope = $forceFresh ? MediaWikiServices::getInstance()->getHookContainer()->scopedRegister(
 			'ApiMakeParserOptions',
 			static function ($options, $title, $params, $api, &$reset, &$suppressCache) use ($page): void {
