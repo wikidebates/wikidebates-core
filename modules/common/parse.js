@@ -29,6 +29,7 @@
 	var wkParseInFlight = new Map();
 	var wkParseQueue = [];
 	var wkParseActive = 0;
+	var wkParsePumping = false;
 	var wkPageParseCache = new Map();
 	var wkPageParseInFlight = new Map();
 	var wkPageParseQueue = [];
@@ -40,6 +41,7 @@
 	var WK_PAGE_PARSE_CACHE_MAX = 50;
 
 	var WK_PARSE_FAIL_TTL_MS = 15000;
+	var WK_PARSE_FAIL_MAX = 128;
 	var wkParseFailUntil = new Map();
 
 	var WK_PARSE_PRIORITY = {
@@ -227,73 +229,68 @@
 		return request;
 	}
 
-	function wkFailIsHot( bucket, keyLocal ) {
-		var k = bucket + '|' + keyLocal;
-		var until = wkParseFailUntil.get( k ) || 0;
-
-		if ( until > Date.now() ) return true;
-		if ( until ) wkParseFailUntil.delete( k );
-
-		return false;
+	function wkPruneParseFailures() {
+		var now = Date.now();
+		wkParseFailUntil.forEach( function ( until, key ) {
+			if ( until <= now ) wkParseFailUntil.delete( key );
+		} );
 	}
 
-	function wkFailTouch( bucket, keyLocal ) {
-		var k = bucket + '|' + keyLocal;
-		wkParseFailUntil.set( k, Date.now() + WK_PARSE_FAIL_TTL_MS );
+	function wkFailIsHot( key ) {
+		wkPruneParseFailures();
+		return wkParseFailUntil.has( key );
+	}
+
+	function wkFailTouch( key ) {
+		wkPruneParseFailures();
+		// Bound failed requests only, never the reader's successful fragments.
+		wkCacheSetLRU( wkParseFailUntil, WK_PARSE_FAIL_MAX, key, Date.now() + WK_PARSE_FAIL_TTL_MS );
 	}
 
 	function wkParseCancel( bucket, wikitext ) {
 		var keyLocal = String( wikitext || '' );
-		var inFlightKey = String( bucket || 'def' ) + '|' + keyLocal;
+		bucket = bucket || 'def';
 
+		// Leaving a hover cancels every queued language variant, never active work.
 		for ( var i = wkParseQueue.length - 1; i >= 0; i-- ) {
-			if ( wkParseQueue[ i ] && wkParseQueue[ i ].inFlightKey === inFlightKey ) {
-				var job = wkParseQueue.splice( i, 1 )[ 0 ];
-
-				if ( wkParseInFlight.has( inFlightKey ) ) wkParseInFlight.delete( inFlightKey );
-
-				try { job.reject( new Error( 'wkParse:cancelled' ) ); } catch ( e ) {}
-				break;
-			}
+			var job = wkParseQueue[ i ];
+			if ( job.bucket !== bucket || job.keyLocal !== keyLocal ) continue;
+			wkParseQueue.splice( i, 1 );
+			job.finished = true;
+			if ( wkParseInFlight.get( job.inFlightKey ) === job ) wkParseInFlight.delete( job.inFlightKey );
+			job.reject( new Error( 'wkParse:cancelled' ) );
 		}
 	}
 
 	function wkParseWikitext( wikitext, bucket ) {
 		bucket = bucket || 'def';
 
-		// Recent changes have a server-side 60-second cache. Do not add
-		// another browser cache on top of it and extend their stale lifetime.
+		// Recent changes must not extend the server's 60-second data cache.
 		var cache = bucket === 'latest' ? null : wkGetBucketCache( bucket );
 		var keyLocal = String( wikitext || '' );
-		var inFlightKey = bucket + '|' + keyLocal;
+		var language = mw.config.get( 'wgUserLanguage' );
+		var cacheKey = JSON.stringify( [ language, keyLocal ] );
+		var inFlightKey = JSON.stringify( [ bucket, cacheKey ] );
 
-		var cached = wkCacheGetLRU( cache, keyLocal );
+		var cached = wkCacheGetLRU( cache, cacheKey );
 		if ( cached !== null ) return Promise.resolve( cached );
+		if ( wkFailIsHot( inFlightKey ) ) return Promise.reject( new Error( 'wkParse:fail-cached' ) );
+		if ( wkParseInFlight.has( inFlightKey ) ) return wkParseInFlight.get( inFlightKey ).promise;
 
-		if ( wkFailIsHot( bucket, keyLocal ) ) return Promise.reject( new Error( 'wkParse:fail-cached' ) );
-
-		if ( wkParseInFlight.has( inFlightKey ) ) return wkParseInFlight.get( inFlightKey );
-
-		var p = new Promise( function ( resolve, reject ) {
-			wkParseQueue.push( {
-				inFlightKey: inFlightKey,
-				keyLocal: keyLocal,
-				bucket: bucket,
-				wikitext: wikitext,
-				resolve: resolve,
-				reject: reject
-			} );
-			wkParsePump();
+		var job = {
+			inFlightKey: inFlightKey, keyLocal: keyLocal, cacheKey: cacheKey,
+			bucket: bucket, language: language, finished: false
+		};
+		job.promise = new Promise( function ( resolve, reject ) {
+			job.resolve = resolve;
+			job.reject = reject;
 		} );
-
-		// Return and share the cleanup promise too, so a handled API failure
-		// cannot leave a second, unobserved rejected promise behind.
-		p = p.finally( function () {
-			wkParseInFlight.delete( inFlightKey );
-		} );
-		wkParseInFlight.set( inFlightKey, p );
-
-		return p;
+		// Register before dispatch. Cleanup is synchronous, not a later finally
+		// that could delete a replacement submitted immediately after cancellation.
+		wkParseInFlight.set( inFlightKey, job );
+		wkParseQueue.push( job );
+		wkParsePump();
+		return job.promise;
 	}
 
 	function wkParseQueuePickNext() {
@@ -321,51 +318,72 @@
 		return wkParseQueue.splice( bestIdx, 1 )[ 0 ];
 	}
 
-	function wkParsePump() {
-		while ( wkParseActive < WK_PARSE_CONCURRENCY && wkParseQueue.length ) {
-			var job = wkParseQueuePickNext();
-			if ( !job ) return;
+	function wkParseFinish( job, success, value ) {
+		if ( job.finished ) return;
+		job.finished = true;
+		if ( wkParseInFlight.get( job.inFlightKey ) === job ) wkParseInFlight.delete( job.inFlightKey );
+		wkParseActive--;
+		try {
+			if ( success ) {
+				job.resolve( value );
+			} else {
+				wkFailTouch( job.inFlightKey );
+				job.reject( value );
+			}
+		} finally {
+			wkParsePump();
+		}
+	}
 
-			wkParseActive++;
-
-			( function ( job2 ) {
-				wkGetApi().post( {
-					action: 'parse',
-					contentmodel: 'wikitext',
-					text: job2.wikitext,
-					formatversion: 2,
-					usearticle: 1,
-					redirects: 1,
-					useskin: 'vector',
-					uselang: mw.config.get( 'wgUserLanguage' )
-				} ).done( function ( data ) {
-
-					var html = data && data.parse && data.parse.text
-						? ( typeof data.parse.text === 'string' ? data.parse.text : ( data.parse.text[ '*' ] || '' ) )
-						: '';
-
-					if ( html ) html = html.replace( /<!--[\S\s]*?-->/gm, '' );
-
-					var cache2 = job2.bucket === 'latest' ? null : wkGetBucketCache( job2.bucket );
-					var max = WK_PARSE_CACHE_MAX[ job2.bucket ];
+	function wkParseStart( job ) {
+		wkParseActive++;
+		try {
+			wkGetApi().post( {
+				action: 'parse',
+				contentmodel: 'wikitext',
+				text: job.keyLocal,
+				formatversion: 2,
+				usearticle: 1,
+				redirects: 1,
+				useskin: 'vector',
+				uselang: job.language
+			} ).done( function ( data ) {
+				if ( job.finished ) return;
+				var html;
+				try {
+					html = data && data.parse && data.parse.text;
+					if ( html && typeof html === 'object' ) html = html[ '*' ];
+					if ( typeof html !== 'string' ) throw new Error( 'wkParse:invalid-response' );
+					html = html.replace( /<!--[\S\s]*?-->/gm, '' );
+					var cache = job.bucket === 'latest' ? null : wkGetBucketCache( job.bucket );
+					var max = WK_PARSE_CACHE_MAX[ job.bucket ];
 					if ( typeof max !== 'number' ) max = WK_PARSE_CACHE_MAX.def;
+					wkCacheSetLRU( cache, max, job.cacheKey, html );
+				} catch ( error ) {
+					wkParseFinish( job, false, error );
+					return;
+				}
+				wkParseFinish( job, true, html );
+			} ).fail( function ( error ) {
+				wkParseFinish( job, false, error );
+			} );
+		} catch ( error ) {
+			// Construction/dispatch failures must not permanently consume a slot.
+			wkParseFinish( job, false, error );
+		}
+	}
 
-					wkCacheSetLRU( cache2, max, job2.keyLocal, html );
-
-					job2.resolve( html );
-
-				} ).fail( function ( err ) {
-
-					wkFailTouch( job2.bucket, job2.keyLocal );
-					job2.reject( err );
-
-				} ).always( function () {
-
-					wkParseActive--;
-					wkParsePump();
-
-				} );
-			} )( job );
+	function wkParsePump() {
+		if ( wkParsePumping ) return;
+		wkParsePumping = true;
+		try {
+			while ( wkParseActive < WK_PARSE_CONCURRENCY && wkParseQueue.length ) {
+				var job = wkParseQueuePickNext();
+				if ( !job ) break;
+				wkParseStart( job );
+			}
+		} finally {
+			wkParsePumping = false;
 		}
 	}
 

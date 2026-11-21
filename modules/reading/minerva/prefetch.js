@@ -90,11 +90,19 @@
 		function getSiblingTitleByPage( page ) {
 			if ( !page || !ui.siblings ) return '';
 
-			var a = ui.siblings.querySelector( 'a.wk-reading-siblings__link[data-page="' + page.replace( /"/g, '\\"' ) + '"]' );
-			if ( a ) return ( a.textContent || '' ).replace( /\s+/g, ' ' ).trim();
+			var links = ui.siblings.querySelectorAll( 'a.wk-reading-siblings__link[data-page]' );
+			for ( var i = 0; i < links.length; i++ ) {
+				if ( links[ i ].getAttribute( 'data-page' ) === page ) {
+					return ( links[ i ].textContent || '' ).replace( /\s+/g, ' ' ).trim();
+				}
+			}
 
-			var cur = ui.siblings.querySelector( '.wk-reading-siblings__title.is-current .wk-reading-siblings__current' );
-			if ( cur ) return ( cur.textContent || '' ).replace( /\s+/g, ' ' ).trim();
+			// The current label is a fallback only for the current page, not an
+			// unknown destination or a neighbor removed by a later navigation.
+			if ( WK.WK_READING && WK.WK_READING.state._wkCurrentPage === page ) {
+				var cur = ui.siblings.querySelector( '.wk-reading-siblings__title.is-current .wk-reading-siblings__current' );
+				if ( cur ) return ( cur.textContent || '' ).replace( /\s+/g, ' ' ).trim();
+			}
 
 			return '';
 		}

@@ -747,3 +747,46 @@ test( 'a real mobile opening promotes its queued neighbor without waiting for an
 	await f.settle();
 	assert.deepEqual( await f.page.evaluate( () => schedulerCalls.map( ( call ) => call.page ) ), [ 'Slow neighbor', 'Argument 2' ], 'obsolete queued work was never sent' );
 } );
+
+test( 'mobile swipe previews preserve the displayed title of a quoted backslash page name', async ( t ) => {
+	const { page, touch, scroll, open, settle } = await gestureFixture( t );
+	const target = 'C:\\temp "Quoted"';
+	await page.evaluate( ( target ) => {
+		Wikidebates.wkCloseReadingMode();
+		Wikidebates.WK_READING.state.siblingsByDepth[ 1 ] = [
+			{ page: 'Argument 2', title: 'Current label' },
+			{ page: target, title: 'Neighbor displayed label' }
+		];
+	}, target );
+	await open( 'Current label' );
+	await page.waitForFunction( ( target ) => Wikidebates.wkPageParseCache.state(
+		Wikidebates.wkPageParseCache.key( Wikidebates.wkReadingBuildParseRequestParams( target ) )
+	) === 'response', target, { timeout: 5000 } );
+	await scroll( 0 );
+	await touch( 'touchstart' );
+	assert.equal( ( await touch( 'touchmove', 75, 300 ) ).peek, true );
+	assert.equal( await page.textContent( '.wk-reading-peek .wk-reading-full-title' ), 'Neighbor displayed label' );
+	assert.equal( ( await touch( 'touchend' ) ).page, target );
+	await settle();
+	assert.equal( await page.textContent( '#wk-reading-content .wk-reading-full-title' ), 'Neighbor displayed label' );
+} );
+
+test( 'real Chromium and jQuery keep wikitext results separate when interface language changes', async ( t ) => {
+	const { page } = await fixture( t );
+	const result = await page.evaluate( async () => {
+		let language = 'fr', calls = 0;
+		const get = mw.config.get;
+		mw.config.get = ( key ) => key === 'wgUserLanguage' ? language : get( key );
+		Wikidebates.wkGetApi().post = ( params ) => {
+			calls++;
+			return jQuery.Deferred().resolve( { parse: { text: params.uselang } } ).promise();
+		};
+		const french = await Wikidebates.wkParseWikitext( 'Same text', 'hover' );
+		language = 'en';
+		const english = await Wikidebates.wkParseWikitext( 'Same text', 'hover' );
+		language = 'fr';
+		const cached = await Wikidebates.wkParseWikitext( 'Same text', 'hover' );
+		return { french, english, cached, calls };
+	} );
+	assert.deepEqual( result, { french: 'fr', english: 'en', cached: 'fr', calls: 2 } );
+} );
