@@ -217,6 +217,34 @@ env -u WD_SEMANTIC_PURGE_MANUAL php maintenance/run.php update --wiki=fr
 Ne pas activer EagerPurge globalement. Garder les exclusions du worker anglais
 pour `smw.update` et `wikidebatesSemanticCachePurge`. Ne pas changer le francais.
 
+### Lire les continuations sans reconstruire les jobs
+
+Si le `showJobs --list` standard échoue par `Invalid job command`,
+ne pas supprimer les jobs et ne pas assimiler cette erreur à une corruption.
+Ce chemin de MediaWiki instancie chaque job avec son `JobFactory`. Pour
+vérifier leur progression même lorsque le type n'est pas reconnu par ce
+processus, utiliser l'inspection SQL en lecture seule :
+
+```sh
+php maintenance/run.php Wikidebates:InspectSemanticPurgeQueue \
+	--wiki=en \
+	--limit=200 \
+	--match=Basic_income
+```
+
+Le paramètre `--match` est une sous-chaîne littérale du titre stocké.
+Sans `--match`, jusqu'à 200 lignes sont affichées ; `--after-id` permet
+de poursuivre la lecture par `job_id`. La commande ne reconstruit
+aucun job, n'appelle pas JobFactory et n'effectue ni pop, ni acquittement,
+ni suppression. Elle affiche le curseur sauvegardé, le nombre de dépendances,
+le statut de réclamation et le nombre de tentatives. Elle ne fonctionne
+que pour la file SQL MediaWiki située dans la table `job` du wiki.
+
+Le diagnostic `CheckSemanticCache` vérifie aussi désormais que le
+type est présent dans la configuration effective `JobClasses` et que
+le `JobFactory` sait le construire : une configuration qui semble
+saine mais ne peut pas exécuter les jobs ne doit plus donner un feu vert.
+
 ### Controle sans consommer de job
 
 ```sh

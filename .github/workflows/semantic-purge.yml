@@ -9,6 +9,7 @@ on:
       - 'src/Reading/**'
       - 'sql/**'
       - 'maintenance/CheckSemanticCache.php'
+      - 'maintenance/InspectSemanticPurgeQueue.php'
       - 'docs/smw-semantic-purge-optimization.md'
       - 'tests/*Semantic*'
       - 'tests/semanticPurge*.php'

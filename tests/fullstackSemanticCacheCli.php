@@ -73,6 +73,8 @@ $cli = static function(array $args, bool $eager, string $input = '') use ($setti
 [$exit, $out, $err] = $cli(['Wikidebates:CheckSemanticCache', '--json', '--require-purge-ready'], true);
 check($exit === 0, 'Actual CLI preflight passes with enabled prerequisites: ' . $out . $err);
 $cliReport = json_decode(trim($out), true, 512, JSON_THROW_ON_ERROR);
+check($cliReport['job_class_configured'] && $cliReport['job_factory_ready'],
+	'Actual maintenance CLI resolves the semantic purge job in JobFactory');
 check($cliReport['purge_preconditions_met'] && $cliReport['coalescing_table_available'],
 	'Actual CLI emits a valid JSON report');
 [$exit, $out, $err] = $cli(['Wikidebates:CheckSemanticCache', '--json', '--require-purge-ready'], false);
@@ -96,4 +98,28 @@ foreach (['Tracking = true', 'EagerPurge = true', 'BatchSize = 1000',
 same($queueBefore, $queue->getSize(), 'CLI checks leave the lab job queue unchanged');
 same($ledgerBefore, \MediaWiki\Extension\Wikidebates\Reading\SemanticPurgeState::revisions($store, [$depId]),
 	'CLI checks do not modify semantic revisions');
-echo "OK: actual run.php command resolution, JSON, exit-code guard and documented line-by-line eval\n";
+// Populate only the disposable DB, then inspect serialized rows via a
+// separate maintenance process. Neither JobFactory nor job execution is used.
+$sample = new \MediaWiki\Extension\Wikidebates\Reading\SemanticCachePurgeJob(
+	$owners[0], ['dependencyIds' => [$depId], 'cursor' => 30773]
+);
+$services->getJobQueueGroup()->push($sample);
+$services->getDBLoadBalancerFactory()->commitPrimaryChanges(__METHOD__);
+[$exit, $out, $err] = $cli([
+	'Wikidebates:InspectSemanticPurgeQueue', '--json', '--limit=200',
+	'--match=WD_Purge_Owner_A'
+], false);
+check($exit === 0, 'Read-only CLI queue inspection succeeds even when eager purges are disabled: ' . $err);
+$records = array_map(static fn($line) => json_decode($line, true, 512, JSON_THROW_ON_ERROR),
+	array_filter(explode("\n", trim($out))));
+$found = false;
+foreach ($records as $row) {
+	if (($row['type'] ?? '') === 'job' && ($row['cursor'] ?? null) === 30773 &&
+		($row['dependency_count'] ?? null) === 1) {
+		$found = true;
+	}
+}
+check($found, 'A stored legacy cursor is visible without instantiating its job type');
+same(1, count(array_filter($records, static fn($row) => $row['type'] === 'summary')),
+	'Queue inspector reports a single resume cursor');
+echo "OK: actual run.php preflight, serialized job inspection and documented line-by-line eval\n";

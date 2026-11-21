@@ -41,7 +41,31 @@ class CheckSemanticCache extends Maintenance {
 		foreach (['wd_smw_entity_revisions', 'wd_smw_purge_state', 'smw_query_links', 'smw_object_ids'] as $table) {
 			$tables[$table] = $db->tableExists($table, __METHOD__);
 		}
+		// Inspect the actual JobFactory, not only the job database counters.
+		// Constructing a job does not enqueue, execute or acknowledge it.
+		$jobType = 'wikidebatesSemanticCachePurge';
+		$jobClasses = $config->get('JobClasses');
+		$jobClassConfigured = is_array($jobClasses) && isset($jobClasses[$jobType]);
+		$jobFactoryReady = false;
+		if ($jobClassConfigured) {
+			try {
+				$job = $services->getJobFactory()->newJob($jobType, [
+					'namespace' => NS_MAIN,
+					'title' => 'Wikidebates_semantic_cache_check',
+					'dependencyIds' => [],
+					'cursor' => 0
+				]);
+				$jobFactoryReady = $job instanceof \MediaWiki\Extension\Wikidebates\Reading\SemanticCachePurgeJob;
+			} catch (\Throwable $e) {
+				// The check must report a blocker, not expose exception internals.
+			}
+		}
 		$blockers = [];
+		if (!$jobClassConfigured) {
+			$blockers[] = 'Semantic purge job type is absent from the effective JobClasses configuration.';
+		} elseif (!$jobFactoryReady) {
+			$blockers[] = 'JobFactory cannot construct the semantic purge job type.';
+		}
 		if (!$settings['WikidebatesSemanticCacheTracking']) {
 			$blockers[] = 'Semantic tracking is disabled.';
 		}
@@ -66,6 +90,8 @@ class CheckSemanticCache extends Maintenance {
 		return [
 			'settings' => $settings,
 			'tables' => $tables,
+			'job_class_configured' => $jobClassConfigured,
+			'job_factory_ready' => $jobFactoryReady,
 			'effective_batch_size' => max(1, min(5000, (int)$settings['WikidebatesSemanticCachePurgeBatchSize'])),
 			'purge_preconditions_met' => $blockers === [],
 			'coalescing_table_available' => $tables['wd_smw_purge_state'],
@@ -93,6 +119,8 @@ class CheckSemanticCache extends Maintenance {
 			foreach ($report['tables'] as $table => $exists) {
 				$this->output($table . ' = ' . ($exists ? 'OK' : 'ABSENTE') . "\n");
 			}
+			$this->output('job_class_configured = ' . json_encode($report['job_class_configured']) . "\n");
+			$this->output('job_factory_ready = ' . json_encode($report['job_factory_ready']) . "\n");
 			$this->output('effective_batch_size = ' . $report['effective_batch_size'] . "\n");
 			$this->output('purge_preconditions_met = ' . json_encode($report['purge_preconditions_met']) . "\n");
 			foreach (array_merge($report['blockers'], $report['warnings'], [$report['scope']]) as $message) {

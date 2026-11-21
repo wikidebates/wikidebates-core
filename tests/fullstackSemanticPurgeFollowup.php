@@ -74,10 +74,21 @@ $queue = $services->getJobQueueGroup()->get('wikidebatesSemanticCachePurge');
 $queueBefore = $queue->getSize();
 $ledgerBefore = SemanticPurgeState::revisions($store, [$depId]);
 $report = $inspector->inspectConfiguration();
+check($report['job_class_configured'] && $report['job_factory_ready'],
+	'Real MediaWiki JobFactory can construct the registered semantic purge job');
 check($report['purge_preconditions_met'] && $report['coalescing_table_available'],
 	'Installed real database and enabled configuration meet the limited preconditions');
 same(0, $report['settings']['smwgQueryProfiler'], 'Integer zero is not strict boolean false');
 same(1000, $report['effective_batch_size'], 'Inspector matches the worker batch size');
+$jobClassesBefore = $GLOBALS['wgJobClasses'];
+try {
+	unset($GLOBALS['wgJobClasses']['wikidebatesSemanticCachePurge']);
+	$missing = $inspector->inspectConfiguration();
+	check(!$missing['job_class_configured'] && !$missing['purge_preconditions_met'],
+		'Missing effective job registration cannot pass the purge preflight');
+} finally {
+	$GLOBALS['wgJobClasses'] = $jobClassesBefore;
+}
 $eagerBefore = $GLOBALS['wgWikidebatesSemanticCacheEagerPurge'];
 $trackingBefore = $GLOBALS['wgWikidebatesSemanticCacheTracking'];
 try {
