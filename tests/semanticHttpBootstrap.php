@@ -14,7 +14,12 @@ if (!$wdHttpRoot || !str_starts_with($wdHttpRoot . '/', rtrim(sys_get_temp_dir()
 	throw new RuntimeException('Refusing to run semantic HTTP tests without an isolated, marked lab');
 }
 
-header('X-WD-Semantic-Lab-Worker: ' . getmypid());
+// The optional test-only file-cache probe suppresses our diagnostic response
+// header: MinervaFileCache correctly rejects unknown end-to-end headers.
+// Other lab requests keep the header for worker-identity assertions.
+if (($_SERVER['HTTP_X_WD_SEMANTIC_LAB_FILE_CACHE_PROBE'] ?? '') !== '1') {
+	header('X-WD-Semantic-Lab-Worker: ' . getmypid());
+}
 
 // The runner uses this diagnostic hold ONLY for concurrent loopback requests.
 // It occupies a worker without holding any SQL transaction or cache lock.

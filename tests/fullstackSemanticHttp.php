@@ -692,12 +692,13 @@ try {
 	// full-page file and contain the updated semantic result before purge.
 	$mobileUA = 'User-Agent: Mozilla/5.0 (Linux; Android 14; Pixel 8) ' .
 		'AppleWebKit/537.36 Chrome/130.0.0.0 Mobile Safari/537.36';
-	$mobile = $http('index.php', ['title' => 'WD_HTTP_query_A'], [$mobileUA]);
+	$mobile = $http('index.php', ['title' => 'WD_HTTP_query_A'], [$mobileUA, 'X-WD-Semantic-Lab-File-Cache-Probe: 1']);
 	check($mobile['status'] === 200 && str_contains($mobile['body'], 'WD_HTTP_MATCHES=1'),
 		'Real mobile HTML page is current with semantic purge still pending');
 	$mobileCache = $mobile['headers']['x-minerva-file-cache'][0] ?? '';
-	check(str_starts_with($mobileCache, 'BYPASS'),
-		'Tracked mobile page bypasses Minerva full-page file cache');
+	check(str_starts_with($mobileCache, 'BYPASS; reason=extension-veto'),
+		'Tracked mobile query is refused by the semantic file-cache veto, not by a lab header: ' .
+		$mobileCache);
 	$mobileControl = strtolower(implode(', ', $mobile['headers']['cache-control'] ?? []));
 	check(str_contains($mobileControl, 'no-cache') ||
 		str_contains($mobileControl, 'no-store') || str_contains($mobileControl, 'private'),
@@ -773,11 +774,12 @@ try {
 	check($orDesktop['status'] === 200 &&
 		str_contains($orDesktop['body'], 'WD_HTTP_OR_A=0;WD_HTTP_OR_B=1;WD_HTTP_OR_TOTAL=1'),
 		'Full Vector page reflects the combined OR switch before purge');
-	$orMobile = $http('index.php', ['title' => 'WD_HTTP_OR_query'], [$mobileUA]);
+	$orMobile = $http('index.php', ['title' => 'WD_HTTP_OR_query'], [$mobileUA, 'X-WD-Semantic-Lab-File-Cache-Probe: 1']);
 	check($orMobile['status'] === 200 &&
 		str_contains($orMobile['body'], 'WD_HTTP_OR_A=0;WD_HTTP_OR_B=1;WD_HTTP_OR_TOTAL=1') &&
-		str_starts_with($orMobile['headers']['x-minerva-file-cache'][0] ?? '', 'BYPASS'),
-		'Minerva bypasses old full HTML while an OR parent switches before purge');
+		str_starts_with($orMobile['headers']['x-minerva-file-cache'][0] ?? '',
+			'BYPASS; reason=extension-veto'),
+		'Semantic veto protects Minerva during an OR parent switch even without the lab debug header');
 	fsFlush();
 
 	$beforeOr = SemanticRevisionStore::fingerprint($store, $orSubject);
@@ -907,6 +909,80 @@ try {
 		unlink($temporary . '/semantic-http-disable-tracking');
 	}
 
+	// Characterize the actual full-page Minerva behavior with semantic tracking
+	// disabled, as on the current default configuration. Never label a green
+	// CI run as a guarantee of freshness: report whether this specific cached
+	// response survived an unrelated SMW update without a dependent purge.
+	$baselineParent = 'WD HTTP untracked Minerva parent';
+	$baselineChild = 'WD HTTP untracked Minerva child';
+	$baselineQuery = 'WD HTTP untracked Minerva query';
+	fsSave($baselineParent, 'Isolated parent for a mobile cache audit');
+	fsSave($baselineChild, 'No semantic relationship yet');
+	fsSave($baselineQuery, 'Initial untracked mobile query stub');
+	fsFlush();
+	sleep(2);
+	fsSave($baselineQuery, "== Summary ==\n<wd-http-parents>$baselineParent</wd-http-parents>\n" .
+		"== Parent debates ==\nBaseline");
+	fsFlush();
+	$baselineUrl = ['title' => str_replace(' ', '_', $baselineQuery)];
+	$baselineToggle = $temporary . '/semantic-http-disable-tracking';
+	touch($baselineToggle);
+	try {
+		$baselineCold = $http('index.php', $baselineUrl, [$mobileUA, 'X-WD-Semantic-Lab-File-Cache-Probe: 1']);
+		$baselineWarm = $http('index.php', $baselineUrl, [$mobileUA, 'X-WD-Semantic-Lab-File-Cache-Probe: 1']);
+		check($baselineCold['status'] === 200 && $baselineWarm['status'] === 200 &&
+			str_contains($baselineCold['body'], 'WD_HTTP_MATCHES=0') &&
+			str_contains($baselineWarm['body'], 'WD_HTTP_MATCHES=0'),
+			'Untracked mobile query starts with zero matches on two genuine HTTP views');
+
+		$baselineInitialStatus = $baselineWarm['headers']['x-minerva-file-cache'][0] ?? '';
+		check(str_starts_with($baselineInitialStatus, 'HIT'),
+			'Untracked mobile query must have a genuine full-page cache HIT before the external edit: ' .
+			$baselineInitialStatus);
+
+		// Keep experimental targeted purges waiting so only the normal
+		// MediaWiki/SMW invalidation pipeline can refresh this baseline.
+		fsSave($baselineChild, '{{#set:WD HTTP Parent=' . $baselineParent . '}}');
+		fsFlush(['wikidebatesSemanticCachePurge']);
+		$store->clear();
+		$directAfter = (new \SMW\Scribunto\LibraryFactory($store))->newQueryResultFrom([
+			'[[WD HTTP Parent::' . $baselineParent . ']]',
+			'limit=200', 'link=none'
+		]);
+		check(count($directAfter->getResults()) === 1,
+			'SMW direct query sees the new parent independently of HTML caches');
+		$baselineAfter = $http('index.php', $baselineUrl, [$mobileUA, 'X-WD-Semantic-Lab-File-Cache-Probe: 1']);
+		check($baselineAfter['status'] === 200,
+			'Untracked Minerva full-page query still responds after external semantic edit');
+		$coldState = $baselineCold['headers']['x-minerva-file-cache'][0] ?? '';
+		$warmState = $baselineWarm['headers']['x-minerva-file-cache'][0] ?? '';
+		$afterState = $baselineAfter['headers']['x-minerva-file-cache'][0] ?? '';
+		$oldHtml = str_contains($baselineAfter['body'], 'WD_HTTP_MATCHES=0');
+		$newHtml = str_contains($baselineAfter['body'], 'WD_HTTP_MATCHES=1');
+		$untrackedMinervaObservation = [
+			'tracking_in_http_workers' => false,
+			'cli_semantic_purge_jobs_held' => true,
+			'direct_smw_matches_after_edit' => 1,
+			'initial_file_state' => $coldState,
+			'second_file_state' => $warmState,
+			'after_external_edit_file_state' => $afterState,
+			'after_external_edit_old_html' => $oldHtml,
+			'after_external_edit_new_html' => $newHtml,
+			'stale_minerva_hit_observed' => str_starts_with($afterState, 'HIT') && $oldHtml,
+			// A MISS or BYPASS is not an automatic freshness guarantee; a
+			// separate parser cache could still return outdated semantic data.
+			'stale_full_html_observed' => $oldHtml && !$newHtml,
+		];
+	} finally {
+		if (is_file($baselineToggle)) {
+			unlink($baselineToggle);
+		}
+	}
+	fsFlush();
+	if ($untrackedMinervaObservation['stale_full_html_observed']) {
+		fwrite(STDERR, "WARNING: untracked mobile HTML retained an old SMW result in the disposable lab.\n");
+	}
+
 	$report = [
 		'backend' => $dbType,
 		'mediawiki' => MW_VERSION,
@@ -914,6 +990,7 @@ try {
 		'semantic_scribunto' => SMW_SCRIBUNTO_VERSION,
 		'transport' => 'real loopback HTTP, three PHP CLI server workers',
 		'corpus_debate' => $corpusMeasurements,
+		'untracked_minerva_semantic_baseline' => $untrackedMinervaObservation,
 		'benchmark' => [
 			'samples_each' => count($hitSamples),
 			'fragment_hit_median_ms' => $percentile($hitSamples, .5),
