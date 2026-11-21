@@ -49,6 +49,15 @@ try {
 		'LOSER', [], PHP_INT_MAX, true), 'Second cold renderer cannot overwrite the first');
 	check($lazy->readIfPresent('First_wins', 'android', $identity)['entry']['body'] === 'WINNER',
 		'Concurrent cold publications keep the first valid content');
+	// Pre-existing page generations still use the ordinary locking protocol.
+	$legacy = new Store($dir, 'pre-existing-wiki', 300, 4096);
+	$legacySnapshot = $legacy->read('Existing', 'android', $identity);
+	$legacyPeek = $legacy->readIfPresent('Existing', 'android', $identity);
+	check(!$legacyPeek['fresh'] && $legacyPeek['generation'] === $legacySnapshot['generation'],
+		'Existing page generation is respected by lazy reader');
+	check($legacy->publish('Existing', 'android', $identity, $legacyPeek['generation'], 'LEGACY', []),
+		'Pre-existing page remains writable without first-publication mode');
+
 
 	$first = $store->read('A', 'android', $identity);
 	check($first['entry'] === null, 'Cold read misses');
