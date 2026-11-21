@@ -101,15 +101,18 @@ trait CacheView {
 			$request->getHeader('Host'), $request->getHeader('User-Agent'),
 			$request->getHeader('Accept-Language'), $request->getHeader('X-Subdomain')]);
 		$store = Hooks::store();
-		$expires = 0;
-		$expiryScope = MediaWikiServices::getInstance()->getHookContainer()->scopedRegister('ParserOutputPostCacheTransform',
-			static function ($output) use (&$expires, $identity) {
-				if ($output->getCacheRevisionId() === $identity['revision'] && $output->isCacheable()) {
-					$expires = (int)wfTimestamp(TS_UNIX, $output->getCacheTime()) + $output->getCacheExpiry();
-				}
-			});
 		$page = $this->getTitle()->getPrefixedDBkey();
 		$snapshot = $store->read($page, $variant, $identity);
+		$fill = null;
+		if (!$snapshot['entry']) {
+			$fill = $store->startFill($page);
+			if (!$fill) {
+				// A request may have published since our first MISS.
+				// Rechecking once avoids an expensive redundant rendering.
+				$snapshot = $store->read($page, $variant, $identity);
+				if (!$snapshot['entry']) { return $this->bypass('busy'); }
+			}
+		}
 		if ($snapshot['entry']) {
 			$entry = $snapshot['entry'];
 			foreach ($entry['headers'] as $name => $values) {
@@ -125,9 +128,16 @@ trait CacheView {
 			echo $entry['body'];
 			return true;
 		}
-		$fill = $store->startFill($page);
-		if (!$fill) { return $this->bypass('busy'); }
 		$this->diagnostic('MISS');
+		// Only a MISS can produce a new cacheable rendering. On HIT this
+		// additional parser hook would add work without affecting the response.
+		$expires = 0;
+		$expiryScope = MediaWikiServices::getInstance()->getHookContainer()->scopedRegister('ParserOutputPostCacheTransform',
+			static function ($output) use (&$expires, $identity) {
+				if ($output->getCacheRevisionId() === $identity['revision'] && $output->isCacheable()) {
+					$expires = (int)wfTimestamp(TS_UNIX, $output->getCacheTime()) + $output->getCacheExpiry();
+				}
+			});
 		ob_start(function ($html, $phase) use ($store, $page, $variant, $identity, $snapshot, $fill, $context, &$expires, $expiryScope) {
 			try {
 				if (!($phase & PHP_OUTPUT_HANDLER_FINAL) || ($phase & PHP_OUTPUT_HANDLER_CLEAN)) {

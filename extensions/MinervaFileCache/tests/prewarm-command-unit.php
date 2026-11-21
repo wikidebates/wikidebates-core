@@ -76,13 +76,23 @@ namespace {
 		public function execute() {
 			$GLOBALS['prewarmRequests'][] = [$this->url, $this->options, $this->headers];
 			if (($GLOBALS['prewarmFailUrl'] ?? null) === $this->url) { $this->status = 429; }
+			if (($GLOBALS['prewarmGoneUrl'] ?? null) === $this->url) { $this->status = 404; }
+			if (($GLOBALS['prewarmRetryOnceUrl'] ?? null) === $this->url) {
+				$GLOBALS['prewarmRetryCalls'] = ($GLOBALS['prewarmRetryCalls'] ?? 0) + 1;
+				if ($GLOBALS['prewarmRetryCalls'] === 1) { $this->status = 429; }
+			}
+			$GLOBALS['prewarmHttpStatus'] = $this->status;
 			return new class {
-				public function isOK(): bool { return true; }
+				public function isOK(): bool { return ($GLOBALS['prewarmHttpStatus'] ?? 200) < 400; }
 			};
 		}
 		public function getStatus(): int { return $this->status; }
 		public function getResponseHeader(string $name): ?string {
-			return $this->status === 200 ? 'MISS' : null;
+			if ($name === 'Retry-After' && $this->status === 429 &&
+				($GLOBALS['prewarmRetryOnceUrl'] ?? null) === $this->url) {
+				return '0';
+			}
+			return $name === 'X-Minerva-File-Cache' && $this->status === 200 ? 'MISS' : null;
 		}
 	}
 
@@ -161,6 +171,22 @@ namespace {
 		$runner->setOptions(['resume'=>true,'delay-ms'=>'250']);
 		checkPrewarmCli($runner->execute() === true, 'Retry after rate limit');
 		checkPrewarmCli(!is_file($checkpoint), 'Recovered checkpoint removed');
+		$GLOBALS['prewarmRequests'] = [];
+		$GLOBALS['prewarmGoneUrl'] = 'https://fr.example.test/wiki/Two';
+		$runner = new PrewarmMinervaFileCache();
+		$runner->setOptions(['delay-ms'=>'250']);
+		checkPrewarmCli($runner->execute() === true, '404 does not abort prewarm');
+		checkPrewarmCli(count($GLOBALS['prewarmRequests']) === 4, '404 page is skipped and remaining pages are visited');
+		unset($GLOBALS['prewarmGoneUrl']);
+		$GLOBALS['prewarmRequests'] = [];
+		$GLOBALS['prewarmRetryOnceUrl'] = 'https://fr.example.test/wiki/Two';
+		$GLOBALS['prewarmRetryCalls'] = 0;
+		$runner = new PrewarmMinervaFileCache();
+		$runner->setOptions(['retries'=>'1','delay-ms'=>'250']);
+		checkPrewarmCli($runner->execute() === true, 'Transient HTTP 429 may be retried once');
+		checkPrewarmCli($GLOBALS['prewarmRetryCalls'] === 2 && count($GLOBALS['prewarmRequests']) === 5,
+			'Retry sends exactly one extra request without skipping other pages');
+		unset($GLOBALS['prewarmRetryOnceUrl'], $GLOBALS['prewarmRetryCalls']);
 		$runner = new PrewarmMinervaFileCache();
 		$runner->setOptions(['recursive'=>true]);
 		try {

@@ -86,6 +86,13 @@
 						"MW_INSTALL_PATH": "${{ github.workspace }}/.mw-lab"
 					},
 					"run": "php tests/mediawiki.php"
+				},
+				{
+					"name": "Read-only semantic purge queue inspection (isolated SQLite)",
+					"env": {
+						"MW_INSTALL_PATH": "${{ github.workspace }}/.mw-lab"
+					},
+					"run": "php tests/queueInspector.php"
 				}
 			],
 			"strategy": {

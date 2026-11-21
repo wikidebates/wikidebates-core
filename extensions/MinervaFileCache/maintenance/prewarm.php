@@ -18,6 +18,7 @@ class PrewarmMinervaFileCache extends Maintenance {
 		$this->addOption('limit', 'Maximum pages to visit (0 = all; default 0).', false, true);
 		$this->addOption('delay-ms', 'Pause between requests in milliseconds (default 1000, minimum 250).', false, true);
 		$this->addOption('timeout', 'HTTP request timeout in seconds (default 30).', false, true);
+		$this->addOption('retries', 'Extra retries for transient failures (0-3, default 0); obey Retry-After.', false, true);
 		$this->addOption('device', 'Mobile User-Agent variant: android (default) or iphone.', false, true);
 		$this->addOption('namespace', 'Only warm pages in this numeric namespace ID.', false, true);
 		$this->addOption('category', 'Warm only pages directly in this category (name or Category:Title).', false, true);
@@ -33,6 +34,7 @@ class PrewarmMinervaFileCache extends Maintenance {
 			$limit = Prewarm::number($this->getOption('limit', 0), '--limit', 0, PHP_INT_MAX);
 			$delay = Prewarm::number($this->getOption('delay-ms', 1000), '--delay-ms', 250, 60000);
 			$timeout = Prewarm::number($this->getOption('timeout', 30), '--timeout', 1, 120);
+			$retries = Prewarm::number($this->getOption('retries', 0), '--retries', 0, 3);
 			$afterId = Prewarm::number($this->getOption('after-id', 0), '--after-id', 0, PHP_INT_MAX);
 			$device = (string)$this->getOption('device', 'android');
 			$userAgent = Prewarm::userAgent($device);
@@ -165,32 +167,42 @@ class PrewarmMinervaFileCache extends Maintenance {
 						$state = 'DRY_RUN';
 						$this->output("$id $url\n");
 					} else {
-						try {
-							$request = $http->create($url, [
-								'timeout' => $timeout, 'followRedirects' => false,
-								'userAgent' => $userAgent,
-							], __METHOD__);
-							$request->setHeader('Accept-Language', (string)$config->get('LanguageCode'));
-							$result = $request->execute();
-							$code = (int)$request->getStatus();
-							$header = $request->getResponseHeader('X-Minerva-File-Cache');
-							$state = Prewarm::responseState($code, $header);
-							if (!$result->isOK()) {
-								$state = 'HTTP_ERROR';
+						$retryNumber = 0;
+						do {
+							$header = null;
+							$retryAfter = null;
+							try {
+								$request = $http->create($url, [
+									'timeout' => $timeout, 'followRedirects' => false,
+									'userAgent' => $userAgent,
+								], __METHOD__);
+								$request->setHeader('Accept-Language', (string)$config->get('LanguageCode'));
+								$result = $request->execute();
+								$code = (int)$request->getStatus();
+								$header = $request->getResponseHeader('X-Minerva-File-Cache');
+								$retryAfter = $request->getResponseHeader('Retry-After');
+								$state = $code === 0 ? 'TRANSPORT_ERROR' : Prewarm::responseState($code, $header);
+							} catch (\Throwable $e) {
+								$state = 'TRANSPORT_ERROR';
+								$this->error("Request failed at page_id=$id url=$url: " . $e->getMessage());
 							}
-						} catch (\Throwable $e) {
-							$state = 'HTTP_ERROR';
-							$this->error("Request failed at page_id=$id: " . $e->getMessage());
-						}
+							if ($retryNumber >= $retries) { break; }
+							$wait = Prewarm::retryDelaySeconds($state, $retryAfter, $retryNumber + 1);
+							if ($wait === null) { break; }
+							$retryNumber++;
+							$this->output("Retrying page_id=$id state=$state attempt=$retryNumber/$retries after {$wait}s\n");
+							if ($wait > 0) { sleep($wait); }
+						} while (true);
 						if ($state === 'NO_HEADER' || $state === 'UNKNOWN_HEADER') {
 							$missingHeaders++;
 						} else {
 							$missingHeaders = 0;
 						}
-						if ((str_starts_with($state, 'HTTP_') && !in_array($state, ['HTTP_404', 'HTTP_410'], true)) ||
+						if ($state === 'TRANSPORT_ERROR' ||
+							(str_starts_with($state, 'HTTP_') && !in_array($state, ['HTTP_404', 'HTTP_410'], true)) ||
 							($state === 'BYPASS' && str_contains((string)$header, 'reason=storage-error')) ||
 							$missingHeaders >= 5) {
-							$this->output("Stopping at page_id=$id state=$state; last completed page_id=$lastId\n");
+							$this->output("Stopping at page_id=$id state=$state url=$url; last completed page_id=$lastId\n");
 							$this->output("Retry with --resume, or --after-id=$lastId.\n");
 							return false;
 						}

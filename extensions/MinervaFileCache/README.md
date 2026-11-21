@@ -110,7 +110,7 @@ mettant `$wgMinervaFileCacheDebugHeaders = false` si souhaité.
 - Les fichiers sont compressés sur disque. La compression HTTP reste gérée par
   MediaWiki, PHP ou le serveur web, avec les réglages existants.
 
-La durée maximale est de **300 secondes** par défaut. Les modifications de page,
+La durée maximale est de **2 592 000 secondes (30 jours)** par défaut. Les modifications de page,
 purges et invalidations de dépendances retirent les variantes mobiles via le
 pipeline HTML de MediaWiki. Les jobs de mise à jour des dépendances doivent
 fonctionner, comme pour les autres caches MediaWiki.
@@ -197,6 +197,7 @@ Options principales :
 - `--limit=N` : s'arrêter après N pages ; 0 = aucune limite (défaut).
 - `--delay-ms=N` : délai entre deux requêtes (1000 ms par défaut, minimum 250).
 - `--timeout=N` : délai maximal HTTP en secondes (30 par défaut).
+- `--retries=N` : jusqu'à N tentatives supplémentaires (0 à 3, **0 par défaut**) uniquement pour les erreurs transitoires `HTTP_429`, `HTTP_500`, `HTTP_502`, `HTTP_503`, `HTTP_504` et les erreurs réseau. Respecte `Retry-After` (secondes ou date HTTP) jusqu'à 120 secondes ; au-delà, s'arrête pour permettre une reprise manuelle sans insister prématurément.
 - `--device=android|iphone` : User-Agent à préchauffer (Android par défaut).
 - `--namespace=N` : ne parcourir qu'un espace de noms numérique.
 - `--category="Nom"` : ne parcourir que les membres directs de cette catégorie.
@@ -213,15 +214,76 @@ Options principales :
 La commande nécessite `$wgUseFileCache = true`, un stockage accessible et
 `$wgMinervaFileCacheDebugHeaders = true` pour confirmer `MISS` et `HIT`.
 Elle utilise le domaine de `$wgServer` et ne suit pas les redirections.
-Elle s'arrête sur les erreurs HTTP (403, 429, 5xx, etc.), les erreurs de
+Elle signale le statut HTTP réel (par exemple `HTTP_403`, `HTTP_429` ou
+`HTTP_503`) et distingue `TRANSPORT_ERROR` des réponses HTTP. Les réponses
+`HTTP_404` et `HTTP_410` n'interrompent pas le parcours.
+Elle s'arrête sur les autres erreurs HTTP, les erreurs réseau, les erreurs de
 stockage ou plusieurs réponses successives sans en-tête de diagnostic pour
 éviter de surcharger PHP-FPM et Cloudflare. En cas d'interruption, relancer
 la commande avec `--resume` ou reprendre après le dernier `page_id` affiché.
+
+Pour un préchauffage soumis ponctuellement aux limites HTTP, préférer un
+nombre réduit de nouvelles tentatives (par exemple
+`php maintenance/run.php MinervaFileCache:prewarm --wiki=fr --resume --retries=1`).
+Les refus permanents (notamment 403) ne sont jamais réessayés automatiquement.
+Si l'en-tête `Retry-After` impose plus de deux minutes d'attente, le préchauffage
+s'arrête et conserve son point de reprise.
+
 
 **Attention :** le cache est indexé par User-Agent complet, URL et langue
 acceptée. Un préchauffage Android ne remplit pas toutes les variantes Safari
 iPhone ou toutes les versions de Chrome. Il est donc surtout utile pour les
 variantes réellement consultées et peut produire beaucoup de fichiers.
+
+## Diagnostic du stockage
+
+Avant d'envisager un regroupement des navigateurs et langues, mesurer la
+fragmentation réelle du stockage par wiki :
+
+```sh
+php maintenance/run.php MinervaFileCache:stats --wiki=fr
+php maintenance/run.php MinervaFileCache:stats --wiki=en
+```
+
+La commande renvoie le nombre de répertoires de pages (`pages`), le nombre
+de fichiers de contenu (`files`), leur taille compressée totale en octets
+(`bytes`) et le maximum de variantes dans un répertoire de page
+(`maxVariantsPerPage`), les pages ayant plusieurs variantes
+(`pagesWithMultipleVariants`) et leur répartition (`variantDistribution`).
+Elle ne décompresse pas le contenu et ne modifie aucune entrée. Elle parcourt toutefois les fichiers : à exécuter en maintenance,
+pas à chaque requête web. Ces chiffres ne sont pas des taux de HIT/MISS.
+
+Pour mesurer si certaines variantes déjà stockées ont produit le même HTML et
+les mêmes en-têtes, lancer un audit *en lecture seule*, limité en volume :
+
+```sh
+php maintenance/run.php MinervaFileCache:variants --wiki=fr --limit-pages=100 --max-variants=20
+php maintenance/run.php MinervaFileCache:variants --wiki=en --limit-pages=100 --max-variants=20
+```
+
+`scannedPages` indique le nombre de répertoires visités,
+`pagesWithMultipleFiles` ceux contenant plusieurs fichiers,
+`validEntries` les entrées actuelles décodées et contrôlées,
+`identicalExtraEntries` le nombre de fichiers supplémentaires strictement
+identiques (même identité de révision, mêmes en-têtes et mêmes octets HTML) et
+`divergentPages` les pages ayant au moins deux rendus différents. Les compteurs
+`truncatedPages`, `ignoredEntries` et `racedPages` signalent les limites de
+l'échantillon, les fichiers non valides et les invalidations pendant l'audit.
+
+Cette mesure décompresse volontairement un échantillon de fichiers : l'utiliser
+en maintenance, et éviter les très grands seuils sur un serveur occupé. Elle ne
+produit ni URL, ni User-Agent individuel, ni contenu de page ; elle ne modifie
+pas les fichiers. Les répertoires sont parcourus dans l'ordre du système de
+fichiers, sans tirage aléatoire : les résultats ne sont **pas** nécessairement
+représentatifs du trafic.
+
+Une identité HTML observée entre variantes n'autorise **pas** à fusionner
+automatiquement les User-Agents ou les langues : les futures réponses pourraient
+différer. Les regroupements éventuels nécessitent encore des comparaisons sur
+les rendus complets représentatifs et des vérifications de cache en intégration.
+
+La clé stricte par URL, User-Agent et préférences linguistiques est conservée
+pour éviter les collisions de variantes non validées.
 
 ## Nettoyage et désactivation
 
@@ -232,7 +294,18 @@ depuis la racine MediaWiki et avec l'utilisateur PHP :
 php maintenance/run.php MinervaFileCache:prune
 ```
 
-Le nettoyage retire les fichiers expirés ou endommagés. Les petits fichiers de
+Le nettoyage retire les fichiers expirés ou endommagés. Il parcourt
+les répertoires et les variantes progressivement, sans constituer en mémoire
+la liste de tous les fichiers du wiki : son empreinte mémoire reste ainsi
+limitée même si le cache contient de nombreuses pages. Les nouvelles
+entrées enregistrent leur échéance dans l'horodatage du fichier (mtime) :
+le nettoyage horaire peut ainsi ignorer rapidement les fichiers encore valides
+sans les décompresser. Les anciens fichiers restent compatibles : ils sont
+vérifiés puis leur horodatage est migré lors du prochain nettoyage. Cette
+optimisation ne remplace jamais la validation de l'échéance et des permissions
+lors du service d'une page. Un fichier devenu endommagé tout en conservant un
+horodatage futur peut ne pas être effacé immédiatement, mais ne peut pas être
+servi comme entrée valide. Les petits fichiers de
 verrouillage et de génération sont conservés pour éviter une course avec les
 requêtes actives. Surveiller l'espace disque et les inodes, notamment parce que
 les User-Agents ont des variantes distinctes.
