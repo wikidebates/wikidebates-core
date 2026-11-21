@@ -15,7 +15,7 @@ $classes = $services->getMainConfig()->get('JobClasses');
 // In both modes the inspector must read SQL directly without instantiating it.
 if ( $services->getMainConfig()->has( 'WikidebatesSemanticCacheTracking' ) ) {
 	check( ( $classes[$jobType] ?? null ) ===
-		\\MediaWiki\\Extension\\Wikidebates\\Reading\\SemanticCachePurgeJob::class,
+		\MediaWiki\Extension\Wikidebates\Reading\SemanticCachePurgeJob::class,
 		'Pilot registers the expected purge class without executing it' );
 } else {
 	check( !isset( $classes[$jobType] ),
