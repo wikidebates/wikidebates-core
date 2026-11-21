@@ -32,6 +32,7 @@ $cliSettings = [
 	'ParserCacheType' => CACHE_DB,
 	'UseDatabaseMessages' => false,
 	'JobRunRate' => 0,
+	'JobTypesExcludedFromDefaultQueue' => ['wikidebatesSemanticCachePurge'],
 	'WikidebatesReadingCacheDirectory' => $temporary,
 	'WikidebatesSemanticCacheTracking' => true,
 	'WikidebatesSemanticCachePurgeBatchSize' => 1000,
