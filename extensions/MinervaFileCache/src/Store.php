@@ -305,9 +305,10 @@ class Store {
 	/**
 	 * Offline diagnostic only: hash HTML after masking exactly one occurrence
 	 * each of MediaWiki's request ID and backend timing in inline scripts.
-	 * Never use this hash to select or serve a cache variant.
+	 * Never use these hashes to select or serve a cache variant.
+	 * @return array{normalized:string,withoutScripts:string}|null
 	 */
-	private function hashWithoutVolatileMetadata(string $html): ?string {
+	private function hashWithoutVolatileMetadata(string $html): ?array {
 		$requestIds = 0;
 		$timings = 0;
 		$normalized = preg_replace_callback(
@@ -334,8 +335,16 @@ class Store {
 			},
 			$html
 		);
-		return $normalized !== null && $requestIds === 1 && $timings === 1
-			? hash('sha256', $normalized) : null;
+		if ($normalized === null || $requestIds !== 1 || $timings !== 1) {
+			return null;
+		}
+		// Removing scripts is a diagnostic partition, not an HTML rewrite
+		// used by the live cache. It includes inline and external scripts.
+		$withoutScripts = preg_replace('~<script\\b[^>]*>.*?</script\\s*>~is', '', $normalized);
+		return $withoutScripts === null ? null : [
+			'normalized' => hash('sha256', $normalized),
+			'withoutScripts' => hash('sha256', $withoutScripts),
+		];
 	}
 
 	/**
@@ -365,6 +374,11 @@ class Store {
 			'pagesWithOnlyVolatileHtmlDifferences' => 0,
 			'pagesWithResidualHtmlDifferences' => 0,
 			'sameIdentityHtmlDuplicatesIgnoringVolatile' => 0,
+			// Further distinguish differences inside script elements from
+			// differences elsewhere in the HTML document (diagnostic only).
+			'pagesWithResidualScriptOnlyDifferences' => 0,
+			'pagesWithResidualOutsideScripts' => 0,
+			'sameIdentityHtmlDuplicatesIgnoringScripts' => 0,
 		];
 		if (!is_dir($this->root)) { return $stats; }
 		foreach (new \FilesystemIterator($this->root, \FilesystemIterator::SKIP_DOTS) as $prefix) {
@@ -409,9 +423,11 @@ class Store {
 					// No HTML, headers, or per-visitor fields leave the process.
 					// This normalization is diagnostic only; stored and served HTML
 					// remains byte-for-byte unchanged.
-					$normalizedHash = $this->hashWithoutVolatileMetadata($entry['body']);
-					if ($normalizedHash !== null) { $normalizedEntries++; }
-					$byIdentity[$identityHash][] = [$bodyHash, $headerHash, $normalizedHash];
+					$normalizedHashes = $this->hashWithoutVolatileMetadata($entry['body']);
+					if ($normalizedHashes !== null) { $normalizedEntries++; }
+					$byIdentity[$identityHash][] = [$bodyHash, $headerHash,
+						$normalizedHashes['normalized'] ?? null,
+						$normalizedHashes['withoutScripts'] ?? null];
 					$fingerprint = hash('sha256', $identityHash . $headerHash . $bodyHash);
 					$hashes[$fingerprint] = true;
 					$valid++;
@@ -434,18 +450,22 @@ class Store {
 				$volatileComparable = false;
 				$volatileOnly = false;
 				$residualHtml = false;
+				$scriptOnly = false;
+				$outsideScripts = false;
 				foreach ($byIdentity as $group) {
 					if (count($group) < 2) { continue; }
 					$comparable = true;
 					$bodyHashes = [];
 					$headerHashes = [];
 					$normalizedHashes = [];
+					$scriptlessHashes = [];
 					$normalizedCount = 0;
-					foreach ($group as [$bodyHash, $headerHash, $normalizedHash]) {
+					foreach ($group as [$bodyHash, $headerHash, $normalizedHash, $scriptlessHash]) {
 						$bodyHashes[$bodyHash] = true;
 						$headerHashes[$headerHash] = true;
-						if ($normalizedHash !== null) {
+						if ($normalizedHash !== null && $scriptlessHash !== null) {
 							$normalizedHashes[$normalizedHash] = true;
+							$scriptlessHashes[$scriptlessHash] = true;
 							$normalizedCount++;
 						}
 					}
@@ -455,10 +475,19 @@ class Store {
 						$volatileComparable = true;
 						$stats['sameIdentityHtmlDuplicatesIgnoringVolatile'] +=
 							count($group) - count($normalizedHashes);
+						$stats['sameIdentityHtmlDuplicatesIgnoringScripts'] +=
+							count($group) - count($scriptlessHashes);
 						if (count($bodyHashes) > 1 && count($normalizedHashes) === 1) {
 							$volatileOnly = true;
 						}
-						if (count($normalizedHashes) > 1) { $residualHtml = true; }
+						if (count($normalizedHashes) > 1) {
+							$residualHtml = true;
+							if (count($scriptlessHashes) === 1) {
+								$scriptOnly = true;
+							} else {
+								$outsideScripts = true;
+							}
+						}
 					}
 					$stats['sameIdentityHtmlDuplicates'] += count($group) - count($bodyHashes);
 					$stats['sameIdentityHeaderDuplicates'] += count($group) - count($headerHashes);
@@ -473,6 +502,10 @@ class Store {
 					$stats['pagesWithOnlyVolatileHtmlDifferences']++;
 				}
 				if ($residualHtml) { $stats['pagesWithResidualHtmlDifferences']++; }
+				if ($scriptOnly && !$outsideScripts) {
+					$stats['pagesWithResidualScriptOnlyDifferences']++;
+				}
+				if ($outsideScripts) { $stats['pagesWithResidualOutsideScripts']++; }
 			}
 		}
 		return $stats;
