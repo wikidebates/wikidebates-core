@@ -66,7 +66,7 @@ try {
 	check($store->publish('A', 'android', $identity, $first['generation'], '<html>Résumé</html>', ['content-type' => ['text/html']]), 'Atomic publication succeeds');
 	fclose($fill);
 	check($store->read('A', 'android', $identity)['entry']['body'] === '<html>Résumé</html>', 'Body bytes round-trip exactly');
-	$cached = glob($dir . '/*/*/*/*.cache')[0];
+	$cached = glob($dir . '/' . hash('sha256', 'wiki-one') . '/*/*/*.cache')[0];
 	clearstatcache(true, $cached);
 	check(filemtime($cached) > time(), 'New cache files store their expiry in mtime');
 	check($store->prune() === 0, 'Prune preserves fresh files without decoding');
@@ -140,7 +140,7 @@ try {
 	$new = $store->read('A', 'android', $identity);
 	check(!$store->publish('A', 'android', $identity, $new['generation'], str_repeat('x', 4097), []), 'Oversize bodies are not cached');
 	check($store->publish('A', 'android', $identity, $new['generation'], 'CURRENT', []), 'New generation can publish');
-	$paths = glob($dir . '/*/*/*/*.cache');
+	$paths = glob($dir . '/' . hash('sha256', 'wiki-one') . '/*/*/*.cache');
 	$path = $paths[0];
 	$entry = json_decode(gzdecode(file_get_contents($path)), true);
 	$entry['expires'] = time() - 1;
