@@ -52,6 +52,20 @@ try {
 	$stats = $store->statistics();
 	check($stats['pagesWithMultipleVariants'] === 1 && $stats['variantDistribution']['twoToFive'] === 1 &&
 		$stats['maxVariantsPerPage'] === 2, 'Two distinct variants are counted on one page');
+	$audit = $store->analyzeVariants(1);
+	check($audit['scannedPages'] === 1 && $audit['pagesWithMultipleFiles'] === 1 &&
+		$audit['validEntries'] === 2 && $audit['divergentPages'] === 1 &&
+		$audit['identicalExtraEntries'] === 0, 'Distinct mobile HTML remains distinguishable');
+	$duplicateVariant = json_encode(['https://fr.example.test/wiki/A', 'https', 'https://fr.example.test',
+		'fr', 'fr.example.test', 'AnotherBrowser', 'fr', '']);
+	check($store->publish('A', $duplicateVariant, $identity, $first['generation'], 'FRAGMENT',
+		['content-type' => ['text/html']]), 'Publish a separate but byte-identical variant');
+	$audit = $store->analyzeVariants(1);
+	check($audit['validEntries'] === 3 && $audit['identicalExtraEntries'] === 1 &&
+		$audit['divergentPages'] === 1, 'Audit reports exactly identical duplicate cache entries');
+	$audit = $store->analyzeVariants(1, 2);
+	check($audit['truncatedPages'] === 1 && $audit['validEntries'] === 2,
+		'Variant audit respects the per-page file limit');
 	$fragmentContext = new class {
 		public function getConfig() {
 			return new class {
