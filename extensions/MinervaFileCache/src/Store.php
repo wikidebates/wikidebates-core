@@ -309,8 +309,8 @@ class Store {
 	 * @return array<string,int>
 	 */
 	public function analyzeVariants(int $limitPages = 100, int $maxVariantsPerPage = 20): array {
-		if ($limitPages < 1 || $limitPages > 10000 ||
-			$maxVariantsPerPage < 2 || $maxVariantsPerPage > 100) {
+		if ($limitPages < 1 || $limitPages > 50000 ||
+			$maxVariantsPerPage < 2 || $maxVariantsPerPage > 250) {
 			throw new \InvalidArgumentException('Invalid variant-audit sampling limits');
 		}
 		$stats = [
