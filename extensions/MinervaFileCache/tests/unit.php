@@ -103,6 +103,33 @@ try {
 	$audit = $store->analyzeVariants(1);
 	check($audit['validEntries'] === 3 && $audit['identicalExtraEntries'] === 1 &&
 		$audit['divergentPages'] === 1, 'Audit reports exactly identical duplicate cache entries');
+	check($audit['comparablePages'] === 1 &&
+		$audit['pagesWithIdentityDifferences'] === 0 &&
+		$audit['pagesWithHtmlDifferences'] === 1 &&
+		$audit['pagesWithHeaderDifferences'] === 0 &&
+		$audit['sameIdentityHtmlDuplicates'] === 1 &&
+		$audit['sameIdentityHeaderDuplicates'] === 2,
+		'Audit separates HTML differences from identical headers within one revision');
+	$headerVariant = 'browser-with-different-headers';
+	check($store->publish('A', $headerVariant, $identity, $first['generation'], 'FRAGMENT',
+		['content-type' => ['text/html'], 'vary' => ['User-Agent']]),
+		'Publish identical HTML with different replayable headers');
+	$audit = $store->analyzeVariants(1);
+	check($audit['validEntries'] === 4 && $audit['identicalExtraEntries'] === 1 &&
+		$audit['pagesWithHeaderDifferences'] === 1 &&
+		$audit['sameIdentityHtmlDuplicates'] === 2 &&
+		$audit['sameIdentityHeaderDuplicates'] === 2,
+		'Audit identifies header-only differences without misclassifying repeated HTML');
+	$olderIdentity = ['revision' => 0, 'touched' => '20261021000000'];
+	check($store->publish('A', 'older-revision', $olderIdentity, $first['generation'],
+		'FRAGMENT', ['content-type' => ['text/html']]),
+		'Prepare a separate identity to test audit comparison boundaries');
+	$audit = $store->analyzeVariants(1);
+	check($audit['validEntries'] === 5 &&
+		$audit['pagesWithIdentityDifferences'] === 1 &&
+		$audit['sameIdentityHtmlDuplicates'] === 2 &&
+		$audit['comparablePages'] === 1,
+		'Audit never mixes differing revision identities in HTML comparison');
 	$audit = $store->analyzeVariants(1, 2);
 	check($audit['truncatedPages'] === 1 && $audit['validEntries'] === 2,
 		'Variant audit respects the per-page file limit');
