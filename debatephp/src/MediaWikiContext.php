@@ -277,7 +277,12 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 			$queryFailed = true;
 			try {
 				$factory = new \SMW\Scribunto\LibraryFactory(\SMW\Services\ServicesFactory::getInstance()->getStore());
-				$result = $factory->newQueryResultFrom(array_values(Table::unwrap($query)));
+				$enabled = class_exists(MediaWikiServices::class) &&
+					(bool)MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesSemanticCacheTracking');
+				$result = $enabled
+					? TrackedSemanticQuery::execute($this->parser, array_values(Table::unwrap($query)),
+						\SMW\Services\ServicesFactory::getInstance()->getStore())
+					: $factory->newQueryResultFrom(array_values(Table::unwrap($query)));
 				$queryFailed = !$result instanceof \SMW\Query\QueryResult;
 			} finally { $this->telemetry?->semanticFinish($this->semanticOrigin, 'query', $queryStarted, $queryFailed); }
 			// Same conversion and printout formatting as mw.smw.ask, without a Lua engine.
@@ -301,6 +306,11 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 				return $converted;
 			} finally { $this->telemetry?->semanticFinish($this->semanticOrigin, 'result', $resultStarted, $failed); }
 		} catch (\Throwable $e) {
+			if (class_exists(MediaWikiServices::class) &&
+				MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesSemanticCacheTracking')) {
+				// Never cache a partial render after a failed tracked query.
+				$this->parser->getOutput()->updateCacheExpiry(0);
+			}
 			DatabaseFailure::rethrow($e);
 			$this->telemetry?->problem('semantic-query', 'exception', $e);
 			return $native ? new SemanticReadResult(null) : null;

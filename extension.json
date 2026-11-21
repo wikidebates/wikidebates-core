@@ -21,13 +21,20 @@
 	"Hooks": {
 		"BeforePageDisplay": [
 			"MediaWiki\\Extension\\Wikidebates\\Hooks::onBeforePageDisplay",
-			"MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onBeforePageDisplay"
+			"MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onBeforePageDisplay",
+			"MediaWiki\\Extension\\Wikidebates\\Reading\\SemanticPageCacheHooks::onBeforePageDisplay"
 		],
 		"ParserFirstCallInit": "MediaWiki\\Extension\\Wikidebates\\Hooks::onParserFirstCallInit",
 		"PageSaveComplete": "MediaWiki\\Extension\\Wikidebates\\Hooks::onPageSaveComplete",
 		"AuthChangeFormFields": "MediaWiki\\Extension\\Wikidebates\\Hooks::onAuthChangeFormFields",
 		"TitleSquidURLs": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onTitleSquidURLs",
-		"AfterFinalPageOutput": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onAfterFinalPageOutput"
+		"AfterFinalPageOutput": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onAfterFinalPageOutput",
+		"SMW::SQLStore::AfterDataUpdateComplete": "MediaWiki\\Extension\\Wikidebates\\Reading\\SemanticCacheHooks::onSMW__SQLStore__AfterDataUpdateComplete",
+		"PageMoveComplete": "MediaWiki\\Extension\\Wikidebates\\Reading\\SemanticCacheHooks::onPageMoveComplete",
+		"HTMLFileCache::useFileCache": "MediaWiki\\Extension\\Wikidebates\\Reading\\SemanticPageCacheHooks::onHTMLFileCache__useFileCache",
+		"ParserAfterParse": "MediaWiki\\Extension\\Wikidebates\\Reading\\SemanticPageCacheHooks::onParserAfterParse",
+		"RejectParserCacheValue": "MediaWiki\\Extension\\Wikidebates\\Reading\\SemanticPageCacheHooks::onRejectParserCacheValue",
+		"LoadExtensionSchemaUpdates": "MediaWiki\\Extension\\Wikidebates\\Reading\\SemanticRevisionStore::onLoadExtensionSchemaUpdates"
 	},
 	"ResourceFileModulePaths": {
 		"localBasePath": "modules",
@@ -620,6 +627,22 @@
 		},
 		"WikidebatesReadingArgumentCategory": {
 			"value": "Arguments"
+		},
+		"WikidebatesSemanticCacheTracking": {
+			"value": false,
+			"description": "Opt-in tracking of native SMW queries and targeted cache invalidation; keep disabled until isolated integration validation."
+		},
+		"WikidebatesSemanticCacheEagerPurge": {
+			"value": true,
+			"description": "When false, only record semantic revision fences, and skip optional background purge jobs (including already queued jobs). Intended for controlled high-volume refreshes; requires semantic tracking and guarded HTML/fragment reads."
+		},
+		"WikidebatesSemanticCachePurgeBatchSize": {
+			"value": 1000,
+			"description": "Maximum distinct SMW query IDs per semantic purge job, clamped to 1..5000. Does not enable semantic tracking or eager purges."
+		},
+		"WikidebatesSemanticCachePurgeLog": {
+			"value": false,
+			"description": "Log structured per-batch counters and duration to WikidebatesSemanticCache. Does not enable semantic tracking or eager purges."
 		}
 	},
 	"manifest_version": 2,
@@ -635,6 +658,7 @@
 		"wikidebatesreading": "MediaWiki\\Extension\\Wikidebates\\Reading\\ApiReadingFragment"
 	},
 	"JobClasses": {
-		"wikidebatesWarmReading": "MediaWiki\\Extension\\Wikidebates\\Reading\\WarmFragmentsJob"
+		"wikidebatesWarmReading": "MediaWiki\\Extension\\Wikidebates\\Reading\\WarmFragmentsJob",
+		"wikidebatesSemanticCachePurge": "MediaWiki\\Extension\\Wikidebates\\Reading\\SemanticCachePurgeJob"
 	}
 }

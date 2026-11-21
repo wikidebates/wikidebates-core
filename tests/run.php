@@ -11,6 +11,20 @@ use MediaWiki\Extension\DebatePHP\Table;
 use MediaWiki\Extension\DebatePHP\Telemetry;
 use MediaWiki\Extension\DebatePHP\TextEscaper;
 
+require __DIR__ . '/../src/Reading/SemanticCacheHooks.php';
+use MediaWiki\Extension\Wikidebates\Reading\SemanticCacheHooks;
+
+$metadata = json_decode(file_get_contents(__DIR__ . '/../extension.json'), true, 512, JSON_THROW_ON_ERROR);
+same(false, $metadata['config']['WikidebatesSemanticCacheTracking']['value'], 'Semantic cache tracking must be opt-in');
+check(isset($metadata['Hooks']['SMW::SQLStore::AfterDataUpdateComplete']),
+	'The real SMW 7.3.1 data-update hook is registered');
+check(isset($metadata['JobClasses']['wikidebatesSemanticCachePurge']),
+	'Semantic purge jobs are registered');
+same([1, 5, 23], SemanticCacheHooks::changedIds([1, '5', 0, -2, '05', 'NaN', 23, 5]),
+	'Only valid positive SMW object IDs are scheduled, with stable deduplication');
+same([], SemanticCacheHooks::changedIds(['', '-1', false, null, 'oops']),
+	'No purge jobs for invalid or empty SMW change sets');
+
 $resources = __DIR__ . '/../debatephp/resources/';
 $data = file_get_contents($resources . 'WD-I18N-Data.snapshot.lua');
 $logic = file_get_contents($resources . 'WD-I18N.reference.lua');

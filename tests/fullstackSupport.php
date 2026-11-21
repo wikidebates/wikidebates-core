@@ -14,7 +14,8 @@ function fsCanonical($value) {
 	return $value;
 }
 
-function fsFlush(): array {
+/** Drain SMW jobs without consuming deliberately blocked cache-purge jobs. */
+function fsFlush(array $blockedJobTypes = []): array {
 	$services = MediaWikiServices::getInstance();
 	$counts = [];
 	for ($round = 0; $round < 20; $round++) {
@@ -23,6 +24,7 @@ function fsFlush(): array {
 		$group = $services->getJobQueueGroup();
 		$executed = 0;
 		foreach ($group->getQueueTypes() as $type) {
+			if (in_array($type, $blockedJobTypes, true)) { continue; }
 			while ($job = $group->pop($type)) {
 				check(++$executed <= 500, 'Isolated job queue converges');
 				check($job->run() !== false, 'Job succeeded: ' . $job->getType() . ' ' . $job->getLastError());
@@ -33,7 +35,9 @@ function fsFlush(): array {
 			}
 		}
 		if (!$executed && DeferredUpdates::pendingUpdatesCount() === 0) {
-			check(!$group->queuesHaveJobs(), 'No unprocessed job types remain');
+			if ($blockedJobTypes === []) {
+				check(!$group->queuesHaveJobs(), 'No unprocessed job types remain');
+			}
 			return $counts;
 		}
 	}

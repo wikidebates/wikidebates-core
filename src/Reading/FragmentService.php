@@ -75,8 +75,19 @@ class FragmentService {
 		$eligible = $eligible && !array_diff(array_keys($request->getValues()), ['action', 'page', 'useskin',
 			'uselang', 'format', 'formatversion', 'maxlag', 'requestid', 'errorformat', 'errorlang', 'errorsuselocal', 'origin']) &&
 			!preg_match('/no-cache|no-store/i', (string)$request->getHeader('Cache-Control'));
+		$semanticTracking = (bool)$config->get('WikidebatesSemanticCacheTracking');
+		$semanticRevision = null;
+		$forceFreshSemanticParse = $semanticTracking && !$eligible;
+		if ($semanticTracking) {
+			// Check the semantic graph even on a cookie-bearing fallback.
+			// When the guard fails, no parser HTML cache may be consulted.
+			$safe = SemanticCacheGuard::safeForRead($title, $page, $semanticRevision);
+			$eligible = $eligible && $safe;
+			$forceFreshSemanticParse = $forceFreshSemanticParse || !$safe;
+		}
 		$identity = ['pageid' => $page->getId(), 'revision' => $page->getLatest(), 'touched' => $page->getTouched(),
-			'epoch' => $config->get('WikidebatesReadingCacheEpoch'), 'coreEpoch' => $config->get('CacheEpoch'), 'format' => 3,
+			'epoch' => $config->get('WikidebatesReadingCacheEpoch'), 'coreEpoch' => $config->get('CacheEpoch'), 'format' => 4,
+			'semanticTracking' => $semanticTracking, 'semanticRevision' => $semanticRevision,
 			'sourceEpoch' => class_exists(\MediaWiki\Extension\MinervaFileCache\Hooks::class) ? $config->get('MinervaFileCacheEpoch') : null];
 		$server = parse_url($config->get('Server'));
 		$host = $request->getHeader('Host') ?: (($server['host'] ?? '') . (isset($server['port']) ? ':' . $server['port'] : ''));
@@ -92,6 +103,9 @@ class FragmentService {
 				if ($snapshot['entry']) {
 					return $snapshot['entry']['metadata'] + ['html' => $snapshot['entry']['body'], 'source' => 'fragment-cache'];
 				}
+				// A cache miss in tracking mode must not fall back to a stale
+				// HTML file or to ApiParse's request-local parser cache.
+				if ($semanticTracking) { $forceFreshSemanticParse = true; }
 				$fill = $store->startFill($title->getPrefixedDBkey());
 				// Another request may have finished between the first read and this lock.
 				if ($fill) {
@@ -102,14 +116,26 @@ class FragmentService {
 						return $snapshot['entry']['metadata'] + ['html' => $snapshot['entry']['body'], 'source' => 'fragment-cache'];
 					}
 				} elseif (ReadingHooks::$warming) { return ['source' => 'busy']; }
-			} catch (\Throwable $e) { self::log($e); }
+			} catch (\Throwable $e) {
+				self::log($e);
+				if ($semanticTracking) { $forceFreshSemanticParse = true; }
+			}
 		}
 		try {
-			$result = ($eligible ? FileSources::read($context, $title, $page) : null) ?? $prepared;
+			$result = ($eligible && !$forceFreshSemanticParse ? FileSources::read($context, $title, $page) : null) ??
+				($semanticTracking ? null : $prepared);
 			if ($result) { unset($result['_generation'], $result['_touched']); }
-			$result ??= self::render($context, $title->getPrefixedText(), $eligible ? 'vector' : $skin);
+			$result ??= self::render($context, $title->getPrefixedText(), $eligible ? 'vector' : $skin,
+				$forceFreshSemanticParse);
 			if ($fill && $result['_expires'] > time() && $result['html'] !== '') {
 				try {
+					if ($semanticTracking && SemanticRevisionStore::fingerprint(
+						\SMW\Services\ServicesFactory::getInstance()->getStore(),
+						\SMW\DataItems\WikiPage::newFromTitle($title)
+					) !== $semanticRevision) {
+						// The graph changed while this HTML was being rendered.
+						return $result;
+					}
 					$store->publish($title->getPrefixedDBkey(), $variant, $identity, $snapshot['generation'],
 						$result['html'], array_diff_key($result, array_flip(['html', 'source', '_expires'])), $result['_expires']);
 				} catch (\Throwable $e) { self::log($e); }
@@ -119,7 +145,7 @@ class FragmentService {
 	}
 
 	/** Run the actual ApiParse pipeline, including parser cache and third-party transforms. */
-	private static function render(IContextSource $context, string $page, string $skin): array {
+	private static function render(IContextSource $context, string $page, string $skin, bool $forceFresh = false): array {
 		$derived = new DerivativeContext($context);
 		$derived->setRequest(new DerivativeRequest($context->getRequest(), ['action' => 'parse', 'page' => $page,
 			'prop' => 'text|revid', 'usearticle' => 1, 'redirects' => 1, 'useskin' => $skin,
@@ -135,6 +161,17 @@ class FragmentService {
 			});
 		$outputScope = MediaWikiServices::getInstance()->getHookContainer()->scopedRegister('ApiParseMakeOutputPage',
 			static function ($module, $output) use (&$outputPage) { $outputPage = $output; });
+		// MediaWiki 1.43's ApiParse honors the 'ApiMakeParserOptions' hook for
+		// $suppressCache. A failed SMW freshness check must never reuse an
+		// existing ParserOutput, even when page_touched has second resolution.
+		$parseScope = $forceFresh ? MediaWikiServices::getInstance()->getHookContainer()->scopedRegister(
+			'ApiMakeParserOptions',
+			static function ($options, $title, $params, $api, &$reset, &$suppressCache) use ($page): void {
+				if ($title->getPrefixedDBkey() === Title::newFromText($page)->getPrefixedDBkey()) {
+					$suppressCache = true;
+				}
+			}
+		) : null;
 		// MobileFrontend consults the main request's action while formatting HTML.
 		// Expose the same parse request for this synchronous call, then restore it.
 		$mainContext = RequestContext::getMain();
@@ -144,7 +181,7 @@ class FragmentService {
 			$api = new ApiMain($derived, false, true);
 			$api->execute();
 			$data = $api->getResult()->getResultData(['parse'], ['Strip' => 'all']);
-		} finally { $mainContext->setRequest($originalRequest); $scope = null; $outputScope = null; }
+		} finally { $mainContext->setRequest($originalRequest); $scope = null; $outputScope = null; $parseScope = null; }
 		$html = $data['text'] ?? '';
 		if (is_array($html)) { $html = $html['*'] ?? ''; }
 		$fragment = $context->getUser()->isRegistered() ? FragmentExtractor::extract($html) : FragmentExtractor::canonical($html);
@@ -159,6 +196,10 @@ class FragmentService {
 
 	/** Called only after the complete anonymous response passed public-cache checks. */
 	public static function capture($context, string $html, int $expires, int $revision, string $touched, string $generation): void {
+		// The full-page pipeline can serve an earlier ParserOutput. Until the
+		// HTML-file caches are integrated with the transactional semantic ledger,
+		// populate tracked fragments only from a forced-fresh ApiParse.
+		if ($context->getConfig()->get('WikidebatesSemanticCacheTracking')) { return; }
 		if ($expires <= time() || $context->getUser()->isRegistered()) { return; }
 		$title = $context->getTitle();
 		$fragment = FragmentExtractor::canonical($html);
