@@ -48,6 +48,26 @@ class Store {
 			is_array($entry['headers'] ?? null);
 	}
 
+	/**
+	 * The first view of a page should not create any cache files until its
+	 * fully rendered response is known to be cacheable. This is an optimistic
+	 * snapshot: a concurrent purge creates a real generation and causes a
+	 * later first publication to fail closed.
+	 *
+	 * @return array{generation:string,entry:?array,fresh:bool}
+	 */
+	public function readIfPresent(string $page, string $variant, array $identity): array {
+		$dir = $this->pageDirectory($page, false);
+		if (!is_file($dir . '/generation')) {
+			return [
+				'generation' => bin2hex(random_bytes(16)),
+				'entry' => null,
+				'fresh' => true,
+			];
+		}
+		return $this->read($page, $variant, $identity) + ['fresh' => false];
+	}
+
 	/** @return array{generation:string,entry:?array} */
 	public function read(string $page, string $variant, array $identity): array {
 		$dir = $this->pageDirectory($page);
@@ -128,7 +148,7 @@ class Store {
 	}
 
 	public function publish(string $page, string $variant, array $identity, string $generation,
-		string $body, array $headers, int $expires = PHP_INT_MAX): bool {
+		string $body, array $headers, int $expires = PHP_INT_MAX, bool $initialize = false): bool {
 		if (strlen($body) > $this->maxBytes) { return false; }
 		$dir = $this->pageDirectory($page);
 		$created = time();
@@ -153,8 +173,27 @@ class Store {
 			$lock = $this->lock($dir, 'page.lock', LOCK_EX);
 			if (!$lock) { return false; }
 			try {
+				// A cold first render has no generation file. Create it only after
+				// the HTML and response headers pass all cacheability checks.
+				// Exclusive creation rejects an intervening purge or other writer.
+				$generationPath = $dir . '/generation';
+				if ($initialize) {
+					if (!preg_match('/\\A[a-f0-9]{32}\\z/D', $generation)) {
+						return false;
+					}
+					$handle = @fopen($generationPath, 'x');
+					if (!$handle) { return false; }
+					try {
+						$written = @fwrite($handle, $generation);
+					} finally { fclose($handle); }
+					if ($written !== strlen($generation)) {
+						@unlink($generationPath);
+						return false;
+					}
+					@chmod($generationPath, 0600);
+				}
 				// A concurrent purge must prevent an older rendering from being published.
-				if (@file_get_contents($dir . '/generation') !== $generation || $expires <= time()) {
+				if (@file_get_contents($generationPath) !== $generation || $expires <= time()) {
 					return false;
 				}
 				return @rename($temp, $dir . '/' . hash('sha256', $variant) . '.cache');
