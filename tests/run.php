@@ -109,7 +109,7 @@ foreach (['argument_adapter.php', 'i18n_bundle.php', 'telemetry.php', 'cache_fif
 }
 
 // Keep MediaWiki doubles isolated from the renderer test process.
-foreach ( [ 'autoParentLinkSyntax.php', 'readingFragments/unit.php', 'readingFragments/invalidation.php', 'readingFragments/concurrency.php' ] as $test ) {
+foreach ( [ 'autoParentLinkSyntax.php', 'readingFragments/unit.php', 'readingFragments/invalidation.php', 'readingFragments/concurrency.php', 'readingFragments/semanticScope.php' ] as $test ) {
 	$command = [ PHP_BINARY ];
 	if ( php_ini_loaded_file() ) { array_push( $command, '-c', php_ini_loaded_file() ); }
 	$command[] = __DIR__ . '/' . $test;
