@@ -64,6 +64,18 @@ try {
 			'Cache response classified as ' . $expected);
 	}
 	foreach ([
+		[200, 'BYPASS; reason=parser-expiry', 'parser-expiry'],
+		[200, 'BYPASS; reason=extension-veto', 'extension-veto'],
+		[200, 'BYPASS', 'unspecified'],
+		[200, 'MISS; reason=parser-expiry', null],
+		[503, 'BYPASS; reason=parser-expiry', null],
+		[200, 'BYPASS; reason=bad value', 'unspecified'],
+		[200, 'BYPASS; reason=parser-expiry; other=value', 'parser-expiry']
+	] as [$code, $header, $expected]) {
+		checkPrewarm(Prewarm::bypassReason($code, $header) === $expected,
+			'Only well-formed BYPASS reasons are counted');
+	}
+	foreach ([
 		['HTTP_429', '0', 1, 0], ['HTTP_429', '60', 1, 60],
 		['HTTP_429', '180', 1, null], ['HTTP_429', null, 1, 5],
 		['HTTP_503', null, 2, 2], ['HTTP_500', null, 3, 4],
