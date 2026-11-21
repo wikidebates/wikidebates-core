@@ -67,7 +67,21 @@ final class SemanticPageCacheHooks {
 	 * Only the canonical traced PHP queries need this additional marker.
 	 */
 	public static function onParserAfterParse($parser, &$text, $stripState): bool {
-		if (!self::enabled() ||
+		if (self::safeFallbackEnabled()) {
+			// With no semantic revision ledger, query-dependent output cannot
+			// safely enter MediaWiki's parser cache, even if the wikitext
+			// template does not contain __NOCACHE__.
+			try {
+				if (self::isQueryPage($parser->getTitle())) {
+					$parser->getOutput()->updateCacheExpiry(0);
+				}
+			} catch (\Throwable $e) {
+				FragmentService::log($e);
+				$parser->getOutput()->updateCacheExpiry(0);
+			}
+			return true;
+		}
+		if (!self::trackingEnabled() ||
 			$parser->getOutput()->getExtensionData(\MediaWiki\Extension\DebatePHP\TrackedSemanticQuery::OUTPUT_MARKER) !== true) {
 			return true;
 		}
@@ -103,6 +117,11 @@ final class SemanticPageCacheHooks {
 		}
 		try {
 			$title = $page->getTitle();
+			if (self::safeFallbackEnabled()) {
+				// No fingerprint exists when tracking is disabled. Reject any
+				// existing ParserOutput for semantic-query pages.
+				return !self::isQueryPage($title, $page);
+			}
 			if (!self::isQueryPage($title, $page)) {
 				return true;
 			}
@@ -123,7 +142,30 @@ final class SemanticPageCacheHooks {
 	}
 
 	private static function enabled(): bool {
+		return self::trackingEnabled() || self::safeFallbackEnabled();
+	}
+
+	private static function trackingEnabled(): bool {
 		return (bool)MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesSemanticCacheTracking');
+	}
+
+	private static function safeFallbackEnabled(): bool {
+		$config = MediaWikiServices::getInstance()->getMainConfig();
+		return !$config->get('WikidebatesSemanticCacheTracking') &&
+			(bool)$config->get('WikidebatesSemanticCacheSafeFallback');
+	}
+
+	/** Read-only classification. If SMW fails, prefer re-rendering to a stale fragment. */
+	public static function needsConservativeFallback($title, $page = null): bool {
+		if (!self::safeFallbackEnabled()) {
+			return false;
+		}
+		try {
+			return self::isQueryPage($title, $page);
+		} catch (\Throwable $e) {
+			FragmentService::log($e);
+			return true;
+		}
 	}
 
 	/** Semantic data first; template identification covers pre-migration pages. */
