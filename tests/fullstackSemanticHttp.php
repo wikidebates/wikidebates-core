@@ -1108,6 +1108,13 @@ try {
 		check($backfillWarm !== null,
 			'Real HTTP fragment reaches a verified cache HIT after targeted backfill: ' .
 			json_encode($backfillSources));
+		// A targeted _ASK backfill can legitimately invalidate the older HTML
+		// file. Reestablish a mobile HIT before testing external parent edits.
+		$http('index.php', $unprofiledUrl, $unprofiledHeaders);
+		$beforeExternalMobile = $http('index.php', $unprofiledUrl, $unprofiledHeaders);
+		check($beforeExternalMobile['status'] === 200 &&
+			str_starts_with($beforeExternalMobile['headers']['x-minerva-file-cache'][0] ?? '', 'HIT'),
+			'Minerva is warm after the explicit semantic backfill');
 
 		// No owner-page edit, and no eager purge: a semantic-only edit
 		// must NOT invalidate the previously stored reading fragment.
@@ -1130,8 +1137,8 @@ try {
 		$afterAdditionMobile = $http('index.php', $unprofiledUrl, $unprofiledHeaders);
 		check($afterAdditionMobile['status'] === 200 &&
 			str_starts_with($afterAdditionMobile['headers']['x-minerva-file-cache'][0] ?? '', 'HIT') &&
-			str_contains($afterAdditionMobile['body'], 'WD_HTTP_MATCHES=0'),
-			'Valid anonymous Minerva snapshot survives a parent addition when eager purge is disabled');
+			$afterAdditionMobile['body'] === $beforeExternalMobile['body'],
+			'Valid Minerva snapshot survives an external parent addition');
 
 		$rewarmedAfterAddition = false;
 		for ($attempt = 0; $attempt < 10; $attempt++) {
@@ -1158,8 +1165,8 @@ try {
 		$afterRemovalMobile = $http('index.php', $unprofiledUrl, $unprofiledHeaders);
 		check($afterRemovalMobile['status'] === 200 &&
 			str_starts_with($afterRemovalMobile['headers']['x-minerva-file-cache'][0] ?? '', 'HIT') &&
-			str_contains($afterRemovalMobile['body'], 'WD_HTTP_MATCHES=0'),
-			'Minerva snapshot remains available after parent removal');
+			$afterRemovalMobile['body'] === $beforeExternalMobile['body'],
+			'Minerva snapshot remains identical after external parent removal');
 
 		// An unrelated Debate must keep its previously published Minerva
 		// file across both semantic edits to the Argument parent.
