@@ -34,10 +34,13 @@ namespace {
 		public function requireExtension(string $name): void {}
 		public function addOption(string $name, string $text, bool $required = false, bool $hasArgument = false): void {}
 		public function setOptions(array $options): void { $this->options = $options; }
-		public function getOption(string $key, $default = null) { return $this->options[$key] ?? $default; }
+		public function getOption(string $key, $default = null) {
+			if ($key === 'delay-ms') { $GLOBALS['prewarmDefaultDelayMs'] = $default; }
+			return $this->options[$key] ?? $default;
+		}
 		public function hasOption(string $key): bool { return isset($this->options[$key]); }
 		public function getServiceContainer(): TestPrewarmServices { return $GLOBALS['prewarmServices']; }
-		public function output(string $text): void {}
+		public function output(string $text): void { $GLOBALS['prewarmOutput'][] = $text; }
 		public function error(string $text): void {}
 		public function fatalError(string $text): void { throw new RuntimeException($text); }
 	}
@@ -88,9 +91,9 @@ namespace {
 		}
 		public function getStatus(): int { return $this->status; }
 		public function getResponseHeader(string $name): ?string {
-			if ($name === 'Retry-After' && $this->status === 429 &&
-				($GLOBALS['prewarmRetryOnceUrl'] ?? null) === $this->url) {
-				return '0';
+			if ($name === 'Retry-After' && $this->status === 429) {
+				if (($GLOBALS['prewarmRetryOnceUrl'] ?? null) === $this->url) { return '0'; }
+				if (($GLOBALS['prewarmFailUrl'] ?? null) === $this->url) { return '718'; }
 			}
 			return $name === 'X-Minerva-File-Cache' && $this->status === 200 ? 'MISS' : null;
 		}
@@ -161,11 +164,15 @@ namespace {
 		$runner = new PrewarmMinervaFileCache();
 		$runner->setOptions(['dry-run'=>true,'limit'=>'1']);
 		checkPrewarmCli($runner->execute() === true && count($GLOBALS['prewarmRequests']) === 0, 'Dry-run sends no HTTP');
+		checkPrewarmCli(($GLOBALS['prewarmDefaultDelayMs'] ?? null) === 6000,
+			'Rate-safe default delay is six seconds without affecting explicit overrides');
 		$GLOBALS['prewarmFailUrl'] = 'https://fr.example.test/wiki/Two';
 		$runner = new PrewarmMinervaFileCache();
 		$runner->setOptions(['resume'=>true,'reset'=>true,'delay-ms'=>'250']);
 		checkPrewarmCli($runner->execute() === false, 'Stops after HTTP 429');
 		checkPrewarmCli(Prewarm::readCheckpoint($checkpoint) === 1, 'Failure preserves last completed ID');
+		checkPrewarmCli(str_contains(implode('', $GLOBALS['prewarmOutput']), 'HTTP_429 retry-after=718s'),
+			'Rate-limit stop reports Retry-After without making a premature retry');
 		unset($GLOBALS['prewarmFailUrl']);
 		$runner = new PrewarmMinervaFileCache();
 		$runner->setOptions(['resume'=>true,'delay-ms'=>'250']);
