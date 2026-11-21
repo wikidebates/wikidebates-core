@@ -65,10 +65,16 @@
 	function wkReadingBindLeftSheet( ui ) {
 		if ( !ui || !ui.root || !ui.panel || !ui.left ) return;
 
-		if ( ui.left.dataset.wkLeftSheetBound === '1' ) return;
+		if ( ui.left.dataset.wkLeftSheetBound === '1' ) {
+			Object.assign( ui, ui.left._wkSheetControls );
+			return;
+		}
 		ui.left.dataset.wkLeftSheetBound = '1';
 
 		var left = ui.left;
+		left.inert = true;
+		left.tabIndex = -1;
+		left.setAttribute( 'aria-hidden', 'true' );
 
 		var overlay = D.getElementById( UI_IDS.overlayId );
 		if ( !overlay ) {
@@ -87,6 +93,7 @@
 			} );
 		}
 		btn.setAttribute( 'aria-expanded', 'false' );
+		btn.setAttribute( 'aria-controls', left.id );
 
 		var header = D.getElementById( UI_IDS.leftHeaderId );
 		if ( !header ) {
@@ -109,28 +116,35 @@
 			return left.classList.contains( 'is-open' );
 		}
 
-		function open() {
+		function open( keyboard ) {
 			if ( isOpen() ) return;
+			left.inert = false;
+			left.removeAttribute( 'aria-hidden' );
 			left.classList.add( 'is-open' );
 			overlay.classList.add( 'is-on' );
 			btn.classList.add( 'is-hidden-when-open' );
 			btn.setAttribute( 'aria-expanded', 'true' );
 			ui.root.classList.add( 'is-sheet-open' );
+			if ( keyboard ) WK.readingActions.focus( left.querySelector( 'button, a[href]' ) || left );
 		}
 
-		function close() {
+		function close( restoreFocus ) {
 			if ( !isOpen() ) return;
+			var hadFocus = left.contains( D.activeElement );
 			left.classList.remove( 'is-open' );
 			left.style.transform = '';
 			overlay.classList.remove( 'is-on' );
 			btn.classList.remove( 'is-hidden-when-open' );
 			btn.setAttribute( 'aria-expanded', 'false' );
 			ui.root.classList.remove( 'is-sheet-open' );
+			if ( restoreFocus || hadFocus ) WK.readingActions.focus( btn );
+			left.inert = true;
+			left.setAttribute( 'aria-hidden', 'true' );
 		}
 
-		function toggle() {
-			if ( isOpen() ) close();
-			else open();
+		function toggle( keyboard ) {
+			if ( isOpen() ) close( keyboard );
+			else open( keyboard );
 		}
 
 		if ( btn.dataset.wkBound !== '1' ) {
@@ -138,7 +152,7 @@
 			btn.addEventListener( 'click', function ( e ) {
 				e.preventDefault();
 				e.stopPropagation();
-				toggle();
+				toggle( e.detail === 0 );
 			} );
 		}
 
@@ -193,15 +207,7 @@
 				if ( btn2 && btn2.contains( t ) ) return;
 				if ( ov2 && ov2.contains( t ) ) return;
 
-				left2.classList.remove( 'is-open' );
-				left2.style.transform = '';
-				ov2.classList.remove( 'is-on' );
-				root.classList.remove( 'is-sheet-open' );
-
-				if ( btn2 ) {
-					btn2.classList.remove( 'is-hidden-when-open' );
-					btn2.setAttribute( 'aria-expanded', 'false' );
-				}
+				left2._wkSheetControls._wkLeftClose( false );
 			}, true );
 		}
 
@@ -271,9 +277,8 @@
 			left.addEventListener( 'touchcancel', onEnd, { passive: true } );
 		}
 
-		ui._wkLeftOpen = open;
-		ui._wkLeftClose = close;
-		ui._wkLeftToggle = toggle;
+		left._wkSheetControls = { _wkLeftOpen: open, _wkLeftClose: close, _wkLeftToggle: toggle };
+		Object.assign( ui, left._wkSheetControls );
 	}
 
 	M.bindLeftSheet = wkReadingBindLeftSheet;

@@ -46,7 +46,8 @@ async function fixture( t, skin = 'minerva', prepared = false ) {
 			}
 		};
 	}, { skin, prepared } );
-	for ( const file of [ 'modules/common/core.js', 'modules/common/parse.js', 'modules/reading/core.js',
+	for ( const file of [ 'modules/common/core.js', 'modules/common/parse.js',
+		...resourceModuleFiles( 'ext.wikidebates.reading.core' ),
 		...resourceModuleFiles( 'ext.wikidebates.reading.ui.' + ( skin === 'minerva' ? 'minerva' : 'vector' ) ) ] ) {
 		await page.addScriptTag( { path: path.join( root, file ) } );
 	}
@@ -789,4 +790,97 @@ test( 'real Chromium and jQuery keep wikitext results separate when interface la
 		return { french, english, cached, calls };
 	} );
 	assert.deepEqual( result, { french: 'fr', english: 'en', cached: 'fr', calls: 2 } );
+} );
+
+for ( const skin of [ 'minerva', 'vector' ] ) {
+	test( skin + ': native keyboard controls open menus, copy manually and restore focus with Escape', async ( t ) => {
+		const { page, open } = await fixture( t, skin );
+		await page.evaluate( () => {
+			const opener = document.createElement( 'button' );
+			opener.id = 'keyboard-opener'; opener.textContent = 'Open argument';
+			document.body.appendChild( opener ); opener.focus();
+			window.copyNotices = [];
+			mw.notify = ( message ) => copyNotices.push( message );
+			Object.defineProperty( navigator, 'clipboard', { configurable: true, value: {
+				writeText: () => Promise.reject( new Error( 'Denied by browser' ) )
+			} } );
+			document.execCommand = () => false;
+		} );
+		await open();
+		await page.evaluate( () => { Wikidebates.WK_READING.state.h1Links.detailHref = 'https://wiki.test/wiki/Current'; } );
+		assert.equal( await page.evaluate( () => document.activeElement.id ), 'wk-reading-content' );
+		const more = page.locator( '.wk-h1-more > .wk-icon-more' );
+		await more.focus();
+		await page.keyboard.press( 'Enter' );
+		assert.equal( await more.getAttribute( 'aria-expanded' ), 'true' );
+		await page.keyboard.press( 'Tab' );
+		assert.equal( await page.evaluate( () => document.activeElement.classList.contains( 'wk-h1-menu__detail' ) ), true );
+		await page.locator( '.wk-h1-menu__copy' ).focus();
+		await page.keyboard.press( 'Space' );
+		await page.waitForSelector( '.wk-copy-manual input' );
+		assert.deepEqual( await page.evaluate( () => copyNotices ), [] );
+		assert.equal( await page.evaluate( () => document.activeElement.matches( '.wk-copy-manual input' ) ), true );
+		const selection = await page.locator( '.wk-copy-manual input' ).evaluate( ( el ) => [ el.selectionStart, el.selectionEnd, el.value.length ] );
+		assert.deepEqual( selection, [ 0, selection[ 2 ], selection[ 2 ] ] );
+		await page.keyboard.press( 'Escape' );
+		assert.equal( await more.getAttribute( 'aria-expanded' ), 'false' );
+		assert.equal( await more.evaluate( ( el ) => document.activeElement === el ), true );
+		assert.equal( await page.locator( '#wk-reading-mode' ).count(), 1 );
+		await page.keyboard.press( 'Space' );
+		assert.equal( await more.getAttribute( 'aria-expanded' ), 'true', 'Space activates the native disclosure button' );
+		await page.keyboard.press( 'Escape' );
+		await page.keyboard.press( 'Escape' );
+		assert.equal( await page.locator( '#wk-reading-mode' ).count(), 0 );
+		assert.equal( await page.evaluate( () => document.activeElement.id ), 'keyboard-opener' );
+	} );
+
+	test( skin + ': clipboard success notification waits for the asynchronous browser result', async ( t ) => {
+		const { page, open } = await fixture( t, skin );
+		await page.evaluate( () => {
+			window.copyNotices = [];
+			mw.notify = ( message ) => copyNotices.push( message );
+			Object.defineProperty( navigator, 'clipboard', { configurable: true, value: {
+				writeText: () => new Promise( ( resolve ) => { window.finishCopy = resolve; } )
+			} } );
+		} );
+		await open();
+		await page.evaluate( () => { Wikidebates.WK_READING.state.h1Links.detailHref = 'https://wiki.test/wiki/Current'; } );
+		await page.locator( '.wk-icon-more' ).click();
+		await page.locator( '.wk-h1-menu__copy' ).click();
+		assert.deepEqual( await page.evaluate( () => copyNotices ), [] );
+		assert.equal( await page.locator( '.wk-h1-menu__copy' ).getAttribute( 'aria-disabled' ), 'true' );
+		await page.evaluate( () => finishCopy() );
+		await page.waitForFunction( () => copyNotices.length === 1 );
+		assert.deepEqual( await page.evaluate( () => copyNotices ), [ 'wk-link-copied' ] );
+	} );
+}
+
+test( 'Minerva keyboard contents exclude the collapsed sheet, navigate parents and close one layer per Escape', async ( t ) => {
+	const { page, open } = await fixture( t );
+	await open();
+	await page.evaluate( () => {
+		Wikidebates.wkOpenReadingModeFromPageTitle( 'Child keyboard', [
+			{ page: '', title: 'Debate', type: '' },
+			{ page: 'Parent keyboard', title: 'Parent keyboard', type: 'pour' },
+			{ page: 'Child keyboard', title: 'Child keyboard', type: 'pour' }
+		], { history: false } );
+	} );
+	await page.waitForFunction( () => !document.getElementById( 'wk-reading-content' ).hasAttribute( 'aria-busy' ) );
+	assert.equal( await page.locator( '#wk-reading-left' ).evaluate( ( el ) => el.inert ), true );
+	await page.locator( '#wk-reading-navbtn' ).focus();
+	await page.keyboard.press( 'Enter' );
+	assert.equal( await page.locator( '#wk-reading-left' ).evaluate( ( el ) => el.inert ), false );
+	assert.equal( await page.evaluate( () => document.activeElement.matches( '#wk-reading-stack button.is-root' ) ), true );
+	await page.keyboard.press( 'Tab' );
+	assert.equal( await page.evaluate( () => document.activeElement.dataset.page ), 'Parent keyboard' );
+	await page.keyboard.press( 'Space' );
+	await page.waitForFunction( () => Wikidebates.WK_READING.state._wkCurrentPage === 'Parent keyboard' );
+	assert.equal( await page.locator( '#wk-reading-left' ).evaluate( ( el ) => el.inert ), true );
+	assert.equal( await page.evaluate( () => document.activeElement.id ), 'wk-reading-content' );
+	await page.locator( '#wk-reading-navbtn' ).focus();
+	await page.keyboard.press( 'Space' );
+	await page.keyboard.press( 'Escape' );
+	assert.equal( await page.locator( '#wk-reading-mode' ).count(), 1 );
+	assert.equal( await page.evaluate( () => document.activeElement.id ), 'wk-reading-navbtn' );
+	assert.equal( await page.locator( '#wk-reading-left' ).getAttribute( 'aria-hidden' ), 'true' );
 } );

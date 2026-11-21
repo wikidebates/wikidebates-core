@@ -399,5 +399,6 @@
 	"apihelp-wikidebatesreading-param-useskin": "Skin used to render the fragment.",
 	"wk-reading-empty-fragment": "This page exists, but its reading extract is unavailable. You can retry or open the full page.",
 	"wk-reading-load-error": "The argument could not be loaded. Please retry or open the full page.",
-	"wk-reading-retry": "Retry"
+	"wk-reading-retry": "Retry",
+	"wk-link-copy-manual": "Automatic copying failed. Select this link to copy it manually:"
 }

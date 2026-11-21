@@ -399,5 +399,6 @@
 	"apihelp-wikidebatesreading-param-useskin": "API parameter: rendering skin, Vector or Minerva.",
 	"wk-reading-empty-fragment": "Message in the reading panel when the API succeeds but returns no usable extract. The page must not be presented as missing.",
 	"wk-reading-load-error": "Message in the reading panel when loading an argument fails, except for a confirmed missing page.",
-	"wk-reading-retry": "Button in the reading panel to retry the current argument without adding a browser history entry."
+	"wk-reading-retry": "Button in the reading panel to retry the current argument without adding a browser history entry.",
+	"wk-link-copy-manual": "Instructions labelling a selectable, read-only link field when both clipboard methods fail. Plain text, no parameters."
 }

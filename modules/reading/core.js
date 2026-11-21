@@ -10,6 +10,7 @@
 
 	var wkArgEmbedCache = new Map();
 	var wkReadingCacheMeasurement = null;
+	var wkReadingReturnFocus = null;
 
 	var WK_READING = {
 		enabled: true,
@@ -351,8 +352,10 @@
 			var it = chain[ i ];
 			var isLast = ( i === chain.length - 1 );
 
-			var item = D.createElement( 'div' );
+			var item = D.createElement( isLast ? 'div' : 'button' );
 			item.className = 'wk-reading__item';
+			if ( !isLast ) item.type = 'button';
+			else item.setAttribute( 'aria-current', 'location' );
 
 			if ( isLast ) item.classList.add( 'is-current' );
 
@@ -362,7 +365,7 @@
 			item.dataset.page = it.page || '';
 			item.dataset.index = String( i );
 
-			var title = D.createElement( 'div' );
+			var title = D.createElement( 'span' );
 			title.className = 'wk-reading__title wk-icon-before wk-icon-argument';
 			title.textContent = it.title || '';
 			item.appendChild( title );
@@ -844,10 +847,11 @@
 		if ( !WK_READING.enabled ) return;
 		if ( !UI.ensureUi ) return;
 
+		var previousFocus = D.activeElement;
+		var wasActive = D.documentElement.classList.contains( 'wk-reading-active' );
 		var ui = UI.ensureUi();
 		if ( !ui ) return;
-
-		var wasActive = D.documentElement.classList.contains( 'wk-reading-active' );
+		if ( !wasActive ) wkReadingReturnFocus = previousFocus !== D.body ? previousFocus : null;
 		var useHistory = !( options && options.history === false );
 
 		if ( ui.panel && !wasActive ) {
@@ -865,6 +869,16 @@
 
 		if ( useHistory ) wkReadingHistoryPushState( argPage, WK_READING.state.chain );
 
+		// Move focus before replacing a parent control or argument subtree. A late
+		// response never moves it again, so subsequent user focus changes are kept.
+		ui.content.tabIndex = -1;
+		ui.content.setAttribute( 'role', 'region' );
+		var current = WK_READING.state.chain[ WK_READING.state.chain.length - 1 ];
+		ui.content.setAttribute( 'aria-label', current ? ( current.title || argPage ) : argPage );
+		if ( !wasActive || previousFocus === D.body ||
+			( UI.isClickInsideReading && UI.isClickInsideReading( previousFocus ) ) ) {
+			WK.readingActions.focus( ui.content );
+		}
 		wkReadingRenderStack( ui, WK_READING.state.chain );
 
 		ui.content.scrollTop = 0;
@@ -955,8 +969,14 @@
 			var code = e.keyCode || 0;
 
 			if ( key !== 'Escape' && key !== 'Esc' && code !== 27 ) return;
-			if ( !D.documentElement.classList.contains( 'wk-reading-active' ) ) return;
-
+			if ( !D.documentElement.classList.contains( 'wk-reading-active' ) || e.defaultPrevented ) return;
+			e.preventDefault();
+			if ( WK.readingActions.closeOpenMenus( true ) ) return;
+			var ui = UI.ensureUi ? UI.ensureUi() : null;
+			if ( ui && ui.root && ui.root.classList.contains( 'is-sheet-open' ) && ui._wkLeftClose ) {
+				ui._wkLeftClose( true );
+				return;
+			}
 			if ( typeof WK.wkCloseReadingMode === 'function' ) WK.wkCloseReadingMode();
 		} );
 	}
@@ -997,6 +1017,9 @@
 				if ( root && root.parentNode ) root.parentNode.removeChild( root );
 			}
 		} catch ( e2 ) {}
+
+		WK.readingActions.focus( wkReadingReturnFocus );
+		wkReadingReturnFocus = null;
 
 		if ( !shouldReturnToDebate ) {
 			WK_READING.state._wkHistorySkipNextPop = 0;

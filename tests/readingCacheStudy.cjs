@@ -98,7 +98,8 @@ async function study( browser, skin, trace, revision ) {
 		}, skin );
 		const read = ( file ) => revision ? execFileSync( 'git', [ 'show', revision + ':' + file ], { cwd: root, encoding: 'utf8' } ) :
 				fs.readFileSync( path.join( root, file ), 'utf8' );
-		for ( const file of [ 'modules/common/core.js', 'modules/common/parse.js', 'modules/reading/core.js',
+		for ( const file of [ 'modules/common/core.js', 'modules/common/parse.js',
+			...resourceModuleFiles( 'ext.wikidebates.reading.core', read ),
 			...resourceModuleFiles( 'ext.wikidebates.reading.ui.' + ( skin === 'minerva' ? 'minerva' : 'vector' ), read ) ] ) {
 			await page.addScriptTag( { content: read( file ) } );
 		}

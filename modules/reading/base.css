@@ -173,7 +173,8 @@ body.wk-reading-active {
 	display: none;
 }
 
-.wk-h1-menu a {
+.wk-h1-menu a,
+.wk-h1-menu button {
 	margin: 0.5em 1em;
 	color: var( --wk-reading-menu-link-color );
 	text-indent: 1.8em;
@@ -274,4 +275,64 @@ h2.wk-icon-before {
 #wk-reading-close:focus-visible {
 	outline: 2px solid currentColor;
 	outline-offset: 2px;
+}
+
+/* Native controls keep the existing layout and expose a visible keyboard focus. */
+#wk-reading-stack button.wk-reading__item,
+.wk-reading-h1 button.wk-h1-btn,
+.wk-h1-menu button {
+	appearance: none;
+	border: 0;
+	background: transparent;
+	padding: 0;
+	font: inherit;
+	color: inherit;
+	text-align: start;
+	cursor: pointer;
+}
+
+#wk-reading-stack button.wk-reading__item {
+	display: block;
+	width: 100%;
+	margin: 0;
+}
+
+#wk-reading-stack .wk-reading__title {
+	display: block;
+}
+
+
+.wk-h1-menu button {
+	color: var( --wk-reading-menu-link-color );
+}
+
+.wk-h1-menu button:hover {
+	text-decoration: underline;
+}
+
+#wk-reading-stack button:focus-visible,
+.wk-reading-h1 button:focus-visible,
+.wk-h1-menu a:focus-visible,
+.wk-copy-manual input:focus-visible,
+#wk-reading-content:focus-visible {
+	outline: 2px solid var( --color-progressive, #36c );
+	outline-offset: -2px;
+}
+
+.wk-h1-menu [aria-disabled="true"] {
+	cursor: progress;
+}
+
+.wk-copy-manual {
+	margin: 0.5em 1em;
+	width: min( 16em, 65vw );
+	white-space: normal;
+}
+
+.wk-copy-manual input {
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	margin-top: 0.5em;
+	font: inherit;
 }

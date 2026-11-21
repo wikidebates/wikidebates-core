@@ -39,6 +39,8 @@ async function environment( html = '', config = {} ) {
 	const run = ( file ) => {
 		if ( file === 'modules/reading/ui.minerva.js' ) {
 			resourceModuleFiles( 'ext.wikidebates.reading.ui.minerva' ).forEach( runScript );
+		} else if ( file === 'modules/reading/core.js' ) {
+			resourceModuleFiles( 'ext.wikidebates.reading.core' ).forEach( runScript );
 		} else runScript( file );
 	};
 	run( 'modules/common/core.js' );
