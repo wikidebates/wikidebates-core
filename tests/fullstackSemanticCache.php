@@ -845,6 +845,24 @@ try {
 		'Full tracked Argument HTML no longer displays the removed parent');
 	check(SemanticCacheGuard::safeForRead($historicalTitle, $historicalPage),
 		'Formerly untracked Argument remains eligible for guarded caching after parent removal');
+	$recachedAfterRemoval = false;
+	for ($attempt = 0; $attempt < 6; $attempt++) {
+		$candidate = $read($historicalArgument);
+		if ($candidate['source'] === 'fragment-cache') {
+			$recachedAfterRemoval = true;
+			break;
+		}
+	}
+	check($recachedAfterRemoval,
+		'Formerly untracked Argument resumes fragment cache hits after parent removal');
+
+	// Enabling tracking and migrating one Argument must never disable
+	// caching for an ordinary Debate with no semantic queries.
+	check(SemanticCacheGuard::safeForRead($plainDebateTitle, $plainDebatePage),
+		'Ordinary Debate stays eligible for cached reading after Argument migration');
+	$fullPageContext->setTitle($plainDebateTitle);
+	check(SemanticPageCacheHooks::onHTMLFileCache__useFileCache($fullPageContext),
+		'Ordinary Debate still allows the full HTML file cache after Argument migration');
 	fsFlush();
 } finally {
 	$GLOBALS['wgWikidebatesSemanticCacheTracking'] = $originalTracking;
