@@ -188,4 +188,31 @@ class Store {
 		}
 		return $count;
 	}
+
+	/**
+	 * Read-only maintenance diagnostics. This scans metadata only, not compressed HTML.
+	 * Never invoke it on a visitor request.
+	 * @return array{pages:int,files:int,bytes:int,maxVariantsPerPage:int}
+	 */
+	public function statistics(): array {
+		$stats = ['pages' => 0, 'files' => 0, 'bytes' => 0, 'maxVariantsPerPage' => 0];
+		if (!is_dir($this->root)) { return $stats; }
+		$prefixes = new \FilesystemIterator($this->root, \FilesystemIterator::SKIP_DOTS);
+		foreach ($prefixes as $prefix) {
+			if (!$prefix->isDir() || $prefix->isLink()) { continue; }
+			foreach (new \FilesystemIterator($prefix->getPathname(), \FilesystemIterator::SKIP_DOTS) as $page) {
+				if (!$page->isDir() || $page->isLink()) { continue; }
+				$stats['pages']++;
+				$variants = 0;
+				foreach (new \FilesystemIterator($page->getPathname(), \FilesystemIterator::SKIP_DOTS) as $file) {
+					if (!$file->isFile() || $file->isLink() || $file->getExtension() !== 'cache') { continue; }
+					$variants++;
+					$stats['files']++;
+					$stats['bytes'] += $file->getSize();
+				}
+				$stats['maxVariantsPerPage'] = max($stats['maxVariantsPerPage'], $variants);
+			}
+		}
+		return $stats;
+	}
 }
