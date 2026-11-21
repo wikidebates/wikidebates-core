@@ -102,6 +102,45 @@ pages bypass the complete Minerva file cache and display new relations even
 while a targeted semantic purge remains queued. This is intentionally distinct
 from verifying the disabled-tracking production baseline.
 
+## Real native Argument migration: no _ASK, then a remote parent edit
+
+The isolated HTTP suite now includes a test modeled on production page ID
+1220, using only synthetic pages and a disposable SQLite or MariaDB store:
+
+1. With the writer temporarily in **tracking OFF** mode, create a genuine
+   native `#argument:render` page and verify its SMW subject has **no**
+   `_ASK` profile. An unrelated genuine `#debate:render` page also starts
+   without `_ASK`.
+2. With tracking OFF in independent HTTP workers, confirm the Argument
+   has a real Minerva file **HIT** showing an initially empty parent
+   query. No other page is edited between warming the first two views.
+3. Add a matching semantic parent relation on a **different page**;
+   hold experimental `wikidebatesSemanticCachePurge` jobs. Verify that
+   direct SMW sees one new result, while the Argument revision and
+   `page_touched` are unchanged. Revisit with tracking OFF to
+   demonstrate a stale Minerva **HIT** in the known-unprotected baseline.
+4. Enable the **opt-in tracking mode only in the disposable HTTP
+   workers**, without clearing the old Minerva file. A genuine mobile
+   `BYPASS; reason=extension-veto` must prevent reuse of the old HTML;
+   the full page must show the new semantic relation and the actual
+   Argument renderer's new parent link. A second tracked request must
+   remain fresh. Also exercise its separate reading API.
+5. Confirm that a genuine debate-only mobile page still obtains a
+   **MISS followed by HIT** with tracking enabled. This guards against
+   mistakenly disabling Minerva's file cache globally.
+
+The new `unprofiled_native_argument_migration` section of the CI JSON
+report records observed cache states and post-render `_ASK` counts.
+Unlike the **baseline warning** (expected staleness with tracking OFF),
+the protection and debate-HIT requirements are **assertions that fail
+CI** when broken. This protects the *freshness* and *selectivity* boundary
+without enabling the experimental feature in production.
+
+This is not a full deployment certification: it does not reproduce the
+live site's complete template set, CDN rules, every semantic query,
+concurrent external edits, or long-running migration/rebuild behavior.
+The existing launch checklist and rollback safeguards still apply.
+
 ## Production source inventory (read-only)
 
 After updating the extension, the following command scans at most 200 records
