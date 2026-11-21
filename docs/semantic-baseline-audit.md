@@ -141,6 +141,48 @@ live site's complete template set, CDN rules, every semantic query,
 concurrent external edits, or long-running migration/rebuild behavior.
 The existing launch checklist and rollback safeguards still apply.
 
+### Targeted profile backfill without a page revision (disposable test)
+
+The existing `tests/fullstackSemanticCache.php` regression establishes that
+ordinary `action=view` and `action=wikidebatesreading` parses can annotate
+a transient SMW `ParserOutput` **without persisting** its `_ASK` profile.
+Merely browsing an unprofiled Argument does not backfill its SMW subject.
+
+The canonical MediaWiki 1.43 `RefreshLinksJob` is a tested way to refresh
+the semantic secondary data for **one existing Argument** without saving a
+new content revision. The fullstack cache test already checked this on a
+synthetic `{{Argument|résumé=...}}` transclusion; the expanded real-HTTP
+test exercises the remaining cross-worker safety boundary:
+
+- Begin with a native, unprofiled Argument and an initially empty parent
+  query, as in the production page-1220 observation.
+- With `WikidebatesSemanticCacheTracking=true` and
+  `WikidebatesSemanticCacheEagerPurge=false` in **both** the isolated
+  writer and independent PHP HTTP workers, run one normal
+  `RefreshLinksJob` on that page. Do not edit its wikitext or revision.
+- Verify persisted `_ASK`, resolvable query IDs, **actual rows** in
+  `smw_query_links` for every query ID, and a valid semantic fingerprint.
+  This includes queries that currently return no matching parent.
+- Verify that consecutive real HTTP reading-API requests eventually
+  produce a genuine `fragment-cache` hit.
+- Add a parent on another page, then remove it, never modifying the
+  Argument's revision. Verify the fingerprint changes on both transitions,
+  old fragments are rejected before any eager purge, and independent
+  mobile HTTP HTML shows the correct parent/no-parent state.
+- Verify that unrelated native debate-only HTML continues to yield
+  genuine Minerva `HIT` across these changes.
+
+`targeted_refreshlinks_argument_backfill` is emitted in the CI JSON report.
+Each freshness or cache-hit condition is a **hard assertion**; unlike the
+known unsafe tracking-OFF control, a failure makes CI fail.
+
+**No automatic production migration is included.** A future live rollout
+must first verify schema availability, pending SMW jobs, cache controls and
+the precise source/query coverage on a staging copy. The job may refresh
+SMW data and secondary cache timestamps even when the article's
+`page_latest` and wikitext stay unchanged. Do not run bulk refresh or
+enable experimental semantic tracking on the live site from this test alone.
+
 ## Production source inventory (read-only)
 
 After updating the extension, the following command scans at most 200 records
