@@ -30,6 +30,38 @@ query, a genuine `#argument:render` and a genuine `#debate:render`. No
 experimental schema, triggers, cache invalidation or SMW dependency hooks are
 installed. All test data is disposable and synthetic, not a copy of production.
 
+## Reproduced finding in the isolated lab (2026-11-21)
+
+With MediaWiki 1.43.11, PHP 8.4.28, SMW 7.3.1 and
+SemanticScribunto 2.3.3, **both SQLite and MariaDB** showed the same result:
+
+| Observation | SQLite | MariaDB |
+| --- | --- | --- |
+| Direct query sees the inserted parent | Yes | Yes |
+| Native query page `_ASK` profiles | 0 | 0 |
+| Native Argument `_ASK` profiles | 0 | 0 |
+| Registered query-link IDs for these pages | 0 | 0 |
+| Parser cache remains at 0 after 0 -> 1 | Yes | Yes |
+| Reader fragment repeats old 0 after 0 -> 1 | Yes | Yes |
+| Initial parser cache expiry (seconds) | 86400 | 86400 |
+
+The lab explicitly enables SMW's query-dependency links, sets the profiler to
+`0` and disables SMW's independent query-result cache, matching the previously
+reported site configuration. An initial read returns the newly generated parser
+output; a second read hits `fragment-cache`. After the *other* page is edited,
+that fragment still gives the old result. This is a real reproduced **cache
+freshness risk** in the current native-reader architecture; it is **not proof**
+that every production page is stale or that an actual CDN response behaves the
+same way.
+
+The test also refreshes a query page itself while a matching relation exists,
+then deletes the related page to check a meaningful 1 -> 0 transition. This
+distinguishes a genuinely refreshed cached value from one that happened to
+be 0 before and after the operation.
+
+Do not deploy the unfinished mechanism in PR #11 based only on this finding.
+It needs a staged, reversible evaluation with real model dependencies.
+
 ## Production source inventory (read-only)
 
 After updating the extension, the following command scans at most 200 records

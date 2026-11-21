@@ -190,6 +190,19 @@ fsFlush();
 same( [], $directMembers( 'WD Baseline B' ), 'Removing final relation is visible' );
 $report['events']['remove'] = [ 'parser_b' => $parserText( 'WD Baseline query B' ) ];
 
+// Reintroduce a matching subject, then explicitly refresh ONLY the query page.
+// Deletion now tests a previously correct cached result (1 -> 0), instead
+// of accidentally considering an older zero-match result fresh.
+fsSave( 'WD Baseline child renamed', '{{#set:WD Baseline Parent=WD Baseline B}}' );
+fsFlush();
+same( [ 'WD Baseline child renamed' ], $directMembers( 'WD Baseline B' ),
+	'Pre-deletion relationship is present' );
+fsSave( 'WD Baseline query B', "== Summary ==\n<wd-baseline-parent>WD Baseline B</wd-baseline-parent>\n== Parent debates ==\nB<!-- refresh baseline -->" );
+fsFlush();
+$beforeDelete = $parserText( 'WD Baseline query B' );
+check( $beforeDelete['matches_1'], 'Pre-deletion parser cache genuinely contains one result' );
+$report['events']['before_delete'] = [ 'parser_b' => $beforeDelete ];
+
 $services->getUserGroupManager()->addUserToGroup( $fsUser, 'sysop' );
 $deletedPage = $services->getWikiPageFactory()->newFromTitle( Title::newFromText( 'WD Baseline child renamed' ) );
 $deleted = $services->getDeletePageFactory()->newDeletePage( $deletedPage, $fsUser )
@@ -206,6 +219,7 @@ $report['safety'] = [
 	'parser_new_parent_after_move_fresh' => $report['events']['change_parent']['parser_b']['matches_1'],
 	'parser_after_rename_fresh' => $report['events']['rename']['parser_b']['matches_1'],
 	'parser_after_removal_fresh' => $report['events']['remove']['parser_b']['matches_0'],
+	'parser_after_delete_fresh' => $report['events']['delete']['parser_b']['matches_0'],
 ];
 $report['safety']['all_checked_layers_fresh'] = !in_array( false, $report['safety'], true );
 
