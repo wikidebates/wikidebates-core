@@ -73,6 +73,15 @@ lab. The test records the first and second `X-Minerva-File-Cache` states,
 the state after the external edit, and whether the full HTML still renders the
 old value.
 
+The HTTP lab normally adds an `X-WD-Semantic-Lab-Worker` response
+header to identify its PHP workers. That unknown header rightly makes
+MinervaFileCache return `BYPASS; reason=header-x-wd-semantic-lab-worker`,
+which would invalidate a full-page cache test. The explicitly marked
+file-cache probe therefore suppresses **only that test-generated response
+header** and requires a genuine `HIT` on its second untracked mobile
+request. The tracked mobile tests likewise require the precise
+`BYPASS; reason=extension-veto` signal, not merely any bypass.
+
 The `untracked_minerva_semantic_baseline` JSON section reports
 `stale_minerva_hit_observed` and `stale_full_html_observed`. The second
 indicator also catches stale parser-produced HTML after a MISS or BYPASS.
