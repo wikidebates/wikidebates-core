@@ -87,7 +87,7 @@ test( 'an unmounted title is ignored after the lazy UI finishes loading', async 
 test( 'a failed loader navigates to the original title instead of losing the click', async ( t ) => {
 	const { window, deferred, fire } = await fixture( t );
 	window.history.replaceState( null, '', '/wiki/Argument_A' );
-	window.document.querySelector( '#argument-a a' ).setAttribute( 'href', '#fallback' );
+	window.document.querySelector( '#argument-a a' ).setAttribute( 'href', '/wiki/Argument_A#fallback' );
 	assert.equal( fire( 'argument-a' ).isDefaultPrevented(), true );
 	await tick();
 	deferred.reject( 'offline' );
@@ -98,7 +98,7 @@ test( 'a failed loader navigates to the original title instead of losing the cli
 test( 'loader resolution without a reading handler also navigates to the original link', async ( t ) => {
 	const { window, deferred, fire } = await fixture( t );
 	window.history.replaceState( null, '', '/wiki/Argument_A' );
-	window.document.querySelector( '#argument-a a' ).setAttribute( 'href', '#missing-ui' );
+	window.document.querySelector( '#argument-a a' ).setAttribute( 'href', '/wiki/Argument_A#missing-ui' );
 	fire( 'argument-a' );
 	await tick();
 	deferred.resolve();
@@ -119,7 +119,7 @@ test( 'a navigation before lazy loading completes does not open a stale reader o
 test( 'a failed lazy load can be retried by another click with a fresh promise', async ( t ) => {
 	const { window, $, deferred, opens, fire } = await fixture( t );
 	window.history.replaceState( null, '', '/wiki/Argument_A' );
-	window.document.querySelector( '#argument-a a' ).setAttribute( 'href', '#fallback' );
+	window.document.querySelector( '#argument-a a' ).setAttribute( 'href', '/wiki/Argument_A#fallback' );
 	fire( 'argument-a' );
 	await tick();
 	deferred.reject( 'offline' );

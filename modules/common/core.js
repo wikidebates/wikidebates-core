@@ -113,7 +113,7 @@
 	function hrefToPageTitle( href ) {
 		if ( !href ) return '';
 		try {
-			var url = new URL( href, W.location.href );
+			var url = new URL( href, W.location.origin );
 			// Identical /wiki paths on another host are not local wiki pages.
 			if ( ( url.protocol !== 'http:' && url.protocol !== 'https:' ) ||
 				url.origin !== W.location.origin ) return '';

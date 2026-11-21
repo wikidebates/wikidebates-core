@@ -48,3 +48,12 @@ test( 'matching wiki-looking paths and title parameters on another origin are no
 	assert.equal( get( '/w/index.php?title=Hausse%20de%2010%20%25' ), 'Hausse de 10 %' );
 	assert.equal( get( 'https://wiki.test:443/wiki/Different_scheme' ), '' );
 } );
+
+
+test( 'fragment-only links never inherit a page title from the current query URL', async ( t ) => {
+	const env = await environment(); t.after( env.close );
+	env.window.history.replaceState( null, '', '/w/index.php?title=Debate' );
+	const get = env.window.Wikidebates.hrefToPageTitle;
+	assert.equal( get( '#Summary' ), '' );
+	assert.equal( get( '/w/index.php?title=Debate#Summary' ), 'Debate' );
+} );
