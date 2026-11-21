@@ -159,7 +159,7 @@ final class SemanticPageCacheHooks {
 			\\MobileContext::singleton()->shouldDisplayMobileView();
 	}
 
-		private static function enabled(): bool {
+	private static function enabled(): bool {
 		return (bool)MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesSemanticCacheTracking');
 	}
 
