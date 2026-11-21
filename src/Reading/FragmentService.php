@@ -91,7 +91,7 @@ class FragmentService {
 				if ($prepared && ($prepared['_generation'] !== $snapshot['generation'] ||
 					$prepared['revid'] !== (int)$identity['revision'] || $prepared['_touched'] !== $identity['touched'])) { return $prepared; }
 				if ($snapshot['entry']) {
-					$preparation = ['status' => 'already-valid', 'source' => 'fragment-cache'];
+					if ($preparation !== null) { $preparation = ['status' => 'already-valid', 'source' => 'fragment-cache']; }
 					return $snapshot['entry']['metadata'] + ['html' => $snapshot['entry']['body'], 'source' => 'fragment-cache'];
 				}
 				$fill = $store->startFill($title->getPrefixedDBkey());
@@ -100,12 +100,12 @@ class FragmentService {
 					$snapshot = $store->read($title->getPrefixedDBkey(), $variant, $identity);
 					if ($prepared && $prepared['_generation'] !== $snapshot['generation']) { fclose($fill); return $prepared; }
 					if ($snapshot['entry']) {
-						$preparation = ['status' => 'already-valid', 'source' => 'fragment-cache'];
+						if ($preparation !== null) { $preparation = ['status' => 'already-valid', 'source' => 'fragment-cache']; }
 						fclose($fill);
 						return $snapshot['entry']['metadata'] + ['html' => $snapshot['entry']['body'], 'source' => 'fragment-cache'];
 					}
 				} elseif (ReadingHooks::$warming) {
-					$preparation = ['status' => 'busy', 'source' => null];
+					if ($preparation !== null) { $preparation = ['status' => 'busy', 'source' => null]; }
 					return ['source' => 'busy'];
 				}
 			} catch (\Throwable $e) {
@@ -130,10 +130,12 @@ class FragmentService {
 						$result['html'], array_diff_key($result, array_flip(['html', 'source', '_expires'])), $result['_expires']);
 				} catch (\Throwable $e) { self::log($e); }
 			}
-			$preparation = [
-				'status' => $published ? 'created' : (($result['_expires'] ?? 0) <= time() || ($result['html'] ?? '') === '' ? 'not-cacheable' : 'not-stored'),
-				'source' => $result['source'] ?? null
-			];
+			if ($preparation !== null) {
+				$preparation = [
+					'status' => $published ? 'created' : (($result['_expires'] ?? 0) <= time() || ($result['html'] ?? '') === '' ? 'not-cacheable' : 'not-stored'),
+					'source' => $result['source'] ?? null
+				];
+			}
 			return $result;
 		} finally { if (is_resource($fill)) { fclose($fill); } }
 	}
