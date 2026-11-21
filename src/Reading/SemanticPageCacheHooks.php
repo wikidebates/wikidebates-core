@@ -17,8 +17,19 @@ use SMW\Services\ServicesFactory as SemanticServices;
  */
 final class SemanticPageCacheHooks {
 	public const OUTPUT_REVISION = 'wikidebates-semantic-revision';
+	private static bool $readingFragment = false;
+
+	/** Temporarily bypass semantic freshness checks only for a reader fragment lookup. */
+	public static function forReadingFragment(callable $callback) {
+		$previous = self::$readingFragment;
+		self::$readingFragment = true;
+		try { return $callback(); }
+		finally { self::$readingFragment = $previous; }
+	}
+
 
 	public static function onHTMLFileCache__useFileCache($context): bool {
+		if (self::$readingFragment) { return true; }
 		if (!self::enabled()) {
 			return true;
 		}
@@ -98,6 +109,7 @@ final class SemanticPageCacheHooks {
 	 * even if SMW's smw_touched timestamps are equal in the same second.
 	 */
 	public static function onRejectParserCacheValue($output, $page, $options): bool {
+		if (self::$readingFragment) { return true; }
 		if (!self::enabled()) {
 			return true;
 		}
