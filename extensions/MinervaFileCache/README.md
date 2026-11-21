@@ -235,6 +235,28 @@ acceptée. Un préchauffage Android ne remplit pas toutes les variantes Safari
 iPhone ou toutes les versions de Chrome. Il est donc surtout utile pour les
 variantes réellement consultées et peut produire beaucoup de fichiers.
 
+## Pages froides et répertoires vides
+
+Sur une page jamais stockée, MinervaFileCache vérifie désormais l'absence de
+génération **sans créer de répertoire ni de verrou**. Si le HTML final est
+non cacheable, aucun fichier n'est créé pour cette simple consultation.
+Lorsqu'il est cacheable, la première publication crée la génération sous
+verrou exclusif ; une purge intervenue pendant le rendu empêche cette
+publication, de la même manière que pour un cache déjà initialisé.
+
+Cette optimisation ne supprime pas les répertoires historiques. Les purges
+et invalidations créent encore un marqueur de génération pour empêcher la
+publication d'un rendu commencé avant leur exécution. Ne pas supprimer
+automatiquement les répertoires contenant des fichiers `page.lock` ou
+`fill.lock` pendant que PHP-FPM ou des jobs utilisent le stockage :
+supprimer un verrou ouvert introduirait une course d'invalidation.
+
+Le nombre de répertoires sans fichiers `.cache` ne suffit donc pas à
+déterminer la source des créations (anciennes lectures, purges ou fichiers
+expirés). Le meilleur indicateur d'efficacité reste l'observation des
+`HIT`, `MISS` et `BYPASS` sur de vrais accès, complétée par les
+statistiques et audits ci-dessous.
+
 ## Diagnostic du stockage
 
 Avant d'envisager un regroupement des navigateurs et langues, mesurer la
