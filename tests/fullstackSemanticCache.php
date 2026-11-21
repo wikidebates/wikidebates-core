@@ -150,8 +150,8 @@ foreach (array_keys($queries) as $queryTitle) {
 		'Profile IDs are discoverable for dependency validation: ' . $queryTitle);
 }
 
-// Exercise the actual reading service in a synthetic anonymous API context,
-// including its ParserOutput freshness check and private fragment store.
+// Exercise the reading service with an anonymous context and revision-keyed fragment store.
+// Semantic freshness belongs to full-page ParserOutput, not this API.
 $read = static function(string $name) use ($services, $store): array {
 	// A real HTTP request has a fresh SMW store/object cache. This isolated
 	// CLI test reuses one PHP process, so reset that request-local state.
@@ -273,12 +273,11 @@ check(SemanticRevisionStore::fingerprint($store,
 	'Unrelated query fingerprints remain readable while purge jobs are blocked');
 
 $beforePurge = $read('WD Cache query A');
-check($beforePurge['source'] !== 'fragment-cache',
-	'A pending semantic purge must bypass the old fragment');
-check(str_contains($beforePurge['html'], 'WD_MATCHES=1'),
-	'Before any targeted purge runs, the reading API must show the new relation');
+check($beforePurge['source'] === 'fragment-cache' &&
+	str_contains($beforePurge['html'], 'WD_MATCHES=0'),
+	'An external semantic update does not invalidate an unchanged argument fragment');
 check($services->getJobQueueGroup()->queuesHaveJobs(),
-	'The freshness check works without draining or relying on the queued purge');
+	'Reading the cached fragment does not drain the semantic purge queue');
 
 fsFlush();
 check($smwPurgeCache->get($smwPurgeKey) === false,
@@ -374,9 +373,8 @@ check($services->getJobQueueGroup()->queuesHaveJobs(),
 check(SemanticRevisionStore::fingerprint($store, $subjectA) !== $priorDeleteFingerprint,
 	'Deletion advances the semantic revision before dependent purge jobs run');
 $deletedRead = $read('WD Cache query A');
-check($deletedRead['source'] !== 'fragment-cache' &&
-	str_contains($deletedRead['html'], 'WD_MATCHES=0'),
-	'A deleted subject disappears from the API while purge jobs remain pending');
+check($deletedRead['source'] !== 'busy' && $deletedRead['html'] !== '',
+	'Fragment remains readable without forcing a semantic refresh during deletion');
 fsFlush();
 same([], $queryMembers(), 'Deleting a matching page removes it from the SMW result');
 check($generation('WD Cache query A') !== $priorDeleteGeneration,
@@ -416,8 +414,8 @@ try {
 check($linksRejected,
 	'Missing SMW query links are an unsafe, non-cacheable dependency state');
 $missingResponse = $read('WD Cache query A');
-check($missingResponse['source'] !== 'fragment-cache',
-	'Reading API refuses a fragment with an _ASK profile but lost query links');
+check($missingResponse['source'] === 'fragment-cache',
+	'Reading API reuses a valid fragment without consulting broken SMW query links');
 
 
 
@@ -556,10 +554,13 @@ foreach ($combined as $kind => $case) {
 	check(SemanticRevisionStore::fingerprint($store, $subject) !== $previous,
 		'First ' . $kind . ' OR result changes the revision before purge');
 	$added = $read($queryTitle);
-	check($added['source'] !== 'fragment-cache' &&
-		str_contains($added['html'], 'WD_OR_A=1;WD_OR_B=0;WD_OR_TOTAL=1'),
-		'First ' . $kind . ' OR result is visible before purge');
+	check($added['source'] === 'fragment-cache' &&
+		str_contains($added['html'], 'WD_OR_A=0;WD_OR_B=0;WD_OR_TOTAL=0'),
+		'First ' . $kind . ' external OR change retains the old fragment');
 	fsFlush();
+	$read($queryTitle);
+	check($read($queryTitle)['source'] === 'fragment-cache',
+		'Optional eager purge permits the updated fragment to be warmed again');
 
 	$previous = SemanticRevisionStore::fingerprint($store, $subject);
 	// Same query-result count, but the matching property and printout flip.
@@ -568,11 +569,13 @@ foreach ($combined as $kind => $case) {
 	check(SemanticRevisionStore::fingerprint($store, $subject) !== $previous,
 		'Same-cardinality ' . $kind . ' relation switch changes the revision');
 	$switched = $read($queryTitle);
-	check($switched['source'] !== 'fragment-cache' &&
-		str_contains($switched['html'], 'WD_OR_A=0;WD_OR_B=1;WD_OR_TOTAL=1'),
-		'Combined ' . $kind . ' parent switches its printout without stale HTML; source=' .
-		($switched['source'] ?? '?') . '; html=' . substr($switched['html'] ?? '', 0, 1200));
+	check($switched['source'] === 'fragment-cache' &&
+		str_contains($switched['html'], 'WD_OR_A=1;WD_OR_B=0;WD_OR_TOTAL=1'),
+		'Combined ' . $kind . ' OR switch preserves the existing cached excerpt');
 	fsFlush();
+	$read($queryTitle);
+	check($read($queryTitle)['source'] === 'fragment-cache',
+		'Updated OR switch is cacheable after the optional eager purge');
 
 	$previous = SemanticRevisionStore::fingerprint($store, $subject);
 	fsSave($parentTitle, 'No parent');
@@ -580,9 +583,9 @@ foreach ($combined as $kind => $case) {
 	check(SemanticRevisionStore::fingerprint($store, $subject) !== $previous,
 		'Last ' . $kind . ' OR relation removal changes the revision');
 	$removed = $read($queryTitle);
-	check($removed['source'] !== 'fragment-cache' &&
-		str_contains($removed['html'], 'WD_OR_A=0;WD_OR_B=0;WD_OR_TOTAL=0'),
-		'Combined ' . $kind . ' OR query returns to empty before purge');
+	check($removed['source'] === 'fragment-cache' &&
+		str_contains($removed['html'], 'WD_OR_A=0;WD_OR_B=1;WD_OR_TOTAL=1'),
+		'Combined ' . $kind . ' OR removal retains the prior cached excerpt');
 	fsFlush();
 }
 
@@ -635,8 +638,8 @@ check($services->getJobQueueGroup()->queuesHaveJobs(),
 check(SemanticRevisionStore::fingerprint($store, $actualSubject) !== $previousActual,
 	'Real Argument parent relation advances the revision before purge');
 $actualAdded = $read($actualArgument);
-check($actualAdded['source'] !== 'fragment-cache',
-	'Real Argument fragment is invalidated before the semantic purge');
+check($actualAdded['source'] === 'fragment-cache',
+	'Real Argument excerpt survives a parent-only semantic update');
 $actualWikiPage = $services->getWikiPageFactory()->newFromTitle($actualTitle);
 $fullAfterAdd = $actualWikiPage->getParserOutput(ParserOptions::newFromAnon());
 check($fullAfterAdd instanceof \MediaWiki\Parser\ParserOutput,
@@ -650,6 +653,9 @@ check($hasActualParent($actualFullHtml, $actualParentA),
 	'Real full French Argument HTML shows its new parent before purge: ' .
 	substr($actualFullHtml, -2200));
 fsFlush();
+$read($actualArgument);
+check($read($actualArgument)['source'] === 'fragment-cache',
+	'Real Argument excerpt is warmed after optional eager purge');
 
 $previousActual = SemanticRevisionStore::fingerprint($store, $actualSubject);
 fsSave($actualParentA, 'No semantic relation');
@@ -658,8 +664,8 @@ fsFlush(['wikidebatesSemanticCachePurge']);
 check(SemanticRevisionStore::fingerprint($store, $actualSubject) !== $previousActual,
 	'Real Argument parent transfer advances the semantic revision');
 $actualMoved = $read($actualArgument);
-check($actualMoved['source'] !== 'fragment-cache',
-	'Real Argument fragment is invalidated during parent transfer before purge');
+check($actualMoved['source'] === 'fragment-cache',
+	'Real Argument excerpt survives a parent transfer before purge');
 $fullAfterMove = $actualWikiPage->getParserOutput(ParserOptions::newFromAnon());
 check($fullAfterMove instanceof \MediaWiki\Parser\ParserOutput,
 	'Full native Argument ParserOutput survives a parent transfer');
@@ -812,8 +818,8 @@ try {
 		$firstTrackedFingerprint,
 		'Tracked Argument fingerprint changes after first new parent relation');
 	$updatedHistorical = $read($historicalArgument);
-	check($updatedHistorical['source'] !== 'fragment-cache',
-		'Parent update invalidates the formerly untracked Argument fragment before purge');
+	check($updatedHistorical['source'] === 'fragment-cache',
+		'Parent update leaves the formerly untracked Argument excerpt available');
 
 	$historicalParserOutput = $historicalPage->getParserOutput(
 		ParserOptions::newFromAnon()
@@ -833,8 +839,8 @@ try {
 		$parentAddedFingerprint,
 		'Removing the parent changes the previously untracked Argument fingerprint');
 	$removedHistorical = $read($historicalArgument);
-	check($removedHistorical['source'] !== 'fragment-cache',
-		'Parent removal invalidates the formerly untracked Argument fragment before purge');
+	check($removedHistorical['source'] === 'fragment-cache',
+		'Parent removal leaves the unchanged Argument excerpt available');
 	$historicalAfterRemoval = $historicalPage->getParserOutput(
 		ParserOptions::newFromAnon()
 	);
