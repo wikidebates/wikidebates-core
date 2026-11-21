@@ -150,14 +150,14 @@ class AuditSemanticFreshness extends Maintenance {
 					if ( $queryIds !== [] ) {
 						$dependencyRows = $store->getConnection( 'mw.db' )
 							->newSelectQueryBuilder()
-							->select( [ 's_id', 'rows' => 'COUNT(*)' ] )
+							->select( [ 's_id', 'edge_count' => 'COUNT(*)' ] )
 							->from( \SMW\SQLStore\SQLStore::QUERY_LINKS_TABLE )
 							->where( [ 's_id' => $queryIds ] )
 							->groupBy( 's_id' )
 							->caller( __METHOD__ )
 							->fetchResultSet();
 						foreach ( $dependencyRows as $dependencyRow ) {
-							$edgeCounts[(int)$dependencyRow->s_id] = (int)$dependencyRow->rows;
+							$edgeCounts[(int)$dependencyRow->s_id] = (int)$dependencyRow->edge_count;
 						}
 					}
 					$edgeTotal = array_sum( $edgeCounts );
