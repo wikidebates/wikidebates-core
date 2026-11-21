@@ -169,6 +169,7 @@ fsSave('WD HTTP template parent FR', 'No parent relation');
 fsSave('WD HTTP template parent EN', 'No parent relation');
 
 fsSave('WD HTTP public page', str_repeat('This ordinary page contains no semantic query. ', 30));
+fsSave('WD HTTP public fragment', "== Summary ==\nWD_HTTP_PUBLIC_FRAGMENT\n== Parent debates ==\nNo relations");
 fsFlush();
 
 // SMW profiles must belong to already-created query pages.
@@ -1214,6 +1215,18 @@ try {
 
 	$public = $http('index.php', ['title' => 'WD_HTTP_public_page']);
 	check($public['status'] === 200, 'Unrelated public HTTP page still loads');
+
+	// The first full-page render provides its ParserOutput to the reading
+	// prewarmer: there must be no second ParserCache::get/SMW lookup to fill it.
+	$publicPage = $http('index.php', ['title' => 'WD_HTTP_public_fragment']);
+	check($publicPage['status'] === 200 &&
+		str_contains($publicPage['body'], 'WD_HTTP_PUBLIC_FRAGMENT'),
+		'Public summary page renders normally before opportunistic prewarm');
+	$prewarmed = $fragment('WD HTTP public fragment');
+	check($prewarmed['fragment']['source'] === 'fragment-cache' &&
+		str_contains($prewarmed['fragment']['html'], 'WD_HTTP_PUBLIC_FRAGMENT'),
+		'First API read reuses the fragment captured from the full-page ParserOutput: ' .
+		($prewarmed['fragment']['source'] ?? 'missing'));
 
 	// Characterize, do not impose a speed threshold on noisy CI hosts.
 	// Forced re-parses can change page_touched, so measuring HITs
