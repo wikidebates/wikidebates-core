@@ -105,3 +105,35 @@ test( 'loader resolution without a reading handler also navigates to the origina
 	await tick();
 	assert.equal( window.location.hash, '#missing-ui' );
 } );
+
+test( 'a navigation before lazy loading completes does not open a stale reader or leave busy state', async ( t ) => {
+	const { window, opens, fire, ready } = await fixture( t );
+	fire( 'argument-a' );
+	window.history.pushState( null, '', '/wiki/Unrelated' );
+	ready();
+	await tick();
+	assert.deepEqual( opens, [] );
+	assert.equal( window.document.getElementById( 'argument-a' ).hasAttribute( 'aria-busy' ), false );
+} );
+
+test( 'a failed lazy load can be retried by another click with a fresh promise', async ( t ) => {
+	const { window, $, deferred, opens, fire } = await fixture( t );
+	window.history.replaceState( null, '', '/wiki/Argument_A' );
+	window.document.querySelector( '#argument-a a' ).setAttribute( 'href', '#fallback' );
+	fire( 'argument-a' );
+	await tick();
+	deferred.reject( 'offline' );
+	await tick();
+	assert.equal( window.location.hash, '#fallback' );
+	window.history.replaceState( null, '', '/wiki/Argument_A' );
+	const second = $.Deferred();
+	let retried = 0;
+	window.mw.loader.using = () => { retried++; return second.promise(); };
+	fire( 'argument-a' );
+	await tick();
+	assert.equal( retried, 1 );
+	window.Wikidebates.wkOpenReadingModeFromTitleEl = ( el ) => opens.push( el.id );
+	second.resolve();
+	await tick();
+	assert.deepEqual( opens, [ 'argument-a' ] );
+} );
