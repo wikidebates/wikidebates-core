@@ -68,10 +68,11 @@ function wikidebatesTestConfig($settings): void {
 		'CacheDirectory' => $temporary,
 		'MainCacheType' => CACHE_NONE,
 		'MessageCacheType' => CACHE_NONE,
-		'ParserCacheType' => CACHE_NONE,
+		'ParserCacheType' => getenv('WD_TEST_SEMANTIC_BASELINE') === '1' ? CACHE_DB : CACHE_NONE,
 		'UseDatabaseMessages' => defined('WD_I18N_TEST'),
 		'JobRunRate' => 0,
-		'WikidebatesReadingFragments' => false,
+		'WikidebatesReadingFragments' => getenv('WD_TEST_SEMANTIC_BASELINE') === '1',
+		'WikidebatesReadingCacheDirectory' => getenv('WD_TEST_SEMANTIC_BASELINE') === '1' ? $temporary : false,
 		'ShowExceptionDetails' => true
 	]);
 	if (defined('WD_FULLSTACK_TEST')) {
@@ -79,6 +80,11 @@ function wikidebatesTestConfig($settings): void {
 		$GLOBALS['smwgConfigFileDir'] = $temporary;
 		$GLOBALS['smwgEnabledDeferredUpdate'] = true;
 		$GLOBALS['smwgEnableUpdateJobs'] = true;
+		if (getenv('WD_TEST_SEMANTIC_BASELINE') === '1') {
+			$GLOBALS['smwgEnabledQueryDependencyLinksStore'] = true;
+			$GLOBALS['smwgQueryProfiler'] = 0;
+			$GLOBALS['smwgQueryResultCacheType'] = 0;
+		}
 		$GLOBALS['wgScribuntoDefaultEngine'] = 'luastandalone';
 	}
 	foreach (array_filter(explode(',', getenv('WD_TEST_EXTENSIONS') ?: '')) as $extension) {
