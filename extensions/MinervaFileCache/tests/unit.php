@@ -19,6 +19,37 @@ mkdir($dir, 0700);
 try {
 	$store = new Store($dir, 'wiki-one', 300, 4096);
 	$identity = ['revision' => 1, 'touched' => '20261022000000'];
+	// A cold page that never becomes cacheable must not allocate a directory,
+	// lock file or generation file simply because it was viewed.
+	$lazy = new Store($dir, 'lazy-wiki', 300, 4096);
+	$unpublished = $lazy->readIfPresent('Uncacheable', 'android', $identity);
+	check($unpublished['entry'] === null && $unpublished['fresh'] === true,
+		'Optimistic cold read misses');
+	check($lazy->statistics()['pages'] === 0, 'Uncacheable cold read creates no directory');
+	$firstCandidate = $lazy->readIfPresent('Cacheable', 'android', $identity);
+	check($lazy->publish('Cacheable', 'android', $identity, $firstCandidate['generation'],
+		'FIRST_HTML', [], PHP_INT_MAX, true), 'Cold publication initializes a generation');
+	$firstHit = $lazy->readIfPresent('Cacheable', 'android', $identity);
+	check($firstHit['fresh'] === false && $firstHit['entry']['body'] === 'FIRST_HTML',
+		'Published cold content becomes an ordinary valid HIT');
+	// A purge between the cold snapshot and the first publish must prevent
+	// stale HTML from ever creating a valid cache generation.
+	$race = $lazy->readIfPresent('Concurrent_purge', 'android', $identity);
+	$lazy->invalidate('Concurrent_purge');
+	check(!$lazy->publish('Concurrent_purge', 'android', $identity, $race['generation'],
+		'STALE_HTML', [], PHP_INT_MAX, true), 'Concurrent invalidation vetoes stale first publication');
+	check($lazy->readIfPresent('Concurrent_purge', 'android', $identity)['entry'] === null,
+		'Purged first render leaves no cached HTML');
+	// Only the first simultaneous cold renderer may initialize an untracked page.
+	$winner = $lazy->readIfPresent('First_wins', 'android', $identity);
+	$loser = $lazy->readIfPresent('First_wins', 'android', $identity);
+	check($lazy->publish('First_wins', 'android', $identity, $winner['generation'],
+		'WINNER', [], PHP_INT_MAX, true), 'First cold renderer publishes');
+	check(!$lazy->publish('First_wins', 'android', $identity, $loser['generation'],
+		'LOSER', [], PHP_INT_MAX, true), 'Second cold renderer cannot overwrite the first');
+	check($lazy->readIfPresent('First_wins', 'android', $identity)['entry']['body'] === 'WINNER',
+		'Concurrent cold publications keep the first valid content');
+
 	$first = $store->read('A', 'android', $identity);
 	check($first['entry'] === null, 'Cold read misses');
 	$fill = $store->startFill('A');
