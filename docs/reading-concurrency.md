@@ -81,7 +81,7 @@ node tests/pageSchedulingStudy.cjs /tmp/wd-baseline-parse.js
 ```
 
 Raw results and source hashes: `tests/results/reading-concurrency-study.json`.
-The storage test runs 80 reads per worker on one 588,000-byte synthetic fragment,
+The storage test runs 80 reads per worker on one 612,000-byte synthetic fragment,
 with one and four independent PHP CLI processes. Process startup and cache seeding
 are outside the timing window; dispatch, reads and process completion are inside.
 Two runs per version, each with three samples per concurrency, are performed in
