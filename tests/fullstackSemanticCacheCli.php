@@ -71,6 +71,23 @@ $cli = static function(array $args, bool $eager, string $input = '') use ($setti
 	return [proc_close($process), $out, $err];
 };
 
+// Run the real nightly command inside the disposable MediaWiki installation.
+[$exit, $out, $err] = $cli([
+	'Wikidebates:prepareReadingCache', '--limit=2', '--batch-size=1', '--sleep-ms=0', '--json'
+], false);
+check($exit === 0, 'Actual nightly preparation CLI accepts JSON diagnostics: ' . $out . $err);
+$preparation = json_decode(trim($out), true, 512, JSON_THROW_ON_ERROR);
+check(($preparation['type'] ?? null) === 'wikidebates-reading-preparation' &&
+	is_int($preparation['inspected'] ?? null) &&
+	is_int($preparation['last_page_id'] ?? null) &&
+	isset($preparation['statuses']['already-valid'], $preparation['statuses']['created'],
+		$preparation['statuses']['not-cacheable'], $preparation['statuses']['busy']) &&
+	isset($preparation['sources']['fragment-cache'], $preparation['sources']['vector-file'],
+		$preparation['sources']['parser']) &&
+	array_sum($preparation['statuses']) === $preparation['inspected'] &&
+	$preparation['duration_seconds'] >= 0,
+	'Nightly report counts exactly the inspected pages and tracks source classes');
+
 [$exit, $out, $err] = $cli(['Wikidebates:CheckSemanticCache', '--json', '--require-purge-ready'], true);
 check($exit === 0, 'Actual CLI preflight passes with enabled prerequisites: ' . $out . $err);
 $cliReport = json_decode(trim($out), true, 512, JSON_THROW_ON_ERROR);

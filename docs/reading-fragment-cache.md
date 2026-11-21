@@ -92,11 +92,32 @@ dans le même passage, après les contrôles de réponse publique, sans second r
 Les anciens jobs encore présents revérifient la validité avant tout travail et
 ne préparent plus deux variantes d’habillage.
 
-Planifier quotidiennement, sous le même utilisateur que PHP :
+Planifier quotidiennement, sous le même utilisateur que PHP, avec un léger
+décalage entre les deux wikis pour limiter la charge. Exemple pour un serveur
+en heure de Paris, après vérification de son fuseau horaire :
 
 ```cron
-15 3 * * * www-data php /srv/mediawiki/maintenance/run.php Wikidebates:prepareReadingCache --batch-size=100 --sleep-ms=100
+5 0 * * * www-data php /srv/mediawiki/maintenance/run.php Wikidebates:prepareReadingCache --wiki=fr --batch-size=100 --sleep-ms=100 --json >> /var/log/wikidebates-reading-fr.log 2>&1
+35 0 * * * www-data php /srv/mediawiki/maintenance/run.php Wikidebates:prepareReadingCache --wiki=en --batch-size=100 --sleep-ms=100 --json >> /var/log/wikidebates-reading-en.log 2>&1
 ```
+
+Les fichiers de journal doivent être créés et accessibles en écriture par
+l'utilisateur du processus. Ne pas installer ces exemples tels quels sans
+adapter le chemin de MediaWiki, l'utilisateur et les chemins des journaux.
+La préparation **n'est pas une photographie figée de minuit** : une édition
+invalide les anciens extraits dans la journée. Un passage peut se prolonger
+après minuit sans bloquer le site.
+
+`--json` affiche un rapport final avec le wiki, le nombre de pages examinées,
+le dernier identifiant de page et la durée, ainsi que les statuts
+`already-valid` (déjà prêt), `created` (réellement publié),
+`not-cacheable` (rendu non conservable), `not-stored` (écriture non
+confirmée), `busy` (autre préparation en cours), `skipped` (page sautée)
+et `failed` (échec). Les sources `fragment-cache`, `vector-file`,
+`minerva-file` et `parser` sont également comptabilisées. L'absence
+d'erreur PHP ne signifie donc plus à elle seule que tous les fragments ont
+été créés. Un résultat `busy` ou `not-stored` reste disponible pour
+une nouvelle tentative ou une demande web ultérieure.
 
 Adapter chemins et utilisateur ; omettre l’utilisateur dans une crontab personnelle.
 La commande parcourt la catégorie des arguments, sans récursion, par identifiants

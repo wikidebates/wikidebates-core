@@ -35,6 +35,10 @@ try {
 	check($store->publish('A', 'android', $identity, $new['generation'], 'CURRENT', [], time() + 300), 'New generation can publish');
 	$paths = glob($dir . '/*/*/*/*.cache');
 	$path = $paths[0];
+	clearstatcache(true, $path);
+	check(filemtime($path) > time(), 'New payload carries an expiration mtime for cheap pruning');
+	check($store->prune() === 0 && is_file($path), 'Pruning preserves live payloads');
+	check($store->read('A', 'android', $identity)['entry']['body'] === 'CURRENT', 'Pruning cannot alter reading behavior');
 	$entry = json_decode(gzdecode(file_get_contents($path)), true);
 	$entry['expires'] = time() - 1;
 	file_put_contents($path, gzencode(json_encode($entry)));
@@ -42,7 +46,16 @@ try {
 	check($store->prune() === 1 && !is_file($path), 'Cleanup removes expired payloads');
 	$store->publish('A', 'android', $identity, $new['generation'], 'CURRENT', [], time() + 300);
 	file_put_contents($path, 'corrupt payload');
-	check($store->read('A', 'android', $identity)['entry'] === null, 'Corrupt entries miss without executing data');
+	@touch($path, time() + 120);
+	check($store->read('A', 'android', $identity)['entry'] === null, 'Corrupt entries miss even with a future pruning hint');
+	@touch($path, time() - 120);
+	check($store->prune() === 1 && !is_file($path), 'Pruning removes due corrupt entries');
+	check($store->publish('A', 'android', $identity, $new['generation'], 'LEGACY', [], time() + 300), 'A new payload is available for legacy migration');
+	@touch($path, time());
+	check($store->prune() === 0, 'Pruning migrates valid legacy payloads without deleting them');
+	clearstatcache(true, $path);
+	check(filemtime($path) > time(), 'Legacy payload receives an expiration mtime');
+	check($store->read('A', 'android', $identity)['entry']['body'] === 'LEGACY', 'Migrated legacy data remains valid');
 	foreach (json_decode(file_get_contents(__DIR__ . '/extractor-cases.json'), true) as $case) {
 		check(FragmentExtractor::extract($case['html']) === $case['expected'], 'PHP matches the actual JavaScript extractor');
 	}

@@ -7,6 +7,13 @@ use MediaWiki\MediaWikiServices;
 use MediaWiki\Request\FauxRequest;
 
 class WarmFragmentsJob extends \Job {
+	private array $preparation = ['status' => 'skipped', 'source' => null];
+
+	/** Counts for the nightly preparation report, never included in API output. */
+	public function getPreparation(): array {
+		return $this->preparation;
+	}
+
 	public function __construct($title, array $params = []) {
 		parent::__construct('wikidebatesWarmReading', $title, $params);
 		$this->removeDuplicates = true;
@@ -32,9 +39,21 @@ class WarmFragmentsJob extends \Job {
 		$context->setTitle($this->title);
 		ReadingHooks::$warming = true;
 		try {
-			FragmentService::read($context, $this->title->getPrefixedText(), 'vector');
+			// A short web fill can finish while nightly preparation reaches the
+			// same page. Retry only in this background preparation, never in
+			// the ordinary visitor request path.
+			for ($attempt = 0; $attempt < 4; $attempt++) {
+				FragmentService::read($context, $this->title->getPrefixedText(), 'vector', null, $this->preparation);
+				if (($this->preparation['status'] ?? null) !== 'busy') { break; }
+				if ($attempt < 3) { usleep(200000); }
+			}
 		} catch (\PermissionsError $e) { return true; }
-		catch (\Throwable $e) { FragmentService::log($e); $this->setLastError(get_class($e)); return false; }
+		catch (\Throwable $e) {
+			$this->preparation = ['status' => 'failed', 'source' => null];
+			FragmentService::log($e);
+			$this->setLastError(get_class($e));
+			return false;
+		}
 		finally { ReadingHooks::$warming = false; }
 		return true;
 	}
