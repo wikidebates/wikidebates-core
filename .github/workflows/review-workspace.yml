@@ -1,0 +1,22 @@
+{
+	"name": "Isolated review workspace",
+	"on": {
+		"push": {
+			"branches": ["fix/parent-reading-cache-reliability"]
+		}
+	},
+	"permissions": {"contents": "read"},
+	"jobs": {
+		"workspace": {
+			"runs-on": "ubuntu-24.04",
+			"timeout-minutes": 10,
+			"steps": [
+				{"uses": "actions/checkout@v4", "with": {"persist-credentials": false}},
+				{"uses": "actions/setup-node@v4", "with": {"node-version": "22"}},
+				{"name": "Install test dependencies without lifecycle scripts", "run": "npm ci --prefix tests --ignore-scripts"},
+				{"name": "Archive the isolated checkout without Git credentials", "run": "tar --exclude=.git -czf \"$RUNNER_TEMP/wikidebates-review.tar.gz\" ."},
+				{"uses": "actions/upload-artifact@v4", "with": {"name": "wikidebates-review-workspace", "path": "${{ runner.temp }}/wikidebates-review.tar.gz", "retention-days": 1}}
+			]
+		}
+	}
+}
