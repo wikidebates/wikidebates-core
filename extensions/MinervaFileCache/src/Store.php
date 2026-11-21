@@ -18,10 +18,10 @@ class Store {
 		$this->maxBytes = $maxBytes;
 	}
 
-	private function pageDirectory(string $page): string {
+	private function pageDirectory(string $page, bool $create = true): string {
 		$key = hash('sha256', $page);
 		$dir = $this->root . '/' . substr($key, 0, 2) . '/' . $key;
-		if (!is_dir($dir) && !@mkdir($dir, 0700, true) && !is_dir($dir)) {
+		if ($create && !is_dir($dir) && !@mkdir($dir, 0700, true) && !is_dir($dir)) {
 			throw new \RuntimeException('Cannot create a page cache directory');
 		}
 		return $dir;
@@ -80,7 +80,10 @@ class Store {
 
 	/** Reuse only validated same-origin, content-language anonymous view entries. */
 	public function readForFragment(string $page, array $identity, $context): ?array {
-		$dir = $this->pageDirectory($page);
+		// Fragment lookups never initiate cache fills; do not create empty page
+		// directories for entries that have never been cached.
+		$dir = $this->pageDirectory($page, false);
+		if (!is_dir($dir)) { return null; }
 		$server = parse_url($context->getConfig()->get('Server'));
 		$host = $context->getRequest()->getHeader('Host') ?: (($server['host'] ?? '') .
 			(isset($server['port']) ? ':' . $server['port'] : ''));
