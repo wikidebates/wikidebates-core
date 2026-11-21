@@ -26,15 +26,32 @@ try {
 	check($store->publish('A', 'android', $identity, $first['generation'], '<html>Résumé</html>', ['content-type' => ['text/html']]), 'Atomic publication succeeds');
 	fclose($fill);
 	check($store->read('A', 'android', $identity)['entry']['body'] === '<html>Résumé</html>', 'Body bytes round-trip exactly');
+	$cached = glob($dir . '/*/*/*/*.cache')[0];
+	clearstatcache(true, $cached);
+	check(filemtime($cached) > time(), 'New cache files store their expiry in mtime');
+	check($store->prune() === 0, 'Prune preserves fresh files without decoding');
+	check(touch($cached, time() - 5), 'Simulate an entry written by an older version');
+	check($store->prune() === 0, 'Prune preserves a valid legacy file');
+	clearstatcache(true, $cached);
+	check(filemtime($cached) > time(), 'Prune migrates legacy metadata to the expiry timestamp');
+	check(touch($cached, time() + 301), 'Simulate an implausible future timestamp');
+	check($store->prune() === 0, 'Prune validates unexpected future timestamps');
+	clearstatcache(true, $cached);
+	check(filemtime($cached) <= time() + 300, 'Prune corrects unexpected future timestamps');
 	check($store->read('A', 'iphone', $identity)['entry'] === null, 'User agent variants are isolated');
 	$stats = $store->statistics();
 	check($stats['pages'] === 1 && $stats['files'] === 1 &&
 		$stats['bytes'] > 0 && $stats['maxVariantsPerPage'] === 1,
 		'Statistics count stored files and variants without decoding payloads');
+	check($stats['pagesWithMultipleVariants'] === 0 && $stats['variantDistribution']['one'] === 1,
+		'A page with one variant is classified correctly');
 	$fragmentVariant = json_encode(['https://fr.example.test/wiki/A', 'https', 'https://fr.example.test',
 		'fr', 'fr.example.test', 'TestBrowser', 'fr', '']);
 	check($store->publish('A', $fragmentVariant, $identity, $first['generation'], 'FRAGMENT',
 		['content-type' => ['text/html']]), 'Publish a fragment-compatible variant');
+	$stats = $store->statistics();
+	check($stats['pagesWithMultipleVariants'] === 1 && $stats['variantDistribution']['twoToFive'] === 1 &&
+		$stats['maxVariantsPerPage'] === 2, 'Two distinct variants are counted on one page');
 	$fragmentContext = new class {
 		public function getConfig() {
 			return new class {

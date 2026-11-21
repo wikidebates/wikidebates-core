@@ -144,6 +144,9 @@ class Store {
 			if (@file_put_contents($temp, $payload) !== strlen($payload) || !@chmod($temp, 0600)) {
 				return false;
 			}
+			// mtime is the expiry of new cache files. Older files are migrated by prune().
+			// This is only a cleaning hint: read() always validates the stored expiry.
+			@touch($temp, $expires);
 			$lock = $this->lock($dir, 'page.lock', LOCK_EX);
 			if (!$lock) { return false; }
 			try {
@@ -173,15 +176,29 @@ class Store {
 
 	public function prune(): int {
 		$count = 0;
-		foreach (glob($this->root . '/*/*/generation') as $generation) {
+		$now = time();
+		foreach (glob($this->root . '/*/*/generation') ?: [] as $generation) {
 			$dir = dirname($generation);
 			$lock = $this->lock($dir, 'page.lock', LOCK_EX | LOCK_NB);
 			if (!$lock) { continue; }
 			try {
-				foreach (glob($dir . '/*.cache') as $path) {
+				foreach (glob($dir . '/*.cache') ?: [] as $path) {
+					clearstatcache(true, $path);
+					$modified = @filemtime($path);
+					// New files carry the expiry in mtime, so most live files
+					// need no decompression. Reject implausibly future timestamps.
+					if ($modified !== false && $modified > $now && $modified <= $now + $this->ttl) {
+						continue;
+					}
+					// Legacy files and expired candidates still receive full validation.
 					$entry = $this->decode($path);
-					if (!$entry || min($entry['expires'] ?? 0, ($entry['created'] ?? 0) + $this->ttl) <= time()) {
+					$expires = is_int($entry['expires'] ?? null) && is_int($entry['created'] ?? null)
+						? min($entry['expires'], $entry['created'] + $this->ttl) : 0;
+					if ($expires <= $now) {
 						$count += (int)@unlink($path);
+					} else {
+						// Upgrade an existing valid legacy entry for the next pass.
+						@touch($path, $expires);
 					}
 				}
 			} finally { fclose($lock); }
@@ -192,10 +209,12 @@ class Store {
 	/**
 	 * Read-only maintenance diagnostics. This scans metadata only, not compressed HTML.
 	 * Never invoke it on a visitor request.
-	 * @return array{pages:int,files:int,bytes:int,maxVariantsPerPage:int}
+	 * @return array<string,mixed>
 	 */
 	public function statistics(): array {
-		$stats = ['pages' => 0, 'files' => 0, 'bytes' => 0, 'maxVariantsPerPage' => 0];
+		$stats = ['pages' => 0, 'files' => 0, 'bytes' => 0,
+			'maxVariantsPerPage' => 0, 'pagesWithMultipleVariants' => 0,
+			'variantDistribution' => ['zero' => 0, 'one' => 0, 'twoToFive' => 0, 'sixToTen' => 0, 'overTen' => 0]];
 		if (!is_dir($this->root)) { return $stats; }
 		$prefixes = new \FilesystemIterator($this->root, \FilesystemIterator::SKIP_DOTS);
 		foreach ($prefixes as $prefix) {
@@ -211,6 +230,10 @@ class Store {
 					$stats['bytes'] += $file->getSize();
 				}
 				$stats['maxVariantsPerPage'] = max($stats['maxVariantsPerPage'], $variants);
+				if ($variants > 1) { $stats['pagesWithMultipleVariants']++; }
+				$group = $variants === 0 ? 'zero' : ($variants === 1 ? 'one' :
+					($variants <= 5 ? 'twoToFive' : ($variants <= 10 ? 'sixToTen' : 'overTen')));
+				$stats['variantDistribution'][$group]++;
 			}
 		}
 		return $stats;

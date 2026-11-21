@@ -239,8 +239,9 @@ php maintenance/run.php MinervaFileCache:stats --wiki=en
 La commande renvoie le nombre de répertoires de pages (`pages`), le nombre
 de fichiers de contenu (`files`), leur taille compressée totale en octets
 (`bytes`) et le maximum de variantes dans un répertoire de page
-(`maxVariantsPerPage`). Elle ne décompresse pas le contenu et ne modifie
-aucune entrée. Elle parcourt toutefois les fichiers : à exécuter en maintenance,
+(`maxVariantsPerPage`), les pages ayant plusieurs variantes
+(`pagesWithMultipleVariants`) et leur répartition (`variantDistribution`).
+Elle ne décompresse pas le contenu et ne modifie aucune entrée. Elle parcourt toutefois les fichiers : à exécuter en maintenance,
 pas à chaque requête web. Ces chiffres ne sont pas des taux de HIT/MISS.
 
 La clé stricte par URL, User-Agent et préférences linguistiques est conservée
@@ -255,7 +256,15 @@ depuis la racine MediaWiki et avec l'utilisateur PHP :
 php maintenance/run.php MinervaFileCache:prune
 ```
 
-Le nettoyage retire les fichiers expirés ou endommagés. Les petits fichiers de
+Le nettoyage retire les fichiers expirés ou endommagés. Les nouvelles
+entrées enregistrent leur échéance dans l'horodatage du fichier (mtime) :
+le nettoyage horaire peut ainsi ignorer rapidement les fichiers encore valides
+sans les décompresser. Les anciens fichiers restent compatibles : ils sont
+vérifiés puis leur horodatage est migré lors du prochain nettoyage. Cette
+optimisation ne remplace jamais la validation de l'échéance et des permissions
+lors du service d'une page. Un fichier devenu endommagé tout en conservant un
+horodatage futur peut ne pas être effacé immédiatement, mais ne peut pas être
+servi comme entrée valide. Les petits fichiers de
 verrouillage et de génération sont conservés pour éviter une course avec les
 requêtes actives. Surveiller l'espace disque et les inodes, notamment parce que
 les User-Agents ont des variantes distinctes.

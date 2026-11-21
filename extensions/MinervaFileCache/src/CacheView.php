@@ -110,6 +110,16 @@ trait CacheView {
 			});
 		$page = $this->getTitle()->getPrefixedDBkey();
 		$snapshot = $store->read($page, $variant, $identity);
+		$fill = null;
+		if (!$snapshot['entry']) {
+			$fill = $store->startFill($page);
+			if (!$fill) {
+				// A request may have published since our first MISS.
+				// Rechecking once avoids an expensive redundant rendering.
+				$snapshot = $store->read($page, $variant, $identity);
+				if (!$snapshot['entry']) { return $this->bypass('busy'); }
+			}
+		}
 		if ($snapshot['entry']) {
 			$entry = $snapshot['entry'];
 			foreach ($entry['headers'] as $name => $values) {
@@ -125,8 +135,6 @@ trait CacheView {
 			echo $entry['body'];
 			return true;
 		}
-		$fill = $store->startFill($page);
-		if (!$fill) { return $this->bypass('busy'); }
 		$this->diagnostic('MISS');
 		ob_start(function ($html, $phase) use ($store, $page, $variant, $identity, $snapshot, $fill, $context, &$expires, $expiryScope) {
 			try {
