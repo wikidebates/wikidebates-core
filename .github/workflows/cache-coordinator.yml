@@ -1,0 +1,108 @@
+name: Coordinated anonymous HTML cache preparation (safe preview)
+
+on:
+  pull_request:
+    paths:
+      - 'src/Reading/CachePreparation*.php'
+      - 'maintenance/preparePendingCaches.php'
+      - 'tests/readingFragments/coordinatedPreparation.php'
+      - 'tests/readingFragments/coordinatorPreview.php'
+      - 'tests/run.php'
+      - '.github/workflows/cache-coordinator.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  coordinator-unit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          submodules: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Syntax and failure-safe state machine
+        run: |
+          php -l src/Reading/CachePreparationQueue.php
+          php -l src/Reading/CachePreparationCoordinator.php
+          php -l src/Reading/CachePreparationResults.php
+          php -l src/Reading/CachePreparationCommands.php
+          php -l maintenance/preparePendingCaches.php
+          php -l tests/readingFragments/coordinatedPreparation.php
+          php tests/readingFragments/preparationQueue.php
+          php tests/readingFragments/coordinatedPreparation.php
+
+  coordinator-preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          submodules: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: mbstring,intl,xml,dom,pdo_sqlite,sqlite3,curl
+      - name: Prepare disposable, queue-enabled MediaWiki 1.43
+        run: |
+          LAB="$RUNNER_TEMP/wd-coordinated-$GITHUB_RUN_ID"
+          python3 tests/minervaFileCache/prepare.py "$LAB"
+          echo "WD_MINERVA_STUDY_ROOT=$LAB" >> "$GITHUB_ENV"
+          export WD_MINERVA_STUDY_ROOT="$LAB"
+          git init -q "$LAB/Cite"
+          git -C "$LAB/Cite" fetch --quiet --depth=1 https://github.com/wikimedia/mediawiki-extensions-Cite.git 3f6a8e0395112bbdbe3b53732e259cad6375aaab
+          git -C "$LAB/Cite" checkout --quiet --detach FETCH_HEAD
+          install -d -m 0700 "$LAB/state/reading-cache" "$LAB/state/minerva-cache" "$LAB/state/desktop-cache" "$LAB/state/preparation-queue"
+          php tests/readingFragments/manage.php initialize
+      - name: Assert preview creates no HTML files or queue acknowledgements
+        run: |
+          php -l tests/readingFragments/coordinatorPreview.php
+          php tests/readingFragments/coordinatorPreview.php
+
+  coordinator-fullstack:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          submodules: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: mbstring,intl,xml,dom,pdo_sqlite,sqlite3,curl
+      - name: Use exact farm MinervaFileCache code instead of bundled test copy
+        run: |
+          FARM="$RUNNER_TEMP/pinned-farm"
+          git init -q "$FARM"
+          git -C "$FARM" remote add origin https://github.com/wikidebates/wikidebates-mediawiki-farm.git
+          git -C "$FARM" config core.sparseCheckout true
+          printf 'extensions/MinervaFileCache/\n' > "$FARM/.git/info/sparse-checkout"
+          git -C "$FARM" fetch --quiet --depth=1 --filter=blob:none origin b56d71cd6d4eb52f9bef1d8a936e5b246c67ba8a
+          git -C "$FARM" checkout --quiet --detach FETCH_HEAD
+          test -f "$FARM/extensions/MinervaFileCache/maintenance/prewarm.php"
+          cp -a "$FARM/extensions/MinervaFileCache/." extensions/MinervaFileCache/
+      - name: Prepare disposable MediaWiki 1.43 and a single direct edit
+        run: |
+          LAB="$RUNNER_TEMP/wd-coordinator-fullstack-$GITHUB_RUN_ID"
+          python3 tests/minervaFileCache/prepare.py "$LAB"
+          echo "WD_MINERVA_STUDY_ROOT=$LAB" >> "$GITHUB_ENV"
+          export WD_MINERVA_STUDY_ROOT="$LAB"
+          git init -q "$LAB/Cite"
+          git -C "$LAB/Cite" fetch --quiet --depth=1 https://github.com/wikimedia/mediawiki-extensions-Cite.git 3f6a8e0395112bbdbe3b53732e259cad6375aaab
+          git -C "$LAB/Cite" checkout --quiet --detach FETCH_HEAD
+          install -d -m 0700 "$LAB/state/reading-cache" "$LAB/state/minerva-cache" "$LAB/state/desktop-cache" "$LAB/state/preparation-queue"
+          ln -s "$GITHUB_WORKSPACE" "$LAB/mediawiki/extensions/Wikidebates"
+          ln -s "$GITHUB_WORKSPACE/extensions/MinervaFileCache" "$LAB/mediawiki/extensions/MinervaFileCache"
+          php tests/readingFragments/manage.php initialize
+      - name: Check real Vector, Minerva and Reading cache files before queue acknowledgement
+        run: |
+          php -l tests/readingFragments/coordinatorFullstack.php
+          php tests/readingFragments/coordinatorFullstack.php
