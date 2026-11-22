@@ -18,7 +18,7 @@ Les anciens enregistrements de file (`schema: 1`) ne connaissaient que
 `pageId` et `revisionId`. Or un changement de débat parent via SMW peut
 modifier le HTML d'un argument sans modifier sa révision MediaWiki.
 
-Les nouveaux enregistrements (`schema: 2`) contiennent un identifiant
+Les enregistrements d'éditions directes (`schema: 2`) contiennent un identifiant
 `generation` aléatoire, renouvelé à chaque demande. Un worker ne peut confirmer
 que le triplet `(pageId, revisionId, generation)` qui lui a été remis.
 Si une modification directe ou indirecte arrive pendant le rendu, la file
@@ -41,14 +41,39 @@ Ces fonctionnalités sont **désactivées par défaut** et ne changent pas
 la validité, la sécurité, les droits de lecture ni la durée de rétention
 des caches. Les anciens fichiers `schema: 1` restent lisibles.
 
-**Attention à l'ordre des opérations** : MediaWiki 1.43 effectue
-`Title::invalidateCache()` via une mise à jour différée
-`DeferredUpdates::PRESEND` de `page_touched`.
-Il faut donc laisser les jobs SMW et leurs mises à jour différées
-terminer avant de lancer un préchauffage coordonné. Aucun cron
-n'est installé, et le mode `--execute` doit rester réservé
-à un environnement de test tant qu'un garde-fou de cohérence global
-n'a pas été validé.
+### Barrière post-commit sur `page_touched`
+
+MediaWiki 1.43 valide d'abord le job puis traite les écritures différées
+`DeferredUpdates::PRESEND` de `Title::invalidateCache()`.
+Une autre commande de maintenance pourrait lire la file pendant cet intervalle.
+
+Les demandes **sémantiques** utilisent désormais `schema: 3` avec :
+- `touchAfter` : horodatage UTC strictement postérieur à la valeur
+	initiale de `page_touched` et à la seconde d'ordonnancement ;
+- `ready: false` : aucun rendu ni acquittement possible, même si
+	le numéro de révision est inchangé ;
+- le même `generation` jusqu'à confirmation explicite.
+
+Un callback `PRESEND`, placé après les mises à jour
+`Title::invalidateCache` du job, relit `page_touched` depuis la
+**base primaire**, contrôle le numéro de révision, réexécute la purge HTML
+afin de fermer la fenêtre de création de fichiers, puis marque **seulement
+cette génération** prête. Les reçus de coalescence sont enregistrés après
+cette confirmation et la dernière purge. Une erreur ou une suppression
+laisse l'entrée en attente : la file ne doit jamais la considérer comme
+préparée. Les générations devenues obsolètes ne peuvent pas être rouvertes.
+
+Le diagnostic `Wikidebates:inspectCachePreparationQueue --json`
+indique le nombre `awaiting_deferred_touch`. Une entrée
+durablement bloquée doit faire l'objet d'une vérification
+d'intégrité : **ne pas la forcer à `ready: true` manuellement**.
+Le projet ne dispose pas encore d'une procédure automatique de
+réconciliation certifiée en cas d'échec du callback différé.
+
+Ce verrou ne remplace ni l'attente de fin des jobs SMW, ni les contrôles
+de confidentialité, ni la politique d'invalidation des pages dynamiques.
+Aucun cron n'est installé ; le mode `--execute` reste réservé aux
+laboratoires tant que ces contrôles complémentaires ne sont pas validés.
 
 Une préparation partielle **n'efface pas la demande**. Une interruption reprend
 donc la même page ; les sous-caches déjà valides sont réutilisés. La file ne
