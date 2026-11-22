@@ -29,6 +29,7 @@ jobs:
         run: |
           php -l src/Reading/CachePreparationQueue.php
           php -l src/Reading/CachePreparationCoordinator.php
+          php -l src/Reading/AnonymousCacheSafety.php
           php -l src/Reading/CachePreparationResults.php
           php -l src/Reading/CachePreparationCommands.php
           php -l maintenance/preparePendingCaches.php
@@ -106,3 +107,5 @@ jobs:
         run: |
           php -l tests/readingFragments/coordinatorFullstack.php
           php tests/readingFragments/coordinatorFullstack.php
+          php -l tests/readingFragments/publicSafetyMediawiki.php
+          php tests/readingFragments/publicSafetyMediawiki.php
