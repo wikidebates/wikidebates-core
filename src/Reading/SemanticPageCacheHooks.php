@@ -29,6 +29,10 @@ final class SemanticPageCacheHooks {
 
 
 	public static function onHTMLFileCache__useFileCache($context): bool {
+		// In page-local mode, Semantic MediaWiki changes never veto an
+		// otherwise eligible native Vector file. MediaWiki still checks the
+		// anonymous request, page_touched and IsFileCacheable visibility.
+		if (PageLocalCachePolicy::enabled()) { return true; }
 		if (self::$readingFragment) { return true; }
 		if (!self::enabled()) {
 			return true;
@@ -57,6 +61,7 @@ final class SemanticPageCacheHooks {
 	 * query-owning pages as publicly cacheable in the opt-in tracking mode.
 	 */
 	public static function onBeforePageDisplay($out, $skin): void {
+		if (PageLocalCachePolicy::enabled()) { return; }
 		if (!self::enabled()) {
 			return;
 		}
@@ -90,6 +95,9 @@ final class SemanticPageCacheHooks {
 	 * Only the canonical traced PHP queries need this additional marker.
 	 */
 	public static function onParserAfterParse($parser, &$text, $stripState): bool {
+		// Do not add a semantic fingerprint or reduce expiry to zero for
+		// page-local snapshots, even if tracking remains enabled elsewhere.
+		if (PageLocalCachePolicy::enabled()) { return true; }
 		// ApiParse is suppressed from ParserCache during a reading-only parse;
 		// there is no full-page ParserOutput to bind to a semantic signature.
 		if (self::$readingFragment) { return true; }
@@ -124,6 +132,7 @@ final class SemanticPageCacheHooks {
 	 * even if SMW's smw_touched timestamps are equal in the same second.
 	 */
 	public static function onRejectParserCacheValue($output, $page, $options): bool {
+		if (PageLocalCachePolicy::enabled()) { return true; }
 		if (self::$readingFragment) { return true; }
 		if (!self::enabled()) {
 			return true;
