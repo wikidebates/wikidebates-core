@@ -361,6 +361,10 @@ foreach ($owners as $title) {
 
 // All persistent files belong to the disposable test, never a real wiki.
 foreach ($prewarmQueue->pending() as $record) {
+	if ($record['pageId'] === $unknownId) {
+		check(!$record['ready'], 'Deleted-page barrier remains blocked during lab cleanup');
+		continue;
+	}
 	check($prewarmQueue->acknowledge($record['pageId'], $record['revisionId'],
 		$record['generation']), 'Disposable semantic queue drains exact request generations');
 }
