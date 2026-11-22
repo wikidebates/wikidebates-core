@@ -3,6 +3,7 @@
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCommands;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCoordinator;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationQueue;
+use MediaWiki\Extension\Wikidebates\Reading\AnonymousCacheSafety;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\WikiMap\WikiMap;
 
@@ -95,7 +96,8 @@ class PreparePendingCaches extends Maintenance {
 					break;
 				}
 				$result = $coordinator->process($record, $latest,
-					static fn(string $phase, int $pageId): array => $commands->prepare($phase, $pageId));
+					static fn(string $phase, int $pageId): array => $commands->prepare($phase, $pageId),
+					static fn(int $pageId): ?string => AnonymousCacheSafety::fingerprint($pageId));
 				$report['pages'][] = $result;
 				if ($result['state'] === 'acknowledged') {
 					$report['acknowledged']++;
