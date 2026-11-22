@@ -69,7 +69,7 @@ $check(AnonymousCacheSafety::fingerprint($pageId) === $original,
 $hookCalls = 0;
 $denyRead = $services->getHookContainer()->scopedRegister('GetUserPermissionsErrors',
 	static function ($hookTitle, $user, $action, &$result) use ($title, &$hookCalls): bool {
-		if ($action === 'read' && $hookTitle->getPrefixedDBkey() === $title->getPrefixedDBkey()) {
+		if ($action === 'read' && !$user->isRegistered()) {
 			$hookCalls++;
 			$result = 'badaccess-group0';
 			return false;
