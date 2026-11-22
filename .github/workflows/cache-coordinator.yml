@@ -99,6 +99,8 @@ jobs:
           git -C "$LAB/Cite" fetch --quiet --depth=1 https://github.com/wikimedia/mediawiki-extensions-Cite.git 3f6a8e0395112bbdbe3b53732e259cad6375aaab
           git -C "$LAB/Cite" checkout --quiet --detach FETCH_HEAD
           install -d -m 0700 "$LAB/state/reading-cache" "$LAB/state/minerva-cache" "$LAB/state/desktop-cache" "$LAB/state/preparation-queue"
+          ln -s "$GITHUB_WORKSPACE" "$LAB/mediawiki/extensions/Wikidebates"
+          ln -s "$GITHUB_WORKSPACE/extensions/MinervaFileCache" "$LAB/mediawiki/extensions/MinervaFileCache"
           php tests/readingFragments/manage.php initialize
       - name: Check real Vector, Minerva and Reading cache files before queue acknowledgement
         run: |
