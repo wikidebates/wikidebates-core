@@ -66,6 +66,7 @@ final class CachePreparationCommands {
 		$outputs = [1 => '', 2 => ''];
 		$started = microtime(true);
 		$status = null;
+		$exitCode = null;
 		$failure = null;
 		try {
 			while (true) {
@@ -88,6 +89,9 @@ final class CachePreparationCommands {
 					break;
 				}
 				$status = proc_get_status($process);
+				if (!$status['running'] && $exitCode === null && $status['exitcode'] >= 0) {
+					$exitCode = (int)$status['exitcode'];
+				}
 				if (!$status['running'] && feof($pipes[1]) && feof($pipes[2])) {
 					break;
 				}
@@ -102,7 +106,7 @@ final class CachePreparationCommands {
 				@proc_terminate($process, 9);
 				return ['ok' => false, 'status' => $failure, 'stdout' => ''];
 			}
-			$exit = (int)($status['exitcode'] ?? -1);
+			$exit = $exitCode ?? -1;
 			return $exit === 0
 				? ['ok' => true, 'status' => 'complete', 'stdout' => $outputs[1]]
 				: ['ok' => false, 'status' => 'subprocess-exit-' . $exit, 'stdout' => ''];
