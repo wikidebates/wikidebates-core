@@ -266,7 +266,8 @@ final class SemanticCachePurgeJob extends \Job {
 			return true;
 		} catch (\Throwable $e) {
 			$this->metrics['status'] = 'failed';
-			$this->setLastError(get_class($e));
+			$this->setLastError(defined('WD_FULLSTACK_TEST') ?
+				get_class($e) . ': ' . $e->getMessage() : get_class($e));
 			$this->log('error', 'Failed to purge semantic dependents ({type})', ['type' => get_class($e)]);
 			return false;
 		} finally {
