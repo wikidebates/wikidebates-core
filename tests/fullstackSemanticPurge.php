@@ -89,10 +89,11 @@ $htmlObserver = $services->getHookContainer()->scopedRegister('TitleSquidURLs',
 		$htmlTargets[] = $title->getPrefixedDBkey();
 		$htmlOrigins[] = SemanticPurgeScope::isActive();
 	});
-$run = static function(array $ids, int $cursor = 0, array $extra = []) use ($owners, $services): SemanticCachePurgeJob {
+$run = static function(array $ids, int $cursor = 0, array $extra = [], bool $settle = true) use ($owners, $services): SemanticCachePurgeJob {
 	$job = new SemanticCachePurgeJob($owners[0], $extra + ['dependencyIds' => $ids, 'cursor' => $cursor]);
 	check($job->run(), 'Real purge succeeds: ' . $job->getLastError());
 	$services->getDBLoadBalancerFactory()->commitPrimaryChanges(__METHOD__);
+	if ($settle) { \MediaWiki\Deferred\DeferredUpdates::doUpdates(); }
 	return $job;
 };
 // Only this disposable database opts into semantic-dependent preparation.
@@ -113,7 +114,10 @@ foreach ($owners as $title) {
 		'Semantic owner page exists before invalidation');
 }
 $ledgerBefore = SemanticPurgeState::revisions($store, [$depId]);
-$first = $run([$depId]);
+// Block opportunistic CLI execution to simulate the interval between
+// JobRunner::run() and its later DeferredUpdates::doUpdates().
+$preventEarlyTouch = \MediaWiki\Deferred\DeferredUpdates::preventOpportunisticUpdates();
+$first = $run([$depId], 0, [], false);
 same(2, $first->getMetrics()['invalidations'], 'Three queries invalidate exactly two pages');
 same(2, $first->getMetrics()['dependent_pages_queued_for_prewarm'],
 	'Both semantically dependent pages are queued after successful HTML purge');
@@ -121,16 +125,30 @@ $queuedGenerations = [];
 foreach ($owners as $title) {
 	$id = $title->getArticleID();
 	$record = $prewarmQueue->current($id);
-	check($record && $record['schema'] === 2 &&
+	check($record && $record['schema'] === 3 && !$record['ready'] &&
 		$record['revisionId'] === $title->getLatestRevID() &&
-		is_string($record['generation']),
-		'Targeted semantic job recorded a durable generation without editing its owner page');
+		is_string($record['generation']) && is_string($record['touchAfter']),
+		'Semantic dependent remains blocked while page_touched is still deferred');
+	check(!$prewarmQueue->acknowledge($id, $record['revisionId'], $record['generation']),
+		'No generation may be acknowledged during the deferred touch window');
 	$queuedGenerations[$id] = $record['generation'];
 }
 same(2, count($prewarmQueue->pending()), 'Only the two real SMW query-owning pages are enqueued');
+unset($preventEarlyTouch);
+\MediaWiki\Deferred\DeferredUpdates::doUpdates();
+foreach ($owners as $title) {
+	$id = $title->getArticleID();
+	$record = $prewarmQueue->current($id);
+	$touchedRow = $sqlPrimary->selectRow('page', ['page_touched'],
+		['page_id' => $id], __FILE__);
+	check($record['ready'] &&
+		(string)$touchedRow->page_touched >= $record['touchAfter'],
+		'Primary page_touched advances before any semantic queued generation becomes ready');
+}
 same(3, $first->getMetrics()['queries_processed'], 'All three real query subobjects scanned');
-same(2, count($htmlTargets), 'HTML/CDN hooks dispatched once per page');
-same([true, true], $htmlOrigins, 'SMW dependent HTML dispatches are marked without suppressing invalidation');
+same(4, count($htmlTargets), 'Dependent HTML purged before and after the deferred database touch');
+same([true, true, true, true], $htmlOrigins,
+	'SMW initial and post-deferred purges both retain semantic provenance');
 check(!SemanticPurgeScope::isActive(), 'Semantic provenance does not leak beyond the purge job');
 foreach ($owners as $title) {
 	$key = $title->getPrefixedDBkey();
@@ -150,7 +168,7 @@ foreach ($owners as $title) {
 		'Redundant job preserves the existing queued generation');
 }
 same(2, $overlap->getMetrics()['coalesced_pages'], 'Both actual page purges coalesced');
-same(2, count($htmlTargets), 'Repeated work does not dispatch more CDN/HTML purges');
+same(4, count($htmlTargets), 'Coalesced work does not dispatch more CDN/HTML purges');
 same($ledgerBefore, SemanticPurgeState::revisions($store, [$depId]), 'Purging does not mutate semantic revisions');
 same(0, $articlePurges, 'No SMW ArticlePurge feedback');
 check(!$services->getJobQueueGroup()->queuesHaveJobs(), 'Cache-only purge does not spawn semantic jobs');
@@ -203,6 +221,7 @@ while ($queued = $group->pop('wikidebatesSemanticCachePurge')) {
 	$totalInvalidations += $resumed->getMetrics()['invalidations'];
 	$group->ack($queued);
 	$services->getDBLoadBalancerFactory()->commitPrimaryChanges(__METHOD__);
+	\MediaWiki\Deferred\DeferredUpdates::doUpdates();
 }
 same(2, $continuations, 'Exactly three queries use three batches, no empty fourth job');
 same(2, $totalInvalidations, 'A page spanning batches is invalidated once');
