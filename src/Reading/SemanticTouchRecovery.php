@@ -69,9 +69,10 @@ final class SemanticTouchRecovery {
 			}
 			// The recovery is not a mechanism for publishing private page HTML.
 			// The normal prewarm worker has its own access checks as well.
-			if (!$services->getPermissionManager()->userCan(
-				'read', $services->getUserFactory()->newAnonymous(), $title
-			)) {
+			// A hidden/suppressed latest revision may keep the same page_latest.
+			// Check the revision visibility bits on PRIMARY as well as the
+			// ordinary anonymous read permission before replaying any purge.
+			if (AnonymousCacheSafety::fingerprint($pageId) === null) {
 				$report['state'] = 'not-public';
 				return $report;
 			}
