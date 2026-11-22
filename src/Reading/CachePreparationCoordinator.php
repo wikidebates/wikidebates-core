@@ -15,7 +15,7 @@ final class CachePreparationCoordinator {
 	}
 
 	/**
-	 * @param array{schema:int,pageId:int,revisionId:int,generation?:string} $record
+	 * @param array{schema:int,pageId:int,revisionId:int,generation?:string,ready?:bool} $record
 	 * @param callable(int):?int $latestRevision Read current page_latest from PRIMARY.
 	 * @param callable(string,int):array{ok:bool,status:string} $prepare Run one phase.
 	 * @return array<string,mixed>
@@ -24,14 +24,19 @@ final class CachePreparationCoordinator {
 		$pageId = $record['pageId'] ?? 0;
 		$revision = $record['revisionId'] ?? 0;
 		if (!is_int($pageId) || $pageId < 1 || !is_int($revision) || $revision < 1 ||
-			!in_array($record['schema'] ?? null, [1, 2], true) ||
-			($record['schema'] === 2 && (!is_string($record['generation'] ?? null) ||
-				!preg_match('/\A[a-f0-9]{32}\z/D', $record['generation'])))) {
+			!in_array($record['schema'] ?? null, [1, 2, 3], true) ||
+			($record['schema'] >= 2 && (!is_string($record['generation'] ?? null) ||
+				!preg_match('/\A[a-f0-9]{32}\z/D', $record['generation']))) ||
+			($record['schema'] === 3 && !is_bool($record['ready'] ?? null))) {
 			throw new \InvalidArgumentException('Invalid pending page revision');
 		}
 		$report = ['pageId' => $pageId, 'revisionId' => $revision, 'state' => 'pending',
 			'phases' => []];
 		try {
+			if ($record['schema'] === 3 && !$record['ready']) {
+				$report['state'] = 'awaiting-deferred-touch';
+				return $report;
+			}
 			if (!$this->requestMatches($record)) {
 				$report['state'] = 'superseded';
 				return $report;
@@ -95,7 +100,8 @@ final class CachePreparationCoordinator {
 		if ($record['schema'] === 1) {
 			return !isset($record['generation']);
 		}
-		return hash_equals($current['generation'], $record['generation']);
+		return hash_equals($current['generation'], $record['generation']) &&
+			($current['schema'] !== 3 || ($record['ready'] && $current['ready']));
 	}
 
 	/**

@@ -100,7 +100,7 @@ try {
 		static function (string $phase, int $id) use ($queue): array {
 			if ($phase === 'vector') {
 				// SMW changed a parent relationship, but this page was not edited.
-				$queue->enqueueInvalidation($id, 700);
+				$queue->enqueueInvalidation($id, 700, '20261122140001');
 			}
 			return ['ok' => true, 'status' => 'CREATED'];
 		});
@@ -109,6 +109,21 @@ try {
 		$queue->current(18)['revisionId'] === 700 &&
 		$queue->current(18)['generation'] !== $oldSemantic['generation'],
 		'Same-revision semantic mutation survives a concurrent renderer');
+	$blockedSemantic = $coordinator->process($queue->current(18),
+		static fn(int $id): ?int => 700,
+		static function (): never {
+			throw new RuntimeException('Blocked semantic page was rendered before deferred touch');
+		});
+	$check($blockedSemantic['state'] === 'awaiting-deferred-touch' &&
+		$queue->current(18)['ready'] === false,
+		'Pending deferred invalidation cannot start any cache renderer');
+
+	$pendingSemantic = $queue->current(18);
+	$check(!$queue->confirmTouched(18, 700, $pendingSemantic['generation'], '20261122140000'),
+		'Touch prior to the scheduled primary barrier cannot release this page');
+	$check($queue->confirmTouched(18, 700, $pendingSemantic['generation'], '20261122140001'),
+		'After completed deferred touch, the exact semantic generation becomes ready');
+
 	$semanticRetry = $coordinator->process($queue->current(18),
 		static fn(int $id): ?int => 700, $prepare);
 	$check($semanticRetry['state'] === 'acknowledged' && $queue->current(18) === null,

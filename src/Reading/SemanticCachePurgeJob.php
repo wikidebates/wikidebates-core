@@ -137,6 +137,7 @@ final class SemanticCachePurgeJob extends \Job {
 				$receipts = $available ? $state->receipts(array_keys($pages)) : [];
 				$fragments = FragmentService::store();
 				$pending = [];
+				$touchTargets = [];
 				foreach ($titles as $id => $title) {
 					$receipt = $receipts[$id] ?? null;
 					// A missing or semantically obsolete receipt cannot be reused.
@@ -154,7 +155,19 @@ final class SemanticCachePurgeJob extends \Job {
 					// propagate a filesystem failure: do not certify a failed purge.
 					$fragments->invalidate($title->getPrefixedDBkey());
 					$page = $services->getWikiPageFactory()->newFromTitle($title);
-					$title->invalidateCache();
+					$touchTarget = $prewarmQueue !== null
+						? SemanticTouchBarrier::targetAfter((string)$pages[$id]->page_touched, time())
+						: null;
+					if ($touchTarget !== null) {
+						if (!$title->invalidateCache($touchTarget)) {
+							throw new \RuntimeException('Cannot defer dependent page_touched invalidation');
+						}
+						$touchTargets[$id] = $touchTarget;
+					} else {
+						// Preserve ordinary MediaWiki purge behavior when the opt-in
+						// preparation queue is disabled (including standalone adapters).
+						$title->invalidateCache();
+					}
 					$services->getParserCache()->deleteOptionsKey($page);
 					$pending[$id] = $title;
 				}
@@ -176,16 +189,55 @@ final class SemanticCachePurgeJob extends \Job {
 					// Use the page row from the PRIMARY SMW query. The queue
 					// retains a still-newer direct edit if one raced this job.
 					if ($prewarmQueue !== null) {
+						$barriers = [];
 						foreach ($pending as $id => $title) {
 							$revisionId = (int)$pages[$id]->page_latest;
 							if ($revisionId < 1) {
 								throw new \RuntimeException('Cannot queue a semantic dependent without a revision');
 							}
-							$prewarmQueue->enqueueInvalidation((int)$id, $revisionId);
+							$generation = $prewarmQueue->enqueueInvalidation(
+								(int)$id, $revisionId, $touchTargets[$id]
+							);
+							$barriers[$id] = [
+								'title' => $title, 'revisionId' => $revisionId,
+								'generation' => $generation, 'touchAfter' => $touchTargets[$id]
+							];
 							$this->metrics['dependent_pages_queued_for_prewarm']++;
 						}
+						// PRESEND after all earlier Title::invalidateCache updates.
+						// The callback re-purges HTML after the DB touch and only
+						// then opens the exact queued generation for the worker.
+						$recordAfterBarrier = static function (array $confirmed) use (
+							$available, $state, $before, $requiredQueries, $fragments
+						): void {
+							if (!$available) {
+								return;
+							}
+							$after = $state->snapshots(
+								$state->pages(array_keys($confirmed)), $requiredQueries
+							);
+							$completed = [];
+							foreach ($confirmed as $id => $details) {
+								if (!isset($before[$id], $after[$id]) ||
+									$before[$id] !== $after[$id]) {
+									continue;
+								}
+								$completed[] = [
+									'page_id' => $id, 'fingerprint' => $before[$id],
+									'generation' => $fragments->read(
+										$details['title']->getPrefixedDBkey(), 'semantic-purge', []
+									)['generation']
+								];
+							}
+							$state->remember($completed);
+						};
+						SemanticTouchBarrier::schedule(
+							$prewarmQueue, $barriers,
+							$services->getConnectionProvider()->getPrimaryDatabase(),
+							$htmlCache, $recordAfterBarrier
+						);
 					}
-					if ($available) {
+					if ($available && $prewarmQueue === null) {
 						$after = $state->snapshots($state->pages(array_keys($pending)), $requiredQueries);
 						$completed = [];
 						foreach ($pending as $id => $title) {

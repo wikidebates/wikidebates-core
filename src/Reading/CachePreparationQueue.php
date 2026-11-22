@@ -104,13 +104,18 @@ final class CachePreparationQueue {
 		if ($data === false) { throw new \RuntimeException('Cannot read preparation record'); }
 		$record = json_decode($data, true);
 		$schema = $record['schema'] ?? null;
-		if (!is_array($record) || !in_array($schema, [1, 2], true) ||
+		if (!is_array($record) || !in_array($schema, [1, 2, 3], true) ||
 			($record['pageId'] ?? null) !== $pageId ||
 			!is_int($record['revisionId'] ?? null) || $record['revisionId'] < 1 ||
 			!is_int($record['queuedAt'] ?? null) || $record['queuedAt'] < 0 ||
 			($schema === 1 && array_key_exists('generation', $record)) ||
 			($schema === 2 && (!is_string($record['generation'] ?? null) ||
-				!preg_match('/\A[a-f0-9]{32}\z/D', $record['generation'])))) {
+				!preg_match('/\A[a-f0-9]{32}\z/D', $record['generation']))) ||
+			($schema === 3 && (!is_string($record['generation'] ?? null) ||
+				!preg_match('/\A[a-f0-9]{32}\z/D', $record['generation']) ||
+				!is_string($record['touchAfter'] ?? null) ||
+				!preg_match('/\A[0-9]{14}\z/D', $record['touchAfter']) ||
+				!is_bool($record['ready'] ?? null)))) {
 			throw new \RuntimeException('Invalid preparation record');
 		}
 		return $record;
@@ -134,29 +139,78 @@ final class CachePreparationQueue {
 
 
 	/**
-	 * A changed semantic dependency invalidates the rendered HTML even when
-	 * the owning page's MediaWiki revision is unchanged. Always replace its
-	 * generation, retaining the newest known revision if a direct edit raced.
+	 * A semantic dependency change may leave page_latest unchanged while
+	 * Title::invalidateCache's PRESEND database update is still queued.
+	 * Write schema-3 records in a deliberately unready state. A second
+	 * deferred step will prove the primary DB touch and reopen this request.
 	 *
-	 * Called only after the dependent HTML purge has completed successfully.
-	 * The caller must still keep the purge job retryable if this write fails.
+	 * @return string The exact generation token for the deferred callback.
 	 */
-	public function enqueueInvalidation(int $pageId, int $revisionId): void {
+	public function enqueueInvalidation(int $pageId, int $revisionId, string $touchAfter): string {
 		$this->checkId($pageId);
 		$this->checkId($revisionId);
+		if (!preg_match('/\A[0-9]{14}\z/D', $touchAfter)) {
+			throw new \InvalidArgumentException('Expected a MediaWiki UTC touch timestamp');
+		}
 		$lock = $this->lock($pageId, LOCK_EX);
 		try {
 			$current = $this->readRecord($pageId);
-			$this->publishRecord($pageId, max($revisionId, $current['revisionId'] ?? 0));
+			$record = [
+				'schema' => 3, 'pageId' => $pageId,
+				'revisionId' => max($revisionId, $current['revisionId'] ?? 0),
+				'generation' => bin2hex(random_bytes(16)), 'queuedAt' => time(),
+				'touchAfter' => $touchAfter, 'ready' => false
+			];
+			$this->writeRecord($pageId, $record);
+			return $record['generation'];
+		} finally { fclose($lock); }
+	}
+
+	/**
+	 * Publish the same generation only after the scheduled primary DB touch
+	 * is visible. The deferred caller checks page_latest itself and repeats
+	 * the HTML purge before making this method call.
+	 *
+	 * Never revive a superseded generation, even for the same revision.
+	 */
+	public function confirmTouched(
+		int $pageId, int $revisionId, string $generation, string $observedTouched
+	): bool {
+		$this->checkId($pageId);
+		$this->checkId($revisionId);
+		if (!preg_match('/\A[a-f0-9]{32}\z/D', $generation) ||
+			!preg_match('/\A[0-9]{14}\z/D', $observedTouched)) {
+			throw new \InvalidArgumentException('Invalid touch confirmation parameters');
+		}
+		$lock = $this->lock($pageId, LOCK_EX);
+		try {
+			$record = $this->readRecord($pageId);
+			if (!$record || $record['schema'] !== 3 ||
+				$record['revisionId'] !== $revisionId ||
+				!hash_equals($record['generation'], $generation)) {
+				return false;
+			}
+			if ($observedTouched < $record['touchAfter']) {
+				return false;
+			}
+			if (!$record['ready']) {
+				$record['ready'] = true;
+				$this->writeRecord($pageId, $record);
+			}
+			return true;
 		} finally { fclose($lock); }
 	}
 
 	/** Called with the corresponding page's exclusive lock held. */
 	private function publishRecord(int $pageId, int $revisionId): void {
-		$record = [
+		$this->writeRecord($pageId, [
 			'schema' => 2, 'pageId' => $pageId, 'revisionId' => $revisionId,
 			'generation' => bin2hex(random_bytes(16)), 'queuedAt' => time()
-		];
+		]);
+	}
+
+	/** Atomic replacement also preserves generation across readiness changes. */
+	private function writeRecord(int $pageId, array $record): void {
 		$encoded = json_encode($record, JSON_THROW_ON_ERROR);
 		$temp = @tempnam($this->root, '.queue-');
 		if (!$temp || dirname($temp) !== $this->root) {
@@ -173,7 +227,7 @@ final class CachePreparationQueue {
 		}
 	}
 
-	/** @return array{schema:int,pageId:int,revisionId:int,queuedAt:int,generation?:string}|null */
+	/** @return array{schema:int,pageId:int,revisionId:int,queuedAt:int,generation?:string,touchAfter?:string,ready?:bool}|null */
 	public function current(int $pageId): ?array {
 		$this->checkId($pageId);
 		if (!is_dir($this->root)) { return null; }
@@ -196,7 +250,8 @@ final class CachePreparationQueue {
 			$current = $this->readRecord($pageId);
 			if (!$current || $current['revisionId'] !== $preparedRevisionId ||
 				($current['schema'] === 1 && $expectedGeneration !== null) ||
-				($current['schema'] === 2 && !hash_equals($current['generation'], $expectedGeneration ?? ''))) {
+				($current['schema'] >= 2 && !hash_equals($current['generation'], $expectedGeneration ?? '')) ||
+				($current['schema'] === 3 && !$current['ready'])) {
 				return false;
 			}
 			if (!@unlink($this->recordPath($pageId))) {
@@ -211,7 +266,7 @@ final class CachePreparationQueue {
 	 * so an interrupted worker needs no fragile numeric offset or global cursor.
 	 * The worker must recheck the current page revision before acknowledging.
 	 *
-	 * @return array<int,array{schema:int,pageId:int,revisionId:int,queuedAt:int,generation?:string}>
+	 * @return array<int,array{schema:int,pageId:int,revisionId:int,queuedAt:int,generation?:string,touchAfter?:string,ready?:bool}>
 	 */
 	public function pending(int $limit = 1000): array {
 		if ($limit < 1 || $limit > 10000) {
