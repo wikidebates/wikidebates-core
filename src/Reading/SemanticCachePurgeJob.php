@@ -154,7 +154,12 @@ final class SemanticCachePurgeJob extends \Job {
 					// Immediate file/CDN dispatch, as in core HTMLCacheUpdateJob.
 					// Still fires TitleSquidURLs (including Minerva), NOT ArticlePurge.
 					$htmlCache = $services->getHtmlCacheUpdater();
-					$htmlCache->purgeTitleUrls(array_values($pending), $htmlCache::PURGE_NAIVE);
+					// Distinguish this dependent SMW refresh from a direct edit, deletion,
+					// explicit purge or permission change. This provenance is advisory only:
+					// every existing invalidation remains enabled until safety review.
+					SemanticPurgeScope::run(static function () use ($htmlCache, $pending): void {
+						$htmlCache->purgeTitleUrls(array_values($pending), $htmlCache::PURGE_NAIVE);
+					});
 					$this->metrics['invalidations'] = count($pending);
 					if ($available) {
 						$after = $state->snapshots($state->pages(array_keys($pending)), $requiredQueries);
