@@ -112,7 +112,7 @@ class FragmentStore {
 			if (!$temp || dirname($temp) !== $dir || @file_put_contents($temp, $payload) !== strlen($payload)) { return false; }
 			if (!@chmod($temp, 0600)) { return false; }
 			// Only a pruning hint. Reads always validate the payload and identity.
-			@touch($temp, $entry['expires']);
+			@touch($temp, min($entry['expires'], 2147483647));
 			$lock = $this->lock($dir, 'page.lock', LOCK_EX);
 			if (!$lock || @file_get_contents($dir . '/generation') !== $generation || $entry['expires'] <= time()) { return false; }
 			$published = @rename($temp, $dir . '/' . hash('sha256', $variant) . '.cache');
@@ -180,7 +180,7 @@ class FragmentStore {
 						$count += (int)@unlink($path);
 					} else {
 						// Migrate legacy entries lacking the expiration mtime hint.
-						@touch($path, $expires);
+						@touch($path, min($expires, 2147483647));
 					}
 				}
 			} finally { fclose($lock); }
