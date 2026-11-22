@@ -92,21 +92,60 @@ dans le même passage, après les contrôles de réponse publique, sans second r
 Les anciens jobs encore présents revérifient la validité avant tout travail et
 ne préparent plus deux variantes d’habillage.
 
-Planifier quotidiennement, sous le même utilisateur que PHP, avec un léger
-décalage entre les deux wikis pour limiter la charge. Exemple pour un serveur
-en heure de Paris, après vérification de son fuseau horaire :
+La méthode recommandée pour les préparations complètes et les tâches
+quotidiennes est le lanceur `maintenance/runReadingPreparation.sh`. Il
+exécute chaque wiki avec un **verrou `flock` distinct**, refuse les appels
+sous `root`, contrôle un **délai souple de 6 900 secondes** à la fin d'une
+page et un **délai dur de 7 200 secondes** (avec arrêt forcé après 10 secondes
+supplémentaires). Il conserve un **curseur privé, atomique, propre à chaque
+wiki**, après chaque page traitée. Une interruption ne détruit pas les
+fragments publiés : le prochain lancement continue après le dernier ID
+enregistré, sans refaire leurs rendus. Une fois la fin de catégorie atteinte,
+le fichier de reprise est effacé pour qu'un nouveau cycle revérifie toutes
+les anciennes pages (éditions et expirations comprises).
 
-```cron
-5 0 * * * www-data php /srv/mediawiki/maintenance/run.php Wikidebates:prepareReadingCache --wiki=fr --batch-size=100 --sleep-ms=100 --json >> /var/log/wikidebates-reading-fr.log 2>&1
-35 0 * * * www-data php /srv/mediawiki/maintenance/run.php Wikidebates:prepareReadingCache --wiki=en --batch-size=100 --sleep-ms=100 --json >> /var/log/wikidebates-reading-en.log 2>&1
+Exemples depuis une session du compte MediaWiki CLI, après installation de
+la version et création d'un répertoire de journaux :
+
+```sh
+mkdir -p "$HOME/wikidebates-reading-logs"
+
+# Si aucune reprise n'existe, démarrer après un ID déjà traité :
+bash extensions/Wikidebates/maintenance/runReadingPreparation.sh fr 123
+
+# Les prochaines exécutions doivent omettre l'ID explicite :
+bash extensions/Wikidebates/maintenance/runReadingPreparation.sh fr
+bash extensions/Wikidebates/maintenance/runReadingPreparation.sh en
 ```
 
-Les fichiers de journal doivent être créés et accessibles en écriture par
-l'utilisateur du processus. Ne pas installer ces exemples tels quels sans
-adapter le chemin de MediaWiki, l'utilisateur et les chemins des journaux.
+Les curseurs sont stockés sous
+`$HOME/wikidebates-reading-logs/reading-{fr,en}.resume.json` ; les verrous
+sont stockés dans le même répertoire privé. Ne pas les supprimer pour
+reprendre un traitement. Les valeurs sont **des IDs de page**, pas des
+nombres d'arguments. Le premier appel avec un ID explicite est refusé
+si une reprise existe déjà, pour éviter un retour en arrière accidentel.
+Si un travail expire pendant une page très lente, le délai dur le termine
+sans rapport JSON final ; le curseur précédent reste utilisable.
+Une préparation lancée directement sans ce lanceur n'est pas soumise
+aux mêmes protections.
+
+Planifier le lanceur quotidiennement, sous le même utilisateur CLI qui
+possède les fichiers, avec un décalage entre les wikis. Exemple pour une
+**crontab personnelle** (pas de champ utilisateur), sur un serveur ayant
+MediaWiki dans `/srv/mediawiki` ; adapter les chemins, l'utilisateur et
+le fuseau horaire :
+
+```cron
+5 0 * * * /bin/bash /srv/mediawiki/extensions/Wikidebates/maintenance/runReadingPreparation.sh fr >> "$HOME/wikidebates-reading-logs/reading-fr.log" 2>&1
+35 0 * * * /bin/bash /srv/mediawiki/extensions/Wikidebates/maintenance/runReadingPreparation.sh en >> "$HOME/wikidebates-reading-logs/reading-en.log" 2>&1
+```
+
+Ne pas réactiver les tâches tant qu'un test manuel limité n'a pas réussi ;
+remplacer les anciennes lignes cron plutôt que créer des doublons.
+Le lanceur n'active aucune planification de lui-même.
 La préparation **n'est pas une photographie figée de minuit** : une édition
-invalide les anciens extraits dans la journée. Un passage peut se prolonger
-après minuit sans bloquer le site.
+invalide les anciens extraits dans la journée. Un cycle peut s'étendre
+sur plusieurs exécutions sans bloquer les lecteurs.
 
 `--json` affiche un rapport final avec le wiki, le nombre de pages examinées,
 le dernier identifiant de page et la durée, ainsi que les statuts
@@ -143,9 +182,15 @@ fragments encore valides sans nouveau rendu. La pause entre pages ne s'applique
 désormais qu'aux pages nécessitant réellement du travail et ne ralentit pas
 les passages qui ne trouvent que des fragments valides.
 
-Options : `--limit=500`, `--after=123`, `--batch-size=100` (1–1000),
-`--sleep-ms=100`, `--progress-every=100` (0 pour masquer la progression),
-`--json`. La sortie d'erreur des progrès est visible en direct avec
+Options de la commande MediaWiki directe : `--limit=500`,
+`--after=123`, `--batch-size=100` (1–1000), `--sleep-ms=100`,
+`--progress-every=100` (0 pour masquer la progression), `--json`,
+`--resume-file=/chemin/prive/wiki.json` et `--max-seconds=6900`
+(0 désactive le délai souple). Avec un fichier de reprise existant,
+omettre `--after` : le curseur sauvegardé fait autorité.
+Le rapport JSON contient désormais `start_after`, `complete` et
+`stop_reason` (`complete`, `limit` ou `time-limit`).
+La sortie d'erreur des progrès est visible en direct avec
 `--json | tee -a journal.log`, mais seuls les rapports finaux sont alors
 enregistrés par `tee`; utiliser `2>&1 | tee -a journal.log` pour journaliser
 les deux sorties. Le cron ci-dessus enregistre naturellement les deux.
