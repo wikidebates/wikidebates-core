@@ -26,9 +26,8 @@ final class AnonymousCacheSafety {
 		}
 		$services = MediaWikiServices::getInstance();
 		$db = $services->getConnectionProvider()->getPrimaryDatabase();
-		$page = $db->selectRow('page', self::PAGE_FIELDS,
-			['page_id' => $pageId], __METHOD__);
-		return self::checkedFingerprint($page, $services, $db);
+		$page = self::selectCurrentPage($db, ['page_id' => $pageId]);
+		return self::checkedFingerprint($page, $services);
 	}
 
 	/**
@@ -44,10 +43,11 @@ final class AnonymousCacheSafety {
 		}
 		$services = MediaWikiServices::getInstance();
 		$db = $services->getConnectionProvider()->getPrimaryDatabase();
-		$page = $db->selectRow('page', self::PAGE_FIELDS,
-			['page_namespace' => $title->getNamespace(),
-				'page_title' => $title->getDBkey()], __METHOD__);
-		$fingerprint = self::checkedFingerprint($page, $services, $db);
+		$page = self::selectCurrentPage($db, [
+			'page_namespace' => $title->getNamespace(),
+			'page_title' => $title->getDBkey()
+		]);
+		$fingerprint = self::checkedFingerprint($page, $services);
 		if ($fingerprint === null) {
 			return null;
 		}
@@ -69,16 +69,27 @@ final class AnonymousCacheSafety {
 			$public['touched'] === $touched;
 	}
 
-	private static function checkedFingerprint($page, $services, $db): ?string {
-		if (!$page || (int)$page->page_id < 1 || (int)$page->page_latest < 1) {
+	/**
+	 * Fetch page identity and latest revision visibility in one PRIMARY query.
+	 * One joined snapshot also avoids mixing metadata from two separate reads.
+	 */
+	private static function selectCurrentPage($db, array $conditions) {
+		return $db->selectRow(
+			['page', 'revision'],
+			array_merge(self::PAGE_FIELDS, ['rev_deleted']),
+			$conditions,
+			__METHOD__,
+			[],
+			['revision' => ['JOIN', 'rev_id = page_latest AND rev_page = page_id']]
+		);
+	}
+
+	private static function checkedFingerprint($page, $services): ?string {
+		if (!$page || (int)$page->page_id < 1 || (int)$page->page_latest < 1 ||
+			(int)$page->rev_deleted !== 0) {
 			return null;
 		}
 		$id = (int)$page->page_id;
-		$revision = $db->selectRow('revision', ['rev_deleted'],
-			['rev_id' => (int)$page->page_latest, 'rev_page' => $id], __METHOD__);
-		if (!$revision || (int)$revision->rev_deleted !== 0) {
-			return null;
-		}
 		$title = Title::newFromRow($page);
 		if (!$title || !$title->canExist() || $title->getArticleID() !== $id ||
 			!$services->getPermissionManager()->userCan(
