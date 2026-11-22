@@ -13,6 +13,7 @@ class PrepareReadingCache extends Maintenance {
 		$this->addOption('batch-size', 'Database batch size (1-1000)', false, true);
 		$this->addOption('sleep-ms', 'Pause between pages (default 100ms)', false, true);
 		$this->addOption('after', 'Start after this page ID', false, true);
+		$this->addOption('page-id', 'Prepare exactly this argument page_id (no database scan or resume).', false, true);
 		$this->addOption('limit', 'Maximum number of pages to inspect', false, true);
 		$this->addOption('json', 'Print one machine-readable final report', false, false);
 		$this->addOption('progress-every', 'Report every N inspected pages (default 100, 0 disables)', false, true);
@@ -34,6 +35,20 @@ class PrepareReadingCache extends Maintenance {
 		$progressEvery = (int)$this->getOption('progress-every', 100);
 		$resumeFile = (string)$this->getOption('resume-file', '');
 		$maxSeconds = (int)$this->getOption('max-seconds', 0);
+		$rawPageId = (string)$this->getOption('page-id', '');
+		$pageId = null;
+		if ($this->hasOption('page-id')) {
+			if ($rawPageId === '' || !ctype_digit($rawPageId) || (int)$rawPageId < 1 ||
+				(string)(int)$rawPageId !== ltrim($rawPageId, '0')) {
+				$this->fatalError('Invalid --page-id (expected positive decimal page ID).');
+			}
+			$pageId = (int)$rawPageId;
+			if ($this->hasOption('after') || $resumeFile !== '' ||
+				($this->hasOption('limit') && $limit !== 1)) {
+				$this->fatalError('--page-id cannot be combined with --after, --resume-file or multi-page --limit.');
+			}
+			$limit = 1;
+		}
 		if ($size < 1 || $size > 1000 || $pause < 0 || $pause > 60000 || $after < 0 || $limit < 1 ||
 			$progressEvery < 0 || $progressEvery > 100000 || $maxSeconds < 0 || $maxSeconds > 86400) {
 			$this->fatalError('Invalid batch, delay, cursor or limit.');
@@ -68,10 +83,16 @@ class PrepareReadingCache extends Maintenance {
 		$stopReason = 'complete';
 		try {
 			do {
+				$conditions = ['cl_to' => str_replace(' ', '_', $config->get('WikidebatesReadingArgumentCategory')),
+					'page_namespace' => NS_MAIN, 'page_is_redirect' => 0];
+				if ($pageId !== null) {
+					$conditions['page_id'] = $pageId;
+				} else {
+					$conditions[] = $db->expr('page_id', '>', $after);
+				}
 				$rows = $db->newSelectQueryBuilder()->select(['page_id', 'page_namespace', 'page_title'])
 					->from('page')->join('categorylinks', null, 'cl_from = page_id')
-					->where(['cl_to' => str_replace(' ', '_', $config->get('WikidebatesReadingArgumentCategory')),
-						'page_namespace' => NS_MAIN, 'page_is_redirect' => 0, $db->expr('page_id', '>', $after)])
+					->where($conditions)
 					->orderBy('page_id')->limit(min($size, $limit - $count))->caller(__METHOD__)->fetchResultSet();
 				$found = 0;
 				foreach ($rows as $row) {
@@ -88,7 +109,8 @@ class PrepareReadingCache extends Maintenance {
 					if (!$ok) {
 						// $after still identifies the last successfully inspected page;
 						// page IDs are not necessarily contiguous.
-						$this->fatalError('Preparation failed for page ' . $row->page_id . '; resume with --after=' . $after);
+						$this->fatalError('Preparation failed for page ' . $row->page_id . '; retry with ' .
+							($pageId !== null ? '--page-id=' . $pageId : '--after=' . $after));
 					}
 					$after = (int)$row->page_id;
 					if ($resumeFile !== '') {
@@ -118,7 +140,7 @@ class PrepareReadingCache extends Maintenance {
 					}
 				}
 			} while ($found && $count < $limit);
-			if ($stopReason === 'complete' && $count >= $limit) {
+			if ($stopReason === 'complete' && $count >= $limit && $pageId === null) {
 				$stopReason = 'limit';
 			}
 			if ($resumeFile !== '' && $stopReason === 'complete') {
@@ -141,6 +163,9 @@ class PrepareReadingCache extends Maintenance {
 			'sources' => $sources,
 			'duration_seconds' => round(microtime(true) - $started, 3)
 		];
+		if ($pageId !== null) {
+			$report['target_page_id'] = $pageId;
+		}
 		if ($json) {
 			$this->output(json_encode($report, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n");
 		} else {
