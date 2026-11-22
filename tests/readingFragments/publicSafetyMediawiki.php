@@ -44,7 +44,7 @@ $check = static function (bool $okay, string $reason) use (&$checkCount): void {
 $original = AnonymousCacheSafety::fingerprint($pageId);
 $check(is_string($original) && strlen($original) === 64,
 	'Actual public page has a stable anonymous PRIMARY fingerprint');
-$check(AnonymousCacheSafety::fingerprint(PHP_INT_MAX) === null,
+$check(AnonymousCacheSafety::fingerprint($pageId + 100000000) === null,
 	'Deleted or absent pages never pass the public cache guard');
 
 try {
@@ -97,8 +97,11 @@ $denyEdit = null;
 // A change to the same page row that preserves its revision must be detected
 // by the fingerprint even if it did not run through PageSaveComplete.
 $oldTouch = (string)$db->selectField('page', 'page_touched', ['page_id' => $pageId], __METHOD__);
-$newTouch = gmdate('YmdHis', max(time() + 1,
-	(new DateTimeImmutable($oldTouch, new DateTimeZone('UTC')))->getTimestamp() + 1));
+$parsedTouch = DateTimeImmutable::createFromFormat('!YmdHis', $oldTouch, new DateTimeZone('UTC'));
+if (!$parsedTouch) {
+	throw new RuntimeException('Invalid disposable page_touched timestamp');
+}
+$newTouch = gmdate('YmdHis', max(time() + 1, $parsedTouch->getTimestamp() + 1));
 try {
 	$db->newUpdateQueryBuilder()->update('page')->set(['page_touched' => $newTouch])
 		->where(['page_id' => $pageId])->caller(__METHOD__)->execute();
