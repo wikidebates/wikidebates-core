@@ -16,6 +16,8 @@ class PrepareReadingCache extends Maintenance {
 		$this->addOption('limit', 'Maximum number of pages to inspect', false, true);
 		$this->addOption('json', 'Print one machine-readable final report', false, false);
 		$this->addOption('progress-every', 'Report every N inspected pages (default 100, 0 disables)', false, true);
+		$this->addOption('resume-file', 'Private absolute path to an automatically maintained resume checkpoint', false, true);
+		$this->addOption('max-seconds', 'Graceful time limit at page boundaries (0 disables)', false, true);
 	}
 
 	public function execute() {
@@ -30,18 +32,40 @@ class PrepareReadingCache extends Maintenance {
 		$limit = (int)$this->getOption('limit', PHP_INT_MAX);
 		$json = $this->hasOption('json');
 		$progressEvery = (int)$this->getOption('progress-every', 100);
+		$resumeFile = (string)$this->getOption('resume-file', '');
+		$maxSeconds = (int)$this->getOption('max-seconds', 0);
 		if ($size < 1 || $size > 1000 || $pause < 0 || $pause > 60000 || $after < 0 || $limit < 1 ||
-			$progressEvery < 0 || $progressEvery > 100000) {
+			$progressEvery < 0 || $progressEvery > 100000 || $maxSeconds < 0 || $maxSeconds > 86400) {
 			$this->fatalError('Invalid batch, delay, cursor or limit.');
 		}
 		// A single worker per wiki; web fills also use the existing nonblocking page lock.
 		$scope = \MediaWiki\Extension\Wikidebates\Reading\FragmentService::store()->startFill("\0daily-preparation");
 		if (!$scope) { $this->fatalError('Another preparation is running.'); }
 		$started = microtime(true);
+		$wiki = \MediaWiki\WikiMap\WikiMap::getCurrentWikiId();
+		if ($resumeFile !== '') {
+			// A user-controlled checkpoint only resumes the same wiki. Explicit
+			// --after is permitted when creating one, never when resuming it.
+			try {
+				$savedAfter = $this->readCheckpoint($resumeFile, $wiki);
+			} catch (\Throwable $e) {
+				fclose($scope);
+				$this->fatalError('Cannot read reading-cache checkpoint: ' . $e->getMessage());
+			}
+			if ($savedAfter !== null) {
+				if ($this->hasOption('after')) {
+					fclose($scope);
+					$this->fatalError('Omit --after while a resume checkpoint exists.');
+				}
+				$after = $savedAfter;
+			}
+		}
+		$initialAfter = $after;
 		$db = $services->getDBLoadBalancer()->getConnection(DB_REPLICA);
 		$count = 0;
 		$statuses = array_fill_keys(['already-valid', 'created', 'not-cacheable', 'not-stored', 'busy', 'skipped', 'failed'], 0);
 		$sources = array_fill_keys(['fragment-cache', 'vector-file', 'minerva-file', 'parser', 'page-output', 'other'], 0);
+		$stopReason = 'complete';
 		try {
 			do {
 				$rows = $db->newSelectQueryBuilder()->select(['page_id', 'page_namespace', 'page_title'])
@@ -67,6 +91,9 @@ class PrepareReadingCache extends Maintenance {
 						$this->fatalError('Preparation failed for page ' . $row->page_id . '; resume with --after=' . $after);
 					}
 					$after = (int)$row->page_id;
+					if ($resumeFile !== '') {
+						$this->writeCheckpoint($resumeFile, $wiki, $after);
+					}
 					$count++;
 					$found++;
 					if ($progressEvery > 0 && $count % $progressEvery === 0) {
@@ -85,14 +112,29 @@ class PrepareReadingCache extends Maintenance {
 					if ($pause && !in_array($status, ['already-valid', 'skipped'], true)) {
 						usleep($pause * 1000);
 					}
+					if ($maxSeconds > 0 && microtime(true) - $started >= $maxSeconds) {
+						$stopReason = 'time-limit';
+						break 2;
+					}
 				}
 			} while ($found && $count < $limit);
+			if ($stopReason === 'complete' && $count >= $limit) {
+				$stopReason = 'limit';
+			}
+			if ($resumeFile !== '' && $stopReason === 'complete') {
+				// At EOF reset the cycle, so the next run scans earlier arguments
+				// for edits and expiry rather than permanently skipping them.
+				$this->clearCheckpoint($resumeFile);
+			}
 		} finally {
 			fclose($scope);
 		}
 		$report = [
 			'type' => 'wikidebates-reading-preparation',
-			'wiki' => \MediaWiki\WikiMap\WikiMap::getCurrentWikiId(),
+			'wiki' => $wiki,
+			'start_after' => $initialAfter,
+			'complete' => $stopReason === 'complete',
+			'stop_reason' => $stopReason,
 			'inspected' => $count,
 			'last_page_id' => $after,
 			'statuses' => $statuses,
@@ -105,6 +147,65 @@ class PrepareReadingCache extends Maintenance {
 			$this->output('Preparation report: ' . json_encode($report, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n");
 		}
 	}
+
+	/** @return int|null Null when no saved cycle exists. */
+	private function readCheckpoint(string $path, string $wiki): ?int {
+		$this->checkpointDirectory($path);
+		if (!file_exists($path)) {
+			return null;
+		}
+		if (filesize($path) > 4096 || ($raw = @file_get_contents($path)) === false) {
+			throw new \RuntimeException('Unreadable checkpoint');
+		}
+		$data = json_decode($raw, true);
+		if (!is_array($data) || ($data['version'] ?? null) !== 1 ||
+			($data['wiki'] ?? null) !== $wiki ||
+			!is_int($data['after'] ?? null) || $data['after'] < 0) {
+			throw new \RuntimeException('Invalid checkpoint or wrong wiki');
+		}
+		return $data['after'];
+	}
+
+	private function checkpointDirectory(string $path): string {
+		if ($path === '' || $path[0] !== '/' || str_ends_with($path, '/') ||
+			is_link($path) || (file_exists($path) && !is_file($path))) {
+			throw new \RuntimeException('Checkpoint must be a regular file at an absolute path');
+		}
+		$directory = realpath(dirname($path));
+		if ($directory === false || !is_dir($directory) || !is_writable($directory)) {
+			throw new \RuntimeException('Checkpoint directory must exist and be writable');
+		}
+		return $directory;
+	}
+
+	private function writeCheckpoint(string $path, string $wiki, int $after): void {
+		$directory = $this->checkpointDirectory($path);
+		$temporary = @tempnam($directory, '.reading-resume-');
+		if ($temporary === false || dirname($temporary) !== $directory) {
+			throw new \RuntimeException('Cannot create checkpoint temporary file');
+		}
+		try {
+			$payload = json_encode([
+				'version' => 1, 'wiki' => $wiki, 'after' => $after
+			], JSON_THROW_ON_ERROR) . "\n";
+			if (@file_put_contents($temporary, $payload) !== strlen($payload) ||
+				!@chmod($temporary, 0600) || !@rename($temporary, $path)) {
+				throw new \RuntimeException('Cannot publish reading-cache checkpoint');
+			}
+		} finally {
+			if (is_file($temporary)) {
+				@unlink($temporary);
+			}
+		}
+	}
+
+	private function clearCheckpoint(string $path): void {
+		$this->checkpointDirectory($path);
+		if (is_file($path) && !@unlink($path)) {
+			throw new \RuntimeException('Cannot reset reading-cache checkpoint');
+		}
+	}
+
 }
 $maintClass = PrepareReadingCache::class;
 require_once RUN_MAINTENANCE_IF_MAIN;
