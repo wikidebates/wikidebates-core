@@ -86,8 +86,23 @@ try {
 		($report['pages'][0]['revisionId'] ?? null) !== $revision ||
 		($report['pages'][0]['state'] ?? null) !== 'acknowledged' ||
 		array_keys($report['pages'][0]['phases'] ?? []) !== ['vector', 'minerva', 'reading']) {
+		// CI-only diagnostic for a failed child: do not weaken the production
+		// coordinator's refusal to expose arbitrary subprocess stderr.
+		$probe = [PHP_BINARY, $root . '/mediawiki/maintenance/run.php',
+			'Wikidebates:prepareVectorViewCache',
+			'--wiki=' . WikiMap::getCurrentWikiId(), '--page-id=' . $pageId,
+			'--json', '--conf=' . $conf];
+		$debug = proc_open($probe, [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']], $debugPipes);
+		$details = '';
+		if (is_resource($debug)) {
+			fclose($debugPipes[0]);
+			$details = stream_get_contents($debugPipes[1]) . stream_get_contents($debugPipes[2]);
+			fclose($debugPipes[1]);
+			fclose($debugPipes[2]);
+			proc_close($debug);
+		}
 		throw new RuntimeException('Three-cache coordinator did not safely acknowledge: ' .
-			substr($stdout . $stderr, -2400));
+			substr($stdout . $stderr, -2400) . '; isolated child probe: ' . substr($details, -2500));
 	}
 	if ($queue->current($pageId) !== null) {
 		throw new RuntimeException('Completed revision is still queued');
