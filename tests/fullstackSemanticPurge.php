@@ -102,6 +102,16 @@ check(mkdir($queueRoot, 0700), 'Private semantic cache preparation lab root crea
 $GLOBALS['wgWikidebatesCachePreparationDirectory'] = $queueRoot;
 $prewarmQueue = new CachePreparationQueue($queueRoot, \MediaWiki\WikiMap\WikiMap::getCurrentWikiId());
 
+$sqlPrimary = $services->getConnectionProvider()->getPrimaryDatabase();
+$touchBefore = [];
+foreach ($owners as $title) {
+	$touchBefore[$title->getArticleID()] = $sqlPrimary->newSelectQueryBuilder()
+		->select(['page_latest', 'page_touched'])->from('page')
+		->where(['page_id' => $title->getArticleID()])
+		->caller(__FILE__)->fetchRow();
+	check($touchBefore[$title->getArticleID()] !== false,
+		'Semantic owner page exists before invalidation');
+}
 $ledgerBefore = SemanticPurgeState::revisions($store, [$depId]);
 $first = $run([$depId]);
 same(2, $first->getMetrics()['invalidations'], 'Three queries invalidate exactly two pages');
@@ -228,6 +238,18 @@ SemanticRevisionStore::record($store, [$depId]);
 $params['semanticRevision'] = SemanticPurgeState::revisionToken(SemanticPurgeState::revisions($store, [$depId]), [$depId]);
 $c = new SemanticCachePurgeJob($owners[0], $params);
 check($a->getDeduplicationInfo() !== $c->getDeduplicationInfo(), 'Two same-second revisions have distinct real queue identities');
+// Invalid queue configuration must fail *before* the purge, leaving
+// semantic work retryable rather than silently dropping a prewarm request.
+$beforeBrokenConfig = $prewarmQueue->current($owners[0]->getArticleID())['generation'];
+$GLOBALS['wgWikidebatesCachePreparationDirectory'] = $queueRoot . '/missing-directory';
+$brokenQueueJob = new SemanticCachePurgeJob($owners[0], ['dependencyIds' => [$depId], 'cursor' => 0]);
+check(!$brokenQueueJob->run() && $brokenQueueJob->getMetrics()['status'] === 'failed' &&
+	$brokenQueueJob->getMetrics()['invalidations'] === 0,
+	'Misconfigured private journal fails the semantic job without performing invalidations');
+$GLOBALS['wgWikidebatesCachePreparationDirectory'] = $queueRoot;
+same($beforeBrokenConfig, $prewarmQueue->current($owners[0]->getArticleID())['generation'],
+	'Rejected queue directory does not replace valid pending work');
+
 // A normal explicit HTML purge must never inherit the semantic-only marker.
 $observerCount = count($htmlOrigins);
 $htmlCache = $services->getHtmlCacheUpdater();
@@ -238,6 +260,20 @@ check(!SemanticPurgeScope::isActive(), 'Explicit HTML purge leaves provenance cl
 $articleObserver = $htmlObserver = null;
 $GLOBALS['wgWikidebatesCachePreparationDirectory'] = false;
 fsFlush();
+
+// Real MediaWiki Title::invalidateCache defers the page_touched update.
+// A semantic dependent changes its touched timestamp, not its MediaWiki
+// revision: callers must not equate the two for cache freshness.
+foreach ($owners as $title) {
+	$id = $title->getArticleID();
+	$afterTouch = $sqlPrimary->newSelectQueryBuilder()
+		->select(['page_latest', 'page_touched'])->from('page')
+		->where(['page_id' => $id])->caller(__FILE__)->fetchRow();
+	check($afterTouch !== false &&
+		(string)$afterTouch->page_latest === (string)$touchBefore[$id]->page_latest &&
+		(string)$afterTouch->page_touched >= (string)$touchBefore[$id]->page_touched,
+		'Semantic-only dependent invalidation retains page_latest while page_touched can advance');
+}
 
 // All persistent files belong to the disposable test, never a real wiki.
 foreach ($prewarmQueue->pending() as $record) {
