@@ -67,7 +67,7 @@ $check(AnonymousCacheSafety::fingerprint($pageId) === $original,
 	'Unsuppression returns the existing public revision to eligible state');
 
 $hookCalls = 0;
-$denyRead = $services->getHookContainer()->scopedRegister('userCan',
+$denyRead = $services->getHookContainer()->scopedRegister('GetUserPermissionsErrors',
 	static function ($hookTitle, $user, $action, &$result) use ($title, &$hookCalls): bool {
 		if ($action === 'read' && $hookTitle->getPrefixedDBkey() === $title->getPrefixedDBkey()) {
 			$hookCalls++;
@@ -101,7 +101,7 @@ try {
 		->caller(__METHOD__)->execute();
 }
 
-$denyEdit = $services->getHookContainer()->scopedRegister('userCan',
+$denyEdit = $services->getHookContainer()->scopedRegister('GetUserPermissionsErrors',
 	static function ($hookTitle, $user, $action, &$result) use ($title): bool {
 		if ($action === 'edit' && $hookTitle->getPrefixedDBkey() === $title->getPrefixedDBkey()) {
 			$result = 'badaccess-group0';
