@@ -166,6 +166,47 @@ final class CachePreparationQueue {
 		} finally { fclose($lock); }
 	}
 
+
+	/**
+	 * Manual recovery must never bless an abandoned semantic generation.
+	 * Instead, replace that exact blocked request with a fresh generation and
+	 * a strictly newer touch barrier. Concurrent edits, SMW jobs or callbacks
+	 * make the compare-and-swap fail rather than dropping newer work.
+	 *
+	 * The caller must then repeat parser/fragment/HTML invalidation, schedule a
+	 * new deferred touch and verify the post-commit result. This method alone
+	 * never authorizes cache preparation.
+	 *
+	 * @return string|null Fresh generation, or null if the request changed.
+	 */
+	public function retryBlockedInvalidation(
+		int $pageId, int $expectedRevisionId, string $expectedGeneration, string $touchAfter
+	): ?string {
+		$this->checkId($pageId);
+		$this->checkId($expectedRevisionId);
+		if (!preg_match('/\A[a-f0-9]{32}\z/D', $expectedGeneration) ||
+			!preg_match('/\A[0-9]{14}\z/D', $touchAfter)) {
+			throw new \InvalidArgumentException('Invalid semantic recovery generation or touch');
+		}
+		$lock = $this->lock($pageId, LOCK_EX);
+		try {
+			$current = $this->readRecord($pageId);
+			if (!$current || $current['schema'] !== 3 || $current['ready'] ||
+				$current['revisionId'] !== $expectedRevisionId ||
+				!hash_equals($current['generation'], $expectedGeneration)) {
+				return null;
+			}
+			if ($touchAfter <= $current['touchAfter']) {
+				throw new \InvalidArgumentException('Recovery touch must advance the old barrier');
+			}
+			$current['generation'] = bin2hex(random_bytes(16));
+			$current['queuedAt'] = time();
+			$current['touchAfter'] = $touchAfter;
+			$this->writeRecord($pageId, $current);
+			return $current['generation'];
+		} finally { fclose($lock); }
+	}
+
 	/**
 	 * Publish the same generation only after the scheduled primary DB touch
 	 * is visible. The deferred caller checks page_latest itself and repeats
