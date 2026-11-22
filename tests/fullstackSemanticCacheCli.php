@@ -253,4 +253,29 @@ check($auditSummary['redirects_skipped'] === 1 &&
 		json_decode(trim($out), true, 512, JSON_THROW_ON_ERROR)['type'] === 'summary',
 		'Summary-only takes precedence when both read-only output filters are set');
 
+// A disposable Argument makes progress and --after observable, independently of
+// the semantic purge tests above. --json must remain a single stdout object.
+fsSave('WD CLI preparation progress', "== Summary ==\nPROGRESS_TEST\n[[Category:Arguments]]\n== Parent debates ==\nNone");
+fsFlush(['wikidebatesSemanticCachePurge']);
+$services->getDBLoadBalancerFactory()->commitPrimaryChanges(__METHOD__);
+[$exit, $out, $err] = $cli([
+	'Wikidebates:prepareReadingCache', '--limit=100', '--batch-size=5',
+	'--sleep-ms=0', '--json', '--progress-every=1'
+], false);
+check($exit === 0, 'Real CLI with live progress succeeds: ' . $out . $err);
+$progressReport = json_decode(trim($out), true, 512, JSON_THROW_ON_ERROR);
+check($progressReport['inspected'] >= 1 && $progressReport['last_page_id'] > 0 &&
+	array_sum($progressReport['statuses']) === $progressReport['inspected'],
+	'Live progress report counts the inspected pages');
+check(str_contains($err, '1 (last_page_id=') &&
+	str_contains($err, 'resume=--after=' . $progressReport['last_page_id'] . ')'),
+	'Progress is emitted on stderr with the real page-ID cursor');
+[$exit, $out, $err] = $cli([
+	'Wikidebates:prepareReadingCache',
+	'--after=' . $progressReport['last_page_id'], '--limit=100',
+	'--batch-size=5', '--sleep-ms=0', '--json', '--progress-every=1'
+], false);
+check($exit === 0 && json_decode(trim($out), true, 512, JSON_THROW_ON_ERROR)['inspected'] === 0 &&
+	$err === '', 'Resume cursor does not revisit completed pages');
+
 echo "OK: actual run.php preflight, serialized job inspection, redirect-safe semantic audit and documented eval\n";
