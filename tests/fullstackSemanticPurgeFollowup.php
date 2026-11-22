@@ -9,7 +9,8 @@ use MediaWiki\Extension\Wikidebates\Reading\SemanticRevisionStore;
 use MediaWiki\Logger\LoggerFactory;
 use MediaWiki\Logger\Spi;
 
-same(2, $first->getMetrics()['generation_reads'], 'Real cold purge omits two unnecessary generation reads');
+same(0, $first->getMetrics()['generation_reads'],
+	'Deferred receipt generations are read after the original job completes, not inside its batch');
 same(2, $overlap->getMetrics()['generation_reads'], 'Real overlap still checks both local generations');
 same(null, $first->getMetrics()['next_cursor'], 'Real final batch advertises no successor');
 
