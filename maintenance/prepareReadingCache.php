@@ -76,7 +76,11 @@ class PrepareReadingCache extends Maintenance {
 			}
 		}
 		$initialAfter = $after;
-		$db = $services->getDBLoadBalancer()->getConnection(DB_REPLICA);
+		// Targeted work must not read a stale page_id/title/category mapping
+		// from a replica after a move or a visibility change. Bulk scans keep
+		// the replica to avoid unnecessary primary database load.
+		$db = $pageId !== null ? $services->getConnectionProvider()->getPrimaryDatabase() :
+			$services->getDBLoadBalancer()->getConnection(DB_REPLICA);
 		$count = 0;
 		$statuses = array_fill_keys(['already-valid', 'created', 'not-cacheable', 'not-stored', 'busy', 'skipped', 'failed'], 0);
 		$sources = array_fill_keys(['fragment-cache', 'vector-file', 'minerva-file', 'parser', 'page-output', 'other'], 0);
