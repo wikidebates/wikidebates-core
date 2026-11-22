@@ -99,7 +99,13 @@ class PrepareVectorViewCache extends Maintenance {
 		$article = Article::newFromTitle($title, $context);
 		$context->setWikiPage($article->getPage());
 		RequestContext::getMain()->setTitle($title);
-		if (!$article->isFileCacheable(HTMLFileCache::MODE_REBUILD)) {
+		// Preserve the strict read-only promise of --dry-run: the Vector guard
+		// must not evict stale files while previewing cache eligibility.
+		$cacheable = $this->hasOption('dry-run')
+			? \MediaWiki\Extension\Wikidebates\Reading\SemanticPageCacheHooks::withoutVectorEviction(
+				static fn(): bool => $article->isFileCacheable(HTMLFileCache::MODE_REBUILD))
+			: $article->isFileCacheable(HTMLFileCache::MODE_REBUILD);
+		if (!$cacheable) {
 			// A public page may still be vetoed by semantic freshness or another
 			// HTMLFileCache hook. Preserve every veto without calling it nonpublic.
 			$this->report($id, 'SKIPPED_CACHE_POLICY');
