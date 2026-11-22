@@ -63,7 +63,9 @@ class PrepareVectorViewCache extends Maintenance {
 		if (!in_array($skinName, ['vector', 'vector-2022'], true)) {
 			$this->fatalError('The native shared HTML cache requires a Vector default skin.');
 		}
-		$dbr = $this->getReplicaDB();
+		// A targeted page ID must resolve to the current title on PRIMARY;
+		// replica lag after a move could otherwise generate HTML for an old URL.
+		$dbr = $services->getConnectionProvider()->getPrimaryDatabase();
 		$row = $dbr->selectRow('page',
 			['page_id', 'page_namespace', 'page_title', 'page_is_redirect', 'page_latest', 'page_touched'],
 			['page_id' => $id], __METHOD__);
