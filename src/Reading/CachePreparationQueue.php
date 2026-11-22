@@ -309,7 +309,7 @@ final class CachePreparationQueue {
 	 *
 	 * @return array<int,array{schema:int,pageId:int,revisionId:int,queuedAt:int,generation?:string,touchAfter?:string,ready?:bool}>
 	 */
-	public function pending(int $limit = 1000): array {
+	public function pending(int $limit = 1000, bool $directOnly = false): array {
 		if ($limit < 1 || $limit > 10000) {
 			throw new \InvalidArgumentException('Preparation queue batch must contain 1 to 10000 pages');
 		}
@@ -323,7 +323,12 @@ final class CachePreparationQueue {
 			$pageId = (int)$match[1];
 			if ((string)$pageId !== $match[1]) { continue; }
 			$record = $this->current($pageId);
-			if ($record !== null) { $batch[] = $record; }
+			// Schema-3 records are exclusively indirect semantic invalidations.
+			// Preserve them for inspection/recovery, but never run them as
+			// prewarming work in page-local mode or starve direct edits.
+			if ($record !== null && (!$directOnly || $record['schema'] !== 3)) {
+				$batch[] = $record;
+			}
 			if (count($batch) >= $limit) { break; }
 		}
 		return $batch;
