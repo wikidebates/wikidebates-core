@@ -1,0 +1,43 @@
+name: Reading cache targeted page-id prewarm
+
+on:
+  pull_request:
+    paths:
+      - 'maintenance/prepareReadingCache.php'
+      - 'tests/readingFragments/targetedReading.php'
+      - '.github/workflows/reading-targeted-prewarm.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  reading-page-id:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          submodules: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: mbstring,intl,xml,dom,pdo_sqlite,sqlite3,curl
+      - name: Check PHP syntax
+        run: |
+          php -l maintenance/prepareReadingCache.php
+          php -l tests/readingFragments/targetedReading.php
+      - name: Prepare pinned MediaWiki 1.43.11 disposable laboratory
+        run: |
+          LAB="$RUNNER_TEMP/wd-reading-single-$GITHUB_RUN_ID"
+          python3 tests/minervaFileCache/prepare.py "$LAB"
+          echo "WD_MINERVA_STUDY_ROOT=$LAB" >> "$GITHUB_ENV"
+          export WD_MINERVA_STUDY_ROOT="$LAB"
+          git init -q "$LAB/Cite"
+          git -C "$LAB/Cite" fetch --quiet --depth=1 https://github.com/wikimedia/mediawiki-extensions-Cite.git 3f6a8e0395112bbdbe3b53732e259cad6375aaab
+          git -C "$LAB/Cite" checkout --quiet --detach FETCH_HEAD
+          install -d -m 0700 "$LAB/state/reading-cache" "$LAB/state/minerva-cache" "$LAB/state/desktop-cache"
+          php tests/readingFragments/manage.php initialize
+      - name: Verify only the exact argument is prepared
+        run: php tests/readingFragments/targetedReading.php
