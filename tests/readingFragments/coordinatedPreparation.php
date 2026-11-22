@@ -58,7 +58,7 @@ try {
 		'After retry the successfully prepared revision can be acknowledged');
 
 	$queue->enqueue(13, 300);
-	$revision = 300;
+	$GLOBALS['unitLatestRevision'] = 300;
 	$changed = $coordinator->process(['pageId' => 13, 'revisionId' => 300],
 		static fn(int $id): ?int => $GLOBALS['unitLatestRevision'],
 		static function (string $phase, int $id) use ($queue): array {
