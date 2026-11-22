@@ -4,6 +4,7 @@
 require __DIR__ . '/fullstackSemanticCache.php';
 
 use MediaWiki\Extension\Wikidebates\Reading\SemanticCachePurgeJob;
+use MediaWiki\Extension\Wikidebates\Reading\SemanticPurgeScope;
 use MediaWiki\Extension\Wikidebates\Reading\SemanticPurgeState;
 use MediaWiki\Extension\Wikidebates\Reading\SemanticRevisionStore;
 use MediaWiki\Extension\Wikidebates\Reading\SemanticPageCacheHooks;
@@ -78,10 +79,15 @@ foreach ($owners as $title) {
 }
 $articlePurges = 0;
 $htmlTargets = [];
+$htmlOrigins = [];
+check(!SemanticPurgeScope::isActive(), 'Ordinary requests begin outside semantic purge scope');
 $articleObserver = $services->getHookContainer()->scopedRegister('ArticlePurge',
 	static function() use (&$articlePurges): void { $articlePurges++; });
 $htmlObserver = $services->getHookContainer()->scopedRegister('TitleSquidURLs',
-	static function($title, &$urls) use (&$htmlTargets): void { $htmlTargets[] = $title->getPrefixedDBkey(); });
+	static function($title, &$urls) use (&$htmlTargets, &$htmlOrigins): void {
+		$htmlTargets[] = $title->getPrefixedDBkey();
+		$htmlOrigins[] = SemanticPurgeScope::isActive();
+	});
 $run = static function(array $ids, int $cursor = 0, array $extra = []) use ($owners, $services): SemanticCachePurgeJob {
 	$job = new SemanticCachePurgeJob($owners[0], $extra + ['dependencyIds' => $ids, 'cursor' => $cursor]);
 	check($job->run(), 'Real purge succeeds: ' . $job->getLastError());
@@ -93,6 +99,8 @@ $first = $run([$depId]);
 same(2, $first->getMetrics()['invalidations'], 'Three queries invalidate exactly two pages');
 same(3, $first->getMetrics()['queries_processed'], 'All three real query subobjects scanned');
 same(2, count($htmlTargets), 'HTML/CDN hooks dispatched once per page');
+same([true, true], $htmlOrigins, 'SMW dependent HTML dispatches are marked without suppressing invalidation');
+check(!SemanticPurgeScope::isActive(), 'Semantic provenance does not leak beyond the purge job');
 foreach ($owners as $title) {
 	$key = $title->getPrefixedDBkey();
 	$after = $fragmentStore->read($key, 'purge-test', ['test' => 1]);
@@ -157,6 +165,7 @@ $throwing = $services->getHookContainer()->scopedRegister('TitleSquidURLs',
 	static function(): void { throw new RuntimeException('Injected HTML invalidation failure'); });
 $failed = new SemanticCachePurgeJob($owners[0], ['dependencyIds' => [$depId], 'cursor' => 0]);
 check(!$failed->run(), 'HTML exception remains a retryable job failure');
+check(!SemanticPurgeScope::isActive(), 'A failed HTML purge always clears the semantic provenance marker');
 same(0, $failed->getMetrics()['continuations'], 'Failed batch never queues a successor');
 $throwing = null;
 $GLOBALS['wgWikidebatesSemanticCachePurgeBatchSize'] = 1000;
@@ -172,6 +181,13 @@ SemanticRevisionStore::record($store, [$depId]);
 $params['semanticRevision'] = SemanticPurgeState::revisionToken(SemanticPurgeState::revisions($store, [$depId]), [$depId]);
 $c = new SemanticCachePurgeJob($owners[0], $params);
 check($a->getDeduplicationInfo() !== $c->getDeduplicationInfo(), 'Two same-second revisions have distinct real queue identities');
+// A normal explicit HTML purge must never inherit the semantic-only marker.
+$observerCount = count($htmlOrigins);
+$htmlCache = $services->getHtmlCacheUpdater();
+$htmlCache->purgeTitleUrls([$owners[0]], $htmlCache::PURGE_NAIVE);
+same(false, $htmlOrigins[$observerCount] ?? null,
+	'Explicit ordinary HTML purge is not classified as a semantic dependent purge');
+check(!SemanticPurgeScope::isActive(), 'Explicit HTML purge leaves provenance clean');
 $articleObserver = $htmlObserver = null;
 fsFlush();
 
