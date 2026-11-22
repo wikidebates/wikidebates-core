@@ -33,9 +33,10 @@ final class SemanticTouchBarrier {
 	 * @param array<int,array{title:mixed,revisionId:int,generation:string,touchAfter:string}> $pages
 	 * @param mixed $db Primary database connection for rollback-aware deferral.
 	 * @param mixed $htmlCache HtmlCacheUpdater, used only for a final safe purge.
+	 * @param callable(array):void|null $onReady Optional safe post-purge receipt recording.
 	 */
 	public static function schedule(
-		CachePreparationQueue $queue, array $pages, $db, $htmlCache
+		CachePreparationQueue $queue, array $pages, $db, $htmlCache, ?callable $onReady = null
 	): void {
 		if ($pages === []) {
 			return;
@@ -44,10 +45,11 @@ final class SemanticTouchBarrier {
 		// and AFTER the earlier Title::invalidateCache PRESEND updates.
 		// Registration on the DB connection cancels it on transaction rollback.
 		DeferredUpdates::addCallableUpdate(
-			static function () use ($queue, $pages, $htmlCache): void {
+			static function () use ($queue, $pages, $htmlCache, $onReady): void {
 				$dbw = MediaWikiServices::getInstance()
 					->getConnectionProvider()->getPrimaryDatabase();
 				$failures = 0;
+				$confirmed = [];
 				foreach ($pages as $id => $details) {
 					try {
 						$current = $queue->current((int)$id);
@@ -69,8 +71,10 @@ final class SemanticTouchBarrier {
 						SemanticPurgeScope::run(static function () use ($htmlCache, $details): void {
 							$htmlCache->purgeTitleUrls([$details['title']], $htmlCache::PURGE_NAIVE);
 						});
-						if (!$queue->confirmTouched((int)$id, $details['revisionId'],
+						if ($queue->confirmTouched((int)$id, $details['revisionId'],
 							$details['generation'], (string)$row->page_touched)) {
+							$confirmed[(int)$id] = $details;
+						} else {
 							// Another request superseded it, or the touch barrier
 							// is still not satisfied. Never force an acknowledgement.
 							$pending = $queue->current((int)$id);
@@ -82,6 +86,9 @@ final class SemanticTouchBarrier {
 					} catch (\Throwable $e) {
 						$failures++;
 					}
+				}
+				if ($confirmed !== [] && $onReady !== null) {
+					$onReady($confirmed);
 				}
 				if ($failures) {
 					// The deferred runner logs this exception. Unready entries
