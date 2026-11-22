@@ -11,6 +11,27 @@ Elle prépare successivement, par `page_id` :
 2. `MinervaFileCache:prewarm` (un seul GET anonyme, contrôles HTTP complets).
 3. `Wikidebates:prepareReadingCache` (un fragment si la page appartient à la catégorie Arguments).
 
+## Protection contre les mises à jour sémantiques sans nouvelle révision
+
+Les anciens enregistrements de file (`schema: 1`) ne connaissaient que
+`pageId` et `revisionId`. Or un changement de débat parent via SMW peut
+modifier le HTML d'un argument sans modifier sa révision MediaWiki.
+
+Les nouveaux enregistrements (`schema: 2`) contiennent un identifiant
+`generation` aléatoire, renouvelé à chaque demande. Un worker ne peut confirmer
+que le triplet `(pageId, revisionId, generation)` qui lui a été remis.
+Si une modification directe ou indirecte arrive pendant le rendu, la file
+conserve le nouvel événement et le worker devra recommencer. L'écriture et
+l'acquittement restent protégés par le verrou exclusif de cette page.
+
+La méthode `CachePreparationQueue::enqueueInvalidation()` permet de
+renouveler le marqueur même à révision inchangée, tout en conservant la
+révision la plus récente connue. **Elle n'est pas encore reliée aux jobs
+sémantiques** : l'intégration devra intervenir uniquement après une purge
+confirmée et conserver le job en échec réessayable si l'écriture échoue.
+Les anciens fichiers `schema: 1` restent lisibles ; seuls les
+nouveaux événements adoptent le format 2.
+
 Une préparation partielle **n'efface pas la demande**. Une interruption reprend
 donc la même page ; les sous-caches déjà valides sont réutilisés. La file ne
 retire une entrée qu'après confirmation explicite des trois étapes et
