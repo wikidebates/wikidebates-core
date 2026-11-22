@@ -27,6 +27,7 @@
 		"ParserFirstCallInit": "MediaWiki\\Extension\\Wikidebates\\Hooks::onParserFirstCallInit",
 		"PageSaveComplete": "MediaWiki\\Extension\\Wikidebates\\Hooks::onPageSaveComplete",
 		"AuthChangeFormFields": "MediaWiki\\Extension\\Wikidebates\\Hooks::onAuthChangeFormFields",
+		"IsFileCacheable": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onIsFileCacheable",
 		"TitleSquidURLs": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onTitleSquidURLs",
 		"OutputPageParserOutput": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onOutputPageParserOutput",
 		"AfterFinalPageOutput": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onAfterFinalPageOutput",
