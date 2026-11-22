@@ -117,6 +117,10 @@ try {
 	$check($blockedSemantic['state'] === 'awaiting-deferred-touch' &&
 		$queue->current(18)['ready'] === false,
 		'Pending deferred invalidation cannot start any cache renderer');
+	$check(!in_array(18, array_column($queue->pending(100, true), 'pageId'), true),
+		'Page-local prewarming never processes a historical semantic invalidation');
+	$check(in_array(18, array_column($queue->pending(100), 'pageId'), true),
+		'Semantic records remain visible to inspection instead of being deleted');
 
 	$pendingSemantic = $queue->current(18);
 	$check(!$queue->confirmTouched(18, 700, $pendingSemantic['generation'], '20261122140000'),
