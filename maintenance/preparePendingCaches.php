@@ -49,7 +49,8 @@ class PreparePendingCaches extends Maintenance {
 		$wiki = WikiMap::getCurrentWikiId();
 		try {
 			$queue = new CachePreparationQueue($directory, $wiki);
-			$pending = $queue->pending($limit);
+			$pending = $queue->pending($limit,
+				\MediaWiki\Extension\Wikidebates\Reading\PageLocalCachePolicy::enabled());
 		} catch (\Throwable $e) {
 			$this->fatalError('Cannot read the private preparation queue (' . get_class($e) . ').');
 		}
