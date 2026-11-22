@@ -153,6 +153,21 @@ try {
 $check(AnonymousCacheSafety::fingerprint($pageId) === $original,
 	'Restoring the original primary identity restores the same cache fingerprint');
 
+// CoordinatorFullstack created a real reading fragment before this test.
+// A genuine RevisionDelete postcommit event must rotate that generation and
+// remove the already-published HTML, independently of CDN URL configuration.
+$readingFiles = $root . '/state/reading-cache/*/*/*/*.cache';
+$beforeFiles = glob($readingFiles) ?: [];
+$check(count($beforeFiles) > 0, 'Existing reading fragment was published in disposable lab');
+$fragmentStore = \MediaWiki\Extension\Wikidebates\Reading\FragmentService::store();
+$oldGeneration = $fragmentStore->read($title->getPrefixedDBkey(), '', [])['generation'];
+ReadingHooks::onArticleRevisionVisibilitySet($title, [$revisionId],
+	[$revisionId => ['oldBits' => 0, 'newBits' => 1]]);
+$newGeneration = $fragmentStore->read($title->getPrefixedDBkey(), '', [])['generation'];
+$afterFiles = glob($readingFiles) ?: [];
+$check($oldGeneration !== $newGeneration && count($afterFiles) < count($beforeFiles),
+	'Postcommit RevisionDelete hook removes existing reading HTML and prevents stale writers');
+
 echo json_encode(['result' => 'PASS', 'assertions' => $checkCount,
 	'pageId' => $pageId, 'revisionId' => $revisionId],
 	JSON_THROW_ON_ERROR) . "\n";
