@@ -156,7 +156,7 @@ try {
 			$publicToken = null; // Read permission revoked during Vector render.
 			return ['ok' => true, 'status' => 'CREATED'];
 		},
-		static fn(int $id): ?string => $publicToken);
+		static function (int $id) use (&$publicToken): ?string { return $publicToken; });
 	$check($prewarmBlocked['state'] === 'unsafe-for-anonymous-cache' &&
 		$publicCalls === ['vector'] && $queue->current(20) !== null,
 		'Mid-render anonymous permission revocation prevents subsequent phases and acknowledgement');
@@ -171,7 +171,7 @@ try {
 			$publicToken = 'after-move';
 			return ['ok' => true, 'status' => 'CREATED'];
 		},
-		static fn(int $id): ?string => $publicToken);
+		static function (int $id) use (&$publicToken): ?string { return $publicToken; });
 	$check($move['state'] === 'public-identity-changed' && $phaseCalls === 1 &&
 		$queue->current(21)['revisionId'] === 703,
 		'Move or page_touched drift without a new revision cannot be acknowledged');
