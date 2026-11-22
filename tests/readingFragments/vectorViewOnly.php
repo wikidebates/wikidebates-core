@@ -10,11 +10,14 @@ $database = new PDO('sqlite:' . $root . '/state/minerva_file_cache_test.sqlite')
 $pageId = (int)$database->query("SELECT page_id FROM page WHERE page_title = 'Cache_study_argument'")->fetchColumn();
 if ($pageId < 1) { throw new RuntimeException('No fixture page to prewarm'); }
 putenv('MW_INSTALL_PATH=' . $root . '/mediawiki');
+$localSettings = $root . '/state/LocalSettings.php';
+file_put_contents($localSettings, "<?php\n");
+chmod($localSettings, 0600);
 
 $run = static function (int $id) use ($root): array {
 	$command = [PHP_BINARY, '-d', 'auto_prepend_file=' . __DIR__ . '/bootstrap.php',
 		dirname(__DIR__, 2) . '/maintenance/prepareVectorViewCache.php',
-		'--page-id=' . $id, '--json'];
+		'--conf=' . $root . '/state/LocalSettings.php', '--page-id=' . $id, '--json'];
 	$proc = proc_open($command, [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']], $pipes);
 	if (!is_resource($proc)) { throw new RuntimeException('Cannot start Vector view maintenance'); }
 	fclose($pipes[0]);
