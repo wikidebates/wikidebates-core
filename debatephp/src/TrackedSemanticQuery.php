@@ -3,6 +3,7 @@
 namespace MediaWiki\Extension\DebatePHP;
 
 use MediaWiki\Context\RequestContext;
+use MediaWiki\Extension\Wikidebates\Reading\PageLocalCachePolicy;
 use MediaWiki\Parser\Parser;
 use SMW\DataItems\WikiPage as SemanticWikiPage;
 use SMW\ParserData;
@@ -24,6 +25,12 @@ final class TrackedSemanticQuery {
 	public const OUTPUT_MARKER = 'wikidebates-semantic-query-tracked';
 
 	public static function execute(Parser $parser, array $rawParameters, Store $store): QueryResult|string {
+		// Page-local files deliberately keep the first rendered query results.
+		// Do not require _ASK profiles or disable parser caching if tracing
+		// cannot certify their dependencies.
+		if (PageLocalCachePolicy::enabled()) {
+			return (new \SMW\Scribunto\LibraryFactory($store))->newQueryResultFrom($rawParameters);
+		}
 		$title = $parser->getTitle();
 		$output = $parser->getOutput();
 		$services = SemanticServices::getInstance();
