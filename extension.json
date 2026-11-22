@@ -30,8 +30,14 @@
 		"IsFileCacheable": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onIsFileCacheable",
 		"TitleSquidURLs": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onTitleSquidURLs",
 		"ArticleRevisionVisibilitySet": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onArticleRevisionVisibilitySet",
-		"OutputPageParserOutput": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onOutputPageParserOutput",
-		"AfterFinalPageOutput": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onAfterFinalPageOutput",
+		"OutputPageParserOutput": [
+			"MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onOutputPageParserOutput",
+			"MediaWiki\\Extension\\Wikidebates\\Reading\\SemanticPageCacheHooks::onOutputPageParserOutput"
+		],
+		"AfterFinalPageOutput": [
+			"MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onAfterFinalPageOutput",
+			"MediaWiki\\Extension\\Wikidebates\\Reading\\SemanticPageCacheHooks::onAfterFinalPageOutput"
+		],
 		"SMW::SQLStore::AfterDataUpdateComplete": "MediaWiki\\Extension\\Wikidebates\\Reading\\SemanticCacheHooks::onSMW__SQLStore__AfterDataUpdateComplete",
 		"PageMoveComplete": "MediaWiki\\Extension\\Wikidebates\\Reading\\SemanticCacheHooks::onPageMoveComplete",
 		"HTMLFileCache::useFileCache": "MediaWiki\\Extension\\Wikidebates\\Reading\\SemanticPageCacheHooks::onHTMLFileCache__useFileCache",
@@ -638,6 +644,10 @@
 		"WikidebatesSemanticCacheTracking": {
 			"value": false,
 			"description": "Opt-in tracking of native SMW queries and targeted cache invalidation; keep disabled until isolated integration validation."
+		},
+		"WikidebatesVectorSemanticFileCache": {
+			"value": false,
+			"description": "Experimental opt-in for native anonymous Vector HTML files with signed SMW watermarks checked on each HIT; staging only until integrated freshness, ACL and overhead tests pass."
 		},
 		"WikidebatesSemanticCacheEagerPurge": {
 			"value": false,
