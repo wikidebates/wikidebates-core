@@ -82,6 +82,25 @@ $denyRead = null;
 $check(AnonymousCacheSafety::fingerprint($pageId) === $original,
 	'Restored read permissions re-enable eligible public preparation');
 
+// A genuinely edit-protected page may still be public. Protect only 'edit'
+// in this disposable database and ensure the anonymous read cache remains
+// eligible. Nothing here edits a production page or touches a live wiki.
+$existingProtection = $db->selectField('page_restrictions', 'pr_id',
+	['pr_page' => $pageId, 'pr_type' => 'edit'], __METHOD__);
+$check($existingProtection === false, 'Disposable argument initially has no edit protection');
+$db->newInsertQueryBuilder()->insertInto('page_restrictions')->row([
+	'pr_page' => $pageId, 'pr_type' => 'edit', 'pr_level' => 'sysop',
+	'pr_cascade' => 0, 'pr_expiry' => $db->encodeExpiry('infinity')
+])->caller(__METHOD__)->execute();
+try {
+	$check(AnonymousCacheSafety::fingerprint($pageId) === $original,
+		'Actual edit-only protection must not block a publicly readable page');
+} finally {
+	$db->newDeleteQueryBuilder()->deleteFrom('page_restrictions')
+		->where(['pr_page' => $pageId, 'pr_type' => 'edit'])
+		->caller(__METHOD__)->execute();
+}
+
 $denyEdit = $services->getHookContainer()->scopedRegister('userCan',
 	static function ($hookTitle, $user, $action, &$result) use ($title): bool {
 		if ($action === 'edit' && $hookTitle->getPrefixedDBkey() === $title->getPrefixedDBkey()) {
