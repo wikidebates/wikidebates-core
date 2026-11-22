@@ -30,7 +30,7 @@ final class SemanticTouchBarrier {
 
 	/**
 	 * @param CachePreparationQueue $queue Persisted per-wiki generation queue.
-	 * @param array<int,array{title:mixed,revisionId:int,generation:string,touchAfter:string}> $pages
+	 * @param array<int,array{title:mixed,revisionId:int,generation:string,touchAfter:string,pageNamespace?:int,pageTitle?:string,requireAnonymousRead?:bool}> $pages
 	 * @param mixed $db Primary database connection for rollback-aware deferral.
 	 * @param mixed $htmlCache HtmlCacheUpdater, used only for a final safe purge.
 	 * @param callable(array):void|null $onReady Optional safe post-purge receipt recording.
@@ -58,13 +58,29 @@ final class SemanticTouchBarrier {
 							// A new edit or invalidation superseded this generation.
 							continue;
 						}
-						$row = $dbw->selectRow('page', ['page_latest', 'page_touched'],
+						$row = $dbw->selectRow('page',
+							['page_latest', 'page_touched', 'page_namespace', 'page_title'],
 							['page_id' => (int)$id], __METHOD__);
 						if (!$row || (int)$row->page_latest !== $details['revisionId'] ||
 							!is_string($row->page_touched) ||
 							(string)$row->page_touched < $details['touchAfter']) {
 							$failures++;
 							continue; // Leave the existing record unready.
+						}
+						// Recovery must not certify a page that was moved while
+						// its revision remained unchanged, nor a page that has
+						// become unreadable to anonymous visitors.
+						if ((isset($details['pageNamespace'], $details['pageTitle']) &&
+								((int)$row->page_namespace !== $details['pageNamespace'] ||
+									(string)$row->page_title !== $details['pageTitle'])) ||
+							(($details['requireAnonymousRead'] ?? false) &&
+								!MediaWikiServices::getInstance()->getPermissionManager()->userCan(
+									'read',
+									MediaWikiServices::getInstance()->getUserFactory()->newAnonymous(),
+									$details['title']
+								))) {
+							$failures++;
+							continue;
 						}
 						// The first HTML purge preceded the deferred SQL write.
 						// A second purge closes the gap for files published meanwhile.
