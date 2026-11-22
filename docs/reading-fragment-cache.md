@@ -123,11 +123,37 @@ Adapter chemins et utilisateur ; omettre l’utilisateur dans une crontab person
 La commande parcourt la catégorie des arguments, sans récursion, par identifiants
 croissants. Elle ignore les redirections et les extraits valides. Un seul processus
 par wiki travaille séquentiellement ; les préparations web utilisent aussi le verrou
-non bloquant de page. Options : `--limit=500`, `--after=123`, `--batch-size=100`
-(1–1000), `--sleep-ms=100`. Le curseur affiché permet une reprise manuelle. Sans
-`--after`, chaque passage quotidien recontrôle toute la catégorie, y compris les
-pages anciennes expirées. Les variantes linguistiques supplémentaires se préparent
-à la demande. `WikidebatesReadingPrewarm=false` désactive cette préparation explicite.
+non bloquant de page.
+
+**Progression :** même avec `--json`, un message est immédiatement écrit sur
+**stderr** toutes les 100 pages (sans perturber le JSON unique de stdout) :
+
+```text
+100 (last_page_id=1234; resume=--after=1234)
+200 (last_page_id=2456; resume=--after=2456)
+300 (last_page_id=3789; resume=--after=3789)
+```
+
+Les nombres sont des exemples. Le curseur est un **identifiant de page**, pas
+le nombre de pages traitées : les ID ne sont pas consécutifs. Après une
+interruption, reprendre avec `--after=3789` pour éviter tout nouveau parcours
+des premières pages. Le cache publié est conservé à chaque page : si aucun
+curseur n'a été enregistré, relancer simplement depuis le début réutilise les
+fragments encore valides sans nouveau rendu. La pause entre pages ne s'applique
+désormais qu'aux pages nécessitant réellement du travail et ne ralentit pas
+les passages qui ne trouvent que des fragments valides.
+
+Options : `--limit=500`, `--after=123`, `--batch-size=100` (1–1000),
+`--sleep-ms=100`, `--progress-every=100` (0 pour masquer la progression),
+`--json`. La sortie d'erreur des progrès est visible en direct avec
+`--json | tee -a journal.log`, mais seuls les rapports finaux sont alors
+enregistrés par `tee`; utiliser `2>&1 | tee -a journal.log` pour journaliser
+les deux sorties. Le cron ci-dessus enregistre naturellement les deux.
+
+Sans `--after`, chaque passage quotidien recontrôle toute la catégorie, y
+compris les pages anciennes expirées. Les variantes linguistiques
+supplémentaires se préparent à la demande.
+`WikidebatesReadingPrewarm=false` désactive cette préparation explicite.
 
 Planifier aussi le nettoyage :
 
