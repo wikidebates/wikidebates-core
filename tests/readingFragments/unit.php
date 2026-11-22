@@ -86,6 +86,22 @@ try {
 	check($unlimited->read('A', 'common', $identity)['entry']['expires'] === PHP_INT_MAX,
 		'Zero TTL does not shorten caller expiry');
 	check($unlimited->prune() === 0, 'Unlimited TTL retains a valid entry');
+
+	// Migration regression: existing valid entries older than 30 days must survive.
+	$old = $unlimited->read('Old', 'common', $identity);
+	check($unlimited->publish('Old', 'common', $identity, $old['generation'],
+		'FORTY_DAYS_OLD', [], PHP_INT_MAX), 'Long-lived old entry can be published');
+	$oldHash = hash('sha256', 'Old');
+	$oldPath = $dir . '/' . hash('sha256', 'unlimited-wiki') . '/' . substr($oldHash, 0, 2) .
+		'/' . $oldHash . '/' . hash('sha256', 'common') . '.cache';
+	$oldData = json_decode(gzdecode(file_get_contents($oldPath)), true, 512, JSON_THROW_ON_ERROR);
+	$oldData['created'] = time() - 40 * 86400;
+	file_put_contents($oldPath, gzencode(json_encode($oldData)));
+	touch($oldPath, time() - 40 * 86400);
+	check($unlimited->read('Old', 'common', $identity)['entry']['body'] === 'FORTY_DAYS_OLD',
+		'TTL zero accepts a valid entry created more than thirty days ago');
+	check($unlimited->prune() === 0 && is_file($oldPath),
+		'Pruning preserves existing valid content older than thirty days');
 	check(!$unlimited->publish('A', 'expired', $identity, $unlimitedSnapshot['generation'],
 		'NOT_STORED', [], time() - 1), 'Zero TTL cannot override rejected caller expiry');
 
