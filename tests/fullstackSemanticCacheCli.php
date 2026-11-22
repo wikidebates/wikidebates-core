@@ -278,4 +278,58 @@ check(str_contains($err, '1 (last_page_id=') &&
 check($exit === 0 && json_decode(trim($out), true, 512, JSON_THROW_ON_ERROR)['inspected'] === 0 &&
 	$err === '', 'Resume cursor does not revisit completed pages');
 
+// A resumable nightly cycle must persist only successful page IDs and reset
+// to a full scan after EOF. No production data is touched by these CLI tests.
+$resumePath = $temporary . '/reading-resume-test.json';
+$lastArgument = $progressReport['last_page_id'];
+[$exit, $out, $err] = $cli([
+	'Wikidebates:prepareReadingCache', '--after=' . ($lastArgument - 1),
+	'--limit=1', '--sleep-ms=0', '--batch-size=1', '--json',
+	'--resume-file=' . $resumePath, '--max-seconds=60'
+], false);
+check($exit === 0, 'Resumable cycle starts with an explicit initial cursor: ' . $out . $err);
+$resumeReport = json_decode(trim($out), true, 512, JSON_THROW_ON_ERROR);
+$checkpoint = json_decode(file_get_contents($resumePath), true, 512, JSON_THROW_ON_ERROR);
+check($resumeReport['start_after'] === $lastArgument - 1 &&
+	$resumeReport['last_page_id'] === $lastArgument &&
+	!$resumeReport['complete'] && $resumeReport['stop_reason'] === 'limit' &&
+	$checkpoint['version'] === 1 && $checkpoint['wiki'] === $resumeReport['wiki'] &&
+	$checkpoint['after'] === $lastArgument,
+	'One-page limited cycle saves the actual processed ID atomically');
+
+[$exit, $out, $err] = $cli([
+	'Wikidebates:prepareReadingCache', '--limit=100', '--sleep-ms=0',
+	'--json', '--resume-file=' . $resumePath
+], false);
+check($exit === 0, 'Saved cycle continues without specifying --after: ' . $out . $err);
+$resumeReport = json_decode(trim($out), true, 512, JSON_THROW_ON_ERROR);
+check($resumeReport['start_after'] === $lastArgument &&
+	$resumeReport['inspected'] === 0 &&
+	$resumeReport['complete'] && $resumeReport['stop_reason'] === 'complete' &&
+	!file_exists($resumePath),
+	'Completing the category resets checkpoint for the next full scan');
+
+[$exit, $out, $err] = $cli([
+	'Wikidebates:prepareReadingCache', '--limit=1', '--sleep-ms=0',
+	'--json', '--resume-file=' . $resumePath
+], false);
+check($exit === 0, 'New cycle restarts from the beginning: ' . $out . $err);
+$resumeReport = json_decode(trim($out), true, 512, JSON_THROW_ON_ERROR);
+check($resumeReport['start_after'] === 0 && $resumeReport['inspected'] === 1 &&
+	is_file($resumePath), 'Next cycle revisits earlier arguments to detect expiry');
+[$exit, $out, $err] = $cli([
+	'Wikidebates:prepareReadingCache', '--after=1', '--limit=1',
+	'--sleep-ms=0', '--json', '--resume-file=' . $resumePath
+], false);
+check($exit !== 0, 'Explicit cursor is rejected when checkpoint already exists');
+
+file_put_contents($resumePath, json_encode([
+	'version' => 1, 'wiki' => 'unrelated-wiki', 'after' => 999999
+], JSON_THROW_ON_ERROR));
+[$exit, $out, $err] = $cli([
+	'Wikidebates:prepareReadingCache', '--limit=1', '--sleep-ms=0',
+	'--json', '--resume-file=' . $resumePath
+], false);
+check($exit !== 0, 'Checkpoint from another wiki is rejected, never trusted');
+
 echo "OK: actual run.php preflight, serialized job inspection, redirect-safe semantic audit and documented eval\n";
