@@ -14,10 +14,11 @@ $localSettings = $root . '/state/LocalSettings.php';
 file_put_contents($localSettings, "<?php\n");
 chmod($localSettings, 0600);
 
-$run = static function (int $id) use ($root): array {
+$run = static function (int $id, bool $dryRun = false) use ($root): array {
 	$command = [PHP_BINARY, '-d', 'auto_prepend_file=' . __DIR__ . '/bootstrap.php',
 		dirname(__DIR__, 2) . '/maintenance/prepareVectorViewCache.php',
 		'--conf=' . $root . '/state/LocalSettings.php', '--page-id=' . $id, '--json'];
+	if ($dryRun) { $command[] = '--dry-run'; }
 	$proc = proc_open($command, [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']], $pipes);
 	if (!is_resource($proc)) { throw new RuntimeException('Cannot start Vector view maintenance'); }
 	fclose($pipes[0]);
@@ -33,6 +34,26 @@ $run = static function (int $id) use ($root): array {
 	}
 	return $report;
 };
+
+$dryRun = $run($pageId, true);
+if (($dryRun['state'] ?? '') !== 'MISSING_FILE') {
+	throw new RuntimeException('Dry-run must report a missing view without creating HTML: ' . json_encode($dryRun));
+}
+
+putenv('WD_VECTOR_TEST_VETO=1');
+try { $veto = $run($pageId); }
+finally { putenv('WD_VECTOR_TEST_VETO'); }
+if (($veto['state'] ?? '') !== 'SKIPPED_CACHE_POLICY') {
+	throw new RuntimeException('Public policy veto must not be reported as nonpublic: ' . json_encode($veto));
+}
+
+$denyRead = $root . '/state/deny-read';
+if (!touch($denyRead)) { throw new RuntimeException('Cannot create isolated read-veto fixture'); }
+try { $nonpublic = $run($pageId, true); }
+finally { unlink($denyRead); }
+if (($nonpublic['state'] ?? '') !== 'SKIPPED_NONPUBLIC') {
+	throw new RuntimeException('Nonpublic page must still fail closed: ' . json_encode($nonpublic));
+}
 
 $first = $run($pageId);
 if (($first['state'] ?? '') !== 'CREATED') {
@@ -62,5 +83,6 @@ if (!str_contains($html, 'ARGUMENT_VERSION_ONE') || !str_contains($html, 'skin-v
 	throw new RuntimeException('Native Vector file did not contain complete anonymous HTML');
 }
 echo json_encode(['result' => 'PASS', 'pageId' => $pageId,
-	'first' => $first['state'], 'second' => $second['state'],
+	'dryRun' => $dryRun['state'], 'policyVeto' => $veto['state'],
+	'nonpublic' => $nonpublic['state'], 'first' => $first['state'], 'second' => $second['state'],
 	'historyCreated' => false], JSON_THROW_ON_ERROR) . "\n";

@@ -23,7 +23,13 @@ la politique native refuser les pages dangereuses.
 
 États JSON : `CREATED`, `REUSED`, `MISSING_FILE` (simulation),
 `MISSING`, `SKIPPED_NONPUBLIC`, `SKIPPED_NONCONTENT`,
-`SKIPPED_REDIRECT_OR_INVALID`, et erreurs de rendu/édition concomitante.
+`SKIPPED_REDIRECT_OR_INVALID`, `SKIPPED_CACHE_POLICY`, et erreurs de rendu/édition concomitante.
+
+`SKIPPED_NONPUBLIC` signifie que les vérifications de visibilité et de droits
+anonymes ont échoué. `SKIPPED_CACHE_POLICY` signifie que la page est publique
+mais que le cache natif a été explicitement refusé par un hook (par exemple
+pour protéger la fraîcheur des requêtes SMW lorsque le suivi sémantique est
+activé). Le préchauffage ne contourne jamais ce refus.
 
 Les fichiers déjà valides ne sont pas régénérés. Le script utilise le mode
 `HTMLFileCache::MODE_REBUILD`, un contexte Vector, une capture complète du HTML
