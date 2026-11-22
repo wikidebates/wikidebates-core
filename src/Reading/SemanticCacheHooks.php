@@ -17,6 +17,9 @@ final class SemanticCacheHooks {
 	public static function onSMW__SQLStore__AfterDataUpdateComplete(
 		Store $store, SemanticData $semanticData, ChangeOp $changeOp
 	): bool {
+		// A semantic update, including changed query results elsewhere, must
+		// never queue a purge of another page's anonymous HTML snapshot.
+		if (PageLocalCachePolicy::enabled()) { return true; }
 		$config = MediaWikiServices::getInstance()->getMainConfig();
 		if (!$config->get('WikidebatesSemanticCacheTracking')) {
 			return true;
@@ -40,6 +43,8 @@ final class SemanticCacheHooks {
 
 	/** Moves can change query results without an ordinary property-table diff. */
 	public static function onPageMoveComplete($old, $new, $user, $pageid, $redirid, $reason, $revision): bool {
+		// MediaWiki handles the moved page; do not purge semantic dependents.
+		if (PageLocalCachePolicy::enabled()) { return true; }
 		$config = MediaWikiServices::getInstance()->getMainConfig();
 		if (!$config->get('WikidebatesSemanticCacheTracking')) {
 			return true;
