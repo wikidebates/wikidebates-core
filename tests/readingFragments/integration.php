@@ -101,8 +101,11 @@ try {
 		'Parser output with expiry zero is never retained');
 	request(['title' => 'Short_lived'], false);
 	request(['title' => 'Short_lived'], true);
+	$short = fragment('Short lived');
+	ensure($short['html'] !== '', 'Short-lived parser output still produces a public fragment');
 	usleep(2100000);
-	ensure(fragment('Short lived')['source'] === 'parser', 'Dynamic parser lifetime prevents reuse of either full-file source');
+	ensure(fragment('Short lived')['source'] === 'fragment-cache',
+		'A positive parser cache lifetime of one second does not cap valid anonymous fragment retention');
 
 	touch($state . '/short-ttl');
 	usleep(1200000);
