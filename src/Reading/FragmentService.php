@@ -152,8 +152,9 @@ class FragmentService {
 		$scope = MediaWikiServices::getInstance()->getHookContainer()->scopedRegister('ParserOutputPostCacheTransform',
 			static function ($output, &$text, &$options) use (&$expires, $expectedRevision) {
 				if ($output->getCacheRevisionId() !== $expectedRevision) { return; }
-				$expires = (int)wfTimestamp(TS_UNIX, $output->getCacheTime()) + $output->getCacheExpiry();
-				if (!$output->isCacheable()) { $expires = 0; }
+				// A positive parser lifetime proves eligibility, not our file's retention period.
+				// Anonymous retention is controlled by TTL and direct invalidation instead.
+				$expires = $output->isCacheable() && $output->getCacheExpiry() > 0 ? PHP_INT_MAX : 0;
 			});
 		$outputScope = MediaWikiServices::getInstance()->getHookContainer()->scopedRegister('ApiParseMakeOutputPage',
 			static function ($module, $output) use (&$outputPage) { $outputPage = $output; });
