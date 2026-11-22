@@ -635,6 +635,10 @@
 		"WikidebatesReadingArgumentCategory": {
 			"value": "Arguments"
 		},
+		"WikidebatesPageLocalCacheOnly": {
+			"value": false,
+			"description": "Experimental anonymous HTML policy: keep Vector, Minerva and reading caches independent of SMW query-result changes; normal page edits, rights and MediaWiki invalidation rules still apply."
+		},
 		"WikidebatesSemanticCacheTracking": {
 			"value": false,
 			"description": "Opt-in tracking of native SMW queries and targeted cache invalidation; keep disabled until isolated integration validation."
