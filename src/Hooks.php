@@ -51,6 +51,19 @@ class Hooks {
 			$revisionRecord,
 			$editResult
 		);
+		// Direct edits alone enter the opt-in preparation journal. Dependent
+		// semantic changes and TitleSquidURLs purges never enqueue a page here.
+		$directory = MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesCachePreparationDirectory');
+		if (!is_string($directory) || $directory === '') { return; }
+		try {
+			(new Reading\CachePreparationQueue($directory,
+				\MediaWiki\WikiMap\WikiMap::getCurrentWikiId()))->enqueue(
+				(int)$wikiPage->getId(), (int)$revisionRecord->getId());
+		} catch (\Throwable $e) {
+			\MediaWiki\Logger\LoggerFactory::getInstance('WikidebatesCachePreparation')->warning(
+				'Failed to record edited page for future preparation ({type}).',
+				['type' => get_class($e)]);
+		}
 	}
 	
 	public static function onAuthChangeFormFields(

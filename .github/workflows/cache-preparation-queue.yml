@@ -1,0 +1,56 @@
+name: Wikidebates direct-edit queue in disposable MediaWiki
+
+on:
+  pull_request:
+    paths:
+      - 'src/Reading/CachePreparationQueue.php'
+      - 'src/Hooks.php'
+      - 'extension.json'
+      - 'tests/readingFragments/preparationQueue.php'
+      - 'tests/readingFragments/queueMediawiki.php'
+      - 'tests/readingFragments/bootstrap.php'
+      - '.github/workflows/cache-preparation-queue.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  edit-queue:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          submodules: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring,intl,xml,dom,pdo_sqlite,sqlite3
+          coverage: none
+      - name: Syntax and standalone queue tests
+        run: |
+          php -l src/Reading/CachePreparationQueue.php
+          php -l src/Hooks.php
+          php -l tests/readingFragments/preparationQueue.php
+          php -l tests/readingFragments/queueMediawiki.php
+          php -l maintenance/inspectCachePreparationQueue.php
+          php tests/readingFragments/preparationQueue.php
+      - name: Create disposable pinned MediaWiki 1.43.11 test database
+        run: |
+          LAB="$RUNNER_TEMP/wd-cache-edit-queue-$GITHUB_RUN_ID"
+          python3 tests/minervaFileCache/prepare.py "$LAB"
+          echo "WD_MINERVA_STUDY_ROOT=$LAB" >> "$GITHUB_ENV"
+          export WD_MINERVA_STUDY_ROOT="$LAB"
+          echo "MW_INSTALL_PATH=$LAB/mediawiki" >> "$GITHUB_ENV"
+          git init -q "$LAB/Cite"
+          git -C "$LAB/Cite" fetch --quiet --depth=1 https://github.com/wikimedia/mediawiki-extensions-Cite.git 3f6a8e0395112bbdbe3b53732e259cad6375aaab
+          git -C "$LAB/Cite" checkout --quiet --detach FETCH_HEAD
+          install -d -m 0700 "$LAB/state/reading-cache" "$LAB/state/minerva-cache" "$LAB/state/desktop-cache" "$LAB/state/preparation-queue"
+          php tests/readingFragments/manage.php initialize
+      - name: Verify PageSaveComplete and exclusion of indirect dependency jobs
+        run: |
+          php tests/readingFragments/queueMediawiki.php initial
+          php tests/readingFragments/manage.php template
+          php tests/readingFragments/manage.php jobs
+          php tests/readingFragments/queueMediawiki.php after-template

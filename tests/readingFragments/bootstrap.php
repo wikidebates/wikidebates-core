@@ -23,6 +23,8 @@ function readingFragmentTestSettings($settings): void {
 		'ShowExceptionDetails' => true,
 		'WikidebatesReadingFragments' => !is_file($root . '/state/reading-disabled'),
 		'WikidebatesReadingCacheDirectory' => $root . '/state/reading-cache',
+		'WikidebatesCachePreparationDirectory' => is_dir($root . '/state/preparation-queue') ?
+			$root . '/state/preparation-queue' : false,
 		'WikidebatesReadingPrewarm' => true,
 		'MinervaFileCacheDirectory' => $root . '/state/minerva-cache',
 		'MinervaFileCacheTTL' => 2592000,
