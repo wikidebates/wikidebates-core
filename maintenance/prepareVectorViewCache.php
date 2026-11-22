@@ -32,8 +32,8 @@ class PrepareVectorViewCache extends Maintenance {
 		// The maintenance process captures native HTML explicitly. Avoid reading
 		// existing file-cache HTML or writing files as a side effect of Article::view.
 		$settingsBuilder->putConfigValue(MainConfigNames::UseFileCache, false);
-		$this->getServiceContainer()->getReadOnlyMode()->setReason('Preparing anonymous Vector file cache');
-		MWDebug::deinit();
+		// Maintenance::finalSetup runs before MediaWiki services are ready.
+		// Apply read-only mode and disable debug output in execute().
 		parent::finalSetup($settingsBuilder);
 	}
 
@@ -48,6 +48,9 @@ class PrepareVectorViewCache extends Maintenance {
 	}
 
 	public function execute() {
+		// MediaWiki initialization has completed; service access is now safe.
+		$this->getServiceContainer()->getReadOnlyMode()->setReason('Preparing anonymous Vector file cache');
+		MWDebug::deinit();
 		if (!$this->enabled) {
 			$this->fatalError('The native Vector cache must be enabled ($wgUseFileCache).');
 		}
@@ -97,7 +100,9 @@ class PrepareVectorViewCache extends Maintenance {
 		$context->setWikiPage($article->getPage());
 		RequestContext::getMain()->setTitle($title);
 		if (!$article->isFileCacheable(HTMLFileCache::MODE_REBUILD)) {
-			$this->report($id, 'SKIPPED_NONPUBLIC');
+			// A public page may still be vetoed by semantic freshness or another
+			// HTMLFileCache hook. Preserve every veto without calling it nonpublic.
+			$this->report($id, 'SKIPPED_CACHE_POLICY');
 			return true;
 		}
 		$view = new HTMLFileCache($title, 'view');
