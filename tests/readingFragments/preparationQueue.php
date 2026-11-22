@@ -64,8 +64,19 @@ try {
 		'Missing wiki identity is rejected');
 
 	$beforeSemantic = $fr->current(42);
-	$fr->enqueueInvalidation(42, 101);
+	$touchTarget = '20261122130001';
+	$firstBarrier = $fr->enqueueInvalidation(42, 101, $touchTarget);
 	$afterSemantic = $fr->current(42);
+	$check($afterSemantic['schema'] === 3 && !$afterSemantic['ready'] &&
+		$afterSemantic['generation'] === $firstBarrier,
+		'Semantic invalidation remains blocked until deferred page_touched completes');
+	$check(!$fr->acknowledge(42, 101, $firstBarrier),
+		'No worker can acknowledge a blocked semantic request');
+	$check(!$fr->confirmTouched(42, 101, $firstBarrier, '20261122130000'),
+		'Primary page_touched older than target cannot open the barrier');
+	$check($fr->confirmTouched(42, 101, $firstBarrier, $touchTarget) &&
+		$fr->current(42)['ready'],
+		'Observed primary page_touched opens only the verified generation');
 	$check($afterSemantic['revisionId'] === 101 &&
 		$afterSemantic['generation'] !== $beforeSemantic['generation'],
 		'Semantic change supersedes pending work at the same page revision');
@@ -76,8 +87,13 @@ try {
 	$check(!$fr->enqueue(42, 101) &&
 		$fr->current(42)['generation'] === $afterSemantic['generation'],
 		'Duplicate direct hooks do not erase a pending semantic invalidation');
-	$fr->enqueueInvalidation(42, 99);
+	$nextBarrier = $fr->enqueueInvalidation(42, 99, '20261122130002');
 	$afterOlderSemantic = $fr->current(42);
+	$check(!$fr->confirmTouched(42, 101, $firstBarrier, '20261122140000') &&
+		!$fr->acknowledge(42, 101, $nextBarrier),
+		'Stale callbacks cannot release another blocked same-revision invalidation');
+	$check($fr->confirmTouched(42, 101, $nextBarrier, '20261122130002'),
+		'Only the newest pending semantic generation becomes available');
 	$check($afterOlderSemantic['revisionId'] === 101 &&
 		$afterOlderSemantic['generation'] !== $afterSemantic['generation'],
 		'A delayed SMW event preserves a newer direct revision while fencing work again');
@@ -98,6 +114,10 @@ try {
 		'Existing schema-1 records can be drained during migration');
 	$check($fr->enqueue(51, 1001) && $fr->current(51)['schema'] === 2,
 		'Next edit upgrades legacy records to generation-fenced schema 2');
+	$fr->enqueueInvalidation(51, 1001, '20261122150000');
+	$check($fr->enqueue(51, 1002) &&
+		!$fr->confirmTouched(51, 1001, $fr->current(51)['generation'], '20261122160000'),
+		'A newer direct edit can supersede an in-flight deferred callback');
 
 	// Corrupt entries must not be interpreted as valid pending edits.
 	$frRoot = $root . '/' . hash('sha256', 'fr');
