@@ -37,6 +37,13 @@ final class CachePreparationQueue {
 		if (is_link($this->root) || (fileperms($this->root) & 0077) !== 0) {
 			throw new \RuntimeException('Preparation queue directory is not private');
 		}
+		$locks = $this->root . '/locks';
+		if (!is_dir($locks) && !@mkdir($locks, 0700) && !is_dir($locks)) {
+			throw new \RuntimeException('Cannot create durable queue lock directory');
+		}
+		if (is_link($locks) || (fileperms($locks) & 0077) !== 0) {
+			throw new \RuntimeException('Preparation queue locks are not private');
+		}
 	}
 
 	private function checkId(int $id): void {
@@ -51,7 +58,7 @@ final class CachePreparationQueue {
 
 	private function lock(int $pageId, int $mode) {
 		$this->ensureDirectory();
-		$path = $this->root . '/' . $pageId . '.lock';
+		$path = $this->root . '/locks/' . $pageId . '.lock';
 		if (is_link($path)) {
 			throw new \RuntimeException('Refusing a symlinked queue lock');
 		}
