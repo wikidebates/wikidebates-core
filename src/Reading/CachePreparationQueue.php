@@ -104,7 +104,7 @@ final class CachePreparationQueue {
 		if ($data === false) { throw new \RuntimeException('Cannot read preparation record'); }
 		$record = json_decode($data, true);
 		$schema = $record['schema'] ?? null;
-		if (!is_array($record) || !in_array($schema, [1, 2], true) ||
+		if (!is_array($record) || !in_array($schema, [1, 2, 3], true) ||
 			($record['pageId'] ?? null) !== $pageId ||
 			!is_int($record['revisionId'] ?? null) || $record['revisionId'] < 1 ||
 			!is_int($record['queuedAt'] ?? null) || $record['queuedAt'] < 0 ||
