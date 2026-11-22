@@ -85,7 +85,8 @@ final class CachePreparationCoordinator {
 				if (!$this->revisionMatches($pageId, $revision, $latestRevision)) {
 					$report['state'] = 'revision-changed-or-deleted';
 					return $report;
-					if ($publicIdentity !== null) {
+				}
+				if ($publicIdentity !== null) {
 					$currentIdentity = $publicIdentity($pageId);
 					if (!is_string($currentIdentity) || $currentIdentity === '') {
 						$report['state'] = 'unsafe-for-anonymous-cache';
@@ -96,7 +97,6 @@ final class CachePreparationCoordinator {
 						return $report;
 					}
 				}
-			}
 			}
 			if (!$this->requestMatches($record) ||
 				!$this->revisionMatches($pageId, $revision, $latestRevision)) {
