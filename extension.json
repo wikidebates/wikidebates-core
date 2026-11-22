@@ -623,6 +623,10 @@
 		"WikidebatesReadingCacheEpoch": {
 			"value": "2"
 		},
+		"WikidebatesCachePreparationDirectory": {
+			"value": false,
+			"description": "Optional absolute private directory outside the web root for a durable per-wiki queue of directly edited pages; disabled until explicitly configured."
+		},
 		"WikidebatesReadingPrewarm": {
 			"value": true
 		},
