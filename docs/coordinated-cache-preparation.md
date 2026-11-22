@@ -65,10 +65,53 @@ préparée. Les générations devenues obsolètes ne peuvent pas être rouvertes
 
 Le diagnostic `Wikidebates:inspectCachePreparationQueue --json`
 indique le nombre `awaiting_deferred_touch`. Une entrée
-durablement bloquée doit faire l'objet d'une vérification
-d'intégrité : **ne pas la forcer à `ready: true` manuellement**.
-Le projet ne dispose pas encore d'une procédure automatique de
-réconciliation certifiée en cas d'échec du callback différé.
+durablement bloquée ne doit **jamais** être forcée à `ready: true`
+manuellement : son `page_touched` seul ne prouve pas que
+les fichiers recréés entre les purges ont été éliminés.
+
+### Reprise manuelle d'une demande bloquée (laboratoires)
+
+La commande **sans** `--execute` effectue un aperçu strictement
+en lecture seule, par exemple :
+
+```sh
+php maintenance/run.php Wikidebates:recoverSemanticTouch --wiki=fr --limit=20 --json
+php maintenance/run.php Wikidebates:recoverSemanticTouch --wiki=en --page-id=42 --json
+```
+
+Une demande âgée d'au moins 600 secondes peut être réessayée **une seule
+page à la fois**, en connaissance de cause :
+
+```sh
+php maintenance/run.php Wikidebates:recoverSemanticTouch \
+	--wiki=fr --page-id=42 --min-age-seconds=600 --execute --json
+```
+
+Préconditions : dossier de file privé configuré, suivi SMW et purge
+sémantique activés dans un environnement de test, aucun job de purge
+sémantique dans la file en attente, site non placé en mode lecture seule.
+Le verrou global de préparation par wiki évite de lancer deux
+opérateurs/préchauffeurs concurrents. **Aucun cron n'est installé.**
+
+La reprise vérifie la révision et l'identité en base primaire, ainsi
+que le droit de lecture anonyme, puis remplace la génération bloquée
+par une nouvelle génération **toujours bloquée**, de manière atomique.
+Elle réinvalide le fragment de lecture, le cache Parser et le HTML,
+programme un nouveau `Title::invalidateCache`, exécute
+les écritures différées puis refait une purge HTML sous provenance SMW.
+Le callback contrôle à nouveau la révision, le titre courant, l'accès
+anonyme et `page_touched` avant d'ouvrir la nouvelle génération.
+
+Si une page a été supprimée, masquée, déplacée, rendue non publique,
+éditée entre-temps ou si une purge/une écriture échoue, l'opération
+n'acquitte aucun enregistrement. Une nouvelle tentative explicite
+peut repartir d'une entrée encore bloquée. Les erreurs renvoyées
+sont limitées au type de l'exception, sans titre ou contenu privé.
+
+Cette procédure ne prépare pas les caches : elle sécurise uniquement
+la remise en attente *éligible* d'une page. Le préchauffage des trois
+caches, la politique des contenus dynamiques, les permissions et la
+reprise automatique ne sont toujours pas autorisés en production.
 
 Ce verrou ne remplace ni l'attente de fin des jobs SMW, ni les contrôles
 de confidentialité, ni la politique d'invalidation des pages dynamiques.

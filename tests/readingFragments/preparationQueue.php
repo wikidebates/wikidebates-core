@@ -119,6 +119,40 @@ try {
 		!$fr->confirmTouched(51, 1001, $fr->current(51)['generation'], '20261122160000'),
 		'A newer direct edit can supersede an in-flight deferred callback');
 
+
+	// Manual recovery never sets a stale generation ready. It atomically renews
+	// only the exact blocked schema-3 entry, with a strictly advancing touch.
+	$beforeRetry = $fr->enqueueInvalidation(61, 701, '20261122170000');
+	$check($fr->retryBlockedInvalidation(61, 702, $beforeRetry, '20261122170001') === null,
+		'Wrong revision cannot replace a blocked semantic generation');
+	$check($fr->retryBlockedInvalidation(61, 701, str_repeat('a', 32),
+		'20261122170001') === null,
+		'Wrong generation cannot replace a blocked semantic request');
+	$throws(static fn() => $fr->retryBlockedInvalidation(61, 701, $beforeRetry,
+		'20261122170000'), 'Recovery timestamp must advance the old touch barrier');
+	$afterRetry = $fr->retryBlockedInvalidation(61, 701, $beforeRetry, '20261122170002');
+	$check(is_string($afterRetry) && $afterRetry !== $beforeRetry &&
+		!$fr->current(61)['ready'] &&
+		$fr->current(61)['touchAfter'] === '20261122170002',
+		'Manual retry renews exactly the blocked generation without opening it');
+	$check(!$fr->confirmTouched(61, 701, $beforeRetry, '20261122180000') &&
+		!$fr->acknowledge(61, 701, $afterRetry),
+		'Late original callback and early worker cannot clear the replacement');
+	$check($fr->retryBlockedInvalidation(61, 701, $beforeRetry,
+		'20261122170003') === null,
+		'A second operator with a stale snapshot cannot overwrite new recovery work');
+	$check($fr->confirmTouched(61, 701, $afterRetry, '20261122170002') &&
+		$fr->retryBlockedInvalidation(61, 701, $afterRetry, '20261122170003') === null,
+		'Ready requests cannot be sent through manual recovery again');
+	$check($fr->acknowledge(61, 701, $afterRetry),
+		'Only the confirmed replacement generation is acknowledgeable');
+	$fr->enqueueInvalidation(62, 702, '20261122180000');
+	$third = $fr->current(62)['generation'];
+	$fr->enqueue(62, 703);
+	$check($fr->retryBlockedInvalidation(62, 702, $third, '20261122180001') === null &&
+		$fr->current(62)['revisionId'] === 703,
+		'A direct edit preserves its newer revision against manual recovery');
+
 	// Corrupt entries must not be interpreted as valid pending edits.
 	$frRoot = $root . '/' . hash('sha256', 'fr');
 	file_put_contents($frRoot . '/51.json', '{"schema":2,"pageId":51,"revisionId":1001,"queuedAt":1,"generation":"bad"}');

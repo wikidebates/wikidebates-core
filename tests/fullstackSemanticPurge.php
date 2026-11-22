@@ -6,6 +6,8 @@ require __DIR__ . '/fullstackSemanticCache.php';
 use MediaWiki\Extension\Wikidebates\Reading\SemanticCachePurgeJob;
 use MediaWiki\Extension\Wikidebates\Reading\SemanticPurgeScope;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationQueue;
+use MediaWiki\Extension\Wikidebates\Reading\SemanticTouchRecovery;
+use MediaWiki\Extension\Wikidebates\Reading\SemanticTouchBarrier;
 use MediaWiki\Extension\Wikidebates\Reading\SemanticPurgeState;
 use MediaWiki\Extension\Wikidebates\Reading\SemanticRevisionStore;
 use MediaWiki\Extension\Wikidebates\Reading\SemanticPageCacheHooks;
@@ -276,6 +278,69 @@ $htmlCache->purgeTitleUrls([$owners[0]], $htmlCache::PURGE_NAIVE);
 same(false, $htmlOrigins[$observerCount] ?? null,
 	'Explicit ordinary HTML purge is not classified as a semantic dependent purge');
 check(!SemanticPurgeScope::isActive(), 'Explicit HTML purge leaves provenance clean');
+// Recover one abandoned schema-3 barrier in the REAL MediaWiki 1.43/SMW lab.
+// The original job's deferred callback has been intentionally lost, as after
+// a process crash. Recovering never edits the page revision or renders HTML.
+$recoveryId = $owners[0]->getArticleID();
+$recoveryRow = $sqlPrimary->selectRow('page', ['page_latest', 'page_touched'],
+	['page_id' => $recoveryId], __FILE__);
+$recoveryRevision = (int)$recoveryRow->page_latest;
+$abandoned = $prewarmQueue->enqueueInvalidation($recoveryId, $recoveryRevision,
+	SemanticTouchBarrier::targetAfter((string)$recoveryRow->page_touched, time()));
+$abandonedRecord = $prewarmQueue->current($recoveryId);
+$recovery = new SemanticTouchRecovery($prewarmQueue);
+same('too-recent', $recovery->recover($abandonedRecord)['state'],
+	'Freshly blocked semantic request is never recovered by the default safety age');
+$staleSnapshot = $abandonedRecord;
+$staleSnapshot['generation'] = str_repeat('a', 32);
+same('superseded', $recovery->recover($staleSnapshot, 0)['state'],
+	'Recovery of a superseded callback does not begin invalidation');
+same($abandoned, $prewarmQueue->current($recoveryId)['generation'],
+	'Read-only eligibility checks do not change the blocked generation');
+$recovered = $recovery->recover($abandonedRecord, 0);
+same('recovered', $recovered['state'],
+	'Real deferred SQL touch, two HTML purges and generation confirmation recover a lost callback');
+$recoveredRow = $prewarmQueue->current($recoveryId);
+check($recoveredRow['ready'] && $recoveredRow['generation'] !== $abandoned &&
+	$recoveredRow['revisionId'] === $recoveryRevision,
+	'Recovery renewed the original generation and retained the unchanged semantic owner revision');
+$recoveredTouch = $sqlPrimary->selectRow('page', ['page_touched'],
+	['page_id' => $recoveryId], __FILE__);
+check((string)$recoveredTouch->page_touched >= $recoveredRow['touchAfter'],
+	'Real primary page_touched proves that the recovered request is eligible');
+same('not-blocked', $recovery->recover($recoveredRow, 0)['state'],
+	'Already ready requests cannot be repurged by the recovery action');
+
+// Inject a failure only into the second (post-SQL) HTML purge. The error in
+// DeferredUpdates is logged by MediaWiki; our durable queue must remain blocked.
+$prewarmQueue->enqueueInvalidation($recoveryId, $recoveryRevision,
+	SemanticTouchBarrier::targetAfter((string)$recoveredTouch->page_touched, time()));
+$purgeCount = 0;
+$recoveryFailureHook = $services->getHookContainer()->scopedRegister('TitleSquidURLs',
+	static function () use (&$purgeCount): void {
+		if (++$purgeCount === 2) {
+			throw new RuntimeException('Disposable second HTML purge failure');
+		}
+	});
+$failedRecovery = $recovery->recover($prewarmQueue->current($recoveryId), 0);
+same('retry', $failedRecovery['state'],
+	'Failed post-touch purge cannot report a completed recovery');
+check($purgeCount >= 2 && !$prewarmQueue->current($recoveryId)['ready'],
+	'Deferred purge failure preserves a durable unready schema-3 entry');
+$recoveryFailureHook = null;
+$recoveredAgain = $recovery->recover($prewarmQueue->current($recoveryId), 0);
+same('recovered', $recoveredAgain['state'],
+	'A second explicit recovery repairs the barrier after a failed deferred purge');
+
+$unknownId = 999999999;
+$ghostGeneration = $prewarmQueue->enqueueInvalidation($unknownId, 1, '20261122120000');
+$ghost = $prewarmQueue->current($unknownId);
+same('missing-or-revised', $recovery->recover($ghost, 0)['state'],
+	'Deleted or nonexistent page is not revived by semantic recovery');
+check(!$prewarmQueue->current($unknownId)['ready'] &&
+	$prewarmQueue->current($unknownId)['generation'] === $ghostGeneration,
+	'Nonexistent pages remain visibly blocked instead of silently disappearing');
+
 $articleObserver = $htmlObserver = null;
 $GLOBALS['wgWikidebatesCachePreparationDirectory'] = false;
 fsFlush();
@@ -296,6 +361,10 @@ foreach ($owners as $title) {
 
 // All persistent files belong to the disposable test, never a real wiki.
 foreach ($prewarmQueue->pending() as $record) {
+	if ($record['pageId'] === $unknownId) {
+		check(!$record['ready'], 'Deleted-page barrier remains blocked during lab cleanup');
+		continue;
+	}
 	check($prewarmQueue->acknowledge($record['pageId'], $record['revisionId'],
 		$record['generation']), 'Disposable semantic queue drains exact request generations');
 }
