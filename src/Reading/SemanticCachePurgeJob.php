@@ -158,11 +158,15 @@ final class SemanticCachePurgeJob extends \Job {
 					$touchTarget = $prewarmQueue !== null
 						? SemanticTouchBarrier::targetAfter((string)$pages[$id]->page_touched, time())
 						: null;
-					if (!$title->invalidateCache($touchTarget)) {
-						throw new \RuntimeException('Cannot defer dependent page_touched invalidation');
-					}
 					if ($touchTarget !== null) {
+						if (!$title->invalidateCache($touchTarget)) {
+							throw new \RuntimeException('Cannot defer dependent page_touched invalidation');
+						}
 						$touchTargets[$id] = $touchTarget;
+					} else {
+						// Preserve ordinary MediaWiki purge behavior when the opt-in
+						// preparation queue is disabled (including standalone adapters).
+						$title->invalidateCache();
 					}
 					$services->getParserCache()->deleteOptionsKey($page);
 					$pending[$id] = $title;
