@@ -74,11 +74,7 @@ final class SemanticTouchBarrier {
 								((int)$row->page_namespace !== $details['pageNamespace'] ||
 									(string)$row->page_title !== $details['pageTitle'])) ||
 							(($details['requireAnonymousRead'] ?? false) &&
-								!MediaWikiServices::getInstance()->getPermissionManager()->userCan(
-									'read',
-									MediaWikiServices::getInstance()->getUserFactory()->newAnonymous(),
-									$details['title']
-								))) {
+								AnonymousCacheSafety::fingerprint((int)$id) === null)) {
 							$failures++;
 							continue;
 						}
