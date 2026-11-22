@@ -34,7 +34,9 @@ final class SemanticPageCacheHooks {
 	public static function onHTMLFileCache__useFileCache($context): bool {
 		if (self::$readingFragment) { return true; }
 		if (!self::enabled()) {
-			return true;
+			// A partially enabled experimental configuration must fail closed.
+			// Without transactional SMW tracking, no Vector marker is trustworthy.
+			return !self::vectorEnabled();
 		}
 		// MinervaFileCache independently validates the anonymous request before its
 		// file lookup. Do not query SMW on a valid mobile HTML-file HIT.
