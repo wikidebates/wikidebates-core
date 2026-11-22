@@ -9,6 +9,8 @@ on:
       - 'src/Reading/SemanticTouchBarrier.php'
       - 'maintenance/prepareVectorViewCache.php'
       - 'tests/readingFragments/publicSafetyMediawiki.php'
+      - 'tests/readingFragments/publicVisibilityBenchmark.php'
+      - 'tests/readingFragments/visibilityBenchmarkLab.php'
       - 'maintenance/preparePendingCaches.php'
       - 'tests/readingFragments/coordinatedPreparation.php'
       - 'tests/readingFragments/coordinatorPreview.php'
@@ -114,3 +116,4 @@ jobs:
           php tests/readingFragments/coordinatorFullstack.php
           php -l tests/readingFragments/publicSafetyMediawiki.php
           php tests/readingFragments/publicSafetyMediawiki.php
+          php tests/readingFragments/visibilityBenchmarkLab.php

@@ -202,6 +202,9 @@ fsSave('WD HTTP template debate FR',
 	'WD HTTP template argument FR⟬Displayed template argument⟬⟭}}');
 fsSave('WD HTTP redirect', '#REDIRECT [[WD HTTP query A]]');
 fsFlush();
+// Compare old and optimized PRIMARY visibility guards on real SQLite/MariaDB.
+$visibilityBench = require __DIR__ . '/readingFragments/publicVisibilityBenchmark.php';
+echo json_encode($visibilityBench('WD HTTP public page'), JSON_THROW_ON_ERROR) . "\n";
 $subjectA = SemanticWikiPage::newFromTitle(Title::newFromText('WD HTTP query A'));
 $store->clear();
 check($store->getPropertyValues($subjectA, new Property('_ASK')) !== [],
