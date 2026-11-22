@@ -159,6 +159,35 @@ La validité d'un fichier déjà publié et les cas de course extrêmes
 avec changement de droits doivent rester testés avant activation
 des tâches nocturnes. Aucune politique de TTL n'est modifiée.
 
+### Après publication : contrôle du HTML déjà présent
+
+Le contrôle préalable au préchauffage ne suffit pas : la visibilité
+de la dernière révision peut changer **sans modification de**
+`page_latest` **ni de** `page_touched`, par
+exemple lors d'un RevisionDelete dont la purge différée n'a pas
+encore été exécutée.
+
+- Le hook `IsFileCacheable` refuse désormais un HIT dans le
+	cache natif Vector si le titre, la révision, la date de toucher ou
+	l'accès anonyme ne concordent pas avec la **base primaire**, ou si
+	`rev_deleted != 0`.
+- La lecture d'un fragment préexistant et ses sources HTML de repli
+	exigent la même validation en base primaire avant de consulter les
+	fichiers partagés ; sinon MediaWiki effectue un rendu non mis en cache.
+- Le hook postcommit `ArticleRevisionVisibilitySet` fait
+	tourner directement la génération des fragments, en complément
+	des invalidations `TitleSquidURLs` et des purges
+	HTML natives.
+- Les tests jetables vérifient les révisions masquées (y compris
+	les métadonnées), les changements de droits et la disparition
+	des fichiers de fragments déjà publiés.
+
+Ces vérifications ne garantissent pas une réponse atomique face
+à un changement de droits pendant une requête déjà commencée.
+Une consultation de la base primaire est ajoutée aux HIT anonymes
+éligibles : l'impact de performance reste à mesurer avant toute
+activation du préchauffage nocturne.
+
 ## Mode aperçu, sans aucun rendu
 
 La commande sans `--execute` affiche simplement la file :

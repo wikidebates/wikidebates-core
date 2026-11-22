@@ -76,6 +76,14 @@ class FragmentService {
 		$eligible = $eligible && !array_diff(array_keys($request->getValues()), ['action', 'page', 'useskin',
 			'uselang', 'format', 'formatversion', 'maxlag', 'requestid', 'errorformat', 'errorlang', 'errorsuselocal', 'origin']) &&
 			!preg_match('/no-cache|no-store/i', (string)$request->getHeader('Cache-Control'));
+		// A stored fragment or full-HTML fallback is a shared anonymous
+		// response. A RevDel can hide it without advancing page_latest/touched,
+		// so PRIMARY visibility must be checked even for an otherwise valid HIT.
+		if ($eligible && !AnonymousCacheSafety::matchesView(
+			$title, (int)$page->getLatest(), (string)$page->getTouched()
+		)) {
+			$eligible = false;
+		}
 		$identity = ['pageid' => $page->getId(), 'revision' => $page->getLatest(), 'touched' => $page->getTouched(),
 			'epoch' => $config->get('WikidebatesReadingCacheEpoch'), 'coreEpoch' => $config->get('CacheEpoch'), 'format' => 5,
 			'sourceEpoch' => class_exists(\MediaWiki\Extension\MinervaFileCache\Hooks::class) ? $config->get('MinervaFileCacheEpoch') : null];

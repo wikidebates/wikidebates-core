@@ -91,7 +91,7 @@ jobs:
           git -C "$FARM" remote add origin https://github.com/wikidebates/wikidebates-mediawiki-farm.git
           git -C "$FARM" config core.sparseCheckout true
           printf 'extensions/MinervaFileCache/\n' > "$FARM/.git/info/sparse-checkout"
-          git -C "$FARM" fetch --quiet --depth=1 --filter=blob:none origin 6aaedcb421066535f4ce5c236a347e7d748f92b7
+          git -C "$FARM" fetch --quiet --depth=1 --filter=blob:none origin 16da52418b5c9d821c9a962b451a49a14d352553
           git -C "$FARM" checkout --quiet --detach FETCH_HEAD
           test -f "$FARM/extensions/MinervaFileCache/maintenance/prewarm.php"
           cp -a "$FARM/extensions/MinervaFileCache/." extensions/MinervaFileCache/
