@@ -87,6 +87,8 @@ namespace {
 	use MediaWiki\Extension\Wikidebates\Reading\FragmentService;
 	use MediaWiki\Title\Title;
 
+	// Standalone doubles intentionally do not initialize MediaWiki autoloading.
+	require __DIR__ . '/../src/Reading/SemanticPurgeScope.php';
 	require __DIR__ . '/../src/Reading/SemanticCachePurgeJob.php';
 	require __DIR__ . '/../src/Reading/SemanticPurgeState.php';
 
