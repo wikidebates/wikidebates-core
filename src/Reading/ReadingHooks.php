@@ -39,6 +39,15 @@ class ReadingHooks {
 		FragmentService::invalidate($title);
 	}
 
+	/**
+	 * RevDel fires after committing visibility changes. Preserve the normal
+	 * TitleSquidURLs purge and also evict reading files directly so a disabled
+	 * CDN invalidation cannot leave old fragment generations readable.
+	 */
+	public static function onArticleRevisionVisibilitySet($title, $ids, $changes): void {
+		FragmentService::invalidate($title);
+	}
+
 	/** Opportunistic extraction while an ordinary file-cacheable view is rendered. */
 	public static function onBeforePageDisplay($out, $skin): void {
 		$context = $out->getContext();
