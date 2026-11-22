@@ -47,7 +47,7 @@ if ($mode === 'initial') {
 	$assert($queue->current($argumentId['pageId'])['revisionId'] === $argumentId['revisionId'],
 		'Argument PageSaveComplete queued the latest revision');
 	foreach ($initial as $record) {
-		$assert($queue->acknowledge($record['pageId'], $record['revisionId']),
+		$assert($queue->acknowledge($record['pageId'], $record['revisionId'], $record['generation'] ?? null),
 			'Fixture queue reset acknowledges only its exact revision');
 	}
 	$assert($queue->pending() === [], 'Queue is empty before indirect dependency jobs');
