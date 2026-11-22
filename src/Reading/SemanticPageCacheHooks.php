@@ -107,6 +107,10 @@ final class SemanticPageCacheHooks {
 			if (!self::isQueryPage($title, $article->getPage())) {
 				return true;
 			}
+			// Native HTMLFileCache HITs bypass BeforePageDisplay. Set the
+			// private HTTP policy now, before loadFromFileCache() emits headers.
+			// Otherwise a CDN could outlive subsequent PHP-level SMW checks.
+			$context->getOutput()->disableClientCache();
 			$subject = WikiPage::newFromTitle($title);
 			$store = SemanticServices::getInstance()->getStore();
 			if ($store->getPropertyValues($subject, new Property('_ASK')) === []) {
