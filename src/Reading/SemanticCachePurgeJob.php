@@ -59,6 +59,13 @@ final class SemanticCachePurgeJob extends \Job {
 			'status' => 'completed'
 		];
 		try {
+			if (PageLocalCachePolicy::enabled()) {
+				// Do not execute even a previously queued semantic purge in this
+				// mode. Retain the old job for explicit administrative resolution.
+				$this->metrics['status'] = 'disabled-page-local';
+				$this->setLastError('Page-local caching forbids semantic dependent purges');
+				return false;
+			}
 			if (!$config->get('WikidebatesSemanticCacheTracking') ||
 				!$config->get('WikidebatesSemanticCacheEagerPurge')) {
 				// A successful run() is ACKNOWLEDGED by MediaWiki's JobRunner.
