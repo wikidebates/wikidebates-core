@@ -41,6 +41,7 @@ jobs:
           LAB="$RUNNER_TEMP/wd-cache-edit-queue-$GITHUB_RUN_ID"
           python3 tests/minervaFileCache/prepare.py "$LAB"
           echo "WD_MINERVA_STUDY_ROOT=$LAB" >> "$GITHUB_ENV"
+          export WD_MINERVA_STUDY_ROOT="$LAB"
           echo "MW_INSTALL_PATH=$LAB/mediawiki" >> "$GITHUB_ENV"
           git init -q "$LAB/Cite"
           git -C "$LAB/Cite" fetch --quiet --depth=1 https://github.com/wikimedia/mediawiki-extensions-Cite.git 3f6a8e0395112bbdbe3b53732e259cad6375aaab
