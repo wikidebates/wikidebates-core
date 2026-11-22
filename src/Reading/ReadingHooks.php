@@ -25,7 +25,9 @@ class ReadingHooks {
 	 */
 	public static function onIsFileCacheable($article): ?bool {
 		try {
-			return AnonymousCacheSafety::forTitle($article->getTitle()) === null ? false : null;
+			return AnonymousCacheSafety::matchesView($article->getTitle(),
+				(int)$article->getPage()->getLatest(),
+				(string)$article->getPage()->getTouched()) ? null : false;
 		} catch (\Throwable $e) {
 			FragmentService::log($e);
 			return false;
