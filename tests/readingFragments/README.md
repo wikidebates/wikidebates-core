@@ -70,8 +70,9 @@ Le conteneur doit transmettre aussi `MW_INSTALL_PATH=/lab/mediawiki` pour le tes
 de la commande de maintenance. Les [mesures comparatives](../../docs/reading-file-source-benchmark.md)
 s’utilisent avec `WD_READING_BENCHMARK=1` et `benchmark.php` sur une base neuve.
 Les tests unitaires couvrent le contenu commun (résumé, citation, référence,
-justifications, objections et attributs interactifs), les nonce et le plafond de
-30 jours, en plus des générations et expirations existantes.
+justifications, objections et attributs interactifs), les nonces, le mode `TTL = 0`, les fichiers âgés de plus de 30 jours,
+les TTL configurables et la distinction entre durée du parser et durée du fichier,
+en plus des générations et invalidations existantes.
 
 Validation de cette livraison : 58 contrôles d’intégration MediaWiki, 28 assertions
 unitaires d’extraits, 27 assertions de stockage Minerva, 26 tests JavaScript et
