@@ -4,6 +4,11 @@ on:
   pull_request:
     paths:
       - 'src/Reading/CachePreparation*.php'
+      - 'src/Reading/AnonymousCacheSafety.php'
+      - 'src/Reading/SemanticTouchRecovery.php'
+      - 'src/Reading/SemanticTouchBarrier.php'
+      - 'maintenance/prepareVectorViewCache.php'
+      - 'tests/readingFragments/publicSafetyMediawiki.php'
       - 'maintenance/preparePendingCaches.php'
       - 'tests/readingFragments/coordinatedPreparation.php'
       - 'tests/readingFragments/coordinatorPreview.php'
@@ -29,6 +34,7 @@ jobs:
         run: |
           php -l src/Reading/CachePreparationQueue.php
           php -l src/Reading/CachePreparationCoordinator.php
+          php -l src/Reading/AnonymousCacheSafety.php
           php -l src/Reading/CachePreparationResults.php
           php -l src/Reading/CachePreparationCommands.php
           php -l maintenance/preparePendingCaches.php
@@ -85,7 +91,7 @@ jobs:
           git -C "$FARM" remote add origin https://github.com/wikidebates/wikidebates-mediawiki-farm.git
           git -C "$FARM" config core.sparseCheckout true
           printf 'extensions/MinervaFileCache/\n' > "$FARM/.git/info/sparse-checkout"
-          git -C "$FARM" fetch --quiet --depth=1 --filter=blob:none origin b56d71cd6d4eb52f9bef1d8a936e5b246c67ba8a
+          git -C "$FARM" fetch --quiet --depth=1 --filter=blob:none origin 6aaedcb421066535f4ce5c236a347e7d748f92b7
           git -C "$FARM" checkout --quiet --detach FETCH_HEAD
           test -f "$FARM/extensions/MinervaFileCache/maintenance/prewarm.php"
           cp -a "$FARM/extensions/MinervaFileCache/." extensions/MinervaFileCache/
@@ -106,3 +112,5 @@ jobs:
         run: |
           php -l tests/readingFragments/coordinatorFullstack.php
           php tests/readingFragments/coordinatorFullstack.php
+          php -l tests/readingFragments/publicSafetyMediawiki.php
+          php tests/readingFragments/publicSafetyMediawiki.php

@@ -1,6 +1,7 @@
 <?php
 
 use MediaWiki\Context\RequestContext;
+use MediaWiki\Extension\Wikidebates\Reading\AnonymousCacheSafety;
 use MediaWiki\Debug\MWDebug;
 use MediaWiki\MainConfigNames;
 use MediaWiki\Settings\SettingsBuilder;
@@ -62,7 +63,9 @@ class PrepareVectorViewCache extends Maintenance {
 		if (!in_array($skinName, ['vector', 'vector-2022'], true)) {
 			$this->fatalError('The native shared HTML cache requires a Vector default skin.');
 		}
-		$dbr = $this->getReplicaDB();
+		// A targeted page ID must resolve to the current title on PRIMARY;
+		// replica lag after a move could otherwise generate HTML for an old URL.
+		$dbr = $services->getConnectionProvider()->getPrimaryDatabase();
 		$row = $dbr->selectRow('page',
 			['page_id', 'page_namespace', 'page_title', 'page_is_redirect', 'page_latest', 'page_touched'],
 			['page_id' => $id], __METHOD__);
@@ -78,6 +81,12 @@ class PrepareVectorViewCache extends Maintenance {
 		if (!$this->hasOption('all') &&
 			!in_array($title->getNamespace(), $services->getNamespaceInfo()->getContentNamespaces(), true)) {
 			$this->report($id, 'SKIPPED_NONCONTENT');
+			return true;
+		}
+
+		$publicIdentity = AnonymousCacheSafety::fingerprint($id);
+		if ($publicIdentity === null) {
+			$this->report($id, 'SKIPPED_NONPUBLIC');
 			return true;
 		}
 
@@ -122,10 +131,17 @@ class PrepareVectorViewCache extends Maintenance {
 			$this->report($id, 'REJECTED_SHORT_OUTPUT');
 			return false;
 		}
+		// The page may have been hidden, moved or restricted while rendering.
+		// Do not publish that output just because page_latest stayed constant.
+		if (AnonymousCacheSafety::fingerprint($id) !== $publicIdentity) {
+			$this->report($id, 'RETRY_PUBLIC_IDENTITY_CHANGED');
+			return false;
+		}
 		$view->saveToFileCache($html);
 		$latest = $dbr->selectRow('page', ['page_latest', 'page_touched'], ['page_id' => $id], __METHOD__);
 		if (!$latest || (int)$latest->page_latest !== (int)$row->page_latest ||
-			(string)$latest->page_touched !== $touched) {
+			(string)$latest->page_touched !== $touched ||
+			AnonymousCacheSafety::fingerprint($id) !== $publicIdentity) {
 			$view->clearCache();
 			$this->report($id, 'RETRY_PAGE_CHANGED');
 			return false;

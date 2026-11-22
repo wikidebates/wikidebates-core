@@ -332,6 +332,37 @@ $recoveredAgain = $recovery->recover($prewarmQueue->current($recoveryId), 0);
 same('recovered', $recoveredAgain['state'],
 	'A second explicit recovery repairs the barrier after a failed deferred purge');
 
+// RevisionDelete can hide the current text or contributor metadata without
+// changing page_latest. Neither a manual retry nor its deferred callback may
+// ever authorize shared anonymous files for such a revision.
+$currentTouch = $sqlPrimary->selectRow('page', ['page_touched'],
+	['page_id' => $recoveryId], __FILE__);
+$hiddenGeneration = $prewarmQueue->enqueueInvalidation($recoveryId, $recoveryRevision,
+	SemanticTouchBarrier::targetAfter((string)$currentTouch->page_touched, time()));
+$originalVisibility = $sqlPrimary->selectField('revision', 'rev_deleted',
+	['rev_id' => $recoveryRevision, 'rev_page' => $recoveryId], __FILE__);
+check($originalVisibility !== false,
+	'Real revision visibility row exists for the semantic owner');
+try {
+	foreach ([\MediaWiki\Revision\RevisionRecord::DELETED_TEXT,
+		\MediaWiki\Revision\RevisionRecord::DELETED_USER] as $hiddenBit) {
+		$sqlPrimary->newUpdateQueryBuilder()->update('revision')
+			->set(['rev_deleted' => $hiddenBit])
+			->where(['rev_id' => $recoveryRevision])->caller(__FILE__)->execute();
+		same('not-public', $recovery->recover($prewarmQueue->current($recoveryId), 0)['state'],
+			'Manual recovery rejects text-hidden or contributor-hidden current revisions');
+		check(!$prewarmQueue->current($recoveryId)['ready'] &&
+			$prewarmQueue->current($recoveryId)['generation'] === $hiddenGeneration,
+			'Revision visibility veto does not replace the blocked queue generation');
+	}
+} finally {
+	$sqlPrimary->newUpdateQueryBuilder()->update('revision')
+		->set(['rev_deleted' => (int)$originalVisibility])
+		->where(['rev_id' => $recoveryRevision])->caller(__FILE__)->execute();
+}
+same('recovered', $recovery->recover($prewarmQueue->current($recoveryId), 0)['state'],
+	'After an explicit unsuppression, a new full purge may safely restore eligibility');
+
 $unknownId = 999999999;
 $ghostGeneration = $prewarmQueue->enqueueInvalidation($unknownId, 1, '20261122120000');
 $ghost = $prewarmQueue->current($unknownId);

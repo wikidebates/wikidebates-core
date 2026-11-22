@@ -123,6 +123,42 @@ donc la même page ; les sous-caches déjà valides sont réutilisés. La file n
 retire une entrée qu'après confirmation explicite des trois étapes et
 nouvelle vérification du `page_latest` dans la base primaire.
 
+## Contrôle de visibilité des caches anonymes
+
+Une révision peut être **masquée** par RevisionDelete, un wiki peut retirer
+l'autorisation de lecture aux anonymes, ou une page peut changer de nom ou de
+`page_touched` sans modifier son `page_latest`.
+
+Le préchauffage coordonné utilise maintenant
+`AnonymousCacheSafety::fingerprint()`, qui lit **la base primaire**
+avant, entre et après chaque préparation Vector, Minerva et Lecture.
+Il vérifie simultanément :
+- l'existence et l'identité de la page (`page_id`, espace de noms,
+	titre, révision, `page_touched`) ;
+- l'existence de la ligne de révision correspondante et
+	`rev_deleted = 0` ; un masquage du texte **ou de ses métadonnées**
+	interdit de produire du HTML partagé ;
+- le droit `read` de l'utilisateur anonyme, avec les contrôles
+	de permissions normaux et sécurisés de MediaWiki.
+
+La restriction `edit` d'une page ne la rend **pas** privée :
+une page protégée contre l'édition reste éligible si sa lecture est
+toujours publique.
+
+Si ces contrôles échouent ou si l'identité publique change pendant
+une phase, la page reste dans la file ; le coordinateur n'enchaîne
+pas les autres rendus et ne l'acquitte pas. La commande Vector
+vérifie en plus ces conditions **avant toute écriture HTML** et
+après publication ; le mécanisme de récupération des barrières
+différées refuse également les révisions masquées.
+
+Ces garde-fous ne remplacent **jamais** les autorisations vérifiées
+lors de chaque requête web, ni les purges normalement déclenchées
+par MediaWiki lors d'une suppression, restriction ou RevisionDelete.
+La validité d'un fichier déjà publié et les cas de course extrêmes
+avec changement de droits doivent rester testés avant activation
+des tâches nocturnes. Aucune politique de TTL n'est modifiée.
+
 ## Mode aperçu, sans aucun rendu
 
 La commande sans `--execute` affiche simplement la file :

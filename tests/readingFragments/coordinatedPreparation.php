@@ -129,6 +129,80 @@ try {
 	$check($semanticRetry['state'] === 'acknowledged' && $queue->current(18) === null,
 		'The refreshed semantic generation is prepared and acknowledged on retry');
 
+
+	// A page can lose public-read access, have a revision suppressed, or be
+	// moved without changing its page_latest. The independent primary/ACL
+	// identity must therefore be checked before, between and after phases.
+	$queue->enqueue(19, 701);
+	$unsafeCalls = 0;
+	$unsafe = $coordinator->process($queue->current(19),
+		static fn(int $id): ?int => 701,
+		static function () use (&$unsafeCalls): array {
+			$unsafeCalls++;
+			return ['ok' => true, 'status' => 'HIT'];
+		},
+		static fn(int $id): ?string => null);
+	$check($unsafe['state'] === 'unsafe-for-anonymous-cache' &&
+		$unsafeCalls === 0 && $queue->current(19) !== null,
+		'Unreadable or suppressed page cannot start any HTML cache writer');
+
+	$queue->enqueue(20, 702);
+	$publicToken = 'public-identity-1';
+	$publicCalls = [];
+	$prewarmBlocked = $coordinator->process($queue->current(20),
+		static fn(int $id): ?int => 702,
+		static function (string $phase) use (&$publicCalls, &$publicToken): array {
+			$publicCalls[] = $phase;
+			$publicToken = null; // Read permission revoked during Vector render.
+			return ['ok' => true, 'status' => 'CREATED'];
+		},
+		static function (int $id) use (&$publicToken): ?string { return $publicToken; });
+	$check($prewarmBlocked['state'] === 'unsafe-for-anonymous-cache' &&
+		$publicCalls === ['vector'] && $queue->current(20) !== null,
+		'Mid-render anonymous permission revocation prevents subsequent phases and acknowledgement');
+
+	$queue->enqueue(21, 703);
+	$publicToken = 'before-move';
+	$phaseCalls = 0;
+	$move = $coordinator->process($queue->current(21),
+		static fn(int $id): ?int => 703,
+		static function () use (&$phaseCalls, &$publicToken): array {
+			$phaseCalls++;
+			$publicToken = 'after-move';
+			return ['ok' => true, 'status' => 'CREATED'];
+		},
+		static function (int $id) use (&$publicToken): ?string { return $publicToken; });
+	$check($move['state'] === 'public-identity-changed' && $phaseCalls === 1 &&
+		$queue->current(21)['revisionId'] === 703,
+		'Move or page_touched drift without a new revision cannot be acknowledged');
+
+	$queue->enqueue(22, 704);
+	$publicCalls = [];
+	$stable = $coordinator->process($queue->current(22),
+		static fn(int $id): ?int => 704,
+		static function (string $phase) use (&$publicCalls): array {
+			$publicCalls[] = $phase;
+			return ['ok' => true, 'status' => 'REUSED'];
+		},
+		static fn(int $id): ?string => 'still-public');
+	$check($stable['state'] === 'acknowledged' &&
+		count($publicCalls) === 3 && $queue->current(22) === null,
+		'Public page remains eligible after every stable primary/ACL check');
+
+	$queue->enqueue(23, 705);
+	$accessCalls = 0;
+	$lastMoment = $coordinator->process($queue->current(23),
+		static fn(int $id): ?int => 705,
+		static fn(string $phase, int $id): array => ['ok' => true, 'status' => 'REUSED'],
+		static function () use (&$accessCalls): ?string {
+			$accessCalls++;
+			// Baseline, 3 preflight checks, 3 postflight checks, final check.
+			return $accessCalls >= 8 ? null : 'public';
+		});
+	$check($lastMoment['state'] === 'unsafe-for-anonymous-cache' &&
+		$queue->current(23) !== null,
+		'Permission revocation immediately before acknowledgement preserves the pending request');
+
 	$vector = static fn(int $id, string $status): string =>
 		json_encode(['pageId' => $id, 'state' => $status], JSON_THROW_ON_ERROR);
 	$check(CachePreparationResults::interpret('vector', 17, 0, $vector(17, 'CREATED'))['ok'],
