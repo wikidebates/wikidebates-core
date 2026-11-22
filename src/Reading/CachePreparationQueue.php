@@ -46,6 +46,28 @@ final class CachePreparationQueue {
 		}
 	}
 
+
+	/**
+	 * Only one active coordinated worker per wiki. This lock is independent
+	 * of page locks and is never removed while a process may still hold it.
+	 * @return resource|false
+	 */
+	public function tryLockWorker() {
+		$this->ensureDirectory();
+		$path = $this->root . '/locks/preparation-worker.lock';
+		if (is_link($path)) { throw new \RuntimeException('Refusing a symlinked worker lock'); }
+		$handle = @fopen($path, 'c');
+		if (!$handle || !@chmod($path, 0600)) {
+			if ($handle) { fclose($handle); }
+			throw new \RuntimeException('Cannot open a private preparation worker lock');
+		}
+		if (!@flock($handle, LOCK_EX | LOCK_NB)) {
+			fclose($handle);
+			return false;
+		}
+		return $handle;
+	}
+
 	private function checkId(int $id): void {
 		if ($id < 1) {
 			throw new \InvalidArgumentException('Expected a positive page or revision ID');
