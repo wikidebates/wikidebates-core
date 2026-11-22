@@ -36,9 +36,13 @@ class InspectCachePreparationQueue extends Maintenance {
 		} catch (\Throwable $e) {
 			$this->fatalError('The preparation queue is unavailable (' . get_class($e) . ').');
 		}
+		$awaiting = count(array_filter($pending,
+			static fn(array $row): bool => ($row['schema'] ?? null) === 3 &&
+				($row['ready'] ?? null) === false));
 		$report = [
 			'wiki' => $wiki,
 			'sampled' => count($pending),
+			'awaiting_deferred_touch' => $awaiting,
 			'limit' => $limit,
 			'truncated' => count($pending) === $limit,
 			'pending' => $pending,
