@@ -34,14 +34,18 @@ try {
 	$check($fr->enqueue(42, 100), 'Initial direct revision is persisted');
 	$check(!$fr->enqueue(42, 100), 'Repeated edit notification is deduplicated');
 	$check(!$fr->enqueue(42, 99), 'Delayed older notification cannot replace a newer revision');
-	$check($fr->current(42)['revisionId'] === 100, 'Original revision remains intact');
+	$check($fr->current(42)['revisionId'] === 100 &&
+		preg_match('/\A[a-f0-9]{32}\z/D', $fr->current(42)['generation']) === 1,
+		'Direct edits persist a non-repeating generation fence');
 	$check($fr->enqueue(42, 101), 'Next direct edit replaces the pending revision');
-	$check(!$fr->acknowledge(42, 100), 'Worker cannot acknowledge a revision it did not prepare');
+	$check(!$fr->acknowledge(42, 100, $fr->current(42)['generation']),
+		'Worker cannot acknowledge a revision it did not prepare');
 	$check($fr->current(42)['revisionId'] === 101, 'Newer edit survives stale acknowledgement');
 
 	$frReopened = new CachePreparationQueue($root, 'fr');
-	$check($frReopened->pending()[0]['revisionId'] === 101,
-		'Queue survives reconstruction and can resume after interruption');
+	$check($frReopened->pending()[0]['revisionId'] === 101 &&
+		$frReopened->pending()[0]['generation'] === $fr->current(42)['generation'],
+		'Queue generation survives process reconstruction and restart');
 	$check($en->pending() === [], 'English wiki has an independent queue');
 	$check($en->enqueue(42, 10), 'Identical numeric page ID is valid on another wiki');
 	$check($en->current(42)['revisionId'] === 10 &&
@@ -59,14 +63,45 @@ try {
 	$throws(static fn() => new CachePreparationQueue($root, ''),
 		'Missing wiki identity is rejected');
 
-	$check($fr->acknowledge(42, 101), 'Worker removes exactly its completed revision');
+	$beforeSemantic = $fr->current(42);
+	$fr->enqueueInvalidation(42, 101);
+	$afterSemantic = $fr->current(42);
+	$check($afterSemantic['revisionId'] === 101 &&
+		$afterSemantic['generation'] !== $beforeSemantic['generation'],
+		'Semantic change supersedes pending work at the same page revision');
+	$check(!$fr->acknowledge(42, 101, $beforeSemantic['generation']),
+		'Worker cannot erase a same-revision semantic event with an obsolete generation');
+	$check(!$fr->acknowledge(42, 101),
+		'Schema-2 records cannot be acknowledged by legacy revision-only consumers');
+	$check(!$fr->enqueue(42, 101) &&
+		$fr->current(42)['generation'] === $afterSemantic['generation'],
+		'Duplicate direct hooks do not erase a pending semantic invalidation');
+	$fr->enqueueInvalidation(42, 99);
+	$afterOlderSemantic = $fr->current(42);
+	$check($afterOlderSemantic['revisionId'] === 101 &&
+		$afterOlderSemantic['generation'] !== $afterSemantic['generation'],
+		'A delayed SMW event preserves a newer direct revision while fencing work again');
+
+	$check($fr->acknowledge(42, 101, $afterOlderSemantic['generation']),
+		'Worker removes exactly the prepared revision and generation');
 	$check($fr->current(42) === null && count($fr->pending()) === 1,
 		'Completed page disappears and other pages remain queued');
-	$check(!$fr->acknowledge(42, 101), 'Acknowledging twice has no effect');
+	$check(!$fr->acknowledge(42, 101, $afterOlderSemantic['generation']),
+		'Acknowledging the same generation twice has no effect');
+
+	// Legacy schema-1 files remain readable and can be acknowledged without a token.
+	$legacyPath = $root . '/' . hash('sha256', 'fr') . '/51.json';
+	file_put_contents($legacyPath,
+		json_encode(['schema' => 1, 'pageId' => 51, 'revisionId' => 1000,
+			'queuedAt' => time()], JSON_THROW_ON_ERROR));
+	$check($fr->current(51)['schema'] === 1 && $fr->acknowledge(51, 1000),
+		'Existing schema-1 records can be drained during migration');
+	$check($fr->enqueue(51, 1001) && $fr->current(51)['schema'] === 2,
+		'Next edit upgrades legacy records to generation-fenced schema 2');
 
 	// Corrupt entries must not be interpreted as valid pending edits.
 	$frRoot = $root . '/' . hash('sha256', 'fr');
-	file_put_contents($frRoot . '/51.json', '{"schema":1,"pageId":51,"revisionId":0}');
+	file_put_contents($frRoot . '/51.json', '{"schema":2,"pageId":51,"revisionId":1001,"queuedAt":1,"generation":"bad"}');
 	$throws(static fn() => $fr->pending(), 'Malformed persisted revisions fail closed');
 	$check($en->current(42)['revisionId'] === 10,
 		'Corruption in one wiki does not poison the other');
@@ -76,7 +111,8 @@ try {
 	$throws(static fn() => new CachePreparationQueue($root, 'fr'),
 		'World-readable preparation directory is rejected');
 	chmod($root, 0700);
-	$check($en->acknowledge(42, 10), 'English queue remains usable');
+	$check($en->acknowledge(42, 10, $en->current(42)['generation']),
+		'English queue remains usable');
 	echo json_encode(['assertions' => $checks, 'result' => 'PASS']) . "\n";
 } finally {
 	@chmod($root, 0700);
