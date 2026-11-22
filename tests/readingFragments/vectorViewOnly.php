@@ -1,0 +1,66 @@
+<?php
+
+/** Assert that the targeted native view prewarm never creates history HTML. */
+$root = getenv('WD_MINERVA_STUDY_ROOT');
+if (!$root || !is_file($root . '/.wikidebates-minerva-lab') ||
+	!is_file($root . '/state/minerva_file_cache_test.sqlite')) {
+	throw new RuntimeException('Only a previously initialized disposable MediaWiki lab is supported');
+}
+$database = new PDO('sqlite:' . $root . '/state/minerva_file_cache_test.sqlite');
+$pageId = (int)$database->query("SELECT page_id FROM page WHERE page_title = 'Cache_study_argument'")->fetchColumn();
+if ($pageId < 1) { throw new RuntimeException('No fixture page to prewarm'); }
+putenv('MW_INSTALL_PATH=' . $root . '/mediawiki');
+$localSettings = $root . '/state/LocalSettings.php';
+file_put_contents($localSettings, "<?php\n");
+chmod($localSettings, 0600);
+
+$run = static function (int $id) use ($root): array {
+	$command = [PHP_BINARY, '-d', 'auto_prepend_file=' . __DIR__ . '/bootstrap.php',
+		dirname(__DIR__, 2) . '/maintenance/prepareVectorViewCache.php',
+		'--conf=' . $root . '/state/LocalSettings.php', '--page-id=' . $id, '--json'];
+	$proc = proc_open($command, [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']], $pipes);
+	if (!is_resource($proc)) { throw new RuntimeException('Cannot start Vector view maintenance'); }
+	fclose($pipes[0]);
+	$stdout = stream_get_contents($pipes[1]);
+	$stderr = stream_get_contents($pipes[2]);
+	fclose($pipes[1]); fclose($pipes[2]);
+	$status = proc_close($proc);
+	if ($status !== 0) { throw new RuntimeException('Vector maintenance failed: ' . substr($stdout . $stderr, -1700)); }
+	$lines = preg_split('/\R/', trim($stdout));
+	$report = json_decode(end($lines), true);
+	if (!is_array($report) || ($report['pageId'] ?? null) !== $id) {
+		throw new RuntimeException('Vector maintenance did not return a valid result: ' . $stdout);
+	}
+	return $report;
+};
+
+$first = $run($pageId);
+if (($first['state'] ?? '') !== 'CREATED') {
+	throw new RuntimeException('Expected a newly created native view file: ' . json_encode($first));
+}
+$second = $run($pageId);
+if (($second['state'] ?? '') !== 'REUSED') {
+	throw new RuntimeException('Valid native view must be reused without regeneration: ' . json_encode($second));
+}
+
+require __DIR__ . '/bootstrap.php';
+define('MEDIAWIKI', true);
+define('MW_ENTRY_POINT', 'cli');
+define('MW_INSTALL_PATH', $root . '/mediawiki');
+require MW_INSTALL_PATH . '/includes/BootstrapHelperFunctions.php';
+require MW_INSTALL_PATH . '/includes/Setup.php';
+
+$title = MediaWiki\Title\Title::newFromText('Cache study argument');
+if (!$title) { throw new RuntimeException('Invalid fixture title'); }
+$view = new HTMLFileCache($title, 'view');
+$history = new HTMLFileCache($title, 'history');
+if (!$view->isCacheGood($title->getTouched()) || $history->isCached()) {
+	throw new RuntimeException('Vector view or history files do not match the view-only contract');
+}
+$html = $view->fetchText();
+if (!str_contains($html, 'ARGUMENT_VERSION_ONE') || !str_contains($html, 'skin-vector')) {
+	throw new RuntimeException('Native Vector file did not contain complete anonymous HTML');
+}
+echo json_encode(['result' => 'PASS', 'pageId' => $pageId,
+	'first' => $first['state'], 'second' => $second['state'],
+	'historyCreated' => false], JSON_THROW_ON_ERROR) . "\n";

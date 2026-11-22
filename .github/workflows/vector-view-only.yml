@@ -1,0 +1,43 @@
+name: Native Vector view-only file cache in disposable MediaWiki
+
+on:
+  pull_request:
+    paths:
+      - 'maintenance/prepareVectorViewCache.php'
+      - 'tests/readingFragments/vectorViewOnly.php'
+      - '.github/workflows/vector-view-only.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  vector:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          submodules: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: mbstring,intl,xml,dom,pdo_sqlite,sqlite3,curl
+      - name: Verify native view-only script syntax
+        run: |
+          php -l maintenance/prepareVectorViewCache.php
+          php -l tests/readingFragments/vectorViewOnly.php
+      - name: Prepare pinned disposable MediaWiki 1.43
+        run: |
+          LAB="$RUNNER_TEMP/wd-vector-view-$GITHUB_RUN_ID"
+          python3 tests/minervaFileCache/prepare.py "$LAB"
+          echo "WD_MINERVA_STUDY_ROOT=$LAB" >> "$GITHUB_ENV"
+          export WD_MINERVA_STUDY_ROOT="$LAB"
+          git init -q "$LAB/Cite"
+          git -C "$LAB/Cite" fetch --quiet --depth=1 https://github.com/wikimedia/mediawiki-extensions-Cite.git 3f6a8e0395112bbdbe3b53732e259cad6375aaab
+          git -C "$LAB/Cite" checkout --quiet --detach FETCH_HEAD
+          install -d -m 0700 "$LAB/state/reading-cache" "$LAB/state/minerva-cache" "$LAB/state/desktop-cache"
+          php tests/readingFragments/manage.php initialize
+      - name: Assert single view file, zero history files and reused HTML
+        run: php tests/readingFragments/vectorViewOnly.php
