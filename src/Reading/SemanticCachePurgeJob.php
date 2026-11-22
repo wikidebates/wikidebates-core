@@ -203,7 +203,33 @@ final class SemanticCachePurgeJob extends \Job {
 						// PRESEND after all earlier Title::invalidateCache updates.
 						// The callback re-purges HTML after the DB touch and only
 						// then opens the exact queued generation for the worker.
-						SemanticTouchBarrier::schedule($prewarmQueue, $barriers, $db, $htmlCache);
+						$recordAfterBarrier = static function (array $confirmed) use (
+							$available, $state, $before, $requiredQueries, $fragments
+						): void {
+							if (!$available) {
+								return;
+							}
+							$after = $state->snapshots(
+								$state->pages(array_keys($confirmed)), $requiredQueries
+							);
+							$completed = [];
+							foreach ($confirmed as $id => $details) {
+								if (!isset($before[$id], $after[$id]) ||
+									$before[$id] !== $after[$id]) {
+									continue;
+								}
+								$completed[] = [
+									'page_id' => $id, 'fingerprint' => $before[$id],
+									'generation' => $fragments->read(
+										$details['title']->getPrefixedDBkey(), 'semantic-purge', []
+									)['generation']
+								];
+							}
+							$state->remember($completed);
+						};
+						SemanticTouchBarrier::schedule(
+							$prewarmQueue, $barriers, $db, $htmlCache, $recordAfterBarrier
+						);
 					}
 					if ($available && $prewarmQueue === null) {
 						$after = $state->snapshots($state->pages(array_keys($pending)), $requiredQueries);
