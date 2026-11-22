@@ -18,6 +18,20 @@ class ReadingHooks {
 		self::$parserOutputs[$out] = $candidates;
 	}
 
+	/**
+	 * Article::view authorizes read before native HTMLFileCache HIT, but does
+	 * not consult rev_deleted. RevDel may change that bit before its deferred
+	 * purge reaches a shared file. Deny the existing file at read time.
+	 */
+	public static function onIsFileCacheable($article): ?bool {
+		try {
+			return AnonymousCacheSafety::forTitle($article->getTitle()) === null ? false : null;
+		} catch (\Throwable $e) {
+			FragmentService::log($e);
+			return false;
+		}
+	}
+
 	public static function onTitleSquidURLs($title, &$urls): void {
 		if (!$title->canExist()) { return; }
 		FragmentService::invalidate($title);
