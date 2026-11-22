@@ -2,8 +2,9 @@
 
 **Statut : développement et validation en laboratoire. Ne pas activer en production.**
 
-La commande `Wikidebates:preparePendingCaches` travaille uniquement sur des pages
-directement éditées, présentes dans la file persistante de Wikidebates.
+La commande `Wikidebates:preparePendingCaches` travaille sur les pages
+présentes dans la file persistante : éditions directes et, lorsque les
+options SMW sont explicitement actives, dépendances sémantiques invalidées.
 
 Elle prépare successivement, par `page_id` :
 
@@ -24,13 +25,30 @@ Si une modification directe ou indirecte arrive pendant le rendu, la file
 conserve le nouvel événement et le worker devra recommencer. L'écriture et
 l'acquittement restent protégés par le verrou exclusif de cette page.
 
-La méthode `CachePreparationQueue::enqueueInvalidation()` permet de
-renouveler le marqueur même à révision inchangée, tout en conservant la
-révision la plus récente connue. **Elle n'est pas encore reliée aux jobs
-sémantiques** : l'intégration devra intervenir uniquement après une purge
-confirmée et conserver le job en échec réessayable si l'écriture échoue.
-Les anciens fichiers `schema: 1` restent lisibles ; seuls les
-nouveaux événements adoptent le format 2.
+La méthode `CachePreparationQueue::enqueueInvalidation()` renouvelle le
+marqueur même à révision inchangée, tout en conservant la révision la
+plus récente connue.
+
+Lorsque **les trois options** `WikidebatesCachePreparationDirectory`,
+`WikidebatesSemanticCacheTracking` et
+`WikidebatesSemanticCacheEagerPurge` sont activées, le job
+`SemanticCachePurgeJob` enregistre les pages dépendantes uniquement après
+l'invalidation HTML/CDN réussie et avant la certification des reçus de
+purge. Une panne d'écriture du journal fait échouer le job de manière
+réessayable. Les purges déjà coalescées ne créent pas de doublons.
+
+Ces fonctionnalités sont **désactivées par défaut** et ne changent pas
+la validité, la sécurité, les droits de lecture ni la durée de rétention
+des caches. Les anciens fichiers `schema: 1` restent lisibles.
+
+**Attention à l'ordre des opérations** : MediaWiki 1.43 effectue
+`Title::invalidateCache()` via une mise à jour différée
+`DeferredUpdates::PRESEND` de `page_touched`.
+Il faut donc laisser les jobs SMW et leurs mises à jour différées
+terminer avant de lancer un préchauffage coordonné. Aucun cron
+n'est installé, et le mode `--execute` doit rester réservé
+à un environnement de test tant qu'un garde-fou de cohérence global
+n'a pas été validé.
 
 Une préparation partielle **n'efface pas la demande**. Une interruption reprend
 donc la même page ; les sous-caches déjà valides sont réutilisés. La file ne

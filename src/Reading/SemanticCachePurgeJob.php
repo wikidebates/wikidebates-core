@@ -5,6 +5,7 @@ namespace MediaWiki\Extension\Wikidebates\Reading;
 use MediaWiki\Logger\LoggerFactory;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Title\Title;
+use MediaWiki\WikiMap\WikiMap;
 use SMW\Services\ServicesFactory as SemanticServices;
 use SMW\SQLStore\SQLStore;
 
@@ -54,7 +55,8 @@ final class SemanticCachePurgeJob extends \Job {
 			'queries_examined' => 0, 'queries_processed' => 0, 'pages' => 0,
 			'invalidations' => 0, 'coalesced_pages' => 0, 'continuations' => 0,
 			'next_cursor' => null, 'generation_reads' => 0, 'logging_failures' => 0,
-			'coalescing_available' => false, 'status' => 'completed'
+			'coalescing_available' => false, 'dependent_pages_queued_for_prewarm' => 0,
+			'status' => 'completed'
 		];
 		try {
 			if (!$config->get('WikidebatesSemanticCacheTracking') ||
@@ -122,6 +124,12 @@ final class SemanticCachePurgeJob extends \Job {
 			unset($rows);
 			$this->metrics['pages'] = count($titles);
 			if ($titles !== []) {
+				// The persistent journal is explicitly opt-in. Validate it before
+				// mutating any caches so an invalid private path fails retryably.
+				$queueDirectory = $config->has('WikidebatesCachePreparationDirectory') ?
+					$config->get('WikidebatesCachePreparationDirectory') : false;
+				$prewarmQueue = is_string($queueDirectory) && $queueDirectory !== '' ?
+					new CachePreparationQueue($queueDirectory, WikiMap::getCurrentWikiId()) : null;
 				$state = new SemanticPurgeState($store);
 				$available = $state->available();
 				$this->metrics['coalescing_available'] = $available;
@@ -161,6 +169,22 @@ final class SemanticCachePurgeJob extends \Job {
 						$htmlCache->purgeTitleUrls(array_values($pending), $htmlCache::PURGE_NAIVE);
 					});
 					$this->metrics['invalidations'] = count($pending);
+					// Queue only AFTER the real dependent HTML purge succeeds,
+					// and BEFORE durable coalescing receipts are certified. If
+					// any journal write fails, the purge job remains retryable;
+					// successful writes are idempotent from the worker's view.
+					// Use the page row from the PRIMARY SMW query. The queue
+					// retains a still-newer direct edit if one raced this job.
+					if ($prewarmQueue !== null) {
+						foreach ($pending as $id => $title) {
+							$revisionId = (int)$pages[$id]->page_latest;
+							if ($revisionId < 1) {
+								throw new \RuntimeException('Cannot queue a semantic dependent without a revision');
+							}
+							$prewarmQueue->enqueueInvalidation((int)$id, $revisionId);
+							$this->metrics['dependent_pages_queued_for_prewarm']++;
+						}
+					}
 					if ($available) {
 						$after = $state->snapshots($state->pages(array_keys($pending)), $requiredQueries);
 						$completed = [];
