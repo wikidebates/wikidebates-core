@@ -4,8 +4,9 @@ namespace MediaWiki\Extension\Wikidebates\Reading;
 
 /**
  * Small, testable state machine for one page from the persistent edit queue.
- * It never acknowledges a revision unless all three cache operations report
- * safe completion and a primary-database revision check still matches.
+ * It never acknowledges a request unless all three cache operations report
+ * safe completion, its generation is unchanged, and a primary-database
+ * revision check still matches.
  */
 final class CachePreparationCoordinator {
 	public const PHASES = ['vector', 'minerva', 'reading'];
@@ -14,7 +15,7 @@ final class CachePreparationCoordinator {
 	}
 
 	/**
-	 * @param array{pageId:int,revisionId:int} $record
+	 * @param array{schema:int,pageId:int,revisionId:int,generation?:string} $record
 	 * @param callable(int):?int $latestRevision Read current page_latest from PRIMARY.
 	 * @param callable(string,int):array{ok:bool,status:string} $prepare Run one phase.
 	 * @return array<string,mixed>
@@ -22,13 +23,16 @@ final class CachePreparationCoordinator {
 	public function process(array $record, callable $latestRevision, callable $prepare): array {
 		$pageId = $record['pageId'] ?? 0;
 		$revision = $record['revisionId'] ?? 0;
-		if (!is_int($pageId) || $pageId < 1 || !is_int($revision) || $revision < 1) {
+		if (!is_int($pageId) || $pageId < 1 || !is_int($revision) || $revision < 1 ||
+			!in_array($record['schema'] ?? null, [1, 2], true) ||
+			($record['schema'] === 2 && (!is_string($record['generation'] ?? null) ||
+				!preg_match('/\A[a-f0-9]{32}\z/D', $record['generation'])))) {
 			throw new \InvalidArgumentException('Invalid pending page revision');
 		}
 		$report = ['pageId' => $pageId, 'revisionId' => $revision, 'state' => 'pending',
 			'phases' => []];
 		try {
-			if (($this->queue->current($pageId)['revisionId'] ?? null) !== $revision) {
+			if (!$this->requestMatches($record)) {
 				$report['state'] = 'superseded';
 				return $report;
 			}
@@ -38,7 +42,7 @@ final class CachePreparationCoordinator {
 			}
 			foreach (self::PHASES as $phase) {
 				// A new edit can be recorded while a previous renderer runs.
-				if (($this->queue->current($pageId)['revisionId'] ?? null) !== $revision ||
+				if (!$this->requestMatches($record) ||
 					!$this->revisionMatches($pageId, $revision, $latestRevision)) {
 					$report['state'] = 'revision-changed-or-deleted';
 					return $report;
@@ -58,13 +62,14 @@ final class CachePreparationCoordinator {
 					return $report;
 				}
 			}
-			if (($this->queue->current($pageId)['revisionId'] ?? null) !== $revision ||
+			if (!$this->requestMatches($record) ||
 				!$this->revisionMatches($pageId, $revision, $latestRevision)) {
 				$report['state'] = 'revision-changed-or-deleted';
 				return $report;
 			}
-			// This is the sole destructive queue operation and is revision-safe.
-			$report['state'] = $this->queue->acknowledge($pageId, $revision) ?
+			// This is the sole destructive queue operation and is both revision- and
+			// generation-safe under the per-page exclusive lock.
+			$report['state'] = $this->queue->acknowledge($pageId, $revision, $record['generation'] ?? null) ?
 				'acknowledged' : 'superseded';
 		} catch (\Throwable $e) {
 			// The record stays queued. Do not log exceptions or response bodies
@@ -73,6 +78,24 @@ final class CachePreparationCoordinator {
 			$report['errorType'] = get_class($e);
 		}
 		return $report;
+	}
+
+
+	/**
+	 * A semantic invalidation can supersede a request without changing its
+	 * revision. This check must be repeated before each phase and after the
+	 * last render; acknowledge() performs its own locked final comparison.
+	 */
+	private function requestMatches(array $record): bool {
+		$current = $this->queue->current($record['pageId']);
+		if (!$current || $current['revisionId'] !== $record['revisionId'] ||
+			$current['schema'] !== $record['schema']) {
+			return false;
+		}
+		if ($record['schema'] === 1) {
+			return !isset($record['generation']);
+		}
+		return hash_equals($current['generation'], $record['generation']);
 	}
 
 	/**

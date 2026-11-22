@@ -3,11 +3,12 @@
 namespace MediaWiki\Extension\Wikidebates\Reading;
 
 /**
- * An opt-in, filesystem-backed queue of directly edited page revisions.
+ * An opt-in, filesystem-backed queue of pages needing cache preparation.
  *
- * One record per page is retained until an explicit consumer acknowledges the
- * same revision. The queue does not run jobs or touch cache files itself.
- * Page-level locks protect against a newer edit being lost during acknowledgement.
+ * A fresh random generation identifies each new edit or indirect semantic
+ * invalidation, even when page_latest has not changed. A worker must acknowledge
+ * both revision AND generation under the per-page lock; late events cannot be
+ * lost while HTML is rendered. No jobs or cache files are touched here.
  */
 final class CachePreparationQueue {
 	private string $root;
@@ -102,10 +103,14 @@ final class CachePreparationQueue {
 		$data = @file_get_contents($path);
 		if ($data === false) { throw new \RuntimeException('Cannot read preparation record'); }
 		$record = json_decode($data, true);
-		if (!is_array($record) || ($record['schema'] ?? null) !== 1 ||
+		$schema = $record['schema'] ?? null;
+		if (!is_array($record) || !in_array($schema, [1, 2], true) ||
 			($record['pageId'] ?? null) !== $pageId ||
 			!is_int($record['revisionId'] ?? null) || $record['revisionId'] < 1 ||
-			!is_int($record['queuedAt'] ?? null)) {
+			!is_int($record['queuedAt'] ?? null) || $record['queuedAt'] < 0 ||
+			($schema === 1 && array_key_exists('generation', $record)) ||
+			($schema === 2 && (!is_string($record['generation'] ?? null) ||
+				!preg_match('/\A[a-f0-9]{32}\z/D', $record['generation'])))) {
 			throw new \RuntimeException('Invalid preparation record');
 		}
 		return $record;
@@ -122,27 +127,53 @@ final class CachePreparationQueue {
 		try {
 			$current = $this->readRecord($pageId);
 			if ($current && $current['revisionId'] >= $revisionId) { return false; }
-			$record = ['schema' => 1, 'pageId' => $pageId, 'revisionId' => $revisionId,
-				'queuedAt' => time()];
-			$encoded = json_encode($record, JSON_THROW_ON_ERROR);
-			$temp = @tempnam($this->root, '.queue-');
-			if (!$temp || dirname($temp) !== $this->root) {
-				throw new \RuntimeException('Cannot allocate a private temporary queue record');
-			}
-			try {
-				if (!@chmod($temp, 0600) ||
-					@file_put_contents($temp, $encoded) !== strlen($encoded) ||
-					!@rename($temp, $this->recordPath($pageId))) {
-					throw new \RuntimeException('Cannot publish preparation queue record');
-				}
-			} finally {
-				if (is_file($temp)) { @unlink($temp); }
-			}
+			$this->publishRecord($pageId, $revisionId);
 			return true;
 		} finally { fclose($lock); }
 	}
 
-	/** @return array{schema:int,pageId:int,revisionId:int,queuedAt:int}|null */
+
+	/**
+	 * A changed semantic dependency invalidates the rendered HTML even when
+	 * the owning page's MediaWiki revision is unchanged. Always replace its
+	 * generation, retaining the newest known revision if a direct edit raced.
+	 *
+	 * Called only after the dependent HTML purge has completed successfully.
+	 * The caller must still keep the purge job retryable if this write fails.
+	 */
+	public function enqueueInvalidation(int $pageId, int $revisionId): void {
+		$this->checkId($pageId);
+		$this->checkId($revisionId);
+		$lock = $this->lock($pageId, LOCK_EX);
+		try {
+			$current = $this->readRecord($pageId);
+			$this->publishRecord($pageId, max($revisionId, $current['revisionId'] ?? 0));
+		} finally { fclose($lock); }
+	}
+
+	/** Called with the corresponding page's exclusive lock held. */
+	private function publishRecord(int $pageId, int $revisionId): void {
+		$record = [
+			'schema' => 2, 'pageId' => $pageId, 'revisionId' => $revisionId,
+			'generation' => bin2hex(random_bytes(16)), 'queuedAt' => time()
+		];
+		$encoded = json_encode($record, JSON_THROW_ON_ERROR);
+		$temp = @tempnam($this->root, '.queue-');
+		if (!$temp || dirname($temp) !== $this->root) {
+			throw new \RuntimeException('Cannot allocate a private temporary queue record');
+		}
+		try {
+			if (!@chmod($temp, 0600) ||
+				@file_put_contents($temp, $encoded) !== strlen($encoded) ||
+				!@rename($temp, $this->recordPath($pageId))) {
+				throw new \RuntimeException('Cannot publish preparation queue record');
+			}
+		} finally {
+			if (is_file($temp)) { @unlink($temp); }
+		}
+	}
+
+	/** @return array{schema:int,pageId:int,revisionId:int,queuedAt:int,generation?:string}|null */
 	public function current(int $pageId): ?array {
 		$this->checkId($pageId);
 		if (!is_dir($this->root)) { return null; }
@@ -152,17 +183,22 @@ final class CachePreparationQueue {
 	}
 
 	/**
-	 * Remove only the revision that was actually prepared. If an edit arrived
-	 * while a worker rendered, its higher revision stays pending.
+	 * Remove only the exact request the worker prepared. A semantic change can
+	 * create a new generation at the same page revision. Legacy schema-1 records
+	 * remain acknowledgeable with no generation (migration-only compatibility).
 	 */
-	public function acknowledge(int $pageId, int $preparedRevisionId): bool {
+	public function acknowledge(int $pageId, int $preparedRevisionId, ?string $expectedGeneration = null): bool {
 		$this->checkId($pageId);
 		$this->checkId($preparedRevisionId);
 		if (!is_dir($this->root)) { return false; }
 		$lock = $this->lock($pageId, LOCK_EX);
 		try {
 			$current = $this->readRecord($pageId);
-			if (!$current || $current['revisionId'] !== $preparedRevisionId) { return false; }
+			if (!$current || $current['revisionId'] !== $preparedRevisionId ||
+				($current['schema'] === 1 && $expectedGeneration !== null) ||
+				($current['schema'] === 2 && !hash_equals($current['generation'], $expectedGeneration ?? ''))) {
+				return false;
+			}
 			if (!@unlink($this->recordPath($pageId))) {
 				throw new \RuntimeException('Cannot acknowledge preparation queue record');
 			}
@@ -175,7 +211,7 @@ final class CachePreparationQueue {
 	 * so an interrupted worker needs no fragile numeric offset or global cursor.
 	 * The worker must recheck the current page revision before acknowledging.
 	 *
-	 * @return array<int,array{schema:int,pageId:int,revisionId:int,queuedAt:int}>
+	 * @return array<int,array{schema:int,pageId:int,revisionId:int,queuedAt:int,generation?:string}>
 	 */
 	public function pending(int $limit = 1000): array {
 		if ($limit < 1 || $limit > 10000) {
