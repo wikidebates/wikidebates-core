@@ -209,6 +209,23 @@ try {
 		'Valid native Vector view is accepted');
 	$check(CachePreparationResults::interpret('vector', 17, 0, $vector(17, 'REUSED'))['ok'],
 		'Valid pre-existing Vector file is accepted');
+	$check(CachePreparationResults::interpret('vector', 17, 0,
+		$vector(17, 'SKIPPED_CACHE_POLICY')) === ['ok' => true, 'status' => 'SKIPPED_CACHE_POLICY'],
+		'Explicit Vector policy veto is a terminal skip, not a retry');
+	$queue->enqueue(24, 706);
+	$policyPhases = [];
+	$policySkip = $coordinator->process($queue->current(24),
+		static fn(int $id): ?int => 706,
+		static function (string $phase, int $id) use (&$policyPhases): array {
+			$policyPhases[] = $phase;
+			return $phase === 'vector'
+				? CachePreparationResults::interpret('vector', $id, 0,
+					json_encode(['pageId' => $id, 'state' => 'SKIPPED_CACHE_POLICY'], JSON_THROW_ON_ERROR))
+				: ['ok' => true, 'status' => 'REUSED'];
+		});
+	$check($policySkip['state'] === 'acknowledged' &&
+		$policyPhases === CachePreparationCoordinator::PHASES && $queue->current(24) === null,
+		'Vectored-out page still prepares Minerva and reading without losing the queue record');
 	$check(!CachePreparationResults::interpret('vector', 17, 0, $vector(17, 'WRITE_FAILED'))['ok'],
 		'Failed Vector publication is rejected');
 	$check(!CachePreparationResults::interpret('vector', 17, 0, $vector(18, 'CREATED'))['ok'],
