@@ -76,6 +76,9 @@ function wikidebatesTestConfig($settings): void {
 		'JobTypesExcludedFromDefaultQueue' => ['wikidebatesSemanticCachePurge'],
 		'WikidebatesReadingFragments' => getenv('WD_TEST_SEMANTIC_BASELINE') === '1' || getenv('WD_TEST_SEMANTIC_TRACKING') === '1',
 		'WikidebatesSemanticCacheTracking' => getenv('WD_TEST_SEMANTIC_TRACKING') === '1',
+		'WikidebatesPageLocalCacheOnly' => getenv('WD_TEST_PAGE_LOCAL_CACHE') === '1',
+		'UseFileCache' => getenv('WD_TEST_PAGE_LOCAL_CACHE') === '1',
+		'FileCacheDirectory' => $temporary . '/vector-file-cache',
 		// Opt in ONLY in disposable lab tests exercising active purge execution.
 		'WikidebatesSemanticCacheEagerPurge' => getenv('WD_TEST_SEMANTIC_TRACKING') === '1',
 		'WikidebatesReadingCacheDirectory' => (getenv('WD_TEST_SEMANTIC_BASELINE') === '1' || getenv('WD_TEST_SEMANTIC_TRACKING') === '1') ? $temporary : false,
