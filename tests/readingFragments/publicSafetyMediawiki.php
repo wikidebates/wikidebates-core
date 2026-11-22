@@ -67,7 +67,7 @@ $check(AnonymousCacheSafety::fingerprint($pageId) === $original,
 	'Unsuppression returns the existing public revision to eligible state');
 
 $hookCalls = 0;
-$denyRead = $services->getHookContainer()->scopedRegister('GetUserPermissionsErrors',
+$denyRead = $services->getHookContainer()->scopedRegister('getUserPermissionsErrors',
 	static function ($hookTitle, $user, $action, &$result) use ($title, &$hookCalls): bool {
 		if ($action === 'read' && !$user->isRegistered()) {
 			$hookCalls++;
@@ -76,9 +76,7 @@ $denyRead = $services->getHookContainer()->scopedRegister('GetUserPermissionsErr
 		}
 		return true;
 	});
-$check($hookCalls > 0 || AnonymousCacheSafety::fingerprint($pageId) === null,
-	'GetUserPermissionsErrors is invoked or safely denies the anonymous access');
-$check(AnonymousCacheSafety::fingerprint($pageId) === null,
+$check(AnonymousCacheSafety::fingerprint($pageId) === null && $hookCalls > 0,
 	'Read permission restriction without a new page revision blocks all anonymous preparation');
 $denyRead = null;
 $check(AnonymousCacheSafety::fingerprint($pageId) === $original,
@@ -103,7 +101,7 @@ try {
 		->caller(__METHOD__)->execute();
 }
 
-$denyEdit = $services->getHookContainer()->scopedRegister('GetUserPermissionsErrors',
+$denyEdit = $services->getHookContainer()->scopedRegister('getUserPermissionsErrors',
 	static function ($hookTitle, $user, $action, &$result) use ($title): bool {
 		if ($action === 'edit' && $hookTitle->getPrefixedDBkey() === $title->getPrefixedDBkey()) {
 			$result = 'badaccess-group0';
