@@ -15,6 +15,7 @@ class PrepareReadingCache extends Maintenance {
 		$this->addOption('after', 'Start after this page ID', false, true);
 		$this->addOption('limit', 'Maximum number of pages to inspect', false, true);
 		$this->addOption('json', 'Print one machine-readable final report', false, false);
+		$this->addOption('progress-every', 'Report every N inspected pages (default 100, 0 disables)', false, true);
 	}
 
 	public function execute() {
@@ -28,7 +29,9 @@ class PrepareReadingCache extends Maintenance {
 		$after = (int)$this->getOption('after', 0);
 		$limit = (int)$this->getOption('limit', PHP_INT_MAX);
 		$json = $this->hasOption('json');
-		if ($size < 1 || $size > 1000 || $pause < 0 || $pause > 60000 || $after < 0 || $limit < 1) {
+		$progressEvery = (int)$this->getOption('progress-every', 100);
+		if ($size < 1 || $size > 1000 || $pause < 0 || $pause > 60000 || $after < 0 || $limit < 1 ||
+			$progressEvery < 0 || $progressEvery > 100000) {
 			$this->fatalError('Invalid batch, delay, cursor or limit.');
 		}
 		// A single worker per wiki; web fills also use the existing nonblocking page lock.
@@ -58,13 +61,31 @@ class PrepareReadingCache extends Maintenance {
 					if ($source !== null) {
 						$sources[isset($sources[$source]) ? $source : 'other']++;
 					}
+					if (!$ok) {
+						// $after still identifies the last successfully inspected page;
+						// page IDs are not necessarily contiguous.
+						$this->fatalError('Preparation failed for page ' . $row->page_id . '; resume with --after=' . $after);
+					}
 					$after = (int)$row->page_id;
 					$count++;
 					$found++;
-					if (!$ok) { $this->fatalError('Preparation failed for page ' . $row->page_id . '; resume with --after=' . ($after - 1)); }
-					if ($pause) { usleep($pause * 1000); }
+					if ($progressEvery > 0 && $count % $progressEvery === 0) {
+						// stderr stays visible and unbuffered with --json | tee, while
+						// stdout still contains exactly one JSON object at completion.
+						$line = "$count (last_page_id=$after; resume=--after=$after)\n";
+						if ($json) {
+							fwrite(STDERR, $line);
+							fflush(STDERR);
+						} else {
+							$this->output($line);
+						}
+					}
+					// Sleeping on a valid fragment adds no protection for the server
+					// and makes a daily scan of a large wiki unnecessarily slow.
+					if ($pause && !in_array($status, ['already-valid', 'skipped'], true)) {
+						usleep($pause * 1000);
+					}
 				}
-				if (!$json) { $this->output("Inspected $count pages; resume with --after=$after\n"); }
 			} while ($found && $count < $limit);
 		} finally {
 			fclose($scope);
