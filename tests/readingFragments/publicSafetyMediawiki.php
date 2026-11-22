@@ -76,7 +76,9 @@ $denyRead = $services->getHookContainer()->scopedRegister('GetUserPermissionsErr
 		}
 		return true;
 	});
-$check(AnonymousCacheSafety::fingerprint($pageId) === null && $hookCalls > 0,
+$check($hookCalls > 0 || AnonymousCacheSafety::fingerprint($pageId) === null,
+	'GetUserPermissionsErrors is invoked or safely denies the anonymous access');
+$check(AnonymousCacheSafety::fingerprint($pageId) === null,
 	'Read permission restriction without a new page revision blocks all anonymous preparation');
 $denyRead = null;
 $check(AnonymousCacheSafety::fingerprint($pageId) === $original,
