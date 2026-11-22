@@ -45,7 +45,9 @@ $check = static function (bool $okay, string $reason) use (&$checkCount): void {
 $original = AnonymousCacheSafety::fingerprint($pageId);
 $check(is_string($original) && strlen($original) === 64,
 	'Actual public page has a stable anonymous PRIMARY fingerprint');
-$article = \Article::newFromTitle($title);
+$articleContext = new \MediaWiki\Context\RequestContext();
+$articleContext->setTitle($title);
+$article = \Article::newFromTitle($title, $articleContext);
 $originalTouch = (string)$db->selectField('page', 'page_touched',
 	['page_id' => $pageId], __METHOD__);
 $check(ReadingHooks::onIsFileCacheable($article) === null &&
