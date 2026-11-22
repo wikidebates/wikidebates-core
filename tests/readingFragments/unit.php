@@ -78,7 +78,16 @@ try {
 	$snapshot = $long->read('A', 'common', $identity);
 	$long->publish('A', 'common', $identity, $snapshot['generation'], 'LONG', [], time() + 99999999);
 	$entry = $long->read('A', 'common', $identity)['entry'];
-	check($entry['expires'] <= $entry['created'] + 2592000, 'Retention never exceeds thirty days');
+	check($entry['expires'] > $entry['created'] + 2592000, 'Configured retention can exceed thirty days');
+	$unlimited = new Store($dir, 'unlimited-wiki', 0, 4096);
+	$unlimitedSnapshot = $unlimited->read('A', 'common', $identity);
+	check($unlimited->publish('A', 'common', $identity, $unlimitedSnapshot['generation'],
+		'UNLIMITED', [], PHP_INT_MAX), 'Zero TTL accepts an explicitly shareable long-lived result');
+	check($unlimited->read('A', 'common', $identity)['entry']['expires'] === PHP_INT_MAX,
+		'Zero TTL does not shorten caller expiry');
+	check($unlimited->prune() === 0, 'Unlimited TTL retains a valid entry');
+	check(!$unlimited->publish('A', 'expired', $identity, $unlimitedSnapshot['generation'],
+		'NOT_STORED', [], time() - 1), 'Zero TTL cannot override rejected caller expiry');
 
 	echo json_encode(['assertions' => $assertions, 'result' => 'PASS']) . "\n";
 } finally {
