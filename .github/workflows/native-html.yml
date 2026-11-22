@@ -44,6 +44,10 @@
 					"run": "php tests/run.php"
 				},
 				{
+					"name": "Reading prewarm safety runner smoke tests",
+					"run": "bash tests/readingFragments/runnerSmoke.sh"
+				},
+				{
 					"name": "Translation generation and catalog checks",
 					"run": "php tools/buildI18n.php --check\npython3 tests/checkI18n.py"
 				}
