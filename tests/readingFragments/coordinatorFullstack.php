@@ -33,7 +33,7 @@ $revision = (int)$page->getLatest();
 if ($pageId < 1 || $revision < 1) { throw new RuntimeException('Missing argument fixture'); }
 $queue = new CachePreparationQueue($state . '/preparation-queue', WikiMap::getCurrentWikiId());
 foreach ($queue->pending(10000) as $record) {
-	if (!$queue->acknowledge($record['pageId'], $record['revisionId'])) {
+	if (!$queue->acknowledge($record['pageId'], $record['revisionId'], $record['generation'] ?? null)) {
 		throw new RuntimeException('Cannot clear pending fixture events');
 	}
 }
