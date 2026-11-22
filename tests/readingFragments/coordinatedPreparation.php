@@ -35,7 +35,7 @@ try {
 		$calls[] = [$phase, $pageId];
 		return ['ok' => true, 'status' => 'HIT'];
 	};
-	$done = $coordinator->process(['pageId' => 11, 'revisionId' => 100],
+	$done = $coordinator->process($queue->current(11),
 		static fn(int $id): ?int => 100, $prepare);
 	$check($done['state'] === 'acknowledged' && count($done['phases']) === 3,
 		'Revision acknowledged only after all three successful phases');
@@ -44,7 +44,7 @@ try {
 	$check($queue->current(11) === null, 'Completed record is removed');
 
 	$queue->enqueue(12, 200);
-	$failure = $coordinator->process(['pageId' => 12, 'revisionId' => 200],
+	$failure = $coordinator->process($queue->current(12),
 		static fn(int $id): ?int => 200,
 		static fn(string $phase, int $id): array => $phase === 'minerva'
 			? ['ok' => false, 'status' => 'HTTP_429'] : ['ok' => true, 'status' => 'REUSED']);
@@ -52,14 +52,14 @@ try {
 		'Rate limiting stops this page before a reading render');
 	$check($queue->current(12)['revisionId'] === 200,
 		'Partial preparation does not acknowledge a queued revision');
-	$done = $coordinator->process(['pageId' => 12, 'revisionId' => 200],
+	$done = $coordinator->process($queue->current(12),
 		static fn(int $id): ?int => 200, $prepare);
 	$check($done['state'] === 'acknowledged',
 		'After retry the successfully prepared revision can be acknowledged');
 
 	$queue->enqueue(13, 300);
 	$GLOBALS['unitLatestRevision'] = 300;
-	$changed = $coordinator->process(['pageId' => 13, 'revisionId' => 300],
+	$changed = $coordinator->process($queue->current(13),
 		static fn(int $id): ?int => $GLOBALS['unitLatestRevision'],
 		static function (string $phase, int $id) use ($queue): array {
 			if ($phase === 'vector') {
@@ -75,22 +75,44 @@ try {
 		'Later phases are not launched after revision drift');
 
 	$queue->enqueue(14, 400);
-	$late = $coordinator->process(['pageId' => 14, 'revisionId' => 400],
+	$late = $coordinator->process($queue->current(14),
 		static fn(int $id): ?int => 401, $prepare);
 	$check($late['state'] === 'revision-changed-or-deleted' &&
 		$queue->current(14)['revisionId'] === 401,
 		'Primary database revision repairs a missed direct-edit event');
 	$queue->enqueue(15, 500);
-	$deleted = $coordinator->process(['pageId' => 15, 'revisionId' => 500],
+	$deleted = $coordinator->process($queue->current(15),
 		static fn(int $id): ?int => null, $prepare);
 	$check($deleted['state'] === 'revision-changed-or-deleted' &&
 		$queue->current(15)['revisionId'] === 500,
 		'Deleted pages are not automatically acknowledged without cleanup');
 	$queue->enqueue(16, 600);
+	$beforeSuperseded = $queue->current(16);
 	$queue->enqueue(16, 601);
-	$superseded = $coordinator->process(['pageId' => 16, 'revisionId' => 600],
+	$superseded = $coordinator->process($beforeSuperseded,
 		static fn(int $id): ?int => 601, $prepare);
 	$check($superseded['state'] === 'superseded', 'Superseded snapshot is skipped');
+
+	$queue->enqueue(18, 700);
+	$oldSemantic = $queue->current(18);
+	$semanticMutation = $coordinator->process($oldSemantic,
+		static fn(int $id): ?int => 700,
+		static function (string $phase, int $id) use ($queue): array {
+			if ($phase === 'vector') {
+				// SMW changed a parent relationship, but this page was not edited.
+				$queue->enqueueInvalidation($id, 700);
+			}
+			return ['ok' => true, 'status' => 'CREATED'];
+		});
+	$check($semanticMutation['state'] !== 'acknowledged' &&
+		count($semanticMutation['phases']) === 1 &&
+		$queue->current(18)['revisionId'] === 700 &&
+		$queue->current(18)['generation'] !== $oldSemantic['generation'],
+		'Same-revision semantic mutation survives a concurrent renderer');
+	$semanticRetry = $coordinator->process($queue->current(18),
+		static fn(int $id): ?int => 700, $prepare);
+	$check($semanticRetry['state'] === 'acknowledged' && $queue->current(18) === null,
+		'The refreshed semantic generation is prepared and acknowledged on retry');
 
 	$vector = static fn(int $id, string $status): string =>
 		json_encode(['pageId' => $id, 'state' => $status], JSON_THROW_ON_ERROR);
