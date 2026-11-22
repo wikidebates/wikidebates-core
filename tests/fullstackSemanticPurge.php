@@ -5,6 +5,7 @@ require __DIR__ . '/fullstackSemanticCache.php';
 
 use MediaWiki\Extension\Wikidebates\Reading\SemanticCachePurgeJob;
 use MediaWiki\Extension\Wikidebates\Reading\SemanticPurgeScope;
+use MediaWiki\Extension\Wikidebates\Reading\CachePreparationQueue;
 use MediaWiki\Extension\Wikidebates\Reading\SemanticPurgeState;
 use MediaWiki\Extension\Wikidebates\Reading\SemanticRevisionStore;
 use MediaWiki\Extension\Wikidebates\Reading\SemanticPageCacheHooks;
@@ -94,9 +95,29 @@ $run = static function(array $ids, int $cursor = 0, array $extra = []) use ($own
 	$services->getDBLoadBalancerFactory()->commitPrimaryChanges(__METHOD__);
 	return $job;
 };
+// Only this disposable database opts into semantic-dependent preparation.
+// Production defaults remain false, and the writable root is not web-served.
+$queueRoot = sys_get_temp_dir() . '/wd-smw-prewarm-' . bin2hex(random_bytes(8));
+check(mkdir($queueRoot, 0700), 'Private semantic cache preparation lab root created');
+$GLOBALS['wgWikidebatesCachePreparationDirectory'] = $queueRoot;
+$prewarmQueue = new CachePreparationQueue($queueRoot, \MediaWiki\WikiMap\WikiMap::getCurrentWikiId());
+
 $ledgerBefore = SemanticPurgeState::revisions($store, [$depId]);
 $first = $run([$depId]);
 same(2, $first->getMetrics()['invalidations'], 'Three queries invalidate exactly two pages');
+same(2, $first->getMetrics()['dependent_pages_queued_for_prewarm'],
+	'Both semantically dependent pages are queued after successful HTML purge');
+$queuedGenerations = [];
+foreach ($owners as $title) {
+	$id = $title->getArticleID();
+	$record = $prewarmQueue->current($id);
+	check($record && $record['schema'] === 2 &&
+		$record['revisionId'] === $title->getLatestRevID() &&
+		is_string($record['generation']),
+		'Targeted semantic job recorded a durable generation without editing its owner page');
+	$queuedGenerations[$id] = $record['generation'];
+}
+same(2, count($prewarmQueue->pending()), 'Only the two real SMW query-owning pages are enqueued');
 same(3, $first->getMetrics()['queries_processed'], 'All three real query subobjects scanned');
 same(2, count($htmlTargets), 'HTML/CDN hooks dispatched once per page');
 same([true, true], $htmlOrigins, 'SMW dependent HTML dispatches are marked without suppressing invalidation');
@@ -111,6 +132,13 @@ foreach ($owners as $title) {
 }
 $overlap = $run([$depId, $targetId]);
 same(0, $overlap->getMetrics()['invalidations'], 'Overlapping dependency sets reuse completed receipts');
+same(0, $overlap->getMetrics()['dependent_pages_queued_for_prewarm'],
+	'Coalesced redundant purge does not enqueue unnecessary duplicate prewarm work');
+foreach ($owners as $title) {
+	same($queuedGenerations[$title->getArticleID()],
+		$prewarmQueue->current($title->getArticleID())['generation'],
+		'Redundant job preserves the existing queued generation');
+}
 same(2, $overlap->getMetrics()['coalesced_pages'], 'Both actual page purges coalesced');
 same(2, count($htmlTargets), 'Repeated work does not dispatch more CDN/HTML purges');
 same($ledgerBefore, SemanticPurgeState::revisions($store, [$depId]), 'Purging does not mutate semantic revisions');
@@ -121,6 +149,16 @@ SemanticRevisionStore::record($store, [$depId]);
 $services->getDBLoadBalancerFactory()->commitPrimaryChanges(__METHOD__);
 $newRevision = $run([$depId]);
 same(2, $newRevision->getMetrics()['invalidations'], 'Successive semantic revision is never coalesced with old receipts');
+same(2, $newRevision->getMetrics()['dependent_pages_queued_for_prewarm'],
+	'New semantic revision requeues both dependent pages for targeted preparation');
+foreach ($owners as $title) {
+	$id = $title->getArticleID();
+	$current = $prewarmQueue->current($id);
+	check($current['generation'] !== $queuedGenerations[$id] &&
+		!$prewarmQueue->acknowledge($id, $current['revisionId'], $queuedGenerations[$id]),
+		'A previous worker cannot erase new semantic work with the same page revision');
+	$queuedGenerations[$id] = $current['generation'];
+}
 SemanticRevisionStore::record($store, [$depId]);
 $changedDuring = false;
 $interleaving = $services->getHookContainer()->scopedRegister('TitleSquidURLs',
@@ -164,12 +202,21 @@ SemanticRevisionStore::record($store, [$depId]);
 $throwing = $services->getHookContainer()->scopedRegister('TitleSquidURLs',
 	static function(): void { throw new RuntimeException('Injected HTML invalidation failure'); });
 $failed = new SemanticCachePurgeJob($owners[0], ['dependencyIds' => [$depId], 'cursor' => 0]);
+$beforeFailure = $prewarmQueue->current($owners[0]->getArticleID())['generation'];
 check(!$failed->run(), 'HTML exception remains a retryable job failure');
+same(0, $failed->getMetrics()['dependent_pages_queued_for_prewarm'],
+	'Failed HTML purge cannot falsely report successful queued prewarming');
+same($beforeFailure,
+	$prewarmQueue->current($owners[0]->getArticleID())['generation'],
+	'Exception during CDN/HTML purge leaves existing pending work unchanged');
 check(!SemanticPurgeScope::isActive(), 'A failed HTML purge always clears the semantic provenance marker');
 same(0, $failed->getMetrics()['continuations'], 'Failed batch never queues a successor');
 $throwing = null;
 $GLOBALS['wgWikidebatesSemanticCachePurgeBatchSize'] = 1000;
-same(2, $run([$depId])->getMetrics()['invalidations'], 'Retry completes all invalidations after failure');
+$retry = $run([$depId]);
+same(2, $retry->getMetrics()['invalidations'], 'Retry completes all invalidations after failure');
+same(2, $retry->getMetrics()['dependent_pages_queued_for_prewarm'],
+	'After retry, successfully purged semantic dependents receive fresh queue generations');
 
 $versionA = SemanticPurgeState::revisions($store, [$depId]);
 $params = ['dependencyIds' => [$depId], 'cursor' => 0,
@@ -189,7 +236,22 @@ same(false, $htmlOrigins[$observerCount] ?? null,
 	'Explicit ordinary HTML purge is not classified as a semantic dependent purge');
 check(!SemanticPurgeScope::isActive(), 'Explicit HTML purge leaves provenance clean');
 $articleObserver = $htmlObserver = null;
+$GLOBALS['wgWikidebatesCachePreparationDirectory'] = false;
 fsFlush();
+
+// All persistent files belong to the disposable test, never a real wiki.
+foreach ($prewarmQueue->pending() as $record) {
+	check($prewarmQueue->acknowledge($record['pageId'], $record['revisionId'],
+		$record['generation']), 'Disposable semantic queue drains exact request generations');
+}
+$cleanup = new RecursiveIteratorIterator(
+	new RecursiveDirectoryIterator($queueRoot, FilesystemIterator::SKIP_DOTS),
+	RecursiveIteratorIterator::CHILD_FIRST
+);
+foreach ($cleanup as $path) {
+	$path->isDir() ? rmdir($path->getPathname()) : unlink($path->getPathname());
+}
+rmdir($queueRoot);
 
 echo json_encode(['backend' => $backend, 'first' => $first->getMetrics(),
 	'overlap' => $overlap->getMetrics(), 'continuations' => $continuations], JSON_PRETTY_PRINT) . "\n";
