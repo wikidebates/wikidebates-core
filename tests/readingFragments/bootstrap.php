@@ -45,7 +45,8 @@ function readingFragmentTestSettings($settings): void {
 				}
 			}],
 			'HTMLFileCache::useFileCache' => [static function ($context) {
-				return $context->getRequest()->getHeader('X-Test-Veto') !== 'file';
+				return $context->getRequest()->getHeader('X-Test-Veto') !== 'file' &&
+					getenv('WD_VECTOR_TEST_VETO') !== '1';
 			}],
 			'IsFileCacheable' => [static function ($article) {
 				return $article->getContext()->getRequest()->getHeader('X-Test-Veto') !== 'article';
