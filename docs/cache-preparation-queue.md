@@ -46,6 +46,25 @@ Les modifications d'autres pages, les recalculs SMW et les purges de dépendance
 n'émettent pas directement de nouvel événement `PageSaveComplete` sur l'article
 inchangé, donc ne doivent pas l'inscrire dans cette file.
 
+## Préparation ciblée d'un fragment de lecture
+
+Le script `Wikidebates:prepareReadingCache` peut maintenant inspecter exactement
+une page de catégorie Arguments sans parcourir les autres :
+
+```sh
+php maintenance/run.php Wikidebates:prepareReadingCache --wiki=fr --page-id=1220 --json --sleep-ms=0
+```
+
+Cela exige les paramètres existants `WikidebatesReadingFragments` et
+`WikidebatesReadingPrewarm` activés. Seules les pages de l'espace principal
+directement membres de la catégorie d'arguments sont concernées ; les autres
+identifiants produisent un rapport `inspected: 0` sans entraîner le
+préchauffage d'une page voisine.
+
+Le mode `--page-id` refuse les curseurs globaux `--after`,
+`--resume-file` et une limite multipage. Le verrou de préparation
+existant et les contrôles des fragments réutilisables sont conservés.
+
 ## Concurrence, reprise et futurs consommateurs
 
 - Une entrée n'est retirée que si le consommateur confirme exactement la
