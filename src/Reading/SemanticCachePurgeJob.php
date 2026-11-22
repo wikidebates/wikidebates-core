@@ -232,7 +232,9 @@ final class SemanticCachePurgeJob extends \Job {
 							$state->remember($completed);
 						};
 						SemanticTouchBarrier::schedule(
-							$prewarmQueue, $barriers, $db, $htmlCache, $recordAfterBarrier
+							$prewarmQueue, $barriers,
+							$services->getConnectionProvider()->getPrimaryDatabase(),
+							$htmlCache, $recordAfterBarrier
 						);
 					}
 					if ($available && $prewarmQueue === null) {
