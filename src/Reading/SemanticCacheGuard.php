@@ -17,6 +17,9 @@ use SMW\SQLStore\QueryDependencyLinksStoreFactory;
 final class SemanticCacheGuard {
 	public static function safeForRead($title, $page, ?string &$semanticRevision = null): bool {
 		$semanticRevision = null;
+		// Only answer semantic freshness. The caller must still check
+		// anonymous permissions and revision visibility independently.
+		if (PageLocalCachePolicy::enabled()) { return true; }
 		try {
 			if (!class_exists(QueryDependencyLinksStoreFactory::class)) {
 				return false;
