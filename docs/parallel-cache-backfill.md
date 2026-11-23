@@ -73,6 +73,24 @@ empeche d'amplifier une surcharge. Chaque tentative reverifie la revision
 et la visibilite anonyme. HTTP 403, NO_HEADER et les sorties inconnues
 restent des echecs a inspecter ; ils ne font pas avancer les curseurs.
 
+## Titres depassant la taille d'un fichier Vector natif
+
+MediaWiki 1.43 encode le titre entier dans un composant du nom de fichier
+HTMLFileCache, suivi de .html ou .html.gz. Sur Linux, le composant du nom
+ne peut normalement pas depasser 255 octets. Un titre valide dans MediaWiki
+peut franchir ce seuil apres encodage URL (notamment les accents).
+
+L'outil Vector verifie la longueur du composant natif avant tout rendu ou
+ecriture. Il rapporte SKIPPED_FILENAME_TOO_LONG, qui n'est pas une erreur
+et n'invente pas de fichier Vector. Les phases Minerva et Lecture restent
+soumises a leurs propres controles normaux : elles peuvent toujours utiliser
+leurs caches s'ils sont compatibles avec le titre. Aucun chemin de cache
+natif n'est renomme ou raccourci artificiellement.
+
+Une veritable erreur de stockage (WRITE_FAILED) ou de rendu reste bloquante,
+et une commande enfant Vector qui quitte avec un code 1 conserve desormais
+un diagnostic interne connu, sans exposer ses messages d'erreur arbitraires.
+
 ## Pages explicitement non cacheables
 
 Une page dont la sortie anonyme refuse la mise en cache, notamment par le mot
