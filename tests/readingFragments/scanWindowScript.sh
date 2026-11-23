@@ -68,7 +68,7 @@ export HOME="$temp/home"
 export WD_CACHE_WINDOW_LOCK_DIR="$temp/home/windows"
 export WD_CACHE_WINDOW_PHP="$temp/bin/cache-window-php"
 export WD_CACHE_WINDOW_TEST_COUNT="$temp/count"
-export WD_CACHE_WINDOW_SECONDS=900
+export WD_CACHE_WINDOW_SECONDS=1800
 
 export WD_CACHE_WINDOW_TEST_EN=incomplete
 sh "$repo/maintenance/scanCacheWindow.sh" fr > "$temp/incomplete.log"
