@@ -20,8 +20,28 @@ define('MW_INSTALL_PATH', $root . '/mediawiki');
 require MW_INSTALL_PATH . '/includes/BootstrapHelperFunctions.php';
 require MW_INSTALL_PATH . '/includes/Setup.php';
 
-$title = MediaWiki\Title\Title::newFromText('Cache study argument');
+// A default MediaWiki TOC requires enough headings (four or more).
+// The original cache fixture has only two and legitimately has no sidebar TOC.
+$title = MediaWiki\Title\Title::newFromText('Vector 2022 toc fixture');
 if (!$title) { throw new RuntimeException('Missing test title'); }
+$body = '';
+foreach (['Section alpha', 'Section beta', 'Section gamma', 'Section delta', 'Section epsilon'] as $heading) {
+	$body .= '== ' . $heading . " ==\n" .
+		str_repeat("Independent public content with a section anchor.\n", 20);
+}
+$services = MediaWiki\MediaWikiServices::getInstance();
+$user = $services->getUserFactory()->newFromName('CacheStudyReader');
+$page = $services->getWikiPageFactory()->newFromTitle($title);
+$updater = $page->newPageUpdater($user);
+$updater->setContent(MediaWiki\Revision\SlotRecord::MAIN,
+	MediaWiki\Content\ContentHandler::makeContent($body, $title));
+$updater->saveRevision(MediaWiki\CommentStore\CommentStoreComment::newUnsavedComment(
+	'Disposable Vector 2022 TOC coverage'
+));
+if (!$updater->wasSuccessful()) {
+	throw new RuntimeException('Failed to create an eligible multi-heading test page');
+}
+MediaWiki\Deferred\DeferredUpdates::doUpdates();
 $pageId = (int)$title->getArticleID();
 if ($pageId < 1) { throw new RuntimeException('Missing test page ID'); }
 
@@ -64,12 +84,12 @@ $flags = [
 	'markup-toc' => str_contains($html, 'id="mw-panel-toc"'),
 	'toc-available' => str_contains($html, 'vector-toc-available'),
 	'toc-not-available' => str_contains($html, 'vector-toc-not-available'),
-	'heading-summary' => str_contains($html, 'Summary'),
-	'heading-parents' => str_contains($html, 'Parent debates')
+	'heading-alpha' => str_contains($html, 'Section alpha'),
+	'heading-epsilon' => str_contains($html, 'Section epsilon')
 ];
 if (!$flags['vector-2022'] || !$flags['markup-toc'] ||
 	!$flags['toc-available'] || $flags['toc-not-available'] ||
-	!$flags['heading-summary'] || !$flags['heading-parents']) {
+	!$flags['heading-alpha'] || !$flags['heading-epsilon']) {
 	throw new RuntimeException('CLI-prepared Vector 2022 HTML lost the anonymous sidebar TOC: ' .
 		json_encode(['flags' => $flags, 'bytes' => strlen($html)], JSON_THROW_ON_ERROR));
 }
