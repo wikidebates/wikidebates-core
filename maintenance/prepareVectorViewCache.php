@@ -28,6 +28,10 @@ class PrepareVectorViewCache extends Maintenance {
 		$this->addOption('page-id', 'Required positive MediaWiki page_id.', true, true);
 		$this->addOption('all', 'Permit non-content namespaces if the native cache policy allows them.');
 		$this->addOption('dry-run', 'Check eligibility without creating or modifying the HTML file.');
+		$this->addOption('force-view',
+			'Explicitly rebuild an eligible native ?action=view file even when already valid.');
+		$this->addOption('existing-only',
+			'With --force-view, skip pages that have no native view file (one-time migration).');
 		$this->addOption('repair-missing-toc',
 			'For Vector 2022, replace a valid prewarmed view only if its expected sidebar TOC is missing.');
 		$this->addOption('json', 'Print a machine-readable status report.');
@@ -142,7 +146,20 @@ class PrepareVectorViewCache extends Maintenance {
 		}
 		$view = new HTMLFileCache($title, 'view');
 		$touched = (string)$row->page_touched;
+		$forceView = $this->hasOption('force-view');
+		$existingOnly = $this->hasOption('existing-only');
+		if ($existingOnly && !$forceView) {
+			$this->fatalError('--existing-only requires --force-view.');
+		}
+		if ($forceView && $this->hasOption('repair-missing-toc')) {
+			$this->fatalError('--force-view and --repair-missing-toc are mutually exclusive.');
+		}
+		$exists = $view->isCached();
 		$valid = $view->isCacheGood($touched);
+		if ($forceView && $existingOnly && !$exists) {
+			$this->report($id, 'SKIPPED_MISSING_VIEW');
+			return true;
+		}
 		$repairToc = false;
 		if ($valid && $this->hasOption('repair-missing-toc') && $skinName === 'vector-2022') {
 			// Native HTML prepared by an earlier Skin clone could contain the
@@ -160,12 +177,13 @@ class PrepareVectorViewCache extends Maintenance {
 				}
 			}
 		}
-		if ($valid && !$repairToc) {
+		if ($valid && !$repairToc && !$forceView) {
 			$this->report($id, 'REUSED');
 			return true;
 		}
 		if ($this->hasOption('dry-run')) {
-			$this->report($id, $repairToc ? 'MISSING_TOC' : 'MISSING_FILE');
+			$this->report($id, $forceView && $exists ? 'WOULD_REBUILD_VIEW' :
+				($repairToc ? 'MISSING_TOC' : 'MISSING_FILE'));
 			return true;
 		}
 
@@ -217,7 +235,9 @@ class PrepareVectorViewCache extends Maintenance {
 			return false;
 		}
 		$this->report($id, 'CREATED',
-			['bytes' => strlen($html)] + ($repairToc ? ['repaired_toc' => true] : []));
+			['bytes' => strlen($html)] +
+			($repairToc ? ['repaired_toc' => true] : []) +
+			($forceView && $exists ? ['rebuilt_view' => true] : []));
 		return true;
 	}
 }
