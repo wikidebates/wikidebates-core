@@ -59,15 +59,20 @@ final class ParallelBackfillJournal {
 	 *
 	 * @return array<string,mixed>
 	 */
-	public function activate(int $startAfter, int $highWatermark, int $workers, bool $newCycle = false): array {
-		if ($startAfter < 0 || $highWatermark < $startAfter ||
+	public function activate(
+		int $startAfter, int $highWatermark, int $workers, string $cacheSignature,
+		bool $newCycle = false
+	): array {
+		if (!preg_match('/\A[a-f0-9]{64}\z/D', $cacheSignature) ||
+			$startAfter < 0 || $highWatermark < $startAfter ||
 			$workers < 1 || $workers > 16) {
 			throw new \InvalidArgumentException('Invalid parallel backfill bounds');
 		}
-		return $this->locked(true, function () use ($startAfter, $highWatermark, $workers, $newCycle) {
+		return $this->locked(true, function () use ($startAfter, $highWatermark, $workers, $cacheSignature, $newCycle) {
 			$data = $this->read();
 			if ($data !== null && $data['state'] !== 'complete') {
 				if ($newCycle || $data['start_after'] !== $startAfter ||
+					!hash_equals($data['cache_signature'], $cacheSignature) ||
 					count($data['lanes']) !== $workers) {
 					throw new \RuntimeException('Unfinished parallel scan must resume unchanged');
 				}
@@ -91,6 +96,7 @@ final class ParallelBackfillJournal {
 					'wiki' => $this->wiki,
 					'start_after' => $startAfter,
 					'high_watermark' => $highWatermark,
+					'cache_signature' => $cacheSignature,
 					'created_at' => time(),
 					'run_id' => bin2hex(random_bytes(16)),
 					'state' => 'running',
@@ -262,6 +268,8 @@ final class ParallelBackfillJournal {
 			($data['wiki'] ?? null) !== $this->wiki ||
 			!is_int($data['start_after'] ?? null) ||
 			!is_int($data['high_watermark'] ?? null) ||
+			!is_string($data['cache_signature'] ?? null) ||
+			!preg_match('/\A[a-f0-9]{64}\z/D', $data['cache_signature']) ||
 			!is_int($data['heartbeat_at'] ?? null) ||
 			!is_string($data['run_id'] ?? null) ||
 			!preg_match('/\A[a-f0-9]{32}\z/D', $data['run_id']) ||
