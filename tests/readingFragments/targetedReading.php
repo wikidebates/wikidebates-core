@@ -36,13 +36,14 @@ if ($first['exit'] !== 0 || !is_array($first['data']) ||
 	($first['data']['target_page_id'] ?? null) !== $argumentId ||
 	($first['data']['inspected'] ?? null) !== 1 ||
 	($first['data']['complete'] ?? false) !== true ||
-	($first['data']['statuses']['created'] ?? 0) !== 1) {
+	($first['data']['statuses']['deferred-no-html'] ?? 0) !== 1) {
 	throw new RuntimeException('Single-argument preparation failed: ' .
 		substr($first['stdout'] . $first['stderr'], -1500));
 }
 $again = $invoke(['--page-id=' . $argumentId, '--sleep-ms=0']);
-if ($again['exit'] !== 0 || ($again['data']['statuses']['already-valid'] ?? 0) !== 1) {
-	throw new RuntimeException('Prepared argument was not reused: ' . $again['stdout'] . $again['stderr']);
+if ($again['exit'] !== 0 || ($again['data']['statuses']['deferred-no-html'] ?? 0) !== 1) {
+	throw new RuntimeException('Uncached argument should be deferred without parser rendering: ' .
+		$again['stdout'] . $again['stderr']);
 }
 $other = $invoke(['--page-id=' . $nonArgumentId, '--sleep-ms=0']);
 if ($other['exit'] !== 0 || ($other['data']['inspected'] ?? -1) !== 0 ||
@@ -59,4 +60,4 @@ if ($conflict['exit'] === 0 ||
 	throw new RuntimeException('Targeted preparation incorrectly accepted a global cursor');
 }
 echo json_encode(['result' => 'PASS', 'argumentId' => $argumentId,
-	'created' => 1, 'reused' => 1, 'otherInspected' => 0], JSON_THROW_ON_ERROR) . "\n";
+	'deferredWithoutHtml' => 2, 'created' => 0, 'otherInspected' => 0], JSON_THROW_ON_ERROR) . "\n";
