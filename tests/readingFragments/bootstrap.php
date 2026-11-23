@@ -36,6 +36,13 @@ function readingFragmentTestSettings($settings): void {
 		'Hooks' => [
 			'ParserAfterParse' => [static function ($parser) {
 				if ($parser->getTitle()->getText() === 'Uncacheable') { $parser->getOutput()->updateCacheExpiry(0); }
+				// The disposable lab does not load production SMW magic-word
+				// handlers. Reproduce the zero-expiry output of __NOCACHE__
+				// for the explicit non-content page in parallel fullstack.
+				if ($parser->getTitle()->getNamespace() === NS_TALK &&
+					$parser->getTitle()->getText() === 'Explicit no cache') {
+					$parser->getOutput()->updateCacheExpiry(0);
+				}
 				if ($parser->getTitle()->getText() === 'Short lived') { $parser->getOutput()->updateCacheExpiry(1); }
 			}],
 			'OutputPageBeforeHTML' => [static function ($out, &$html) {
