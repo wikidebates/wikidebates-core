@@ -58,7 +58,12 @@ if (!$updater->wasSuccessful()) {
 	throw new RuntimeException('Failed to create disposable __NOCACHE__ test page');
 }
 \MediaWiki\Deferred\DeferredUpdates::doUpdates();
-$noCacheId = (int)$noCacheTitle->getArticleID();
+$noCacheId = (int)\MediaWiki\MediaWikiServices::getInstance()
+	->getConnectionProvider()->getPrimaryDatabase()->selectField(
+		'page', 'page_id',
+		['page_namespace' => $noCacheTitle->getNamespace(),
+			'page_title' => $noCacheTitle->getDBkey()], __METHOD__
+	);
 if ($noCacheId < 1) {
 	throw new RuntimeException('Disposable no-cache page has no page ID');
 }
