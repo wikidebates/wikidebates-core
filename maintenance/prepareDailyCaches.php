@@ -19,6 +19,7 @@ class PrepareDailyCaches extends Maintenance {
 		$this->addDescription('Preview or run a bounded, resumable anonymous cache maintenance cycle.');
 		$this->requireExtension('Wikidebates');
 		$this->addOption('execute', 'Allow cache creation, queue acknowledgement and cursor writes.');
+		$this->addOption('queue-only', 'Process direct edits only, without scanning historical pages or moving the cursor.');
 		$this->addOption('limit', 'Maximum pages per invocation (default 20; maximum 100).', false, true);
 		$this->addOption('queue-limit', 'Maximum direct edits to prioritize (default 10).', false, true);
 		$this->addOption('batch-size', 'Maximum pages fetched per scan query (default 25).', false, true);
@@ -59,6 +60,10 @@ class PrepareDailyCaches extends Maintenance {
 		}
 		$maxLoad = (float)$loadRaw;
 		$execute = $this->hasOption('execute');
+		$queueOnly = $this->hasOption('queue-only');
+		if ($queueOnly && $queueLimit === 0) {
+			$this->fatalError('--queue-only requires a positive --queue-limit.');
+		}
 
 		$services = $this->getServiceContainer();
 		$config = $services->getMainConfig();
@@ -122,7 +127,9 @@ class PrepareDailyCaches extends Maintenance {
 			};
 			$needsPacing = static function (array $result): bool {
 				foreach ($result['phases'] ?? [] as $status) {
-					if (preg_match('/(?:\A|[=;])(CREATED|MISS|HIT|created)(?:;|\z)/D', $status)) {
+					// An explicit policy BYPASS still made an HTTP request. Space
+					// such requests just like MISS/HIT, without pacing LOCAL_HIT.
+					if (preg_match('/(?:\A|[=;])(CREATED|MISS|HIT|created|BYPASS-[a-z0-9-]+)(?:;|\z)/D', $status)) {
 						return true;
 					}
 				}
@@ -153,7 +160,7 @@ class PrepareDailyCaches extends Maintenance {
 				if ($execute && $delay > 0 && $needsPacing($result)) { usleep($delay * 1000); }
 			}
 
-			if ($report['stop_reason'] === 'complete') {
+			if ($report['stop_reason'] === 'complete' && !$queueOnly) {
 				$replica = $services->getConnectionProvider()->getReplicaDatabase();
 				while (count($report['pages']) < $limit) {
 					if ($execute && $overloaded()) {
@@ -218,6 +225,9 @@ class PrepareDailyCaches extends Maintenance {
 					count($report['pages']) >= $limit) {
 					$report['stop_reason'] = 'limit';
 				}
+			}
+			if ($report['stop_reason'] === 'complete' && $queueOnly) {
+				$report['stop_reason'] = 'queue-only';
 			}
 			$report['last_page_id'] = $cursor;
 		} finally {
