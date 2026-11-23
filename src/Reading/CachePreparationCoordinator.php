@@ -51,6 +51,37 @@ final class CachePreparationCoordinator {
 			$phases['reading'] === 'skipped-cache-policy';
 	}
 
+	/**
+	 * A confirmed no-cache render has produced no anonymous HTML to publish.
+	 * After a concurrent page_touched change, allow the scan to skip it only
+	 * if two fresh PRIMARY reads still find the same nonredirect revision and
+	 * the anonymous visibility guard still accepts the page. A newer revision
+	 * must not inherit a previous revision's cache-policy exclusion.
+	 *
+	 * @param array<string,mixed> $result
+	 * @param callable(int):?array{revisionId:int,isRedirect:bool} $pageSnapshot
+	 * @param callable(int):?string $publicIdentity
+	 */
+	public static function canCheckpointNoCacheRace(
+		array $result, callable $pageSnapshot, callable $publicIdentity
+	): bool {
+		if (!self::isExplicitNoCacheRace($result) ||
+			!is_int($result['pageId'] ?? null) || $result['pageId'] < 1) {
+			return false;
+		}
+		$id = $result['pageId'];
+		$revision = $result['revisionId'];
+		$before = $pageSnapshot($id);
+		$public = $publicIdentity($id);
+		$after = $pageSnapshot($id);
+		return is_array($before) && is_array($after) &&
+			($before['revisionId'] ?? null) === $revision &&
+			($after['revisionId'] ?? null) === $revision &&
+			($before['isRedirect'] ?? null) === false &&
+			($after['isRedirect'] ?? null) === false &&
+			is_string($public) && $public !== '';
+	}
+
 	/** @param array<string,mixed> $result */
 	public static function isExplicitNoCacheRace(array $result): bool {
 		return in_array($result['state'] ?? null, [
