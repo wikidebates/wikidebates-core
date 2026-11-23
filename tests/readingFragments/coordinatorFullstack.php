@@ -122,6 +122,61 @@ try {
 		throw new RuntimeException('Expected exactly one Minerva file and at least one reading fragment');
 	}
 
+	// A historical sweep must resume after a bounded page and avoid rewriting
+	// complete HTML or making mobile HTTP requests on a second unchanged pass.
+	$runDaily = static function () use ($conf): array {
+		$cmd = [PHP_BINARY, '-d', 'auto_prepend_file=' . __DIR__ . '/bootstrap.php',
+			dirname(__DIR__, 2) . '/maintenance/prepareDailyCaches.php',
+			'--conf=' . $conf, '--execute', '--limit=1', '--queue-limit=0',
+			'--max-seconds=480', '--minerva-delay-ms=250', '--delay-ms=0', '--json'];
+		$process = proc_open($cmd, [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']], $p);
+		if (!is_resource($process)) { throw new RuntimeException('Cannot run daily cache sweep'); }
+		fclose($p[0]);
+		$out = stream_get_contents($p[1]);
+		$err = stream_get_contents($p[2]);
+		fclose($p[1]);
+		fclose($p[2]);
+		$exit = proc_close($process);
+		$data = json_decode(trim($out), true);
+		if ($exit !== 0 || !is_array($data)) {
+			throw new RuntimeException('Daily cache sweep failed: ' . substr($out . $err, -2200));
+		}
+		return $data;
+	};
+	$firstDaily = $runDaily();
+	$sweepId = (int)($firstDaily['pages'][0]['pageId'] ?? 0);
+	if (($firstDaily['scan_processed'] ?? 0) !== 1 || $sweepId < 1 ||
+		!in_array(($firstDaily['pages'][0]['state'] ?? ''), ['complete', 'skipped-nonpublic'], true) ||
+		$queue->dailyCursor() !== $sweepId) {
+		throw new RuntimeException('Daily cursor did not persist one safely completed page: ' .
+			json_encode($firstDaily, JSON_THROW_ON_ERROR));
+	}
+	if (($firstDaily['pages'][0]['state'] ?? '') === 'complete') {
+		$existingHashes = static function () use ($state): array {
+			$files = array_merge(
+				glob($state . '/minerva-cache/*/*/*/*.cache') ?: [],
+				glob($state . '/reading-cache/*/*/*/*.cache') ?: []
+			);
+			sort($files);
+			return array_combine($files, array_map('hash_file', array_fill(0, count($files), 'sha256'), $files)) ?: [];
+		};
+		$beforeDailyReplay = $existingHashes();
+		$cursorLock = $queue->tryLockWorker();
+		if (!$cursorLock) { throw new RuntimeException('Cannot lock daily cursor in lab'); }
+		try { $queue->saveDailyCursor(0); }
+		finally { fclose($cursorLock); }
+		$secondDaily = $runDaily();
+		$secondPhases = $secondDaily['pages'][0]['phases'] ?? [];
+		if (($secondDaily['pages'][0]['pageId'] ?? null) !== $sweepId ||
+			($secondDaily['pages'][0]['state'] ?? null) !== 'complete' ||
+			($secondPhases['vector'] ?? null) !== 'REUSED' ||
+			($secondPhases['minerva'] ?? null) !== 'LOCAL_HIT' ||
+			$beforeDailyReplay !== $existingHashes()) {
+			throw new RuntimeException('Second unchanged daily pass rewrote caches or made a Minerva GET: ' .
+				json_encode($secondDaily, JSON_THROW_ON_ERROR));
+		}
+	}
+
 	// Exercise actual HTTP Minerva GETs against the new TTL=0 production
 	// Store, not just the prewarm subprocess or synthetic cache files.
 	$smokeUA = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 ' .
