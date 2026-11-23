@@ -37,6 +37,31 @@ $pageId = (int)Title::newFromText('Cache study argument')->getArticleID();
 if ($pageId < 1) {
 	throw new RuntimeException('Missing test argument');
 }
+// A real __NOCACHE__ magic-word page in a non-content namespace is
+// deliberately uncacheable for Vector/Minerva and must not block the sweep.
+$noCacheTitle = Title::newFromText('Talk:Explicit no cache');
+$testUser = \MediaWiki\MediaWikiServices::getInstance()
+	->getUserFactory()->newFromName('CacheStudyReader');
+$noCachePage = \MediaWiki\MediaWikiServices::getInstance()
+	->getWikiPageFactory()->newFromTitle($noCacheTitle);
+$updater = $noCachePage->newPageUpdater($testUser);
+$updater->setContent(\MediaWiki\Revision\SlotRecord::MAIN,
+	\MediaWiki\Content\ContentHandler::makeContent(
+		"__NOCACHE__\n== Deliberately uncached discussion ==\nThis body must not be snapshot.\n",
+		$noCacheTitle
+	)
+);
+$updater->saveRevision(
+	\MediaWiki\CommentStore\CommentStoreComment::newUnsavedComment('Disposable no-cache study')
+);
+if (!$updater->wasSuccessful()) {
+	throw new RuntimeException('Failed to create disposable __NOCACHE__ test page');
+}
+\MediaWiki\Deferred\DeferredUpdates::doUpdates();
+$noCacheId = (int)$noCacheTitle->getArticleID();
+if ($noCacheId < 1) {
+	throw new RuntimeException('Disposable no-cache page has no page ID');
+}
 // The initial lab creates unrelated fixture edits, including deliberately
 // uncacheable examples. Isolate one real direct edit for this integration test.
 foreach ($queue->pending(10000) as $record) {
@@ -116,7 +141,9 @@ try {
 	if ($checkpoint === null || $checkpoint['state'] !== 'complete' ||
 		!(new ParallelBackfillState($checkpoint['lanes']))->finished() ||
 		$queue->dailyCursor() !== 0 ||
-		($checkpoint['metrics']['completed'] ?? 0) < 1) {
+		($checkpoint['metrics']['completed'] ?? 0) < 1 ||
+		($checkpoint['metrics']['skipped'] ?? 0) < 1 ||
+		!str_contains($out . $err, '"page_id":' . $noCacheId . ',"reason":"parser-expiry"')) {
 		throw new RuntimeException('Parallel scan missed pages or failed to finalize: ' .
 			substr($out . $err, -3000));
 	}
@@ -125,6 +152,10 @@ try {
 	if (count($mobile) < 2 || count($reading) < 1 ||
 		$queue->current($pageId) !== null) {
 		throw new RuntimeException('Real mobile or fragment cache missing after parallel fill');
+	}
+	$noCacheVector = new HTMLFileCache($noCacheTitle, 'view');
+	if ($noCacheVector->isCached()) {
+		throw new RuntimeException('Native Vector HTML must never be created for __NOCACHE__ test page');
 	}
 	$vector = new HTMLFileCache(Title::newFromText('Cache study argument'), 'view');
 	if (!$vector->isCached()) {
