@@ -264,6 +264,35 @@ try {
 	if (!$vector->isCached()) {
 		throw new RuntimeException('Real native Vector cache not prepared');
 	}
+	// The normal cron's queue-only mode must also continue on a failed
+	// direct-edit page rather than aborting unrelated queued edits.
+	$dailyQueueCommand = [
+		PHP_BINARY, '-d', 'auto_prepend_file=' . __DIR__ . '/bootstrap.php',
+		MW_INSTALL_PATH . '/maintenance/run.php', 'Wikidebates:prepareDailyCaches',
+		'--wiki=' . $wiki, '--execute', '--queue-only', '--limit=10',
+		'--queue-limit=10', '--max-seconds=480', '--minerva-delay-ms=250'
+	];
+	$dailyQueueProcess = proc_open($dailyQueueCommand, [
+		['file', '/dev/null', 'r'],
+		['pipe', 'w'], ['pipe', 'w']
+	], $dailyQueuePipes);
+	if (!is_resource($dailyQueueProcess)) {
+		throw new RuntimeException('Cannot test daily retry queue');
+	}
+	$dailyQueueOut = stream_get_contents($dailyQueuePipes[1]);
+	$dailyQueueErr = stream_get_contents($dailyQueuePipes[2]);
+	fclose($dailyQueuePipes[1]);
+	fclose($dailyQueuePipes[2]);
+	$dailyQueueExit = proc_close($dailyQueueProcess);
+	$dailyQueueReport = json_decode(trim($dailyQueueOut), true);
+	if ($dailyQueueExit !== 0 ||
+		($dailyQueueReport['queue_deferred'] ?? 0) < 1 ||
+		($dailyQueueReport['stop_reason'] ?? null) !== 'queue-only' ||
+		$queue->current($faultId) === null) {
+		throw new RuntimeException('Daily queue lost the failing page or stopped: ' .
+			substr($dailyQueueOut . $dailyQueueErr, -2800));
+	}
+
 	// Completed runs do not implicitly restart and overwrite the old files.
 	$again = proc_open($command,
 		[['file', '/dev/null', 'r'], ['file', $stateDir . '/parallel-repeat.out', 'w'],
