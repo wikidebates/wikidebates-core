@@ -179,7 +179,7 @@ final class ParallelBackfillFailures {
 		}
 		if ($systemIncident !== null &&
 			(!in_array($systemIncident['type'] ?? null,
-				['supervisor-failed', 'supervisor-unresponsive'], true) ||
+				['supervisor-failed', 'supervisor-unresponsive', 'next-backfill-missing'], true) ||
 			!is_string($systemIncident['key'] ?? null) ||
 			!preg_match('/\A[a-f0-9]{64}\z/D', $systemIncident['key']))) {
 			throw new \InvalidArgumentException('Invalid supervisor incident signature');
