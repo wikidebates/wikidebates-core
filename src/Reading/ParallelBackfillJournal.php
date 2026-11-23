@@ -106,7 +106,11 @@ final class ParallelBackfillJournal {
 					'lanes' => ParallelBackfillState::create($startAfter, $highWatermark, $workers)->lanes(),
 					'metrics' => [
 						'completed' => 0, 'skipped' => 0, 'queue_acknowledged' => 0,
-						'cache_created' => 0, 'cache_reused' => 0
+						'cache_created' => 0, 'cache_reused' => 0,
+						'by_phase' => array_fill_keys(
+							CachePreparationCoordinator::PHASES,
+							['created' => 0, 'reused' => 0, 'skipped' => 0]
+						)
 					],
 					'last_failure' => null
 				];
@@ -155,28 +159,18 @@ final class ParallelBackfillJournal {
 			if ($status === 'acknowledged') {
 				$data['metrics']['queue_acknowledged']++;
 			}
-			foreach ($phases as $phase => $phaseStatus) {
-				if (!in_array($phase, CachePreparationCoordinator::PHASES, true) ||
-					!is_string($phaseStatus)) {
-					throw new \InvalidArgumentException('Invalid phase outcome');
-				}
-				$data['metrics']['cache_created'] += preg_match_all(
-					'/(?:\A|[=;])(CREATED|MISS|created)(?:;|\z)/D', $phaseStatus
-				);
-				$data['metrics']['cache_reused'] += preg_match_all(
-					'/(?:\A|[=;])(REUSED|LOCAL_HIT|HIT|already-valid)(?:;|\z)/D', $phaseStatus
-				);
-			}
+			$this->recordPhases($data['metrics'], $phases);
 			$this->write($data);
 		});
 	}
 
 	/** Exhaustion is only legal after the caller has queried the entire lane. */
 	/** Successful edit-queue work outside a scan lane does not advance the frontier. */
-	public function acknowledgedQueue(string $runId): void {
-		$this->locked(true, function () use ($runId) {
+	public function acknowledgedQueue(string $runId, array $phases = []): void {
+		$this->locked(true, function () use ($runId, $phases) {
 			$data = $this->requireRun($runId);
 			$data['metrics']['queue_acknowledged']++;
+			$this->recordPhases($data['metrics'], $phases);
 			$this->write($data);
 		});
 	}
@@ -220,6 +214,29 @@ final class ParallelBackfillJournal {
 			$data['stop_requested'] = true;
 			$this->write($data);
 		});
+	}
+
+	/**
+	 * Account for cache writes separately for Vector, both Minerva variants,
+	 * and Reading. Explicit policy exclusions remain skips, never creations.
+	 */
+	private function recordPhases(array &$metrics, array $phases): void {
+		foreach ($phases as $phase => $phaseStatus) {
+			if (!in_array($phase, CachePreparationCoordinator::PHASES, true) ||
+				!is_string($phaseStatus)) {
+				throw new \InvalidArgumentException('Invalid phase outcome');
+			}
+			$tokens = $phase === 'minerva' ? explode(';', $phaseStatus) : [$phaseStatus];
+			foreach ($tokens as $token) {
+				$state = str_contains($token, '=') ? substr($token, strpos($token, '=') + 1) : $token;
+				$key = in_array($state, ['CREATED', 'MISS', 'created'], true) ? 'created' :
+					(in_array($state, ['REUSED', 'HIT', 'LOCAL_HIT', 'already-valid'], true) ?
+						'reused' : 'skipped');
+				$metrics['by_phase'][$phase][$key]++;
+				if ($key === 'created') { $metrics['cache_created']++; }
+				if ($key === 'reused') { $metrics['cache_reused']++; }
+			}
+		}
 	}
 
 	/** Serialize state updates across all worker processes. */
@@ -290,6 +307,21 @@ final class ParallelBackfillJournal {
 		foreach (['completed', 'skipped', 'queue_acknowledged', 'cache_created', 'cache_reused'] as $key) {
 			if (!is_int($data['metrics'][$key] ?? null) || $data['metrics'][$key] < 0) {
 				throw new \RuntimeException('Invalid parallel backfill counter');
+			}
+		}
+		if (!is_array($data['metrics']['by_phase'] ?? null) ||
+			array_keys($data['metrics']['by_phase']) !== CachePreparationCoordinator::PHASES) {
+			throw new \RuntimeException('Malformed per-cache preparation counters');
+		}
+		foreach ($data['metrics']['by_phase'] as $counters) {
+			if (!is_array($counters) ||
+				array_keys($counters) !== ['created', 'reused', 'skipped']) {
+				throw new \RuntimeException('Invalid per-cache counter schema');
+			}
+			foreach ($counters as $value) {
+				if (!is_int($value) || $value < 0) {
+					throw new \RuntimeException('Invalid per-cache counter value');
+				}
 			}
 		}
 		return $data;
