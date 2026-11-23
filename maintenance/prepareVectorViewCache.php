@@ -6,6 +6,8 @@ use MediaWiki\Extension\Wikidebates\Reading\AnonymousCacheSafety;
 use MediaWiki\Extension\Wikidebates\Reading\VectorCacheEligibility;
 use MediaWiki\Debug\MWDebug;
 use MediaWiki\MainConfigNames;
+use MediaWiki\Parser\ParserOutput;
+use MediaWiki\Parser\ParserOutputFlags;
 use MediaWiki\Settings\SettingsBuilder;
 use MediaWiki\Title\Title;
 use Wikimedia\AtEase\AtEase;
@@ -26,6 +28,8 @@ class PrepareVectorViewCache extends Maintenance {
 		$this->addOption('page-id', 'Required positive MediaWiki page_id.', true, true);
 		$this->addOption('all', 'Permit non-content namespaces if the native cache policy allows them.');
 		$this->addOption('dry-run', 'Check eligibility without creating or modifying the HTML file.');
+		$this->addOption('repair-missing-toc',
+			'For Vector 2022, replace a valid prewarmed view only if its expected sidebar TOC is missing.');
 		$this->addOption('json', 'Print a machine-readable status report.');
 	}
 
@@ -138,12 +142,30 @@ class PrepareVectorViewCache extends Maintenance {
 		}
 		$view = new HTMLFileCache($title, 'view');
 		$touched = (string)$row->page_touched;
-		if ($view->isCacheGood($touched)) {
+		$valid = $view->isCacheGood($touched);
+		$repairToc = false;
+		if ($valid && $this->hasOption('repair-missing-toc') && $skinName === 'vector-2022') {
+			// Native HTML prepared by an earlier Skin clone could contain the
+			// actual page body but omit the Vector 2022 sidebar TOC. Do not
+			// rebuild a truly TOC-less page; ask ParserOutput whether the
+			// current public revision has a real table of contents.
+			$existing = $view->fetchText();
+			if (str_contains($existing, 'vector-toc-not-available') &&
+				!str_contains($existing, 'id="mw-panel-toc"')) {
+				$parsed = $article->getParserOutput();
+				if ($parsed instanceof ParserOutput) {
+					$toc = $parsed->getTOCData();
+					$repairToc = $toc !== null && count($toc->getSections()) > 0 &&
+						!$parsed->getOutputFlag(ParserOutputFlags::NO_TOC);
+				}
+			}
+		}
+		if ($valid && !$repairToc) {
 			$this->report($id, 'REUSED');
 			return true;
 		}
 		if ($this->hasOption('dry-run')) {
-			$this->report($id, 'MISSING_FILE');
+			$this->report($id, $repairToc ? 'MISSING_TOC' : 'MISSING_FILE');
 			return true;
 		}
 
@@ -186,7 +208,15 @@ class PrepareVectorViewCache extends Maintenance {
 			$this->report($id, 'WRITE_FAILED');
 			return false;
 		}
-		$this->report($id, 'CREATED', ['bytes' => strlen($html)]);
+		if ($repairToc && (!str_contains($html, 'id="mw-panel-toc"') ||
+			!str_contains($html, 'vector-toc-available'))) {
+			// Do not silently treat an incomplete replacement as repaired.
+			$view->clearCache();
+			$this->report($id, 'RETRY_MISSING_TOC');
+			return false;
+		}
+		$this->report($id, 'CREATED',
+			['bytes' => strlen($html)] + ($repairToc ? ['repaired_toc' => true] : []));
 		return true;
 	}
 }
