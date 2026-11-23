@@ -137,6 +137,46 @@ try {
 		]
 	]), 'An actual cached file blocks a page-touched skip');
 
+	$race = [
+		'pageId' => 6429, 'revisionId' => 101, 'state' => 'retry-page-changed',
+		'phases' => [
+			'vector' => 'SKIPPED_NONCONTENT',
+			'minerva' => 'android=BYPASS-parser-expiry;iphone=BYPASS-parser-expiry'
+		]
+	];
+	$readStable = static fn(int $id): ?array => $id === 6429 ?
+		['revisionId' => 101, 'isRedirect' => false] : null;
+	$publicStable = static fn(int $id): ?string => $id === 6429 ?
+		hash('sha256', 'current-public-identity') : null;
+	ensureIdentity(CachePreparationCoordinator::canCheckpointNoCacheRace(
+		$race, $readStable, $publicStable
+	), 'Repeated touch changes with the same public revision must allow safe skip');
+	$readNewRevision = static fn(int $id): ?array =>
+		['revisionId' => 102, 'isRedirect' => false];
+	ensureIdentity(!CachePreparationCoordinator::canCheckpointNoCacheRace(
+		$race, $readNewRevision, $publicStable
+	), 'Newly edited revision may not inherit the old __NOCACHE__ classification');
+	$readRedirect = static fn(int $id): ?array =>
+		['revisionId' => 101, 'isRedirect' => true];
+	ensureIdentity(!CachePreparationCoordinator::canCheckpointNoCacheRace(
+		$race, $readRedirect, $publicStable
+	), 'Redirected page may not be treated as the old version');
+	ensureIdentity(!CachePreparationCoordinator::canCheckpointNoCacheRace(
+		$race, $readStable, static fn(int $id): ?string => null
+	), 'Anonymous ACL or revision suppression must still block a stale skip');
+	$unstableReads = 0;
+	$readConcurrentEdit = static function (int $id) use (&$unstableReads): ?array {
+		$unstableReads++;
+		return [
+			'revisionId' => $unstableReads === 1 ? 101 : 102,
+			'isRedirect' => false
+		];
+	};
+	ensureIdentity(!CachePreparationCoordinator::canCheckpointNoCacheRace(
+		$race, $readConcurrentEdit, $publicStable
+	), 'Revision change between PRIMARY snapshots must fail closed');
+
+
 
 	echo "OK: non-content page_touched and revision races retry with fresh identity\n";
 } finally {
