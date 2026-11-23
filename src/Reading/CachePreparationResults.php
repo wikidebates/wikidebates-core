@@ -23,7 +23,7 @@ final class CachePreparationResults {
 			$status = (string)($report['state'] ?? '');
 			return [
 				'ok' => in_array($status, ['CREATED', 'REUSED', 'SKIPPED_NONCONTENT', 'SKIPPED_NONPUBLIC',
-					'SKIPPED_CACHE_POLICY', 'SKIPPED_REDIRECT_OR_INVALID'], true),
+					'SKIPPED_CACHE_POLICY', 'SKIPPED_REDIRECT_OR_INVALID', 'SKIPPED_SMW_ARTICLE'], true),
 				'status' => $status ?: 'empty-vector-status'
 			];
 		}
