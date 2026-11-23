@@ -29,6 +29,20 @@ if (!mkdir($root, 0700)) { throw new RuntimeException('Cannot initialize private
 try {
 	$fr = new CachePreparationQueue($root, 'fr');
 	$en = new CachePreparationQueue($root, 'en');
+	$check($fr->dailyCursor() === 0 && $en->dailyCursor() === 0,
+			'A fresh sweep begins at page zero for both wikis');
+		$workerLock = $fr->tryLockWorker();
+		$fr->saveDailyCursor(123);
+		$check((new CachePreparationQueue($root, 'fr'))->dailyCursor() === 123 &&
+			$en->dailyCursor() === 0, 'Cursor persists across runs and is partitioned by wiki');
+		$fr->saveDailyCursor(0);
+	$check($fr->dailyCursor() === 0, 'Completed sweep may restart at page zero');
+		$throws(static fn() => $fr->saveDailyCursor(-1), 'Negative cursor is rejected');
+		fclose($workerLock);
+		$cursorPath = $root . '/' . hash('sha256', 'fr') . '/daily-cursor.json';
+		file_put_contents($cursorPath, '{"version":1,"after":"bad"}');
+		$throws(static fn() => $fr->dailyCursor(), 'Malformed cursor must fail closed');
+		unlink($cursorPath);
 	$check($fr->pending() === [] && $fr->current(42) === null,
 		'A never-used queue has no pending pages');
 	$check($fr->enqueue(42, 100), 'Initial direct revision is persisted');
