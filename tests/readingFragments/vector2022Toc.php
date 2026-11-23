@@ -51,9 +51,10 @@ if ($status !== 0 || !is_array($report) ||
 		json_encode(['exit' => $status, 'report' => $report,
 			'stderr_tail' => substr($stderr, -700)], JSON_THROW_ON_ERROR));
 }
-// The renderer wrote the HTML in a child process after the parent
-// inspected and removed the old cache. Clear this process's stat cache.
+// FileCacheBase memoizes isCached() on each object. Our previous object
+// deliberately observed a missing file after clearCache(); use a fresh one.
 clearstatcache(true);
+$view = new HTMLFileCache($title, 'view');
 if (!$view->isCached()) {
 	throw new RuntimeException('Vector 2022 cache file was not created');
 }
