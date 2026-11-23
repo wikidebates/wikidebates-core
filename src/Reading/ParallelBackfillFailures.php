@@ -77,7 +77,8 @@ final class ParallelBackfillFailures {
 			!is_int($value['first_at'] ?? null) ||
 			!is_int($value['last_at'] ?? null) ||
 			!is_int($value['attempts'] ?? null) ||
-			!array_key_exists('resolved_at', $value)) {
+			!array_key_exists('resolved_at', $value) ||
+			!($value['resolved_at'] === null || is_int($value['resolved_at']))) {
 			throw new \RuntimeException('Malformed cache failure record');
 		}
 		return $value;
@@ -124,7 +125,7 @@ final class ParallelBackfillFailures {
 		$open = 0;
 		$resolved = 0;
 		$recent = [];
-		$signature = hash_init('sha256');
+		$signatureParts = [];
 		foreach (new \FilesystemIterator(
 			$this->directory, \FilesystemIterator::SKIP_DOTS
 		) as $file) {
@@ -140,8 +141,8 @@ final class ParallelBackfillFailures {
 				continue;
 			}
 			$open++;
-			hash_update($signature, $id . ':' . $record['revision_id'] . ':' .
-				$record['reason'] . "\n");
+			$signatureParts[] = $id . ':' . $record['revision_id'] . ':' .
+				$record['reason'];
 			if (count($recent) < $limit) {
 				$recent[] = [
 					'page_id' => $id, 'revision_id' => $record['revision_id'],
@@ -151,10 +152,11 @@ final class ParallelBackfillFailures {
 				];
 			}
 		}
+		sort($signatureParts, SORT_STRING);
 		usort($recent, static fn(array $a, array $b): int => $a['page_id'] <=> $b['page_id']);
 		return [
 			'open' => $open, 'resolved' => $resolved, 'recent' => $recent,
-			'signature' => hash_final($signature)
+			'signature' => hash('sha256', implode("\n", $signatureParts))
 		];
 	}
 
