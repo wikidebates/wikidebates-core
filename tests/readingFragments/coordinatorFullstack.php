@@ -160,6 +160,40 @@ try {
 		throw new RuntimeException('Daily cursor did not persist one safely completed page: ' .
 			json_encode($firstDaily, JSON_THROW_ON_ERROR));
 	}
+	// After backfill, queue-only mode must prepare edits without moving the
+	// historical cursor or scanning other pages.
+	$cursorBeforeQueueOnly = $queue->dailyCursor();
+	if (!$queue->enqueue($pageId, $revision)) {
+		throw new RuntimeException('Cannot seed direct-edit queue-only cache fixture');
+	}
+	$queueOnlyCommand = [PHP_BINARY, '-d', 'auto_prepend_file=' . __DIR__ . '/bootstrap.php',
+		dirname(__DIR__, 2) . '/maintenance/prepareDailyCaches.php',
+		'--conf=' . $conf, '--execute', '--queue-only',
+		'--limit=1', '--queue-limit=1', '--max-seconds=480',
+		'--minerva-delay-ms=250', '--delay-ms=0', '--json'];
+	$queueOnlyProcess = proc_open($queueOnlyCommand,
+		[['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']], $queueOnlyPipes);
+	if (!is_resource($queueOnlyProcess)) {
+		throw new RuntimeException('Cannot launch queue-only cache worker');
+	}
+	fclose($queueOnlyPipes[0]);
+	$queueOnlyOut = stream_get_contents($queueOnlyPipes[1]);
+	$queueOnlyErr = stream_get_contents($queueOnlyPipes[2]);
+	fclose($queueOnlyPipes[1]);
+	fclose($queueOnlyPipes[2]);
+	$queueOnlyExit = proc_close($queueOnlyProcess);
+	$queueOnlyReport = json_decode(trim($queueOnlyOut), true);
+	if ($queueOnlyExit !== 0 || !is_array($queueOnlyReport) ||
+		($queueOnlyReport['stop_reason'] ?? '') !== 'queue-only' ||
+		($queueOnlyReport['queue_acknowledged'] ?? 0) !== 1 ||
+		($queueOnlyReport['scan_processed'] ?? -1) !== 0 ||
+		($queueOnlyReport['last_page_id'] ?? -1) !== $cursorBeforeQueueOnly ||
+		$queue->dailyCursor() !== $cursorBeforeQueueOnly ||
+		$queue->current($pageId) !== null) {
+		throw new RuntimeException('Queue-only runner lost edits or advanced historical cursor: ' .
+			substr($queueOnlyOut . $queueOnlyErr, -2000));
+	}
+
 	if (($firstDaily['pages'][0]['state'] ?? '') === 'complete') {
 		$existingHashes = static function () use ($state): array {
 			$files = array_merge(
