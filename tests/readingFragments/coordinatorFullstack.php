@@ -11,6 +11,10 @@ if (!$root || !is_file($root . '/.wikidebates-minerva-lab') ||
 	throw new RuntimeException('Only a marked, disposable MediaWiki queue laboratory is supported');
 }
 $state = $root . '/state';
+// Keep HTTP and maintenance identities equal despite --conf mtime in this lab.
+if (!touch($state . '/consistent-cache-epoch')) {
+	throw new RuntimeException('Cannot pin disposable cache identity');
+}
 // Only this disposable HTTP laboratory selects unlimited cache retention.
 // Existing duration-oriented integration tests keep their own finite TTL.
 if (!touch($state . '/unlimited-ttl')) { throw new RuntimeException('Cannot enable lab-only no-TTL fixture'); }
