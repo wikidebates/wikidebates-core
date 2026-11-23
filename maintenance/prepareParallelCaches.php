@@ -5,6 +5,7 @@ use MediaWiki\Extension\Wikidebates\Reading\ArgumentCategory;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCommands;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCoordinator;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationQueue;
+use MediaWiki\Extension\Wikidebates\Reading\DailyCacheScanIncident;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillGovernor;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillHealth;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillFpmStatus;
@@ -97,6 +98,9 @@ class PrepareParallelCaches extends Maintenance {
 				$frJournal = new ParallelBackfillJournal($frQueue, 'frwikidebates');
 				$incident = ParallelBackfillHealth::missingNextWiki($frJournal->snapshot());
 			}
+			if ($incident === null && $snapshot !== null && $snapshot['state'] === 'complete') {
+				$incident = (new DailyCacheScanIncident($queue))->incident();
+			}
 			$summary = $failures->summary();
 			if ($incident !== null) {
 				$publicIncident = $incident;
@@ -124,13 +128,13 @@ class PrepareParallelCaches extends Maintenance {
 						if (isset($data['system'])) {
 							$system = $data['system'];
 							$lines[] = '';
-							$lines[] = 'Supervisor incident: ' . $system['type'];
+							$lines[] = 'Cache maintenance incident: ' . $system['type'];
 							$lines[] = 'Internal reason: ' . $system['reason'];
 							$lines[] = 'Lane: ' . $system['lane'];
 							$lines[] = 'Page ID: ' . $system['page_id'];
 							$lines[] = 'Incident reference (UTC): ' .
 								($system['at'] > 0 ? gmdate('Y-m-d H:i:s', $system['at']) : 'unknown');
-							$lines[] = 'Inspect the parallel status and supervisor log.';
+							$lines[] = 'Inspect the maintenance and parallel status logs.';
 						}
 						if ($data['open'] > 0) {
 							$lines[] = '';
@@ -146,7 +150,7 @@ class PrepareParallelCaches extends Maintenance {
 						}
 						$lines[] = 'No failed or private HTML was declared cacheable.';
 						$subject = '[Wikidebates cache] ' . $wiki . ' - ' .
-							(isset($data['system']) ? 'supervisor incident, ' : '') .
+							(isset($data['system']) ? 'maintenance incident, ' : '') .
 							$data['open'] . ' pages to retry';
 						return \UserMailer::send(
 							new \MailAddress('erreurcache@wikidebats.org'),
