@@ -328,6 +328,34 @@ try {
 	$check(!CachePreparationResults::interpret('minerva', 17, 0,
 		$minerva(['NO_HEADER' => 1, 'bypassReasons' => []]))['ok'],
 		'Missing diagnostics cannot silently become completion');
+	$check(CachePreparationResults::interpret('minerva', 17, 0,
+		$minerva(['NO_HEADER' => 1, 'bypassReasons' => []])) ===
+		['ok' => false, 'status' => 'NO_HEADER'],
+		'A missing diagnostic header is reported without acknowledging the page');
+	$check(CachePreparationResults::interpret('minerva', 17, 0,
+		$minerva(['UNKNOWN_HEADER' => 1, 'bypassReasons' => []])) ===
+		['ok' => false, 'status' => 'UNKNOWN_HEADER'],
+		'Unknown Minerva header is reported and blocks the cursor');
+	$check(CachePreparationResults::interpret('minerva', 17, 0,
+		$minerva(['HTTP_404' => 1, 'bypassReasons' => []])) ===
+		['ok' => false, 'status' => 'HTTP_404'],
+		'HTTP 404 is distinguishable from a cache HIT without being accepted');
+	$check(CachePreparationResults::interpret('minerva', 17, 0,
+		$minerva(['BYPASS' => 1, 'bypassReasons' => ['storage-error' => 1]])) ===
+		['ok' => false, 'status' => 'BYPASS-storage-error'],
+		'Storage failures remain fatal and expose a bounded safe reason');
+	$check(CachePreparationResults::interpret('minerva', 17, 0,
+		$minerva(['BYPASS' => 1, 'bypassReasons' => ['busy' => 1]])) ===
+		['ok' => false, 'status' => 'BYPASS-busy'],
+		'Concurrent cache fills are not acknowledged as completed');
+	$check(CachePreparationResults::interpret('minerva', 17, 0,
+		$minerva(['BYPASS' => 1, 'bypassReasons' => ['unsafe\nvalue' => 1]])) ===
+		['ok' => false, 'status' => 'BYPASS-invalid-reason'],
+		'Untrusted bypass labels never appear unescaped in logs');
+	$check(CachePreparationResults::interpret('minerva', 17, 0,
+		$minerva(['HTTP_200' => 1, 'MISS' => 1, 'bypassReasons' => []])) ===
+		['ok' => false, 'status' => 'minerva-not-prepared'],
+		'Multiple conflicting statuses cannot be accepted or reported as one result');
 	$check(!CachePreparationResults::interpret('minerva', 17, 7,
 		$minerva(['HIT' => 1, 'bypassReasons' => []]))['ok'],
 		'Nonzero process exit always rejects even an apparently successful body');
