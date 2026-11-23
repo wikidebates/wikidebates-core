@@ -180,7 +180,8 @@ class PrepareParallelCaches extends Maintenance {
 			$run = $journal->activate(
 				$existing !== null && $existing['state'] !== 'complete'
 					? $existing['start_after'] : $cursor,
-				$highest, $workers, $this->hasOption('new-cycle')
+				$highest, $workers, $this->cacheSignature($config),
+				$this->hasOption('new-cycle')
 			);
 			return $this->supervise($queue, $journal, $wiki, $run, $workers,
 				$devices, $minervaDelay, (float)$loadRaw, $reserveMb,
@@ -373,6 +374,7 @@ class PrepareParallelCaches extends Maintenance {
 			while (true) {
 				$snapshot = $journal->snapshot();
 				if ($snapshot === null || $snapshot['run_id'] !== $session ||
+					!hash_equals($snapshot['cache_signature'], $this->cacheSignature($config)) ||
 					$lane !== null && !isset($snapshot['lanes'][$lane])) {
 					return false;
 				}
@@ -501,6 +503,25 @@ class PrepareParallelCaches extends Maintenance {
 		} finally {
 			fclose($lock);
 		}
+	}
+
+	/**
+	 * Resume may not skip an earlier range when the cache identity/config
+	 * changed and all files in that range need regeneration.
+	 */
+	private function cacheSignature($config): string {
+		$keys = [
+			'CacheEpoch', 'MinervaFileCacheEpoch', 'WikidebatesReadingCacheEpoch',
+			'FileCacheDirectory', 'MinervaFileCacheDirectory',
+			'WikidebatesReadingCacheDirectory', 'MinervaFileCacheTTL',
+			'WikidebatesReadingCacheTTL', 'WikidebatesReadingArgumentCategory',
+			'DefaultSkin', 'LanguageCode', 'Server'
+		];
+		$values = [];
+		foreach ($keys as $key) {
+			$values[$key] = $config->get($key);
+		}
+		return hash('sha256', json_encode($values, JSON_THROW_ON_ERROR));
 	}
 
 	/** @return int|null */
