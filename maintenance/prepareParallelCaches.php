@@ -36,6 +36,7 @@ class PrepareParallelCaches extends Maintenance {
 		$this->addOption('status', 'Read-only progress report.');
 		$this->addOption('report-errors', 'Read-only per-page and supervisor incident summary.');
 		$this->addOption('mail-errors', 'With --report-errors: send a rate-limited aggregated email.');
+		$this->addOption('test-mail', 'With --report-errors --mail-errors: send one explicit delivery-test email.');
 		$this->addOption('stop', 'Request graceful stop at the next page boundary.');
 		$this->addOption('new-cycle', 'Start a fresh cycle only after the previous one completed.');
 		$this->addOption('workers', 'Number of parallel scan lanes (1-8; default 4).', false, true);
@@ -83,6 +84,9 @@ class PrepareParallelCaches extends Maintenance {
 				$this->hasOption('worker-queue') || $this->hasOption('new-cycle')) {
 				$this->fatalError('Error reporting cannot be combined with cache operations.');
 			}
+			if ($this->hasOption('test-mail') && !$this->hasOption('mail-errors')) {
+				$this->fatalError('--test-mail requires --report-errors --mail-errors.');
+			}
 			$failures = new ParallelBackfillFailures($queue);
 			$snapshot = $journal->snapshot();
 			$incident = ParallelBackfillHealth::incident($snapshot);
@@ -100,7 +104,15 @@ class PrepareParallelCaches extends Maintenance {
 				$summary['system'] = $publicIncident;
 			}
 			$mailStatus = null;
-			if ($this->hasOption('mail-errors')) {
+			if ($this->hasOption('mail-errors') && $this->hasOption('test-mail')) {
+				$mailStatus = \UserMailer::send(
+					new \MailAddress('erreurcache@wikidebats.org'),
+					new \MailAddress('noreply@wikidebats.org', 'Wikidebats'),
+					'[Wikidebates cache] ' . $wiki . ' - delivery test',
+					'Explicit MediaWiki cache monitoring email test for ' . $wiki . '.' .
+						"\nNo cache, queue, checkpoint or alert deduplication state was changed."
+				)->isOK() ? 'test-sent' : 'failed';
+			} elseif ($this->hasOption('mail-errors')) {
 				$mailStatus = $failures->alert(
 					static function (array $data) use ($wiki): bool {
 						$lines = [
@@ -155,8 +167,8 @@ class PrepareParallelCaches extends Maintenance {
 			]);
 			return $mailStatus !== 'failed';
 		}
-		if ($this->hasOption('mail-errors')) {
-			$this->fatalError('--mail-errors requires --report-errors.');
+		if ($this->hasOption('mail-errors') || $this->hasOption('test-mail')) {
+			$this->fatalError('Mail operations require --report-errors (and --mail-errors for tests).');
 		}
 
 		if ($this->hasOption('status')) {
