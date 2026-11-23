@@ -83,10 +83,13 @@ final class CachePreparationResults {
 					$reason = (string)array_key_first($reasons);
 					if (($reasons[$reason] ?? null) === 1 &&
 						preg_match('/\A[a-z][a-z0-9-]{0,63}\z/D', $reason)) {
-						// Explicit policy exclusions can complete. All other BYPASS
-						// reasons stay retryable and report only the validated reason.
+						// Explicit policy exclusions can complete. A Set-Cookie response
+						// cannot be stored in a shared anonymous HTML cache, so treating
+						// that refusal as a safe skip avoids pinning the daily cursor.
+						// Never accept storage errors, busy locks or unknown headers.
 						$safe = in_array($reason, [
-							'not-public', 'parser-expiry', 'extension-veto', 'page', 'redirect'
+							'not-public', 'parser-expiry', 'extension-veto', 'page', 'redirect',
+							'header-set-cookie'
 						], true);
 						return ['ok' => $safe, 'status' => 'BYPASS-' . $reason];
 					}
