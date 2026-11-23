@@ -37,6 +37,21 @@ $pageId = (int)Title::newFromText('Cache study argument')->getArticleID();
 if ($pageId < 1) {
 	throw new RuntimeException('Missing test argument');
 }
+// The initial lab creates unrelated fixture edits, including deliberately
+// uncacheable examples. Isolate one real direct edit for this integration test.
+foreach ($queue->pending(10000) as $record) {
+	if (!$queue->acknowledge($record['pageId'], $record['revisionId'],
+		$record['generation'] ?? null)) {
+		throw new RuntimeException('Cannot clear disposable fixture events');
+	}
+}
+$primary = \MediaWiki\MediaWikiServices::getInstance()
+	->getConnectionProvider()->getPrimaryDatabase();
+$revision = (int)$primary->selectField('page', 'page_latest',
+	['page_id' => $pageId], __METHOD__);
+if ($revision < 1 || !$queue->enqueue($pageId, $revision)) {
+	throw new RuntimeException('Cannot seed a single direct-edit queue record');
+}
 $iniDir = $stateDir . '/parallel-ini';
 if (!mkdir($iniDir, 0700)) {
 	throw new RuntimeException('Cannot initialize private PHP ini folder');
@@ -79,7 +94,8 @@ try {
 		MW_INSTALL_PATH . '/maintenance/run.php', 'Wikidebates:prepareParallelCaches',
 		'--wiki=' . $wiki, '--execute', '--workers=2', '--minerva-devices=android',
 		'--minerva-delay-ms=250', '--max-load=100', '--reserve-mb=128',
-		'--max-health-ms=15000', '--max-seconds=600'
+		'--max-health-ms=15000', '--max-seconds=600',
+		'--health-title=Cache study argument'
 	];
 	$process = proc_open($command,
 		[['file', '/dev/null', 'r'],
