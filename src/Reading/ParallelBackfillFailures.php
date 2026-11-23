@@ -98,7 +98,8 @@ final class ParallelBackfillFailures {
 			'version' => 1, 'page_id' => $pageId,
 			'revision_id' => $revisionId,
 			'reason' => self::safeCode($reason),
-			'first_at' => $old['first_at'] ?? $now,
+			'first_at' => $old !== null && $old['resolved_at'] === null ?
+				$old['first_at'] : $now,
 			'last_at' => $now,
 			'attempts' => min(1000000, ($old['attempts'] ?? 0) + 1),
 			'resolved_at' => null
@@ -142,18 +143,20 @@ final class ParallelBackfillFailures {
 			}
 			$open++;
 			$signatureParts[] = $id . ':' . $record['revision_id'] . ':' .
-				$record['reason'];
-			if (count($recent) < $limit) {
-				$recent[] = [
-					'page_id' => $id, 'revision_id' => $record['revision_id'],
-					'reason' => $record['reason'],
-					'attempts' => $record['attempts'],
-					'last_at' => $record['last_at']
-				];
+				$record['reason'] . ':' . $record['first_at'];
+			$recent[] = [
+				'page_id' => $id, 'revision_id' => $record['revision_id'],
+				'reason' => $record['reason'],
+				'attempts' => $record['attempts'],
+				'last_at' => $record['last_at']
+			];
+			usort($recent, static fn(array $a, array $b): int =>
+				($b['last_at'] <=> $a['last_at']) ?: ($a['page_id'] <=> $b['page_id']));
+			if (count($recent) > $limit) {
+				array_pop($recent);
 			}
 		}
 		sort($signatureParts, SORT_STRING);
-		usort($recent, static fn(array $a, array $b): int => $a['page_id'] <=> $b['page_id']);
 		return [
 			'open' => $open, 'resolved' => $resolved, 'recent' => $recent,
 			'signature' => hash('sha256', implode("\n", $signatureParts))
