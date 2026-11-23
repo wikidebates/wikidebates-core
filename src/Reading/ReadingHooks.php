@@ -60,14 +60,24 @@ class ReadingHooks {
 		try {
 			$services = MediaWikiServices::getInstance();
 			$title = $out->getTitle();
-			if (!$title || !$title->canExist()) { return; }
+			// Only argument pages in the main namespace can yield a reading
+			// fragment; do not inspect full HTML on categories, project pages or
+			// ordinary debates when their ParserOutput already tells us so.
+			if (!$title || !$title->canExist() || $title->getNamespace() !== NS_MAIN) { return; }
+			$categoryKey = ArgumentCategory::dbKey($context->getConfig());
 			$page = $services->getWikiPageFactory()->newFromTitle($title);
 			$touched = $page->getTouched();
 			$revision = (int)$page->getLatest();
 			$po = null;
 			foreach (self::$parserOutputs[$out] ?? [] as $candidate) {
+				// ParserOutput::getCategoryNames() is available on MW 1.43.
+				// Use its existing parsed categories, avoiding any extra SQL/parse.
 				if ($candidate->getCacheRevisionId() === $revision && $candidate->isCacheable() &&
-					!$candidate->expired($touched)) { $po = $candidate; break; }
+					!$candidate->expired($touched) &&
+					in_array($categoryKey, $candidate->getCategoryNames(), true)) {
+					$po = $candidate;
+					break;
+				}
 			}
 			if (!$po) { return; }
 			$expires = (int)wfTimestamp(TS_UNIX, $po->getCacheTime()) + $po->getCacheExpiry();
