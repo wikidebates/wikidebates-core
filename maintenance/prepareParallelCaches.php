@@ -369,6 +369,7 @@ class PrepareParallelCaches extends Maintenance {
 					? ['ok' => true, 'status' => 'not-an-argument']
 					: $commands->prepare($phase, $id);
 			$processed = 0;
+			$deferredQueuePages = [];
 			while (true) {
 				$snapshot = $journal->snapshot();
 				if ($snapshot === null || $snapshot['run_id'] !== $session ||
@@ -388,25 +389,41 @@ class PrepareParallelCaches extends Maintenance {
 					continue;
 				}
 				if ($lane === null) {
-					$pending = $queue->pending(10, true);
+					// A private/deleted/superseded direct-edit record must not
+					// cause a tight loop that starves newer queued pages.
+					$pending = $queue->pending(100, true);
+					$attempts = 0;
 					foreach ($pending as $sample) {
-						if ($journal->snapshot()['stop_requested']) { break; }
-						$build = $queue->lockBuildPage($sample['pageId']);
+						if ($attempts >= 10 || $journal->snapshot()['stop_requested']) { break; }
+						$id = $sample['pageId'];
+						if (($deferredQueuePages[$id] ?? 0) > time()) { continue; }
+						$attempts++;
+						$build = $queue->lockBuildPage($id);
 						try {
-							$current = $queue->current($sample['pageId']);
+							$current = $queue->current($id);
 							if ($current === null || $current['schema'] === 3) { continue; }
 							$result = $coordinator->process($current, $latest, $prepare, $identity);
 						} finally {
 							fclose($build);
 						}
 						if ($result['state'] === 'acknowledged') {
+							unset($deferredQueuePages[$id]);
 							$journal->acknowledgedQueue($session);
-							$this->report(['mode' => 'queue', 'page_id' => $sample['pageId'],
+							$this->report(['mode' => 'queue', 'page_id' => $id,
 								'state' => 'acknowledged']);
 						} elseif ($result['state'] === 'retry') {
-							$journal->failed($session, -1, $sample['pageId'], 'queue-retry');
+							$this->report(['mode' => 'queue-error', 'page_id' => $id,
+								'state' => 'retry', 'phases' => $result['phases']]);
+							$journal->failed($session, -1, $id, 'queue-retry');
 							return false;
+						} else {
+							$deferredQueuePages[$id] = time() + 60;
 						}
+					}
+					// Bound the in-memory exception list even for very long runs.
+					if (count($deferredQueuePages) > 10000) {
+						$deferredQueuePages = array_filter($deferredQueuePages,
+							static fn(int $until): bool => $until > time());
 					}
 					sleep($pending === [] ? 3 : 1);
 					continue;
