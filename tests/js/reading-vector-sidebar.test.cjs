@@ -54,6 +54,19 @@ test( 'Anonymous Vector without a TOC keeps breadcrumbs visible in the reading p
 	assert.equal( again.left.parentNode, again.panel, 'reopening must keep the same visible fallback' );
 } );
 
+test( 'An anonymous unpinned TOC does not place breadcrumbs below page content', async ( t ) => {
+	const env = await environment( body );
+	t.after( env.close );
+	env.window.document.documentElement.classList.add( 'vector-feature-toc-pinned-clientpref-0' );
+	let adapter;
+	env.window.Wikidebates.wkReadingSetAdapter = ( next ) => { adapter = next; };
+	env.run( 'modules/reading/ui.vector.js' );
+	const ui = adapter.ensureUi();
+	assert.ok( env.window.document.getElementById( 'mw-panel-toc' ) );
+	assert.equal( ui.left.parentNode, ui.panel, 'unpinned TOC column is not a visible reading sidebar' );
+	assert.equal( ui.left.closest( '.vector-column-start' ), null );
+} );
+
 test( 'Unpinned main menu without a TOC cannot swallow the reading breadcrumb', async ( t ) => {
 	const html = body.replace( '<div class="vector-sticky-pinned-container"><nav id="mw-panel-toc"></nav></div>', '' )
 		.replace( '<nav id="mw-panel"></nav>', '<nav id="mw-panel" style="display:none"><div class="vector-pinnable-element"></div></nav>' );
