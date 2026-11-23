@@ -311,6 +311,10 @@ try {
 		['ok' => true, 'status' => 'LOCAL_HIT'],
 		'Exact local Minerva hit avoids anonymous HTTP and is accepted');
 	$check(CachePreparationResults::interpret('minerva', 17, 0,
+		$minerva(['SKIPPED_SMW_ARTICLE' => 1, 'bypassReasons' => []])) ===
+		['ok' => true, 'status' => 'SKIPPED_SMW_ARTICLE'],
+		'Explicit SMW custom Article classification is a safe no-HTTP exclusion');
+	$check(CachePreparationResults::interpret('minerva', 17, 0,
 		$minerva(['MISS' => 1, 'bypassReasons' => []]))['ok'],
 		'Validated Minerva MISS publication is accepted');
 	$check(CachePreparationResults::interpret('minerva', 17, 0,
@@ -325,6 +329,9 @@ try {
 	$check(!CachePreparationResults::interpret('minerva', 17, 0,
 		$minerva(['BYPASS' => 1, 'bypassReasons' => ['storage-error' => 1]]))['ok'],
 		'Storage error cannot be acknowledged as a safe Minerva bypass');
+	$check(!CachePreparationResults::interpret('minerva', 17, 0,
+		$minerva(['SKIPPED_UNKNOWN_ARTICLE' => 1, 'bypassReasons' => []]))['ok'],
+		'Unknown explicit skip labels remain untrusted and must stop the scan');
 	$check(!CachePreparationResults::interpret('minerva', 17, 0,
 		$minerva(['NO_HEADER' => 1, 'bypassReasons' => []]))['ok'],
 		'Missing diagnostics cannot silently become completion');
@@ -359,6 +366,15 @@ try {
 				: ['ok' => true, 'status' => $phase === 'vector' ? 'SKIPPED_NONCONTENT' : 'not-an-argument'];
 		},
 		static fn(int $id): ?string => 'public-identity');
+	$scanSmw = $coordinator->processUnqueued(17, 29,
+		static fn(int $id): ?int => 29,
+		static fn(string $phase, int $id): array => [
+			'ok' => true, 'status' => $phase === 'minerva' ? 'SKIPPED_SMW_ARTICLE' : 'REUSED'
+		],
+		static fn(int $id): ?string => 'public-identity');
+	$check($scanSmw['state'] === 'complete' &&
+		($scanSmw['phases']['minerva'] ?? null) === 'SKIPPED_SMW_ARTICLE',
+		'Resumable scan skips SMW Property and Concept mobile HTML without masking other phases');
 	$check($scanCookie['state'] === 'complete' &&
 		($scanCookie['phases']['minerva'] ?? null) === 'BYPASS-header-set-cookie' &&
 		$scanCookieCalls === CachePreparationCoordinator::PHASES,
