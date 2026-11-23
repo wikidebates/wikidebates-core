@@ -1,5 +1,6 @@
 <?php
 
+use MediaWiki\Cache\CacheKeyHelper;
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Extension\Wikidebates\Reading\AnonymousCacheSafety;
 use MediaWiki\Extension\Wikidebates\Reading\VectorCacheEligibility;
@@ -114,6 +115,16 @@ class PrepareVectorViewCache extends Maintenance {
 			// A public page may still be vetoed by semantic freshness or another
 			// HTMLFileCache hook. Preserve every veto without calling it nonpublic.
 			$this->report($id, 'SKIPPED_CACHE_POLICY');
+			return true;
+		}
+		// MediaWiki's native HTMLFileCache stores the URL-encoded full
+		// page key in a single filename component. Very long/multibyte
+		// titles can exceed Linux NAME_MAX even when MediaWiki accepts
+		// the title. Other caches (Minerva, Reading) remain eligible.
+		if (VectorCacheEligibility::nativeViewFilenameTooLong(
+			CacheKeyHelper::getKeyForPage($title), (bool)$config->get(MainConfigNames::UseGzip)
+		)) {
+			$this->report($id, 'SKIPPED_FILENAME_TOO_LONG');
 			return true;
 		}
 		$view = new HTMLFileCache($title, 'view');
