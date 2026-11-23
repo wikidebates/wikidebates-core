@@ -215,11 +215,13 @@ try {
 		throw new RuntimeException('Visiting a page incorrectly pre-generated history HTML');
 	}
 	$secondView = $get('view');
-	if (!str_contains($secondView['body'], 'Section') ||
+	if (!str_contains($secondView['body'], 'Evidence') ||
+		!str_contains($secondView['body'], 'Conclusion') ||
 		!str_contains($nativeHttp, 'id="mw-panel-toc"')) {
 		throw new RuntimeException('Native HTTP Vector article or table of contents is incomplete: ' .
 			json_encode([
-				'http_contains_section' => str_contains($secondView['body'], 'Section'),
+				'http_contains_section' => str_contains($secondView['body'], 'Evidence') &&
+				str_contains($secondView['body'], 'Conclusion'),
 				'http_body_length' => strlen($secondView['body']),
 				'http_body_excerpt' => substr($secondView['body'], 0, 320),
 				'file_contains_toc' => str_contains($nativeHttp, 'id="mw-panel-toc"'),
@@ -278,7 +280,7 @@ try {
 		throw new RuntimeException('Wikidebates view prewarming unexpectedly modified native history HTML');
 	}
 	$httpThird = $get('view');
-	if (!str_contains($httpThird['body'], 'Section') ||
+	if (!str_contains($httpThird['body'], 'Evidence') ||
 		!str_contains($read('view'), 'vector-toc-available')) {
 		throw new RuntimeException('Native HTTP failed to reuse complete prewarmed Vector HTML');
 	}
