@@ -13,6 +13,10 @@ on:
       - 'tests/readingFragments/visibilityBenchmarkLab.php'
       - 'maintenance/preparePendingCaches.php'
       - 'maintenance/prepareDailyCaches.php'
+      - 'src/Reading/DailyCacheDeferral.php'
+      - 'tests/php/dailyCacheDeferral.php'
+      - 'maintenance/scanCacheWindow.sh'
+      - 'tests/readingFragments/scanWindowScript.sh'
       - 'maintenance/backfillDailyCaches.sh'
       - 'tests/readingFragments/backfillScript.sh'
       - 'tests/readingFragments/coordinatedPreparation.php'
@@ -52,6 +56,12 @@ jobs:
           php -l src/Reading/CachePreparationCommands.php
           php -l maintenance/preparePendingCaches.php
           php -l maintenance/prepareDailyCaches.php
+          php -l src/Reading/DailyCacheDeferral.php
+          php -l tests/php/dailyCacheDeferral.php
+          sh -n maintenance/scanCacheWindow.sh
+          sh -n tests/readingFragments/scanWindowScript.sh
+          sh tests/readingFragments/scanWindowScript.sh
+          php tests/php/dailyCacheDeferral.php
           sh -n maintenance/backfillDailyCaches.sh
           sh -n tests/readingFragments/backfillScript.sh
           sh tests/readingFragments/backfillScript.sh
