@@ -9,6 +9,7 @@ use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillGovernor;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillJournal;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillState;
 use MediaWiki\WikiMap\WikiMap;
+use MediaWiki\Title\Title;
 
 require_once (getenv('MW_INSTALL_PATH') ?: dirname(__DIR__, 3)) . '/maintenance/Maintenance.php';
 
@@ -36,6 +37,7 @@ class PrepareParallelCaches extends Maintenance {
 		$this->addOption('max-load', 'Maximum tolerable 1-minute load (default 10).', false, true);
 		$this->addOption('reserve-mb', 'Required available RAM (default 2048 MB).', false, true);
 		$this->addOption('max-health-ms', 'Maximum public-site GET latency (default 2500 ms).', false, true);
+		$this->addOption('health-title', 'Existing public page for health GET; main page by default.', false, true);
 		$this->addOption('max-seconds', 'Stop gracefully after this budget (600-86400; default 28800).', false, true);
 		$this->addOption('worker-lane', 'Internal: run one reserved lane.', false, true);
 		$this->addOption('worker-queue', 'Internal: consume recent direct edits while scanning.');
@@ -141,6 +143,21 @@ class PrepareParallelCaches extends Maintenance {
 			isset($parts['path'])) {
 			$this->fatalError('The wiki needs an HTTPS origin (HTTP only for localhost lab).');
 		}
+		$healthTitleRaw = (string)$this->getOption('health-title', '');
+		$healthTitle = $healthTitleRaw === '' ? Title::newMainPage() :
+			Title::newFromText($healthTitleRaw);
+		if (!$healthTitle || !$healthTitle->canExist()) {
+			$this->fatalError('Invalid public health page title.');
+		}
+		$healthUrl = $healthTitle->getFullURL();
+		$healthParts = parse_url($healthUrl);
+		if (!is_array($healthParts) ||
+			($healthParts['scheme'] ?? null) !== $parts['scheme'] ||
+			($healthParts['host'] ?? null) !== $parts['host'] ||
+			($healthParts['port'] ?? null) !== ($parts['port'] ?? null) ||
+			isset($healthParts['user']) || isset($healthParts['pass'])) {
+			$this->fatalError('Health URL escaped the configured public wiki origin.');
+		}
 		$lock = $queue->tryLockWorker();
 		if (!$lock) {
 			$this->fatalError('A normal or parallel cache preparation worker is already active.');
@@ -167,7 +184,7 @@ class PrepareParallelCaches extends Maintenance {
 			);
 			return $this->supervise($queue, $journal, $wiki, $run, $workers,
 				$devices, $minervaDelay, (float)$loadRaw, $reserveMb,
-				$healthMs, $maxSeconds, $server . '/');
+				$healthMs, $maxSeconds, $healthUrl);
 		} finally {
 			fclose($lock);
 		}
