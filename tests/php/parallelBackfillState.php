@@ -11,6 +11,14 @@ function assertCheckpoint(bool $condition, string $message): void {
 }
 
 $state = ParallelBackfillState::create(100, 111, 3);
+assertCheckpoint($state->laneMayRun(0, 1) &&
+	!$state->laneMayRun(1, 1), 'One permit serves only first unfinished lane');
+$fixed = $state->exhausted(0);
+assertCheckpoint(!$fixed->laneMayRun(0, 1) && $fixed->laneMayRun(1, 1) &&
+	!$fixed->laneMayRun(2, 1), 'After lane zero completes, one permit advances to lane one');
+$fixed = $fixed->exhausted(1);
+assertCheckpoint($fixed->laneMayRun(2, 1) && !$fixed->laneMayRun(1, 1),
+	'Remaining lane cannot starve at minimum concurrency');
 assertCheckpoint($state->lanes()[0]['end'] === 104 &&
 	$state->lanes()[1]['end'] === 108, 'Disjoint lane partition');
 
