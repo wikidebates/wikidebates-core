@@ -32,6 +32,7 @@ jobs:
         run: |
           php -l src/Reading/ParallelBackfillState.php
           php -l src/Reading/ParallelBackfillGovernor.php
+          php -l src/Reading/ParallelBackfillFpmStatus.php
           php -l maintenance/prepareParallelCaches.php
           php -l maintenance/prepareReadingCache.php
           php -l maintenance/prepareDailyCaches.php
