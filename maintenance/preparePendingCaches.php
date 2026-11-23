@@ -4,6 +4,7 @@ use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCommands;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCoordinator;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationQueue;
 use MediaWiki\Extension\Wikidebates\Reading\AnonymousCacheSafety;
+use MediaWiki\Extension\Wikidebates\Reading\ArgumentCategory;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\WikiMap\WikiMap;
 
@@ -88,6 +89,7 @@ class PreparePendingCaches extends Maintenance {
 			};
 			$root = defined('MW_INSTALL_PATH') ? MW_INSTALL_PATH : dirname(__DIR__, 3);
 			$commands = new CachePreparationCommands($root, $wiki, $minervaDelay);
+			$categoryKey = ArgumentCategory::dbKey($config);
 			$coordinator = new CachePreparationCoordinator($queue);
 			foreach ($pending as $record) {
 				// Do not initiate a potentially slow subprocess near the budget.
@@ -96,7 +98,10 @@ class PreparePendingCaches extends Maintenance {
 					break;
 				}
 				$result = $coordinator->process($record, $latest,
-					static fn(string $phase, int $pageId): array => $commands->prepare($phase, $pageId),
+					static fn(string $phase, int $pageId): array =>
+						$phase === 'reading' && !ArgumentCategory::containsPage($db, $pageId, $categoryKey)
+							? ['ok' => true, 'status' => 'not-an-argument']
+							: $commands->prepare($phase, $pageId),
 					static fn(int $pageId): ?string => AnonymousCacheSafety::fingerprint($pageId));
 				$report['pages'][] = $result;
 				if ($result['state'] === 'acknowledged') {
