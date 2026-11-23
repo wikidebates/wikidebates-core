@@ -16,10 +16,12 @@ final class ParallelBackfillGovernor {
 		private int $maximum,
 		private float $maximumLoad,
 		private int $minimumAvailableMb,
-		private int $maximumResponseMs
+		private int $maximumResponseMs,
+		private int $maximumDatabaseMs = 500
 	) {
 		if ($maximum < 1 || $maximum > 16 || $maximumLoad <= 0 ||
-			$minimumAvailableMb < 128 || $maximumResponseMs < 200) {
+			$minimumAvailableMb < 128 || $maximumResponseMs < 200 ||
+			$maximumDatabaseMs < 50) {
 			throw new \InvalidArgumentException('Invalid parallel backfill resource limits');
 		}
 		$this->permitted = min(2, $maximum);
@@ -30,10 +32,12 @@ final class ParallelBackfillGovernor {
 	 * @param int|null $availableMb MemAvailable from /proc/meminfo.
 	 * @param int|null $responseCode HTTP status, null means unavailable.
 	 * @param int|null $responseMs End-to-end public site response duration.
+	 * @param int|null $databaseMs Time of one indexed PRIMARY query.
 	 */
 	public function sample(
 		?float $load, ?int $availableMb, ?int $responseCode, ?int $responseMs,
-		?array $fpm = null, bool $fpmRequired = false
+		?array $fpm = null, bool $fpmRequired = false,
+		?int $databaseMs = null, bool $databaseRequired = false
 	): int {
 		$unavailable = $load === null || $availableMb === null ||
 			$responseCode === null || $responseMs === null;
@@ -48,8 +52,10 @@ final class ParallelBackfillGovernor {
 			!is_int($fpm['active'] ?? null) ||
 			!is_int($fpm['idle'] ?? null) ||
 			$fpm['listen_queue'] > 0);
+		$databaseUnhealthy = $databaseRequired &&
+			($databaseMs === null || $databaseMs > $this->maximumDatabaseMs);
 		$hardPressure = $unavailable || $publicProblem || $fpmUnhealthy ||
-			$availableMb < $this->minimumAvailableMb ||
+			$databaseUnhealthy || $availableMb < $this->minimumAvailableMb ||
 			$load > $this->maximumLoad * 1.2;
 		$softPressure = $load > $this->maximumLoad;
 		if ($hardPressure) {
