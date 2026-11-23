@@ -6,6 +6,7 @@ use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCommands;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCoordinator;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationQueue;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillGovernor;
+use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillHealth;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillFpmStatus;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillFailures;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillJournal;
@@ -33,7 +34,7 @@ class PrepareParallelCaches extends Maintenance {
 		$this->requireExtension('Wikidebates');
 		$this->addOption('execute', 'Explicitly enable cache creation and durable state changes.');
 		$this->addOption('status', 'Read-only progress report.');
-		$this->addOption('report-errors', 'Read-only per-page failure summary.');
+		$this->addOption('report-errors', 'Read-only per-page and supervisor incident summary.');
 		$this->addOption('mail-errors', 'With --report-errors: send a rate-limited aggregated email.');
 		$this->addOption('stop', 'Request graceful stop at the next page boundary.');
 		$this->addOption('new-cycle', 'Start a fresh cycle only after the previous one completed.');
@@ -83,7 +84,21 @@ class PrepareParallelCaches extends Maintenance {
 				$this->fatalError('Error reporting cannot be combined with cache operations.');
 			}
 			$failures = new ParallelBackfillFailures($queue);
+			$snapshot = $journal->snapshot();
+			$incident = ParallelBackfillHealth::incident($snapshot);
+			if ($incident === null && $snapshot === null && $wiki === 'enwikidebates') {
+				// EN has no checkpoint until the FR supervisor launches it.
+				// Report a missing EN launch only well after FR completed.
+				$frQueue = new CachePreparationQueue($directory, 'frwikidebates');
+				$frJournal = new ParallelBackfillJournal($frQueue, 'frwikidebates');
+				$incident = ParallelBackfillHealth::missingNextWiki($frJournal->snapshot());
+			}
 			$summary = $failures->summary();
+			if ($incident !== null) {
+				$publicIncident = $incident;
+				unset($publicIncident['key']);
+				$summary['system'] = $publicIncident;
+			}
 			$mailStatus = null;
 			if ($this->hasOption('mail-errors')) {
 				$mailStatus = $failures->alert(
@@ -92,27 +107,43 @@ class PrepareParallelCaches extends Maintenance {
 							'Wikidebates cache preparation incident report',
 							'Wiki: ' . $wiki,
 							'Unresolved page failures: ' . $data['open'],
-							'Previously resolved: ' . $data['resolved'],
-							'',
-							'Recent unresolved pages (ID / revision / error / attempts):'
+							'Previously resolved: ' . $data['resolved']
 						];
-						foreach ($data['recent'] as $item) {
-							$lines[] = implode(' / ', [
-								$item['page_id'], $item['revision_id'],
-								$item['reason'], $item['attempts']
-							]);
+						if (isset($data['system'])) {
+							$system = $data['system'];
+							$lines[] = '';
+							$lines[] = 'Supervisor incident: ' . $system['type'];
+							$lines[] = 'Internal reason: ' . $system['reason'];
+							$lines[] = 'Lane: ' . $system['lane'];
+							$lines[] = 'Page ID: ' . $system['page_id'];
+							$lines[] = 'Incident reference (UTC): ' .
+								($system['at'] > 0 ? gmdate('Y-m-d H:i:s', $system['at']) : 'unknown');
+							$lines[] = 'Inspect the parallel status and supervisor log.';
 						}
-						$lines[] = '';
-						$lines[] = 'The failures remain durably queued for future preparation.';
+						if ($data['open'] > 0) {
+							$lines[] = '';
+							$lines[] = 'Recent unresolved pages (ID / revision / error / attempts):';
+							foreach ($data['recent'] as $item) {
+								$lines[] = implode(' / ', [
+									$item['page_id'], $item['revision_id'],
+									$item['reason'], $item['attempts']
+								]);
+							}
+							$lines[] = '';
+							$lines[] = 'These page failures remain durably queued for retry.';
+						}
 						$lines[] = 'No failed or private HTML was declared cacheable.';
 						$subject = '[Wikidebates cache] ' . $wiki . ' - ' .
+							(isset($data['system']) ? 'supervisor incident, ' : '') .
 							$data['open'] . ' pages to retry';
 						return \UserMailer::send(
 							new \MailAddress('erreurcache@wikidebats.org'),
 							new \MailAddress('noreply@wikidebats.org', 'Wikidebats'),
 							$subject, implode("\n", $lines)
 						)->isOK();
-					}
+					},
+					3600,
+					$incident
 				);
 			}
 			unset($summary['signature']);
