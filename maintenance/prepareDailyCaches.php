@@ -26,6 +26,7 @@ class PrepareDailyCaches extends Maintenance {
 		$this->addOption('delay-ms', 'Pacing after actual cache work (default 1000).', false, true);
 		$this->addOption('minerva-delay-ms', 'Minerva HTTP pacing (default 6000).', false, true);
 		$this->addOption('minerva-devices', 'Mobile variants: android (default) or android,iphone.', false, true);
+		$this->addOption('max-load', 'Optional absolute 1-minute load average ceiling; 0 disables.', false, true);
 		$this->addOption('json', 'Produce one machine-readable report (always enabled).');
 	}
 
@@ -51,6 +52,12 @@ class PrepareDailyCaches extends Maintenance {
 		if (!in_array($devices, [['android'], ['iphone'], ['android', 'iphone']], true)) {
 			$this->fatalError('Invalid --minerva-devices; use android, iphone or android,iphone.');
 		}
+		$loadRaw = (string)$this->getOption('max-load', '0');
+		if (!preg_match('/\A(?:0|[1-9][0-9]{0,2})(?:\.[0-9]{1,2})?\z/D', $loadRaw) ||
+			(float)$loadRaw > 256) {
+			$this->fatalError('Invalid --max-load; use 0 or a positive load threshold <= 256.');
+		}
+		$maxLoad = (float)$loadRaw;
 		$execute = $this->hasOption('execute');
 
 		$services = $this->getServiceContainer();
@@ -71,6 +78,13 @@ class PrepareDailyCaches extends Maintenance {
 
 		$lock = null;
 		$started = microtime(true);
+		$overloaded = static function () use ($maxLoad): bool {
+			if ($maxLoad === 0.0) { return false; }
+			$load = sys_getloadavg();
+			// If an explicitly configured overload guard cannot be measured,
+			// do not launch expensive cache renders without its protection.
+			return !is_array($load) || !isset($load[0]) || $load[0] > $maxLoad;
+		};
 		$report = [
 			'type' => 'wikidebates-daily-cache-preparation',
 			'wiki' => $wiki, 'mode' => $execute ? 'execute' : 'preview',
@@ -117,6 +131,10 @@ class PrepareDailyCaches extends Maintenance {
 
 			foreach ($pending as $record) {
 				if (count($report['pages']) >= $limit) { break; }
+				if ($execute && $overloaded()) {
+					$report['stop_reason'] = 'system-load';
+					break;
+				}
 				if ($execute && !$remaining()) {
 					$report['stop_reason'] = 'time-budget';
 					break;
@@ -138,6 +156,10 @@ class PrepareDailyCaches extends Maintenance {
 			if ($report['stop_reason'] === 'complete') {
 				$replica = $services->getConnectionProvider()->getReplicaDatabase();
 				while (count($report['pages']) < $limit) {
+					if ($execute && $overloaded()) {
+						$report['stop_reason'] = 'system-load';
+						break;
+					}
 					if ($execute && !$remaining()) {
 						$report['stop_reason'] = 'time-budget';
 						break;
@@ -152,6 +174,10 @@ class PrepareDailyCaches extends Maintenance {
 					$found = 0;
 					foreach ($rows as $row) {
 						$found++;
+						if ($execute && $overloaded()) {
+							$report['stop_reason'] = 'system-load';
+							break 2;
+						}
 						$id = (int)$row->page_id;
 						if ($execute && !$remaining()) {
 							$report['stop_reason'] = 'time-budget';
