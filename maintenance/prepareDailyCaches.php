@@ -25,6 +25,7 @@ class PrepareDailyCaches extends Maintenance {
 		$this->addOption('max-seconds', 'Wall-clock budget (default 1200; 480-14400).', false, true);
 		$this->addOption('delay-ms', 'Pacing after actual cache work (default 1000).', false, true);
 		$this->addOption('minerva-delay-ms', 'Minerva HTTP pacing (default 6000).', false, true);
+		$this->addOption('minerva-devices', 'Mobile variants: android (default) or android,iphone.', false, true);
 		$this->addOption('json', 'Produce one machine-readable report (always enabled).');
 	}
 
@@ -44,6 +45,12 @@ class PrepareDailyCaches extends Maintenance {
 		$budget = $this->bounded('max-seconds', 1200, 480, 14400);
 		$delay = $this->bounded('delay-ms', 1000, 0, 60000);
 		$minervaDelay = $this->bounded('minerva-delay-ms', 6000, 250, 60000);
+
+		$devicesRaw = (string)$this->getOption('minerva-devices', 'android');
+		$devices = explode(',', $devicesRaw);
+		if (!in_array($devices, [['android'], ['iphone'], ['android', 'iphone']], true)) {
+			$this->fatalError('Invalid --minerva-devices; use android, iphone or android,iphone.');
+		}
 		$execute = $this->hasOption('execute');
 
 		$services = $this->getServiceContainer();
@@ -92,16 +99,16 @@ class PrepareDailyCaches extends Maintenance {
 			$commands = null;
 			if ($execute) {
 				$root = defined('MW_INSTALL_PATH') ? MW_INSTALL_PATH : dirname(__DIR__, 3);
-				$commands = new CachePreparationCommands($root, $wiki, $minervaDelay);
+				$commands = new CachePreparationCommands($root, $wiki, $minervaDelay, 100, $devices);
 			}
 			$prepare = static fn(string $phase, int $id): array => $commands->prepare($phase, $id);
-			$remaining = static function () use ($started, $budget): bool {
-				// Each of the three child processes may take up to 100 seconds.
-				return microtime(true) - $started < $budget - 330;
+			$remaining = static function () use ($started, $budget, $devices): bool {
+				// Vector, Reading and each selected mobile variant have bounded children.
+				return microtime(true) - $started < $budget - (230 + 100 * count($devices));
 			};
 			$needsPacing = static function (array $result): bool {
 				foreach ($result['phases'] ?? [] as $status) {
-					if (in_array($status, ['CREATED', 'MISS', 'HIT', 'created'], true)) {
+					if (preg_match('/(?:\A|[=;])(CREATED|MISS|HIT|created)(?:;|\z)/D', $status)) {
 						return true;
 					}
 				}
