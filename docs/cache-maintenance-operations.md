@@ -115,7 +115,10 @@ Vector n'en avait pas, ne touche jamais aux fichiers `history`, et ne
 sollicite ni Minerva ni les fragments Lecture. Le rendu et le stockage
 s'appuient sur `Article::view()`, `OutputPage` et `HTMLFileCache`
 natifs, avec le contexte corrigé et les protections de visibilité des
-pages, de stabilité de révision et de politique de cache.
+pages, de stabilité de révision et de politique de cache. Lors d'une
+reconstruction forcée, le fichier déjà valide est remplacé par renommage
+atomique d'un fichier temporaire situé dans le même dossier : la lecture
+anonyme ne voit pas un HTML tronqué pendant le remplacement.
 
 **Lecture seule (premier essai) :**
 
