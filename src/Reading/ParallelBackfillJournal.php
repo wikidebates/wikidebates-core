@@ -185,12 +185,19 @@ final class ParallelBackfillJournal {
 			if ($data['state'] !== 'running') {
 				throw new \RuntimeException('Cannot checkpoint a failed run');
 			}
-			if (!in_array($status, ['complete', 'skipped-nonpublic', 'acknowledged'], true)) {
+			if (!in_array($status, [
+				'complete', 'skipped-nonpublic', 'skipped-cache-policy', 'acknowledged'
+			], true)) {
 				throw new \InvalidArgumentException('Unsafe parallel completion');
+			}
+			if ($status === 'skipped-cache-policy' &&
+				!CachePreparationCoordinator::hasExplicitNoCachePolicy($phases)) {
+				throw new \InvalidArgumentException('No verified non-cacheable page policy');
 			}
 			$state = (new ParallelBackfillState($data['lanes']))->completed($lane, $pageId);
 			$data['lanes'] = $state->lanes();
-			$key = $status === 'skipped-nonpublic' ? 'skipped' : 'completed';
+			$key = in_array($status, ['skipped-nonpublic', 'skipped-cache-policy'], true) ?
+				'skipped' : 'completed';
 			$data['metrics'][$key]++;
 			if ($status === 'acknowledged') {
 				$data['metrics']['queue_acknowledged']++;

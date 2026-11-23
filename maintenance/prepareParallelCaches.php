@@ -543,7 +543,36 @@ class PrepareParallelCaches extends Maintenance {
 						}
 					);
 					if ($result['state'] === 'interrupted') { return true; }
-					if (!in_array($result['state'], ['complete', 'skipped-nonpublic', 'acknowledged'], true)) {
+					// A page that explicitly forbids all anonymous file-cache
+					// variants must not stop the entire sweep merely because
+					// page_touched changed during the mobile GETs. Only skip if
+					// NONE of the phases published a file, the latest revision
+					// remains identical, and PRIMARY still confirms public ACLs.
+					if (CachePreparationCoordinator::isExplicitNoCacheRace($result)) {
+						$build = $queue->lockBuildPage($id);
+						try {
+							$snapshotPage = static function (int $pid) use ($db): ?array {
+								$row = $db->selectRow('page',
+									['page_latest', 'page_is_redirect'],
+									['page_id' => $pid], __METHOD__);
+								return $row ? [
+									'revisionId' => (int)$row->page_latest,
+									'isRedirect' => (bool)$row->page_is_redirect
+								] : null;
+							};
+							if (CachePreparationCoordinator::canCheckpointNoCacheRace(
+								$result, $snapshotPage, $identity
+							)) {
+								$result['state'] = 'skipped-cache-policy';
+								$result['phases']['reading'] = 'skipped-cache-policy';
+							}
+						} finally {
+							fclose($build);
+						}
+					}
+					if (!in_array($result['state'], [
+						'complete', 'skipped-nonpublic', 'skipped-cache-policy', 'acknowledged'
+					], true)) {
 						$reason = ParallelBackfillJournal::safeFailureReason($result);
 						$journal->failed($session, $lane, $id, $reason);
 						$this->report(['mode' => 'scan-error', 'lane' => $lane,
@@ -553,6 +582,14 @@ class PrepareParallelCaches extends Maintenance {
 					}
 					$journal->completed($session, $lane, $id,
 						$result['state'], $result['phases']);
+					if ($result['state'] === 'skipped-cache-policy') {
+						$this->report([
+							'mode' => 'cache-policy-skip',
+							'lane' => $lane,
+							'page_id' => $id,
+							'reason' => 'parser-expiry'
+						]);
+					}
 					$processed++;
 					if ($processed % 10 === 0) {
 						$this->report(['mode' => 'scan', 'lane' => $lane,
