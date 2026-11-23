@@ -24,4 +24,22 @@ final class ParallelBackfillRetryPolicy {
 		}
 		return null;
 	}
+	/**
+	 * A page touched or edited during the render is neither a cache success
+	 * nor an HTTP failure. Briefly retry after discarding the stale initial
+	 * revision, keeping all existing anonymous visibility/ACL checks.
+	 *
+	 * Never retry arbitrary runtime errors, access denials or policy vetoes.
+	 * Returning null leaves the page uncheckpointed for safe intervention.
+	 */
+	public static function identityDelayMicroseconds(array $result, int $attempt): ?int {
+		if ($attempt < 0 || $attempt >= 2 ||
+			!in_array($result['state'] ?? null, [
+				'retry-page-changed', 'queue-changed-after-preparation'
+			], true)) {
+			return null;
+		}
+		return $attempt === 0 ? 250000 : 750000;
+	}
+
 }
