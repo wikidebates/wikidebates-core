@@ -35,7 +35,14 @@ final class CachePreparationCommands {
 		}
 		if ($phase === 'minerva') {
 			$statuses = [];
+			$previousMadeHttpRequest = false;
 			foreach ($this->minervaDevices as $device) {
+				// The targeted Minerva CLI no longer waits after its lone GET.
+				// When preparing two variants, pace only between actual HTTP
+				// requests. LOCAL_HIT uses disk and needs no network throttle.
+				if ($previousMadeHttpRequest) {
+					usleep($this->minervaDelayMs * 1000);
+				}
 				$args = [
 					'MinervaFileCache:prewarm', '--page-id=' . $pageId,
 					'--device=' . $device, '--skip-valid',
@@ -49,6 +56,7 @@ final class CachePreparationCommands {
 				$outcome = CachePreparationResults::interpret($phase, $pageId, 0, $result['stdout']);
 				if (!$outcome['ok']) { return $outcome; }
 				$statuses[$device] = $outcome['status'];
+				$previousMadeHttpRequest = $outcome['status'] !== 'LOCAL_HIT';
 			}
 			if (count($statuses) === 1) {
 				return ['ok' => true, 'status' => reset($statuses)];
