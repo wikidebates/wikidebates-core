@@ -15,13 +15,24 @@ require __DIR__ . '/../src/Reading/SemanticCacheHooks.php';
 use MediaWiki\Extension\Wikidebates\Reading\SemanticCacheHooks;
 
 $metadata = json_decode(file_get_contents(__DIR__ . '/../extension.json'), true, 512, JSON_THROW_ON_ERROR);
-same(false, $metadata['config']['WikidebatesSemanticCacheTracking']['value'], 'Semantic cache tracking must be opt-in');
-same(false, $metadata['config']['WikidebatesSemanticCacheEagerPurge']['value'],
-	'Semantic eager purges must require a second explicit opt-in');
-check(isset($metadata['Hooks']['SMW::SQLStore::AfterDataUpdateComplete']),
-	'The real SMW 7.3.1 data-update hook is registered');
+// Results of embedded SMW queries are snapshots of the owning page.
+foreach ([
+	'SMW::SQLStore::AfterDataUpdateComplete',
+	'PageMoveComplete',
+	'HTMLFileCache::useFileCache',
+	'ParserAfterParse',
+	'RejectParserCacheValue',
+] as $obsoleteHook) {
+	check(!isset($metadata['Hooks'][$obsoleteHook]),
+		'No dependent-page semantic invalidation or Vector cache veto: ' . $obsoleteHook);
+}
+check(isset($metadata['Hooks']['IsFileCacheable'], $metadata['Hooks']['TitleSquidURLs'],
+	$metadata['Hooks']['ArticleRevisionVisibilitySet']),
+	'Anonymous file visibility, ordinary page invalidation and RevDel remain protected');
 check(isset($metadata['JobClasses']['wikidebatesSemanticCachePurge']),
-	'Semantic purge jobs are registered');
+	'Historic semantic job type is retained only for no-op acknowledgement');
+check(!isset($metadata['config']['WikidebatesPageLocalCacheOnly']),
+	'No additional page-local cache configuration parameter exists');
 same([1, 5, 23], SemanticCacheHooks::changedIds([1, '5', 0, -2, '05', 'NaN', 23, 5]),
 	'Only valid positive SMW object IDs are scheduled, with stable deduplication');
 same([], SemanticCacheHooks::changedIds(['', '-1', false, null, 'oops']),
@@ -109,7 +120,7 @@ foreach (['argument_adapter.php', 'i18n_bundle.php', 'telemetry.php', 'cache_fif
 }
 
 // Keep MediaWiki doubles isolated from the renderer test process.
-foreach ( [ 'autoParentLinkSyntax.php', 'readingFragments/unit.php', 'readingFragments/preparationQueue.php', 'readingFragments/coordinatedPreparation.php', 'readingFragments/semanticPurgeScope.php', 'readingFragments/semanticTouchBarrier.php', 'readingFragments/invalidation.php', 'readingFragments/concurrency.php', 'readingFragments/semanticScope.php' ] as $test ) {
+foreach ( [ 'autoParentLinkSyntax.php', 'readingFragments/unit.php', 'readingFragments/preparationQueue.php', 'readingFragments/coordinatedPreparation.php', 'readingFragments/semanticPurgeScope.php', 'readingFragments/semanticTouchBarrier.php', 'readingFragments/invalidation.php', 'readingFragments/concurrency.php', 'readingFragments/semanticScope.php', 'readingFragments/semanticPurgesRetired.php', 'readingFragments/semanticQuerySnapshot.php' ] as $test ) {
 	$command = [ PHP_BINARY ];
 	if ( php_ini_loaded_file() ) { array_push( $command, '-c', php_ini_loaded_file() ); }
 	$command[] = __DIR__ . '/' . $test;

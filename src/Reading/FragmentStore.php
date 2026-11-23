@@ -10,12 +10,18 @@ class FragmentStore {
 
 	public function __construct(string $directory, string $wiki, int $ttl, int $maxBytes) {
 		$directory = realpath($directory) ?: '';
-		if (!is_dir($directory) || !is_writable($directory) || $ttl < 1 || $maxBytes < 512) {
+		if (!is_dir($directory) || !is_writable($directory) || $ttl < 0 || $maxBytes < 512) {
 			throw new \RuntimeException('Cache directory or limits are not usable');
 		}
 		$this->root = rtrim($directory, '/') . '/' . hash('sha256', $wiki);
-		$this->ttl = min($ttl, 2592000);
+		$this->ttl = $ttl;
 		$this->maxBytes = $maxBytes;
+	}
+
+	/** A zero TTL leaves cached fragments valid until a page invalidation. */
+	private function expiresAt(int $created): int {
+		return $this->ttl === 0 || $created >= PHP_INT_MAX - $this->ttl
+			? PHP_INT_MAX : $created + $this->ttl;
 	}
 
 	private function pageDirectory(string $page, bool $create = true): string {
@@ -63,7 +69,8 @@ class FragmentStore {
 			$entry = $this->decode($path);
 			if (!$entry || ($entry['generation'] ?? null) !== $generation ||
 				($entry['identity'] ?? null) !== $identity ||
-				min($entry['expires'] ?? 0, ($entry['created'] ?? 0) + $this->ttl) <= time() ||
+				(!is_int($entry['expires'] ?? null) || !is_int($entry['created'] ?? null) ||
+					($this->ttl > 0 && $this->expiresAt($entry['created']) <= time())) ||
 				!is_string($entry['body'] ?? null) || !is_array($entry['metadata'] ?? null)) {
 				$entry = null;
 			}
@@ -90,7 +97,7 @@ class FragmentStore {
 		$created = time();
 		if (strlen($body) > $this->maxBytes || $expires <= $created) { return false; }
 		$entry = ['generation' => $generation, 'identity' => $identity, 'created' => $created,
-			'expires' => min($created + $this->ttl, $expires), 'body' => $body, 'metadata' => $metadata];
+			'expires' => $this->expiresAt($created), 'body' => $body, 'metadata' => $metadata];
 		// Serialization, compression and the private temporary write must not
 		// block readers. Recheck generation and expiry under the publication lock.
 		$json = json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
@@ -105,7 +112,7 @@ class FragmentStore {
 			if (!$temp || dirname($temp) !== $dir || @file_put_contents($temp, $payload) !== strlen($payload)) { return false; }
 			if (!@chmod($temp, 0600)) { return false; }
 			// Only a pruning hint. Reads always validate the payload and identity.
-			@touch($temp, $entry['expires']);
+			if ($this->ttl > 0 && $entry['expires'] !== PHP_INT_MAX) { @touch($temp, $entry['expires']); }
 			$lock = $this->lock($dir, 'page.lock', LOCK_EX);
 			if (!$lock || @file_get_contents($dir . '/generation') !== $generation || $entry['expires'] <= time()) { return false; }
 			$published = @rename($temp, $dir . '/' . hash('sha256', $variant) . '.cache');
@@ -152,6 +159,8 @@ class FragmentStore {
 	}
 
 	public function prune(): int {
+		// No age-driven cleanup when no TTL was explicitly configured.
+		if ($this->ttl === 0) { return 0; }
 		$count = 0;
 		$now = time();
 		foreach ($this->cachedPageDirectories() as $dir) {
@@ -163,12 +172,12 @@ class FragmentStore {
 					$path = $file->getPathname();
 					clearstatcache(true, $path);
 					$modified = @filemtime($path);
-					if ($modified !== false && $modified > $now && $modified <= $now + $this->ttl) {
+					if ($modified !== false && $modified > $now && $modified <= $this->expiresAt($now)) {
 						continue;
 					}
 					$entry = $this->decode($path);
 					$expires = is_int($entry['expires'] ?? null) && is_int($entry['created'] ?? null)
-						? min($entry['expires'], $entry['created'] + $this->ttl) : 0;
+						? $this->expiresAt($entry['created']) : 0;
 					if ($expires <= $now) {
 						$count += (int)@unlink($path);
 					} else {

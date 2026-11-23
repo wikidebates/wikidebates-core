@@ -11,6 +11,9 @@ if (!$root || !is_file($root . '/.wikidebates-minerva-lab') ||
 	throw new RuntimeException('Only a marked, disposable MediaWiki queue laboratory is supported');
 }
 $state = $root . '/state';
+// Only this disposable HTTP laboratory selects unlimited cache retention.
+// Existing duration-oriented integration tests keep their own finite TTL.
+if (!touch($state . '/unlimited-ttl')) { throw new RuntimeException('Cannot enable lab-only no-TTL fixture'); }
 putenv('MW_INSTALL_PATH=' . $root . '/mediawiki');
 
 require __DIR__ . '/bootstrap.php';
@@ -118,6 +121,114 @@ try {
 	if (count($mobileFiles) !== 1 || count($readingFiles) < 1) {
 		throw new RuntimeException('Expected exactly one Minerva file and at least one reading fragment');
 	}
+
+	// Exercise actual HTTP Minerva GETs against the new TTL=0 production
+	// Store, not just the prewarm subprocess or synthetic cache files.
+	$smokeUA = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 ' .
+		'Chrome/130.0.0.0 Mobile Safari/537.36 WikidebatesNoTtlSmoke/1';
+	$smokeRequest = static function (string $uri, array $extra = []) use ($smokeUA): array {
+		$headers = array_merge(['User-Agent: ' . $smokeUA,
+			'Accept-Encoding: identity'], $extra);
+		$response = @file_get_contents('http://127.0.0.1:8080/' . $uri, false,
+			stream_context_create(['http' => [
+				'method' => 'GET', 'ignore_errors' => true, 'timeout' => 15,
+				'header' => implode("\r\n", $headers)
+			]]));
+		$raw = $http_response_header ?? [];
+		$status = (int)explode(' ', $raw[0] ?? 'HTTP/1.1 0')[1];
+		$fields = [];
+		foreach ($raw as $h) {
+			if (!str_contains($h, ':')) { continue; }
+			[$key, $value] = explode(':', $h, 2);
+			$fields[strtolower($key)] = trim($value);
+		}
+		return ['status' => $status, 'body' => $response, 'headers' => $fields];
+	};
+	$url = 'index.php?title=Cache_study_argument';
+	$mobileFirst = $smokeRequest($url);
+	$mobileSecond = $smokeRequest($url);
+	$firstState = $mobileFirst['headers']['x-minerva-file-cache'] ?? 'MISSING';
+	$secondState = $mobileSecond['headers']['x-minerva-file-cache'] ?? 'MISSING';
+	if ($mobileFirst['status'] !== 200 || $mobileSecond['status'] !== 200 ||
+		$firstState !== 'MISS' || $secondState !== 'HIT' ||
+		$mobileFirst['body'] !== $mobileSecond['body'] ||
+		!str_contains((string)$mobileSecond['body'], 'ARGUMENT_VERSION_ONE')) {
+		throw new RuntimeException('Minerva HTTP no-TTL MISS/HIT failed: ' .
+			json_encode([$mobileFirst['status'], $mobileSecond['status'],
+				$firstState, $secondState], JSON_THROW_ON_ERROR));
+	}
+	// A 90-day old file with the legacy 30-day metadata still has to be a
+	// HIT, provided it belongs to the same unmodified, publicly readable page.
+	$sample = null;
+	foreach (glob($state . '/minerva-cache/*/*/*/*.cache') ?: [] as $path) {
+		$entry = json_decode((string)gzdecode((string)file_get_contents($path)), true);
+		if (is_array($entry) && str_contains((string)($entry['variant'] ?? ''), 'WikidebatesNoTtlSmoke')) {
+			$sample = [$path, $entry];
+			break;
+		}
+	}
+	if ($sample === null) { throw new RuntimeException('Minerva HTTP variant not published'); }
+	[$samplePath, $entry] = $sample;
+	if (($entry['expires'] ?? null) !== PHP_INT_MAX) {
+		throw new RuntimeException('Minerva file is still time-limited without configured TTL');
+	}
+	$entry['created'] = time() - 90 * 86400;
+	$entry['expires'] = $entry['created'] + 2592000;
+	if (@file_put_contents($samplePath, gzencode(json_encode($entry, JSON_THROW_ON_ERROR))) === false) {
+		throw new RuntimeException('Cannot backdate private lab fixture');
+	}
+	$mobileOld = $smokeRequest($url);
+	if ($mobileOld['status'] !== 200 ||
+		($mobileOld['headers']['x-minerva-file-cache'] ?? '') !== 'HIT' ||
+		$mobileOld['body'] !== $mobileSecond['body']) {
+		throw new RuntimeException('Old Minerva file was replaced due to an obsolete TTL');
+	}
+	// A request carrying a cookie is never allowed to use the shared HTML.
+	$cookie = $smokeRequest($url, ['Cookie: preview=private']);
+	$cookieState = $cookie['headers']['x-minerva-file-cache'] ?? '';
+	if ($cookie['status'] !== 200 || !str_starts_with($cookieState, 'BYPASS; reason=cookie')) {
+		throw new RuntimeException('Cookie-bearing Minerva bypass failed: ' .
+			$cookie['status'] . ', ' . $cookieState);
+	}
+	// Read the actual public fragment over HTTP. The same API action used by
+	// anonymous readers must see the prepared fragment instead of reparsing.
+	$readingUrl = 'api.php?' . http_build_query([
+		'action' => 'wikidebatesreading', 'page' => 'Cache study argument',
+		'useskin' => 'vector', 'format' => 'json', 'formatversion' => 2
+	]);
+	// One canonical request may establish its own fragment variant.
+	// The following request must reuse the same stored anonymous HTML.
+	$smokeRequest($readingUrl);
+	$reading = $smokeRequest($readingUrl);
+	if ($reading['status'] !== 200 || !str_contains((string)$reading['body'], 'fragment-cache')) {
+		throw new RuntimeException('Prepared reading fragment not reused over HTTP: ' .
+			$reading['status'] . ', ' . substr((string)$reading['body'], 0, 150));
+	}
+
+
+	// Ordinary edits still retire both unlimited HTML caches. No TTL is
+	// involved in this transition; it is tied to the owning page revision.
+	// The coordinator uses an auto-prepend ini for grandchildren, but manage.php
+	// already requires the fixture bootstrap itself. Do not include it twice.
+	$edit = proc_open([PHP_BINARY, '-d', 'auto_prepend_file=', __DIR__ . '/manage.php', 'edit'],
+		[['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']], $editPipes);
+	if (!is_resource($edit)) { throw new RuntimeException('Cannot edit disposable test page'); }
+	fclose($editPipes[0]);
+	$editOutput = stream_get_contents($editPipes[1]) . stream_get_contents($editPipes[2]);
+	fclose($editPipes[1]);
+	fclose($editPipes[2]);
+	if (proc_close($edit) !== 0) {
+		throw new RuntimeException('Cannot update disposable test page: ' . substr($editOutput, -500));
+	}
+	$newView = $smokeRequest($url);
+	$reusedView = $smokeRequest($url);
+	if ($newView['status'] !== 200 ||
+		($newView['headers']['x-minerva-file-cache'] ?? '') !== 'MISS' ||
+		!str_contains((string)$newView['body'], 'ARGUMENT_VERSION_TWO') ||
+		($reusedView['headers']['x-minerva-file-cache'] ?? '') !== 'HIT') {
+		throw new RuntimeException('Direct page edit did not renew unlimited Minerva HTML');
+	}
+
 	echo json_encode(['result' => 'PASS', 'pageId' => $pageId, 'revisionId' => $revision,
 		'cachePhases' => $report['pages'][0]['phases'],
 		'mobileFiles' => count($mobileFiles), 'readingFiles' => count($readingFiles),

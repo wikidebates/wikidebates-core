@@ -309,7 +309,7 @@ final class CachePreparationQueue {
 	 *
 	 * @return array<int,array{schema:int,pageId:int,revisionId:int,queuedAt:int,generation?:string,touchAfter?:string,ready?:bool}>
 	 */
-	public function pending(int $limit = 1000): array {
+	public function pending(int $limit = 1000, bool $directEditsOnly = false): array {
 		if ($limit < 1 || $limit > 10000) {
 			throw new \InvalidArgumentException('Preparation queue batch must contain 1 to 10000 pages');
 		}
@@ -323,7 +323,11 @@ final class CachePreparationQueue {
 			$pageId = (int)$match[1];
 			if ((string)$pageId !== $match[1]) { continue; }
 			$record = $this->current($pageId);
-			if ($record !== null) { $batch[] = $record; }
+			// Legacy schema-3 entries came from indirect SMW changes. Keep
+			// them inspectable, but never prepare them in the direct-edit worker.
+			if ($record !== null && (!$directEditsOnly || $record['schema'] !== 3)) {
+				$batch[] = $record;
+			}
 			if (count($batch) >= $limit) { break; }
 		}
 		return $batch;
