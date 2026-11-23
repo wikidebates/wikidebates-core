@@ -22,7 +22,8 @@ final class CachePreparationResults {
 			}
 			$status = (string)($report['state'] ?? '');
 			return [
-				'ok' => in_array($status, ['CREATED', 'REUSED', 'SKIPPED_NONCONTENT', 'SKIPPED_NONPUBLIC'], true),
+				'ok' => in_array($status, ['CREATED', 'REUSED', 'SKIPPED_NONCONTENT', 'SKIPPED_NONPUBLIC',
+					'SKIPPED_CACHE_POLICY', 'SKIPPED_REDIRECT_OR_INVALID'], true),
 				'status' => $status ?: 'empty-vector-status'
 			];
 		}
@@ -80,7 +81,9 @@ final class CachePreparationResults {
 				if (is_array($reasons) && count($reasons) === 1) {
 					$reason = (string)array_key_first($reasons);
 					if (($reasons[$reason] ?? null) === 1 &&
-						in_array($reason, ['not-public', 'parser-expiry', 'extension-veto'], true)) {
+						in_array($reason, [
+							'not-public', 'parser-expiry', 'extension-veto', 'page', 'redirect'
+						], true)) {
 						return ['ok' => true, 'status' => 'BYPASS-' . $reason];
 					}
 				}
