@@ -307,6 +307,10 @@ try {
 		$minerva(['HIT' => 1, 'bypassReasons' => []]))['ok'],
 		'Validated Minerva HIT is accepted');
 	$check(CachePreparationResults::interpret('minerva', 17, 0,
+		$minerva(['LOCAL_HIT' => 1, 'bypassReasons' => []])) ===
+		['ok' => true, 'status' => 'LOCAL_HIT'],
+		'Exact local Minerva hit avoids anonymous HTTP and is accepted');
+	$check(CachePreparationResults::interpret('minerva', 17, 0,
 		$minerva(['MISS' => 1, 'bypassReasons' => []]))['ok'],
 		'Validated Minerva MISS publication is accepted');
 	$check(CachePreparationResults::interpret('minerva', 17, 0,
@@ -358,6 +362,16 @@ PHP;
 			'Real shell-free subprocess runner accepts correct ' . $phase . ' report');
 		$check(!$commands->prepare($phase, 99)['ok'],
 			'Real shell-free subprocess runner rejects failing ' . $phase . ' exit');
+	}
+	$dual = new CachePreparationCommands($root, 'fr', 250, 10, ['android', 'iphone']);
+	$check($dual->prepare('minerva', 17) ===
+		['ok' => true, 'status' => 'android=HIT;iphone=HIT'],
+		'Two distinct mobile variants are coordinated within a single Minerva phase');
+	try {
+		new CachePreparationCommands($root, 'fr', 250, 10, ['android', 'android']);
+		throw new RuntimeException('Duplicate mobile variant accepted');
+	} catch (InvalidArgumentException $e) {
+		$check(true, 'Duplicate mobile variant selection is rejected');
 	}
 	$check((new CachePreparationQueue($root, 'en'))->pending() === [],
 		'No subprocess can accidentally alter the other wiki queue');
