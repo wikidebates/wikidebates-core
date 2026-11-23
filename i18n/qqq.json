@@ -21,6 +21,7 @@
 	"wikidebates-common-labels-arg-con-label": "Rendering message for Common.labels.arg_con_label. Keep wikitext/HTML structure. ",
 	"wikidebates-common-labels-justification-label": "Rendering message for Common.labels.justification_label. Keep wikitext/HTML structure. ",
 	"wikidebates-common-labels-objection-label": "Rendering message for Common.labels.objection_label. Keep wikitext/HTML structure. ",
+	"wikidebates-reading-argument-category": "Content-language category title (without Category: namespace) whose direct member pages are Wikidebates reading arguments. Must match the actual wiki category, not a generic UI label. A nonempty WikidebatesReadingArgumentCategory configuration override takes precedence.",
 	"wikidebates-common-labels-arguments-label": "Rendering message for Common.labels.arguments_label. Keep wikitext/HTML structure. ",
 	"wikidebates-common-labels-justifications-label": "Rendering message for Common.labels.justifications_label. Keep wikitext/HTML structure. ",
 	"wikidebates-common-labels-objections-label": "Rendering message for Common.labels.objections_label. Keep wikitext/HTML structure. ",
