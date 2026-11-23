@@ -13,14 +13,19 @@ set -eu
 if [ "$1" = "-r" ]; then
 	exec php "$@"
 fi
-case " $* " in
-	*" Wikidebates:prepareDailyCaches "*" --wiki=fr "*" --execute "*)
-		;;
-	*)
-		echo "Unexpected maintenance arguments: $*" >&2
-		exit 2
-		;;
-esac
+if [ "$2" != "Wikidebates:prepareDailyCaches" ]; then
+	echo "Unexpected maintenance command: $*" >&2
+	exit 2
+fi
+for expected in "--wiki=fr" "--execute"; do
+	case " $* " in
+		*" $expected "*) ;;
+		*)
+			echo "Missing $expected in maintenance command: $*" >&2
+			exit 2
+			;;
+	esac
+done
 count=$(cat "$WD_BACKFILL_TEST_COUNT")
 echo $((count + 1)) > "$WD_BACKFILL_TEST_COUNT"
 case "$count" in
