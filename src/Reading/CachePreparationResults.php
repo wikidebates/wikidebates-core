@@ -82,6 +82,12 @@ final class CachePreparationResults {
 			if ($nonzero === ['SKIPPED_SMW_ARTICLE' => 1]) {
 				return ['ok' => true, 'status' => 'SKIPPED_SMW_ARTICLE'];
 			}
+			// Flow boards deliberately have zero parser-cache lifetime and cannot
+			// produce a persistent anonymous Minerva snapshot. The CLI verifies
+			// their exact page content model without issuing a mobile HTTP GET.
+			if ($nonzero === ['SKIPPED_FLOW_BOARD' => 1]) {
+				return ['ok' => true, 'status' => 'SKIPPED_FLOW_BOARD'];
+			}
 			if ($nonzero === ['BYPASS' => 1]) {
 				$reasons = $stats['bypassReasons'] ?? [];
 				// Only a single well-formed diagnostic reason is safe to include in reports.
