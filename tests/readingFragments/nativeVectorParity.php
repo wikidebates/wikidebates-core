@@ -217,7 +217,17 @@ try {
 	$secondView = $get('view');
 	if (!str_contains($secondView['body'], 'Section') ||
 		!str_contains($nativeHttp, 'id="mw-panel-toc"')) {
-		throw new RuntimeException('Native HTTP Vector article or table of contents is incomplete');
+		throw new RuntimeException('Native HTTP Vector article or table of contents is incomplete: ' .
+			json_encode([
+				'http_contains_section' => str_contains($secondView['body'], 'Section'),
+				'http_body_length' => strlen($secondView['body']),
+				'http_body_excerpt' => substr($secondView['body'], 0, 320),
+				'file_contains_toc' => str_contains($nativeHttp, 'id="mw-panel-toc"'),
+				'file_available' => str_contains($nativeHttp, 'vector-toc-available'),
+				'file_unavailable' => str_contains($nativeHttp, 'vector-toc-not-available'),
+				'file_contains_heading' => str_contains($nativeHttp, 'Evidence'),
+				'file_length' => strlen($nativeHttp)
+			], JSON_THROW_ON_ERROR));
 	}
 
 	// First anonymous history request creates history; second MUST reuse it.
