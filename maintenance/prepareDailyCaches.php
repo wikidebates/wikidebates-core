@@ -128,6 +128,14 @@ class PrepareDailyCaches extends Maintenance {
 			};
 			$categoryKey = $execute ? ArgumentCategory::dbKey($config) : '';
 			$identity = static fn(int $id): ?string => AnonymousCacheSafety::fingerprint($id);
+			$snapshotPage = static function (int $id) use ($primary): ?array {
+				$row = $primary->selectRow('page',
+					['page_latest', 'page_is_redirect'], ['page_id' => $id], __METHOD__);
+				return $row ? [
+					'revisionId' => (int)$row->page_latest,
+					'isRedirect' => (bool)$row->page_is_redirect
+				] : null;
+			};
 			$coordinator = new CachePreparationCoordinator($queue);
 			$commands = null;
 			if ($execute) {
@@ -214,7 +222,21 @@ class PrepareDailyCaches extends Maintenance {
 							$result = $coordinator->processUnqueued(
 								$id, (int)$row->page_latest, $latest, $prepare, $identity
 							);
-							if (!in_array($result['state'], ['complete', 'skipped-nonpublic'], true)) {
+							if (CachePreparationCoordinator::isExplicitNoCacheRace($result)) {
+								$build = $queue->lockBuildPage($id);
+								try {
+									if (CachePreparationCoordinator::canCheckpointNoCacheRace(
+										$result, $snapshotPage, $identity
+									)) {
+										$result['state'] = 'skipped-cache-policy';
+										$result['phases']['reading'] = 'skipped-cache-policy';
+									}
+								} finally {
+									fclose($build);
+								}
+							}
+							if (!in_array($result['state'],
+								['complete', 'skipped-nonpublic', 'skipped-cache-policy'], true)) {
 								$report['stop_reason'] = 'retry-required';
 								$report['pages'][] = $result;
 								break 2;
