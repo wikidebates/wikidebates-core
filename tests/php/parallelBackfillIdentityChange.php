@@ -105,6 +105,39 @@ try {
 		'minerva' => 'android=HIT;iphone=BYPASS-parser-expiry'
 	]), 'Skip forbidden if a Minerva file was reused');
 
+	ensureIdentity(CachePreparationCoordinator::hasExplicitNoCachePolicy([
+		'vector' => 'SKIPPED_CACHE_POLICY',
+		'minerva' => 'BYPASS-parser-expiry'
+	]), 'Explicit no-cache policy is valid with one mobile device');
+	ensureIdentity(!CachePreparationCoordinator::hasExplicitNoCachePolicy([
+		'vector' => 'SKIPPED_NONCONTENT',
+		'minerva' => 'android=BYPASS-parser-expiry;iphone=HTTP_403'
+	]), 'HTTP errors must never be treated as a no-cache skip');
+	ensureIdentity(!CachePreparationCoordinator::hasExplicitNoCachePolicy([
+		'vector' => 'SKIPPED_NONCONTENT',
+		'minerva' => 'android=BYPASS-parser-expiry;android=BYPASS-parser-expiry'
+	]), 'Duplicate device statuses cannot prove the whole cache policy');
+	ensureIdentity(!CachePreparationCoordinator::hasExplicitNoCachePolicy([
+		'vector' => 'SKIPPED_NONCONTENT',
+		'minerva' => 'android=BYPASS-parser-expiry;iphone=BYPASS-parser-expiry',
+		'reading' => 'created'
+	]), 'A published Reading fragment cannot be classified as an empty cache');
+	ensureIdentity(CachePreparationCoordinator::isExplicitNoCacheRace([
+		'state' => 'retry-page-changed', 'revisionId' => 100,
+		'phases' => [
+			'vector' => 'SKIPPED_NONCONTENT',
+			'minerva' => 'android=BYPASS-parser-expiry;iphone=BYPASS-parser-expiry'
+		]
+	]), 'Page-touched race after both noncacheable variants is eligible for a guarded skip');
+	ensureIdentity(!CachePreparationCoordinator::isExplicitNoCacheRace([
+		'state' => 'retry-page-changed', 'revisionId' => 101,
+		'phases' => [
+			'vector' => 'REUSED',
+			'minerva' => 'android=BYPASS-parser-expiry;iphone=BYPASS-parser-expiry'
+		]
+	]), 'An actual cached file blocks a page-touched skip');
+
+
 	echo "OK: non-content page_touched and revision races retry with fresh identity\n";
 } finally {
 	$files = new \RecursiveIteratorIterator(
