@@ -55,7 +55,8 @@ try {
 	$errors->record(105, 405, 'HTTP_503');
 	$summary = $errors->summary();
 	parallelAssert($summary['open'] === 2 && $summary['resolved'] === 0 &&
-		$summary['recent'][0]['page_id'] === 104,
+		in_array(104, array_column($summary['recent'], 'page_id'), true) &&
+		in_array(105, array_column($summary['recent'], 'page_id'), true),
 		'Private ledger persists two real page errors');
 	$initialSignature = $summary['signature'];
 	$alertCalls = 0;
@@ -63,6 +64,8 @@ try {
 		$alertCalls++;
 		return $report['open'] >= 1;
 	};
+	parallelAssert($errors->alert(static fn(array $data): bool => false) === 'failed',
+		'Mailer refusal must not acknowledge an unsent incident');
 	parallelAssert($errors->alert($send) === 'sent' &&
 		$errors->alert($send) === 'unchanged' && $alertCalls === 1,
 		'An unchanged incident must not mail repeatedly');
