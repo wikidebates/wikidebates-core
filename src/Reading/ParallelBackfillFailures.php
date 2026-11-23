@@ -168,11 +168,21 @@ final class ParallelBackfillFailures {
 	 * send; failures stay retryable. Never email from a cache-rendering worker.
 	 *
 	 * @param callable(array):bool $deliver
+	 * @param array<string,int|string>|null $systemIncident Sanitized supervisor incident.
 	 * @return string sent|unchanged|rate-limited|empty|failed
 	 */
-	public function alert(callable $deliver, int $intervalSeconds = 3600): string {
+	public function alert(
+		callable $deliver, int $intervalSeconds = 3600, ?array $systemIncident = null
+	): string {
 		if ($intervalSeconds < 300 || $intervalSeconds > 86400) {
 			throw new \InvalidArgumentException('Invalid alert interval');
+		}
+		if ($systemIncident !== null &&
+			(!in_array($systemIncident['type'] ?? null,
+				['supervisor-failed', 'supervisor-unresponsive'], true) ||
+			!is_string($systemIncident['key'] ?? null) ||
+			!preg_match('/\A[a-f0-9]{64}\z/D', $systemIncident['key']))) {
+			throw new \InvalidArgumentException('Invalid supervisor incident signature');
 		}
 		$path = $this->directory . '/alert.lock';
 		if (is_link($path)) {
@@ -185,7 +195,12 @@ final class ParallelBackfillFailures {
 		}
 		try {
 			$summary = $this->summary();
-			if ($summary['open'] === 0) { return 'empty'; }
+			if ($systemIncident !== null) {
+				$summary['system'] = $systemIncident;
+				$summary['signature'] = hash('sha256',
+					$summary['signature'] . "\n" . $systemIncident['key']);
+			}
+			if ($summary['open'] === 0 && $systemIncident === null) { return 'empty'; }
 			$stamp = $this->directory . '/alert.json';
 			if (is_link($stamp)) {
 				throw new \RuntimeException('Symlinked cache alert stamp');
