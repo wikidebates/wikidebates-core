@@ -17,7 +17,23 @@ esac
 
 php_binary=${WD_CACHE_WINDOW_PHP:-php}
 window_seconds=${WD_CACHE_WINDOW_SECONDS:-2700}
-max_load=${WD_CACHE_WINDOW_MAX_LOAD:-10}
+max_load=${WD_CACHE_WINDOW_MAX_LOAD:-6}
+minerva_delay_ms=${WD_CACHE_WINDOW_MINERVA_DELAY_MS:-1500}
+page_delay_ms=${WD_CACHE_WINDOW_PAGE_DELAY_MS:-1000}
+queue_limit=${WD_CACHE_WINDOW_QUEUE_LIMIT:-30}
+
+# Keep the production cron's conservative load/pacing bounds by default.
+# Overrides must remain inside the MediaWiki command's accepted ranges.
+for value in "$minerva_delay_ms" "$page_delay_ms" "$queue_limit"; do
+	case "$value" in
+		''|*[!0-9]*) echo "Invalid numeric cache pacing or queue limit" >&2; exit 2 ;;
+	esac
+done
+if [ "$minerva_delay_ms" -lt 250 ] || [ "$minerva_delay_ms" -gt 60000 ] ||
+	[ "$page_delay_ms" -gt 60000 ] || [ "$queue_limit" -gt 100 ]; then
+	echo "Cache pacing or queue limit outside safe range" >&2
+	exit 2
+fi
 case "$window_seconds" in
 	''|*[!0-9]*) echo "Invalid window duration" >&2; exit 2 ;;
 esac
@@ -95,10 +111,10 @@ while :; do
 		exit 0
 	fi
 	if output=$("$php_binary" maintenance/run.php Wikidebates:prepareDailyCaches \
-		"--wiki=$wiki" --execute --limit=100 --queue-limit=10 \
+		"--wiki=$wiki" --execute --limit=100 "--queue-limit=$queue_limit" \
 		--batch-size=50 --max-seconds=900 "--max-load=$max_load" \
-		--minerva-devices=android,iphone --minerva-delay-ms=250 \
-		--delay-ms=250 --json 2>&1); then
+		--minerva-devices=android,iphone "--minerva-delay-ms=$minerva_delay_ms" \
+		"--delay-ms=$page_delay_ms" --json 2>&1); then
 		:
 	else
 		echo "CACHE_WINDOW_ERROR wiki=$wiki reason=cache-command-failed" >&2
