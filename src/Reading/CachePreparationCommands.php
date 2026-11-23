@@ -56,7 +56,8 @@ final class CachePreparationCommands {
 				$outcome = CachePreparationResults::interpret($phase, $pageId, 0, $result['stdout']);
 				if (!$outcome['ok']) { return $outcome; }
 				$statuses[$device] = $outcome['status'];
-				$previousMadeHttpRequest = $outcome['status'] !== 'LOCAL_HIT';
+				$previousMadeHttpRequest = !in_array($outcome['status'],
+					['LOCAL_HIT', 'SKIPPED_SMW_ARTICLE'], true);
 			}
 			if (count($statuses) === 1) {
 				return ['ok' => true, 'status' => reset($statuses)];
