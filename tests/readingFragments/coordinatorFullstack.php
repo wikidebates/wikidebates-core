@@ -208,7 +208,9 @@ try {
 
 	// Ordinary edits still retire both unlimited HTML caches. No TTL is
 	// involved in this transition; it is tied to the owning page revision.
-	$edit = proc_open([PHP_BINARY, __DIR__ . '/manage.php', 'edit'],
+	// The coordinator uses an auto-prepend ini for grandchildren, but manage.php
+	// already requires the fixture bootstrap itself. Do not include it twice.
+	$edit = proc_open([PHP_BINARY, '-d', 'auto_prepend_file=', __DIR__ . '/manage.php', 'edit'],
 		[['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']], $editPipes);
 	if (!is_resource($edit)) { throw new RuntimeException('Cannot edit disposable test page'); }
 	fclose($editPipes[0]);
