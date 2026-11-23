@@ -10,6 +10,40 @@ L'architecture vise trois caches distincts, sans durée maximale implicite : le 
 - Chaque cache reste responsable de sa propre validation. Vector annonce `REUSED` si son fichier est valide ; Minerva annonce `HIT` sur son HTTP de préchauffage ; Lecture annonce `already-valid`. Ces résultats ne signifient pas que les autres caches de la page sont valides.
 - Les fichiers ne doivent pas être renouvelés en raison d'une modification SMW indirecte. Les invalidations directes et les contrôles de confidentialité demeurent nécessaires.
 
+## Périmètre des trois caches et catégories localisées
+
+- **Lecture** prépare uniquement les pages non redirigées de l'espace principal
+  qui sont membres **directs** de la catégorie des arguments.
+  L'identifiant `categorylinks.cl_to` provient du message dédié
+  `wikidebates-reading-argument-category` dans la langue **du contenu** du wiki,
+  sans préfixe de namespace. L'ancien paramètre de configuration
+  `WikidebatesReadingArgumentCategory` reste prioritaire s'il est renseigné,
+  afin de prendre en charge les noms de catégorie personnalisés.
+  Ne pas confondre ce nom de catégorie avec le libellé d'interface « Arguments ».
+- Le coordinateur vérifie cette appartenance sur la base primaire via la table
+  indexée `categorylinks` avant de lancer l'étape Lecture. Les autres pages
+  renvoient `not-an-argument` **sans nouveau sous-processus PHP**. Les
+  contrôles de révision et de visibilité continuent avant et après la phase.
+- Lors d'une visite anonyme avec un véritable rendu de page, l'extraction
+  opportuniste ne se déclenche que pour une page de l'espace principal dont le
+  `ParserOutput::getCategoryNames()` contient la catégorie des arguments.
+  Cela évite à la fois une nouvelle requête SQL et une analyse DOM inutile des
+  pages de débats, de projet, de catégorie et des messages MediaWiki.
+- **MinervaFileCache** n'est pas limité à l'espace principal : les pages de
+  projet, d'aide, de catégories, de discussion et de descriptions de fichiers
+  peuvent être préparées. Chaque réponse reste soumise aux vérifications
+  publiques, aux permissions, aux en-têtes (y compris Set-Cookie) et à la
+  cacheabilité de MediaWiki. Un BYPASS justifié **ne crée aucun fichier**.
+- **Vector natif** couvre les pages et actions admises par
+  `HTMLFileCache::useFileCache` et `Article::isFileCacheable`, pas
+  exclusivement l'espace principal. En revanche, notre commande de
+  préchauffage Vector conserve volontairement la sélection des espaces de
+  contenu ; elle possède déjà l'option ciblée `--all` pour examiner des
+  espaces non contenus dans cette sélection en respectant les règles natives.
+  Son extension au préchauffage automatique des catégories requiert une
+  validation explicite de l'invalidation des listes de membres, car le cache
+  fichier natif ne couvre pas nécessairement ces dépendances indirectes.
+
 ## File des éditions directes
 
 `WikidebatesCachePreparationDirectory` est désactivé par défaut. Pour l'activer, choisir un répertoire privé (`0700`) hors de l'arborescence web. Le chemin doit être vérifié sur le serveur. Une modification de `LocalSettings.php` peut aussi faire évoluer `CacheEpoch`.
