@@ -1,8 +1,10 @@
 <?php
 
 require_once __DIR__ . '/../../src/Reading/ParallelBackfillGovernor.php';
+require_once __DIR__ . '/../../src/Reading/ParallelBackfillFpmStatus.php';
 
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillGovernor;
+use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillFpmStatus;
 
 $controller = new ParallelBackfillGovernor(4, 10.0, 2048, 2500);
 if ($controller->permitted() !== 2) {
@@ -39,5 +41,26 @@ if ($controller->permitted() !== 0) {
 $controller->sample(null, null, null, null);
 if ($controller->permitted() !== 0) {
 	throw new RuntimeException('Unavailable health signals must fail closed');
+}
+
+$fpmJson = '{"active processes":4,"idle processes":2,"listen queue":0}';
+$fpm = ParallelBackfillFpmStatus::parse($fpmJson);
+if ($fpm !== ['active' => 4, 'idle' => 2, 'listen_queue' => 0] ||
+	ParallelBackfillFpmStatus::parse('{"listen queue":4}') !== null) {
+	throw new RuntimeException('Invalid FPM scoreboard was accepted');
+}
+$fpmController = new ParallelBackfillGovernor(4, 10.0, 2048, 2500);
+$fpmController->sample(2.0, 12000, 200, 100, $fpm, true);
+if ($fpmController->permitted() !== 2) {
+	throw new RuntimeException('Healthy PHP-FPM queue must not block initial workers');
+}
+$fpmController->sample(2.0, 12000, 200, 100,
+	['active' => 4, 'idle' => 0, 'listen_queue' => 2], true);
+if ($fpmController->permitted() !== 0) {
+	throw new RuntimeException('PHP-FPM listen backlog must stop new cache renders');
+}
+$fpmController->sample(2.0, 12000, 200, 100, null, true);
+if ($fpmController->permitted() !== 0) {
+	throw new RuntimeException('Unavailable configured FPM scoreboard must fail closed');
 }
 echo "OK: automatic concurrency reduction, pause and gradual recovery\n";
