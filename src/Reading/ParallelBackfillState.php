@@ -71,6 +71,25 @@ final class ParallelBackfillState {
 		return new self($lanes);
 	}
 
+	/**
+	 * A limited set of permits always serves the first unfinished lanes.
+	 * Completed lower-numbered lanes cannot starve higher-numbered lanes.
+	 */
+	public function laneMayRun(int $lane, int $permits): bool {
+		if (!isset($this->lanes[$lane]) || $permits < 0 || $permits > count($this->lanes)) {
+			throw new \InvalidArgumentException('Invalid lane or number of permits');
+		}
+		$unfinishedPosition = 0;
+		foreach ($this->lanes as $index => $row) {
+			if ($row['done']) { continue; }
+			if ($index === $lane) {
+				return $unfinishedPosition < $permits;
+			}
+			$unfinishedPosition++;
+		}
+		return false;
+	}
+
 	/** A global daily cursor must never pass a non-exhausted earlier range. */
 	public function contiguousAfter(): int {
 		foreach ($this->lanes as $lane) {
