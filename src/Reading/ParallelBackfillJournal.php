@@ -107,7 +107,8 @@ final class ParallelBackfillJournal {
 					'cooldown_until' => 0,
 					'lanes' => ParallelBackfillState::create($startAfter, $highWatermark, $workers)->lanes(),
 					'metrics' => [
-						'completed' => 0, 'skipped' => 0, 'queue_acknowledged' => 0,
+						'completed' => 0, 'skipped' => 0, 'deferred' => 0,
+						'queue_acknowledged' => 0,
 						'cache_created' => 0, 'cache_reused' => 0,
 						'rate_current' => 0.0, 'rate_average' => 0.0,
 						'by_phase' => array_fill_keys(
@@ -203,6 +204,38 @@ final class ParallelBackfillJournal {
 				$data['metrics']['queue_acknowledged']++;
 			}
 			$this->recordPhases($data['metrics'], $phases);
+			$this->write($data);
+		});
+	}
+
+	/**
+	 * A page-level preparation failure may be passed over ONLY when its
+	 * current or newer revision is durably queued for later remediation.
+	 * The failed page is NOT completed and no HTML cache is declared valid.
+	 * Keep all bookkeeping under the same atomic journal checkpoint lock.
+	 */
+	public function deferred(
+		string $runId, int $lane, int $pageId, string $reason,
+		CachePreparationQueue $queue
+	): void {
+		$this->locked(true, function () use ($runId, $lane, $pageId, $reason, $queue) {
+			$data = $this->requireRun($runId);
+			if ($data['state'] !== 'running') {
+				throw new \RuntimeException('Cannot defer a page in a failed run');
+			}
+			$record = $queue->current($pageId);
+			if ($record === null || ($record['revisionId'] ?? 0) < 1) {
+				throw new \RuntimeException('Cannot advance past an unqueued failed page');
+			}
+			$data['lanes'] = (new ParallelBackfillState($data['lanes']))
+				->completed($lane, $pageId)->lanes();
+			$data['metrics']['deferred'] = ($data['metrics']['deferred'] ?? 0) + 1;
+			$data['last_deferred'] = [
+				'page_id' => $pageId,
+				'reason' => preg_match('/\A[a-zA-Z0-9_-]{1,80}\z/D', $reason)
+					? $reason : 'invalid-outcome',
+				'at' => time()
+			];
 			$this->write($data);
 		});
 	}
