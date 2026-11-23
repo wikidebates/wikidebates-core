@@ -40,7 +40,7 @@ class FragmentService {
 	}
 
 	public static function read(IContextSource $context, string $pageName, string $skin, ?array $prepared = null,
-		?array &$preparation = null): array {
+		?array &$preparation = null, bool $allowParserFallback = true): array {
 		$services = MediaWikiServices::getInstance();
 		$title = Title::newFromText($pageName);
 		if (!$title || !$title->canExist()) { throw new \InvalidArgumentException('Invalid page title'); }
@@ -125,6 +125,14 @@ class FragmentService {
 			// Reading HTML files again would add disk I/O without improving caching.
 			$result = $prepared ?? ($eligible ? FileSources::read($context, $title, $page) : null);
 			if ($result) { unset($result['_generation'], $result['_touched']); }
+			// The cron must not parse an extra page solely to build a fragment.
+			// Real API reads keep the direct parser fallback (default true).
+			if (!$result && !$allowParserFallback) {
+				if ($preparation !== null) {
+					$preparation = ['status' => 'deferred-no-html', 'source' => null];
+				}
+				return ['source' => 'deferred-no-html'];
+			}
 			$result ??= self::render($context, $title->getPrefixedText(), $eligible ? 'vector' : $skin);
 			$published = false;
 			if ($fill && ($result['_expires'] ?? 0) > time() && ($result['html'] ?? '') !== '') {
