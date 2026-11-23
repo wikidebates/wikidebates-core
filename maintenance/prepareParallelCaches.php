@@ -5,7 +5,9 @@ use MediaWiki\Extension\Wikidebates\Reading\ArgumentCategory;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCommands;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCoordinator;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationQueue;
+use MediaWiki\Extension\Wikidebates\Reading\DailyCacheScanIncident;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillGovernor;
+use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillHealth;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillFpmStatus;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillFailures;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillJournal;
@@ -33,8 +35,9 @@ class PrepareParallelCaches extends Maintenance {
 		$this->requireExtension('Wikidebates');
 		$this->addOption('execute', 'Explicitly enable cache creation and durable state changes.');
 		$this->addOption('status', 'Read-only progress report.');
-		$this->addOption('report-errors', 'Read-only per-page failure summary.');
+		$this->addOption('report-errors', 'Read-only per-page and supervisor incident summary.');
 		$this->addOption('mail-errors', 'With --report-errors: send a rate-limited aggregated email.');
+		$this->addOption('test-mail', 'With --report-errors --mail-errors: send one explicit delivery-test email.');
 		$this->addOption('stop', 'Request graceful stop at the next page boundary.');
 		$this->addOption('new-cycle', 'Start a fresh cycle only after the previous one completed.');
 		$this->addOption('workers', 'Number of parallel scan lanes (1-8; default 4).', false, true);
@@ -82,37 +85,81 @@ class PrepareParallelCaches extends Maintenance {
 				$this->hasOption('worker-queue') || $this->hasOption('new-cycle')) {
 				$this->fatalError('Error reporting cannot be combined with cache operations.');
 			}
+			if ($this->hasOption('test-mail') && !$this->hasOption('mail-errors')) {
+				$this->fatalError('--test-mail requires --report-errors --mail-errors.');
+			}
 			$failures = new ParallelBackfillFailures($queue);
+			$snapshot = $journal->snapshot();
+			$incident = ParallelBackfillHealth::incident($snapshot);
+			if ($incident === null && $snapshot === null && $wiki === 'enwikidebates') {
+				// EN has no checkpoint until the FR supervisor launches it.
+				// Report a missing EN launch only well after FR completed.
+				$frQueue = new CachePreparationQueue($directory, 'frwikidebates');
+				$frJournal = new ParallelBackfillJournal($frQueue, 'frwikidebates');
+				$incident = ParallelBackfillHealth::missingNextWiki($frJournal->snapshot());
+			}
+			if ($incident === null && $snapshot !== null && $snapshot['state'] === 'complete') {
+				$incident = (new DailyCacheScanIncident($queue))->incident();
+			}
 			$summary = $failures->summary();
+			if ($incident !== null) {
+				$publicIncident = $incident;
+				unset($publicIncident['key']);
+				$summary['system'] = $publicIncident;
+			}
 			$mailStatus = null;
-			if ($this->hasOption('mail-errors')) {
+			if ($this->hasOption('mail-errors') && $this->hasOption('test-mail')) {
+				$mailStatus = \UserMailer::send(
+					new \MailAddress('erreurcache@wikidebats.org'),
+					new \MailAddress('noreply@wikidebats.org', 'Wikidebats'),
+					'[Wikidebates cache] ' . $wiki . ' - delivery test',
+					'Explicit MediaWiki cache monitoring email test for ' . $wiki . '.' .
+						"\nNo cache, queue, checkpoint or alert deduplication state was changed."
+				)->isOK() ? 'test-sent' : 'failed';
+			} elseif ($this->hasOption('mail-errors')) {
 				$mailStatus = $failures->alert(
 					static function (array $data) use ($wiki): bool {
 						$lines = [
 							'Wikidebates cache preparation incident report',
 							'Wiki: ' . $wiki,
 							'Unresolved page failures: ' . $data['open'],
-							'Previously resolved: ' . $data['resolved'],
-							'',
-							'Recent unresolved pages (ID / revision / error / attempts):'
+							'Previously resolved: ' . $data['resolved']
 						];
-						foreach ($data['recent'] as $item) {
-							$lines[] = implode(' / ', [
-								$item['page_id'], $item['revision_id'],
-								$item['reason'], $item['attempts']
-							]);
+						if (isset($data['system'])) {
+							$system = $data['system'];
+							$lines[] = '';
+							$lines[] = 'Cache maintenance incident: ' . $system['type'];
+							$lines[] = 'Internal reason: ' . $system['reason'];
+							$lines[] = 'Lane: ' . $system['lane'];
+							$lines[] = 'Page ID: ' . $system['page_id'];
+							$lines[] = 'Incident reference (UTC): ' .
+								($system['at'] > 0 ? gmdate('Y-m-d H:i:s', $system['at']) : 'unknown');
+							$lines[] = 'Inspect the maintenance and parallel status logs.';
 						}
-						$lines[] = '';
-						$lines[] = 'The failures remain durably queued for future preparation.';
+						if ($data['open'] > 0) {
+							$lines[] = '';
+							$lines[] = 'Recent unresolved pages (ID / revision / error / attempts):';
+							foreach ($data['recent'] as $item) {
+								$lines[] = implode(' / ', [
+									$item['page_id'], $item['revision_id'],
+									$item['reason'], $item['attempts']
+								]);
+							}
+							$lines[] = '';
+							$lines[] = 'These page failures remain durably queued for retry.';
+						}
 						$lines[] = 'No failed or private HTML was declared cacheable.';
 						$subject = '[Wikidebates cache] ' . $wiki . ' - ' .
+							(isset($data['system']) ? 'maintenance incident, ' : '') .
 							$data['open'] . ' pages to retry';
 						return \UserMailer::send(
 							new \MailAddress('erreurcache@wikidebats.org'),
 							new \MailAddress('noreply@wikidebats.org', 'Wikidebats'),
 							$subject, implode("\n", $lines)
 						)->isOK();
-					}
+					},
+					3600,
+					$incident
 				);
 			}
 			unset($summary['signature']);
@@ -124,8 +171,8 @@ class PrepareParallelCaches extends Maintenance {
 			]);
 			return $mailStatus !== 'failed';
 		}
-		if ($this->hasOption('mail-errors')) {
-			$this->fatalError('--mail-errors requires --report-errors.');
+		if ($this->hasOption('mail-errors') || $this->hasOption('test-mail')) {
+			$this->fatalError('Mail operations require --report-errors (and --mail-errors for tests).');
 		}
 
 		if ($this->hasOption('status')) {

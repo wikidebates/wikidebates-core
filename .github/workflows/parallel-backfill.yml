@@ -5,6 +5,14 @@ on:
     paths:
       - 'src/Reading/ParallelBackfill*.php'
       - 'src/Reading/ParallelBackfillFailures.php'
+      - 'src/Reading/ParallelBackfillHealth.php'
+      - 'src/Reading/DailyCacheDeferral.php'
+      - 'src/Reading/DailyCacheScanIncident.php'
+      - 'tests/php/dailyCacheScanIncident.php'
+      - 'tests/php/parallelBackfillHealth.php'
+      - 'tests/php/dailyCacheDeferral.php'
+      - 'maintenance/scanCacheWindow.sh'
+      - 'tests/readingFragments/scanWindowScript.sh'
       - 'src/Reading/CachePreparationQueue.php'
       - 'src/Reading/CachePreparationCoordinator.php'
       - 'src/Reading/VectorCacheEligibility.php'
@@ -53,6 +61,14 @@ jobs:
           php -l tests/php/parallelBackfillGovernor.php
           php -l src/Reading/ParallelBackfillJournal.php
           php -l src/Reading/ParallelBackfillFailures.php
+          php -l src/Reading/ParallelBackfillHealth.php
+          php -l tests/php/parallelBackfillHealth.php
+          php -l src/Reading/DailyCacheDeferral.php
+          php -l src/Reading/DailyCacheScanIncident.php
+          php -l tests/php/dailyCacheScanIncident.php
+          php -l tests/php/dailyCacheDeferral.php
+          sh -n maintenance/scanCacheWindow.sh
+          sh -n tests/readingFragments/scanWindowScript.sh
           php -l src/Reading/ParallelBackfillWorkerExit.php
           php -l tests/php/parallelBackfillWorkerExit.php
           php -l src/Reading/CachePreparationQueue.php
@@ -73,6 +89,10 @@ jobs:
           php tests/php/parallelBackfillWorkerExit.php
           php tests/php/vectorFilenameLimit.php
           php tests/readingFragments/parallelBackfillJournal.php
+          php tests/php/parallelBackfillHealth.php
+          php tests/php/dailyCacheDeferral.php
+          php tests/php/dailyCacheScanIncident.php
+          sh tests/readingFragments/scanWindowScript.sh
 
   fullstack-2-workers:
     runs-on: ubuntu-24.04
