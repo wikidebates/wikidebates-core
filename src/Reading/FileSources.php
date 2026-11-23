@@ -25,12 +25,10 @@ class FileSources {
 			if (in_array($config->get('DefaultSkin'), ['vector', 'vector-2022'], true) &&
 				strtolower($host) === strtolower($canonicalHost) &&
 				$cache->isCacheGood($page->getTouched())) {
-				$created = (int)wfTimestamp(TS_UNIX, $cache->cacheTimestamp());
-				$limit = $created + min(2592000, (int)$config->get('WikidebatesReadingCacheTTL'));
-				if ($limit > time()) {
-					$html = FragmentExtractor::canonical($cache->fetchText());
-					if ($html !== '') { return self::result($html, $title, $page, 'vector-file', $limit); }
-				}
+				// A native Vector file is valid by identity, not by age.
+				// FragmentStore alone applies an optional explicit reading TTL.
+				$html = FragmentExtractor::canonical($cache->fetchText());
+				if ($html !== '') { return self::result($html, $title, $page, 'vector-file', PHP_INT_MAX); }
 			}
 		} catch (\Throwable $e) { FragmentService::log($e); }
 		try {
