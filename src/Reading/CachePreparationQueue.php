@@ -374,6 +374,29 @@ final class CachePreparationQueue {
 		}
 		return $batch;
 	}
+
+	/**
+	 * Serialize expensive preparation for one page across queue and sweep
+	 * workers. Separate from the short per-record lock so edits/invalidation
+	 * hooks never wait for an HTML render.
+	 *
+	 * @return resource
+	 */
+	public function lockBuildPage(int $pageId) {
+		$this->checkId($pageId);
+		$this->ensureDirectory();
+		$path = $this->root . '/locks/build-' . $pageId . '.lock';
+		if (is_link($path)) {
+			throw new \RuntimeException('Symlinked page preparation lock');
+		}
+		$handle = @fopen($path, 'c');
+		if (!$handle || !@chmod($path, 0600) || !@flock($handle, LOCK_EX)) {
+			if ($handle) { fclose($handle); }
+			throw new \RuntimeException('Cannot lock page cache preparation');
+		}
+		return $handle;
+	}
+
 	/**
 	 * Dedicated private workspace for resumable parallel backfill state.
 	 * This does not change the existing queue or the daily scan cursor.
