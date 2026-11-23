@@ -410,7 +410,7 @@ class PrepareParallelCaches extends Maintenance {
 						}
 						if ($result['state'] === 'acknowledged') {
 							unset($deferredQueuePages[$id]);
-							$journal->acknowledgedQueue($session);
+							$journal->acknowledgedQueue($session, $result['phases']);
 							$this->report(['mode' => 'queue', 'page_id' => $id,
 								'state' => 'acknowledged']);
 						} elseif ($result['state'] === 'retry') {
