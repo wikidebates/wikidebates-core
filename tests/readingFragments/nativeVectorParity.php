@@ -144,6 +144,9 @@ $signature = static function (string $html): array {
 			throw new RuntimeException('Cannot canonicalize HTML region: ' . $name);
 		}
 		$fragment = preg_replace('/<!-- Cached(?:\/compressed)? [^>]* -->\s*/', '', $fragment);
+		// The request correlation ID necessarily differs between HTTP and CLI.
+		$fragment = preg_replace('/"wgRequestId":"[^"]+"/',
+			'"wgRequestId":"REQUEST_ID"', $fragment);
 		$result[$name] = $fragment;
 	}
 	return $result;
@@ -205,9 +208,11 @@ try {
 	if (!$ready) { throw new RuntimeException('Disposable HTTP server did not start'); }
 
 	$get = static function (string $action) use ($title): array {
-		$url = 'http://127.0.0.1:8080/index.php?' . http_build_query([
-			'title' => $title->getPrefixedDBkey(), 'action' => $action
-		]);
+		// Normal article navigation has no action=view query parameter.
+		// This matters for returntoquery and mobile-view links in the DOM.
+		$query = ['title' => $title->getPrefixedDBkey()];
+		if ($action !== 'view') { $query['action'] = $action; }
+		$url = 'http://127.0.0.1:8080/index.php?' . http_build_query($query);
 		$body = @file_get_contents($url, false,
 			stream_context_create(['http' => [
 				'method' => 'GET', 'timeout' => 20, 'ignore_errors' => true,
