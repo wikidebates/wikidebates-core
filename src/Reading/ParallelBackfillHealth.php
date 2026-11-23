@@ -7,6 +7,43 @@ namespace MediaWiki\Extension\Wikidebates\Reading;
  * A page error ledger may be empty even when the entire backfill has failed.
  */
 final class ParallelBackfillHealth {
+	/**
+	 * EN is expected after FR. Detect a missing EN journal only once FR has
+	 * finished and its supervisor had ample time to launch the next command.
+	 * No alert is generated while FR itself is still filling.
+	 *
+	 * @return array<string,int|string>|null
+	 */
+	public static function missingNextWiki(
+		?array $previousCheckpoint, ?int $now = null, int $graceSeconds = 3600
+	): ?array {
+		if ($graceSeconds < 900 || $graceSeconds > 86400) {
+			throw new \InvalidArgumentException('Invalid next-backfill grace period');
+		}
+		if ($previousCheckpoint === null ||
+			($previousCheckpoint['state'] ?? null) !== 'complete') {
+			return null;
+		}
+		$runId = $previousCheckpoint['run_id'] ?? null;
+		$lastHeartbeat = $previousCheckpoint['heartbeat_at'] ?? null;
+		if (!is_string($runId) || !preg_match('/\A[a-f0-9]{32}\z/D', $runId) ||
+			!is_int($lastHeartbeat)) {
+			throw new \InvalidArgumentException('Invalid previous backfill checkpoint');
+		}
+		$now ??= time();
+		if ($now - $lastHeartbeat <= $graceSeconds) {
+			return null;
+		}
+		return [
+			'type' => 'next-backfill-missing',
+			'reason' => 'checkpoint-not-created',
+			'lane' => -1,
+			'page_id' => 0,
+			'at' => $lastHeartbeat,
+			'key' => hash('sha256', $runId . ':next-backfill-missing')
+		];
+	}
+
 	/** @return array<string,int|string>|null Safe, bounded incident metadata. */
 	public static function incident(
 		?array $checkpoint, ?int $now = null, int $staleAfterSeconds = 900
