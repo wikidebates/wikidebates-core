@@ -92,7 +92,7 @@ try {
 	$command = [
 		PHP_BINARY, '-d', 'auto_prepend_file=' . __DIR__ . '/bootstrap.php',
 		MW_INSTALL_PATH . '/maintenance/run.php', 'Wikidebates:prepareParallelCaches',
-		'--wiki=' . $wiki, '--execute', '--workers=2', '--minerva-devices=android',
+		'--wiki=' . $wiki, '--execute', '--workers=2', '--minerva-devices=android,iphone',
 		'--minerva-delay-ms=250', '--max-load=100', '--reserve-mb=128',
 		'--max-health-ms=15000', '--max-seconds=600',
 		'--health-title=Cache study argument'
@@ -122,7 +122,7 @@ try {
 	}
 	$mobile = glob($stateDir . '/minerva-cache/*/*/*/*.cache') ?: [];
 	$reading = glob($stateDir . '/reading-cache/*/*/*/*.cache') ?: [];
-	if (count($mobile) < 1 || count($reading) < 1 ||
+	if (count($mobile) < 2 || count($reading) < 1 ||
 		$queue->current($pageId) !== null) {
 		throw new RuntimeException('Real mobile or fragment cache missing after parallel fill');
 	}
