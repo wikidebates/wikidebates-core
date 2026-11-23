@@ -5,7 +5,7 @@ require_once (getenv('MW_INSTALL_PATH') ?: dirname(__DIR__, 3)) . '/maintenance/
 class PruneMinervaFileCache extends Maintenance {
 	public function __construct() {
 		parent::__construct();
-		$this->addDescription('Remove expired MinervaFileCache payloads for this wiki.');
+		$this->addDescription('Remove expired MinervaFileCache payloads when an explicit positive TTL is configured (otherwise no-op).');
 		$this->requireExtension('MinervaFileCache');
 	}
 	public function execute() {
