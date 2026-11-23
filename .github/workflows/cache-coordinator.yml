@@ -60,7 +60,7 @@ jobs:
           php -l tests/php/dailyCacheDeferral.php
           sh -n maintenance/scanCacheWindow.sh
           sh -n tests/readingFragments/scanWindowScript.sh
-          sh -x tests/readingFragments/scanWindowScript.sh
+          sh tests/readingFragments/scanWindowScript.sh
           php tests/php/dailyCacheDeferral.php
           sh -n maintenance/backfillDailyCaches.sh
           sh -n tests/readingFragments/backfillScript.sh
