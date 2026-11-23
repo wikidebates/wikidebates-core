@@ -15,6 +15,54 @@ final class CachePreparationCoordinator {
 	}
 
 	/**
+	 * Explicit parser cache policy: the native Vector renderer has not
+	 * written HTML and each requested Minerva variant was refused because
+	 * ParserOutput's cache expiry is zero (__NOCACHE__ is one cause).
+	 *
+	 * This is intentionally stricter than any BYPASS: it must never silently
+	 * reclassify a storage failure, a stale page, or an access-control error.
+	 * It detects the real parser outcome instead of searching raw wikitext.
+	 *
+	 * @param array<string,string> $phases
+	 */
+	public static function hasExplicitNoCachePolicy(array $phases): bool {
+		if (!in_array($phases['vector'] ?? null,
+			['SKIPPED_NONCONTENT', 'SKIPPED_CACHE_POLICY'], true)) {
+			return false;
+		}
+		$mobile = $phases['minerva'] ?? null;
+		if (!is_string($mobile) || $mobile === '') {
+			return false;
+		}
+		if ($mobile !== 'BYPASS-parser-expiry') {
+			$seen = [];
+			foreach (explode(';', $mobile) as $device) {
+				if (!preg_match('/\A(android|iphone)=BYPASS-parser-expiry\z/D', $device, $match) ||
+					isset($seen[$match[1]])) {
+					return false;
+				}
+				$seen[$match[1]] = true;
+			}
+			if ($seen === []) { return false; }
+		}
+		// A fragment actually published on a previous phase would make a
+		// blanket "no cache was created" assertion unsafe.
+		return !isset($phases['reading']) ||
+			$phases['reading'] === 'skipped-cache-policy';
+	}
+
+	/** @param array<string,mixed> $result */
+	public static function isExplicitNoCacheRace(array $result): bool {
+		return in_array($result['state'] ?? null, [
+			'retry-page-changed', 'public-identity-changed'
+		], true) &&
+			is_int($result['revisionId'] ?? null) &&
+			($result['revisionId'] ?? 0) > 0 &&
+			is_array($result['phases'] ?? null) &&
+			self::hasExplicitNoCachePolicy($result['phases']);
+	}
+
+	/**
 	 * @param array{schema:int,pageId:int,revisionId:int,generation?:string,ready?:bool} $record
 	 * @param callable(int):?int $latestRevision Read current page_latest from PRIMARY.
 	 * @param callable(string,int):array{ok:bool,status:string} $prepare Run one phase.
@@ -71,6 +119,12 @@ final class CachePreparationCoordinator {
 						$report['state'] = 'public-identity-changed';
 						return $report;
 					}
+				}
+				if ($phase === 'reading' && self::hasExplicitNoCachePolicy($report['phases'])) {
+					// A zero-expiry parser response cannot supply a durable
+					// Reading fragment either. Do not render it just to retry.
+					$report['phases']['reading'] = 'skipped-cache-policy';
+					continue;
 				}
 				$outcome = $prepare($phase, $pageId);
 				if (!is_array($outcome) || !is_bool($outcome['ok'] ?? null) ||
@@ -164,6 +218,12 @@ final class CachePreparationCoordinator {
 					$report['state'] = 'retry-page-changed';
 					return $report;
 				}
+				if ($phase === 'reading' && self::hasExplicitNoCachePolicy($report['phases'])) {
+					// A zero-expiry parser response cannot supply a durable
+					// Reading fragment either. Do not render it just to retry.
+					$report['phases']['reading'] = 'skipped-cache-policy';
+					continue;
+				}
 				$outcome = $prepare($phase, $pageId);
 				if (!is_array($outcome) || !is_bool($outcome['ok'] ?? null) ||
 					!is_string($outcome['status'] ?? null)) {
@@ -180,7 +240,15 @@ final class CachePreparationCoordinator {
 					return $report;
 				}
 			}
-			$report['state'] = 'complete';
+			// The Reading no-op must pass the same final identity checks as
+			// the real renderer before a normal no-cache skip is checkpointed.
+			if ($latestRevision($pageId) !== $revision ||
+				$publicIdentity($pageId) !== $baselineIdentity) {
+				$report['state'] = 'retry-page-changed';
+				return $report;
+			}
+			$report['state'] = self::hasExplicitNoCachePolicy($report['phases']) ?
+				'skipped-cache-policy' : 'complete';
 		} catch (\Throwable $e) {
 			$report['state'] = 'retry';
 			$report['errorType'] = get_class($e);
