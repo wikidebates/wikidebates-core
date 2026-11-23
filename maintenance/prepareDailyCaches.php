@@ -6,6 +6,7 @@ use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCommands;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCoordinator;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationQueue;
 use MediaWiki\Extension\Wikidebates\Reading\DailyCacheDeferral;
+use MediaWiki\Extension\Wikidebates\Reading\DailyCacheScanIncident;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillJournal;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillFailures;
 use MediaWiki\WikiMap\WikiMap;
@@ -304,6 +305,21 @@ class PrepareDailyCaches extends Maintenance {
 			if (is_resource($lock)) { fclose($lock); }
 		}
 		$report['duration_seconds'] = round(microtime(true) - $started, 3);
+		if ($execute && !$queueOnly) {
+			$scanIncident = new DailyCacheScanIncident($queue);
+			if (in_array($report['stop_reason'],
+				['retry-required', 'systemic-page-errors'], true)) {
+				$last = end($report['pages']);
+				$failedId = is_array($last) && is_int($last['pageId'] ?? null) ?
+					$last['pageId'] : 0;
+				$scanIncident->failed($report['stop_reason'], $failedId);
+			} elseif (in_array($report['stop_reason'],
+				['limit', 'time-budget', 'cycle-complete'], true) &&
+				($report['scan_processed'] + $report['scan_deferred'] > 0 ||
+					$report['stop_reason'] === 'cycle-complete')) {
+				$scanIncident->resolved();
+			}
+		}
 		$this->output(json_encode($report, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES) . "\n");
 		return !in_array($report['stop_reason'],
 			['retry-required', 'systemic-page-errors'], true);
