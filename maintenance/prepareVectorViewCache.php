@@ -2,6 +2,7 @@
 
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Extension\Wikidebates\Reading\AnonymousCacheSafety;
+use MediaWiki\Extension\Wikidebates\Reading\VectorCacheEligibility;
 use MediaWiki\Debug\MWDebug;
 use MediaWiki\MainConfigNames;
 use MediaWiki\Settings\SettingsBuilder;
@@ -90,6 +91,16 @@ class PrepareVectorViewCache extends Maintenance {
 		$publicIdentity = AnonymousCacheSafety::fingerprint($id);
 		if ($publicIdentity === null) {
 			$this->report($id, 'SKIPPED_NONPUBLIC');
+			return true;
+		}
+
+		// Semantic MediaWiki replaces Article on Property/Concept pages and
+		// adds live semantic listings. These are not safe to snapshot using
+		// the generic Vector renderer: they may yield a short redirect/error
+		// document instead of complete view HTML, or stale semantic results.
+		// Exclude only the SMW special handlers, not ordinary content pages.
+		if (VectorCacheEligibility::hasSmwSpecialArticle($title->getNamespace())) {
+			$this->report($id, 'SKIPPED_SMW_ARTICLE');
 			return true;
 		}
 

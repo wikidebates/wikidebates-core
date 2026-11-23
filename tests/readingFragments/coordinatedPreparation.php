@@ -3,12 +3,17 @@
 require dirname(__DIR__, 2) . '/src/Reading/CachePreparationQueue.php';
 require dirname(__DIR__, 2) . '/src/Reading/CachePreparationCoordinator.php';
 require dirname(__DIR__, 2) . '/src/Reading/CachePreparationResults.php';
+require dirname(__DIR__, 2) . '/src/Reading/VectorCacheEligibility.php';
 require dirname(__DIR__, 2) . '/src/Reading/CachePreparationCommands.php';
 
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCommands;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCoordinator;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationQueue;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationResults;
+use MediaWiki\Extension\Wikidebates\Reading\VectorCacheEligibility;
+
+if (!defined('SMW_NS_PROPERTY')) { define('SMW_NS_PROPERTY', 102); }
+if (!defined('SMW_NS_CONCEPT')) { define('SMW_NS_CONCEPT', 108); }
 
 $checks = 0;
 $check = static function ($condition, string $message) use (&$checks): void {
@@ -19,6 +24,14 @@ $root = sys_get_temp_dir() . '/wd-coordinator-unit-' . bin2hex(random_bytes(8));
 if (!mkdir($root, 0700)) { throw new RuntimeException('Cannot create queue fixture'); }
 
 try {
+	$check(VectorCacheEligibility::hasSmwSpecialArticle((int)constant('SMW_NS_PROPERTY')) &&
+		VectorCacheEligibility::hasSmwSpecialArticle((int)constant('SMW_NS_CONCEPT')),
+		'Exact SMW Property and Concept namespace constants are dynamically recognized');
+	foreach ([0, 1, 4, 6, 14] as $ordinaryNamespace) {
+		$check(!VectorCacheEligibility::hasSmwSpecialArticle($ordinaryNamespace),
+			'Normal article, talk, project, file and category namespaces are not excluded');
+	}
+
 	$queue = new CachePreparationQueue($root, 'fr');
 	$coordinator = new CachePreparationCoordinator($queue);
 	$lock = $queue->tryLockWorker();
@@ -260,6 +273,14 @@ try {
 		'Valid native Vector view is accepted');
 	$check(CachePreparationResults::interpret('vector', 17, 0, $vector(17, 'REUSED'))['ok'],
 		'Valid pre-existing Vector file is accepted');
+	$check(CachePreparationResults::interpret('vector', 17, 0, $vector(17, 'SKIPPED_SMW_ARTICLE')) ===
+		['ok' => true, 'status' => 'SKIPPED_SMW_ARTICLE'],
+		'SMW custom Article pages have an explicit safe Vector no-cache status');
+	$check(!CachePreparationResults::interpret('vector', 17, 0, $vector(17, 'REJECTED_SHORT_OUTPUT'))['ok'],
+		'A short HTML capture remains an error on all other Vector pages');
+	$check(!CachePreparationResults::interpret('vector', 17, 0, $vector(17, 'SKIPPED_UNKNOWN'))['ok'],
+		'Unrecognized Vector skip statuses remain rejected');
+
 	$check(CachePreparationResults::interpret('vector', 17, 0, $vector(17, 'SKIPPED_CACHE_POLICY'))
 		=== ['ok' => true, 'status' => 'SKIPPED_CACHE_POLICY'],
 		'An explicit Vector policy veto is a completed skip, not a retry loop');
