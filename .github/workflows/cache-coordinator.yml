@@ -13,6 +13,8 @@ on:
       - 'tests/readingFragments/visibilityBenchmarkLab.php'
       - 'maintenance/preparePendingCaches.php'
       - 'maintenance/prepareDailyCaches.php'
+      - 'maintenance/backfillDailyCaches.sh'
+      - 'tests/readingFragments/backfillScript.sh'
       - 'tests/readingFragments/coordinatedPreparation.php'
       - 'tests/readingFragments/coordinatorFullstack.php'
       - 'tests/readingFragments/bootstrap.php'
@@ -50,6 +52,9 @@ jobs:
           php -l src/Reading/CachePreparationCommands.php
           php -l maintenance/preparePendingCaches.php
           php -l maintenance/prepareDailyCaches.php
+          sh -n maintenance/backfillDailyCaches.sh
+          sh -n tests/readingFragments/backfillScript.sh
+          sh tests/readingFragments/backfillScript.sh
           php -l tests/readingFragments/coordinatedPreparation.php
           php -l src/Reading/SemanticCachePurgeJob.php
           php -l debatephp/src/TrackedSemanticQuery.php
