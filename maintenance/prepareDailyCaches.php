@@ -5,6 +5,7 @@ use MediaWiki\Extension\Wikidebates\Reading\ArgumentCategory;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCommands;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCoordinator;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationQueue;
+use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillJournal;
 use MediaWiki\WikiMap\WikiMap;
 
 require_once (getenv('MW_INSTALL_PATH') ?: dirname(__DIR__, 3)) . '/maintenance/Maintenance.php';
@@ -103,6 +104,17 @@ class PrepareDailyCaches extends Maintenance {
 				$lock = $queue->tryLockWorker();
 				if (!$lock) {
 					$this->fatalError('Another preparation worker owns the wiki lock.');
+				}
+				// An interrupted parallel sweep retains its own lane checkpoints.
+				// Never run the legacy cursor scan past those unfinished lanes.
+				// Queue-only recovery remains available after a parallel stop.
+				if (!$queueOnly) {
+					$parallel = (new ParallelBackfillJournal($queue, $wiki))->snapshot();
+					if ($parallel !== null && $parallel['state'] !== 'complete') {
+						$this->fatalError(
+							'An unfinished parallel backfill exists; resume it or use --queue-only.'
+						);
+					}
 				}
 			}
 			$cursor = $queue->dailyCursor();

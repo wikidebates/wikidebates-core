@@ -374,4 +374,46 @@ final class CachePreparationQueue {
 		}
 		return $batch;
 	}
+
+	/**
+	 * Serialize expensive preparation for one page across queue and sweep
+	 * workers. Separate from the short per-record lock so edits/invalidation
+	 * hooks never wait for an HTML render.
+	 *
+	 * @return resource
+	 */
+	public function lockBuildPage(int $pageId) {
+		$this->checkId($pageId);
+		$this->ensureDirectory();
+		$path = $this->root . '/locks/build-' . $pageId . '.lock';
+		if (is_link($path)) {
+			throw new \RuntimeException('Symlinked page preparation lock');
+		}
+		$handle = @fopen($path, 'c');
+		if (!$handle || !@chmod($path, 0600) || !@flock($handle, LOCK_EX)) {
+			if ($handle) { fclose($handle); }
+			throw new \RuntimeException('Cannot lock page cache preparation');
+		}
+		return $handle;
+	}
+
+	/**
+	 * Dedicated private workspace for resumable parallel backfill state.
+	 * This does not change the existing queue or the daily scan cursor.
+	 */
+	public function parallelDirectory(): string {
+		$this->ensureDirectory();
+		$path = $this->root . '/parallel';
+		if (is_link($path) || (file_exists($path) && !is_dir($path))) {
+			throw new \RuntimeException('Invalid parallel backfill workspace');
+		}
+		if (!is_dir($path) && !@mkdir($path, 0700) && !is_dir($path)) {
+			throw new \RuntimeException('Cannot create parallel backfill workspace');
+		}
+		if ((fileperms($path) & 0077) !== 0) {
+			throw new \RuntimeException('Parallel backfill workspace is not private');
+		}
+		return $path;
+	}
+
 }

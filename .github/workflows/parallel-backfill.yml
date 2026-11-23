@@ -1,0 +1,95 @@
+name: Parallel HTML backfill safety (PHP 8.4)
+
+on:
+  pull_request:
+    paths:
+      - 'src/Reading/ParallelBackfill*.php'
+      - 'src/Reading/CachePreparationQueue.php'
+      - 'maintenance/prepareParallelCaches.php'
+      - 'maintenance/prepareReadingCache.php'
+      - 'maintenance/prepareDailyCaches.php'
+      - 'tests/php/parallelBackfillState.php'
+      - 'tests/php/parallelBackfillGovernor.php'
+      - 'tests/php/parallelBackfillRetryPolicy.php'
+      - 'tests/readingFragments/parallelBackfillFullstack.php'
+      - 'tests/readingFragments/parallelBackfillJournal.php'
+      - '.github/workflows/parallel-backfill.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  state-and-journal:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Syntax of new code and existing queue
+        run: |
+          php -l src/Reading/ParallelBackfillState.php
+          php -l src/Reading/ParallelBackfillGovernor.php
+          php -l src/Reading/ParallelBackfillRetryPolicy.php
+          php -l tests/php/parallelBackfillRetryPolicy.php
+          php -l src/Reading/ParallelBackfillFpmStatus.php
+          php -l maintenance/prepareParallelCaches.php
+          php -l maintenance/prepareReadingCache.php
+          php -l maintenance/prepareDailyCaches.php
+          php -l tests/php/parallelBackfillGovernor.php
+          php -l src/Reading/ParallelBackfillJournal.php
+          php -l src/Reading/CachePreparationQueue.php
+          php -l tests/php/parallelBackfillState.php
+          php -l tests/readingFragments/parallelBackfillJournal.php
+      - name: Check safe lane progression and durable checkpoints
+        run: |
+          php tests/php/parallelBackfillState.php
+          php tests/php/parallelBackfillGovernor.php
+          php tests/php/parallelBackfillRetryPolicy.php
+          php tests/readingFragments/parallelBackfillJournal.php
+
+  fullstack-2-workers:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          submodules: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: mbstring,intl,xml,dom,pdo_sqlite,sqlite3,curl
+      - name: Use exact current farm MinervaFileCache source
+        run: |
+          FARM="$RUNNER_TEMP/parallel-farm"
+          git init -q "$FARM"
+          git -C "$FARM" remote add origin https://github.com/wikidebates/wikidebates-mediawiki-farm.git
+          git -C "$FARM" config core.sparseCheckout true
+          printf 'extensions/MinervaFileCache/\n' > "$FARM/.git/info/sparse-checkout"
+          git -C "$FARM" fetch --quiet --depth=1 --filter=blob:none origin 27963513596561ec1a5709767fd0692e73d62dfe
+          git -C "$FARM" checkout --quiet --detach FETCH_HEAD
+          test -f "$FARM/extensions/MinervaFileCache/maintenance/prewarm.php"
+          mkdir -p extensions/MinervaFileCache
+          cp -a "$FARM/extensions/MinervaFileCache/." extensions/MinervaFileCache/
+      - name: Create disposable MediaWiki 1.43 lab
+        run: |
+          LAB="$RUNNER_TEMP/wd-parallel-$GITHUB_RUN_ID"
+          python3 tests/minervaFileCache/prepare.py "$LAB"
+          echo "WD_MINERVA_STUDY_ROOT=$LAB" >> "$GITHUB_ENV"
+          export WD_MINERVA_STUDY_ROOT="$LAB"
+          git init -q "$LAB/Cite"
+          git -C "$LAB/Cite" fetch --quiet --depth=1 https://github.com/wikimedia/mediawiki-extensions-Cite.git 3f6a8e0395112bbdbe3b53732e259cad6375aaab
+          git -C "$LAB/Cite" checkout --quiet --detach FETCH_HEAD
+          install -d -m 0700 "$LAB/state/reading-cache" "$LAB/state/minerva-cache" "$LAB/state/desktop-cache" "$LAB/state/preparation-queue"
+          ln -s "$GITHUB_WORKSPACE" "$LAB/mediawiki/extensions/Wikidebates"
+          ln -s "$GITHUB_WORKSPACE/extensions/MinervaFileCache" "$LAB/mediawiki/extensions/MinervaFileCache"
+          php tests/readingFragments/manage.php initialize
+      - name: Prepare real Vector Minerva and Reading files with concurrent workers
+        run: |
+          php -l tests/readingFragments/parallelBackfillFullstack.php
+          php tests/readingFragments/parallelBackfillFullstack.php
