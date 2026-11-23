@@ -3,6 +3,7 @@
 use MediaWiki\Cache\CacheKeyHelper;
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Extension\Wikidebates\Reading\AnonymousCacheSafety;
+use MediaWiki\Extension\Wikidebates\Reading\AtomicVectorViewFileCache;
 use MediaWiki\Extension\Wikidebates\Reading\VectorCacheEligibility;
 use MediaWiki\Debug\MWDebug;
 use MediaWiki\MainConfigNames;
@@ -144,9 +145,12 @@ class PrepareVectorViewCache extends Maintenance {
 			$this->report($id, 'SKIPPED_FILENAME_TOO_LONG');
 			return true;
 		}
-		$view = new HTMLFileCache($title, 'view');
-		$touched = (string)$row->page_touched;
 		$forceView = $this->hasOption('force-view');
+		// Rewrite valid view HTML through a temporary file and atomic rename.
+		// Ordinary native generation and TOC-only repair stay unchanged.
+		$view = $forceView ? new AtomicVectorViewFileCache($title, 'view') :
+			new HTMLFileCache($title, 'view');
+		$touched = (string)$row->page_touched;
 		$existingOnly = $this->hasOption('existing-only');
 		if ($existingOnly && !$forceView) {
 			$this->fatalError('--existing-only requires --force-view.');
