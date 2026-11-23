@@ -415,9 +415,13 @@ PHP;
 			'Real shell-free subprocess runner rejects failing ' . $phase . ' exit');
 	}
 	$dual = new CachePreparationCommands($root, 'fr', 250, 10, ['android', 'iphone']);
-	$check($dual->prepare('minerva', 17) ===
+	$dualStarted = microtime(true);
+	$dualResult = $dual->prepare('minerva', 17);
+	$check($dualResult ===
 		['ok' => true, 'status' => 'android=HIT;iphone=HIT'],
 		'Two distinct mobile variants are coordinated within a single Minerva phase');
+	$check(microtime(true) - $dualStarted >= 0.2,
+		'Coordinated variants with actual HTTP output are spaced before the second GET');
 	try {
 		new CachePreparationCommands($root, 'fr', 250, 10, ['android', 'android']);
 		throw new RuntimeException('Duplicate mobile variant accepted');
