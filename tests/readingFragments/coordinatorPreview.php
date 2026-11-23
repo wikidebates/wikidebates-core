@@ -69,5 +69,31 @@ if ($dailyExit !== 0 || !is_array($dailyReport) ||
 		substr($dailyOut . $dailyErr, -2000));
 }
 
+
+// Queue-only preview must neither scan the historical pages nor change their
+// persistent cursor. Existing queued edits may still be previewed.
+$queueOnly = [...$daily, '--queue-only'];
+$queueProcess = proc_open($queueOnly, [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']], $queuePipes);
+if (!is_resource($queueProcess)) { throw new RuntimeException('Cannot start queue-only preview'); }
+fclose($queuePipes[0]);
+$queueOut = stream_get_contents($queuePipes[1]);
+$queueErr = stream_get_contents($queuePipes[2]);
+fclose($queuePipes[1]);
+fclose($queuePipes[2]);
+$queueExit = proc_close($queueProcess);
+$queueReport = json_decode(trim($queueOut), true);
+if ($queueExit !== 0 || !is_array($queueReport) ||
+	($queueReport['mode'] ?? '') !== 'preview' ||
+	($queueReport['stop_reason'] ?? '') !== 'queue-only' ||
+	($queueReport['queue_processed'] ?? 0) < 1 ||
+	($queueReport['scan_processed'] ?? -1) !== 0 ||
+	($queueReport['start_after'] ?? null) !== 0 ||
+	($queueReport['last_page_id'] ?? null) !== 0 ||
+	$records() !== $before ||
+	(glob($state . '/preparation-queue/*/daily-cursor.json') ?: []) !== []) {
+	throw new RuntimeException('Queue-only preview unexpectedly scanned or mutated state: ' .
+		substr($queueOut . $queueErr, -2000));
+}
+
 echo json_encode(['result' => 'PASS', 'mode' => 'preview',
 	'pending' => count($before), 'acknowledged' => 0], JSON_THROW_ON_ERROR) . "\n";
