@@ -4,9 +4,14 @@ on:
   pull_request:
     paths:
       - 'maintenance/prepareVectorViewCache.php'
+      - 'maintenance/rebuildVectorViews.php'
+      - 'src/Reading/CachePreparationQueue.php'
+      - 'src/Reading/CachePreparationCommands.php'
+      - 'src/Reading/CachePreparationResults.php'
       - 'tests/readingFragments/vectorViewOnly.php'
       - 'tests/readingFragments/vector2022Toc.php'
       - 'tests/readingFragments/nativeVectorParity.php'
+      - 'tests/readingFragments/vectorRebuildBatch.php'
       - 'tests/readingFragments/bootstrap.php'
       - '.github/workflows/vector-view-only.yml'
 
@@ -30,9 +35,14 @@ jobs:
       - name: Verify native view-only script syntax
         run: |
           php -l maintenance/prepareVectorViewCache.php
+          php -l maintenance/rebuildVectorViews.php
+          php -l src/Reading/CachePreparationQueue.php
+          php -l src/Reading/CachePreparationCommands.php
+          php -l src/Reading/CachePreparationResults.php
           php -l tests/readingFragments/vectorViewOnly.php
           php -l tests/readingFragments/vector2022Toc.php
           php -l tests/readingFragments/nativeVectorParity.php
+          php -l tests/readingFragments/vectorRebuildBatch.php
       - name: Prepare pinned disposable MediaWiki 1.43
         run: |
           LAB="$RUNNER_TEMP/wd-vector-view-$GITHUB_RUN_ID"
@@ -50,3 +60,5 @@ jobs:
         run: php tests/readingFragments/vector2022Toc.php
       - name: Compare native HTTP, core CLI, and Wikidebates view HTML, plus on-demand history cache
         run: php tests/readingFragments/nativeVectorParity.php
+      - name: Verify view-only migration checkpoint, lock, edit priority and history preservation
+        run: php tests/readingFragments/vectorRebuildBatch.php
