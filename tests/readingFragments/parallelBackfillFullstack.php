@@ -230,6 +230,32 @@ try {
 	)) !== 1) {
 		throw new RuntimeException('Fullscan lost its durable failed-page diagnostics');
 	}
+	// Reporting mode is read-only and can be invoked by an independent cron.
+	// The test intentionally does not send an email to a real recipient.
+	$reportCommand = [
+		PHP_BINARY, '-d', 'auto_prepend_file=' . __DIR__ . '/bootstrap.php',
+		MW_INSTALL_PATH . '/maintenance/run.php', 'Wikidebates:prepareParallelCaches',
+		'--wiki=' . $wiki, '--report-errors'
+	];
+	$reportProcess = proc_open($reportCommand, [
+		['file', '/dev/null', 'r'], ['pipe', 'w'], ['pipe', 'w']
+	], $reportPipes);
+	if (!is_resource($reportProcess)) {
+		throw new RuntimeException('Cannot open read-only cache failure report');
+	}
+	$reportOutput = stream_get_contents($reportPipes[1]);
+	$reportErrors = stream_get_contents($reportPipes[2]);
+	fclose($reportPipes[1]);
+	fclose($reportPipes[2]);
+	$reportExit = proc_close($reportProcess);
+	$reportData = json_decode(trim($reportOutput), true);
+	if ($reportExit !== 0 ||
+		($reportData['mode'] ?? null) !== 'errors' ||
+		($reportData['summary']['open'] ?? 0) < 1 ||
+		($reportData['mail_status'] ?? 'unexpected') !== null) {
+		throw new RuntimeException('Read-only failure report broke: ' .
+			substr($reportOutput . $reportErrors, -2500));
+	}
 	$noCacheVector = new HTMLFileCache($noCacheTitle, 'view');
 	if ($noCacheVector->isCached()) {
 		throw new RuntimeException('Native Vector HTML must never be created for __NOCACHE__ test page');
