@@ -185,8 +185,10 @@ try {
 	}
 	// A request carrying a cookie is never allowed to use the shared HTML.
 	$cookie = $smokeRequest($url, ['Cookie: preview=private']);
-	if (($cookie['headers']['x-minerva-file-cache'] ?? '') !== 'BYPASS') {
-		throw new RuntimeException('Cookie-bearing request used anonymous Minerva file');
+	$cookieState = $cookie['headers']['x-minerva-file-cache'] ?? '';
+	if ($cookie['status'] !== 200 || !str_starts_with($cookieState, 'BYPASS; reason=cookie')) {
+		throw new RuntimeException('Cookie-bearing Minerva bypass failed: ' .
+			$cookie['status'] . ', ' . $cookieState);
 	}
 	// Read the actual public fragment over HTTP. The same API action used by
 	// anonymous readers must see the prepared fragment instead of reparsing.
