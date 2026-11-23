@@ -131,6 +131,26 @@ for ($i = 0; $i < 30; $i++) {
 	$report = $run($settings);
 	$reports[] = $report;
 	$current = $queue->vectorRebuildCheckpoint();
+	if ($report['stop_reason'] === 'page-failed') {
+		// Only the disposable lab may collect raw child stderr.
+		$failedId = (int)($report['pages'][0]['pageId'] ?? 0);
+		$probe = [
+			PHP_BINARY, $root . '/mediawiki/maintenance/run.php',
+			'Wikidebates:prepareVectorViewCache', '--wiki=' . $wiki,
+			'--page-id=' . $failedId, '--force-view', '--existing-only', '--json',
+			'--conf=' . $root . '/mediawiki/LocalSettings.php'
+		];
+		$proc = proc_open($probe,
+			[['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']], $pipes);
+		if (is_resource($proc)) {
+			fclose($pipes[0]);
+			$raw = stream_get_contents($pipes[1]) . stream_get_contents($pipes[2]);
+			fclose($pipes[1]); fclose($pipes[2]);
+			$code = proc_close($proc);
+			throw new RuntimeException('Disposable Vector child probe exit=' . $code .
+				' output=' . substr($raw, -2000));
+		}
+	}
 	if ($current === null || $current['after'] < $previous ||
 		$current['after'] > $current['high_watermark'] ||
 		$report['checkpoint'] !== $current ||
