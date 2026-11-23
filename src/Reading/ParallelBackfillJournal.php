@@ -113,7 +113,7 @@ final class ParallelBackfillJournal {
 	public function heartbeat(string $runId, int $desiredWorkers): void {
 		$this->locked(true, function () use ($runId, $desiredWorkers) {
 			$data = $this->requireRun($runId);
-			if ($desiredWorkers < 1 || $desiredWorkers > count($data['lanes'])) {
+			if ($desiredWorkers < 0 || $desiredWorkers > count($data['lanes'])) {
 				throw new \InvalidArgumentException('Invalid desired worker count');
 			}
 			$data['heartbeat_at'] = time();
@@ -166,6 +166,15 @@ final class ParallelBackfillJournal {
 	}
 
 	/** Exhaustion is only legal after the caller has queried the entire lane. */
+	/** Successful edit-queue work outside a scan lane does not advance the frontier. */
+	public function acknowledgedQueue(string $runId): void {
+		$this->locked(true, function () use ($runId) {
+			$data = $this->requireRun($runId);
+			$data['metrics']['queue_acknowledged']++;
+			$this->write($data);
+		});
+	}
+
 	public function exhausted(string $runId, int $lane): void {
 		$this->locked(true, function () use ($runId, $lane) {
 			$data = $this->requireRun($runId);
@@ -266,7 +275,7 @@ final class ParallelBackfillJournal {
 		$state = new ParallelBackfillState($data['lanes']);
 		if ($data['start_after'] !== $data['lanes'][0]['start'] ||
 			$data['high_watermark'] !== $data['lanes'][array_key_last($data['lanes'])]['end'] ||
-			$data['desired_workers'] < 1 || $data['desired_workers'] > count($data['lanes']) ||
+			$data['desired_workers'] < 0 || $data['desired_workers'] > count($data['lanes']) ||
 			($data['state'] === 'complete' && !$state->finished())) {
 			throw new \RuntimeException('Inconsistent parallel backfill bounds');
 		}
