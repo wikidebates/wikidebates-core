@@ -39,6 +39,19 @@ $history = static function () use ($fixture): array {
 	return [hash('sha256', $html), $file->cacheTimestamp()];
 };
 $historyBefore = $history();
+// The coordinator launches a grandchild php maintenance process for each
+// Vector page. Carry the lab-only bootstrap through to those children, as in
+// coordinatorFullstack.php; production boots through normal LocalSettings.
+$iniDir = $state . '/vector-batch-php-ini';
+if (!mkdir($iniDir, 0700)) {
+	throw new RuntimeException('Cannot create private disposable PHP ini directory');
+}
+if (file_put_contents($iniDir . '/99-vector-batch-lab.ini',
+	'auto_prepend_file=' . __DIR__ . '/bootstrap.php' . "\n") === false) {
+	throw new RuntimeException('Cannot configure lab-only grandchildren');
+}
+putenv('PHP_INI_SCAN_DIR=:' . $iniDir);
+
 $normalView = new HTMLFileCache($subject, 'view');
 if (!$normalView->isCached()) { throw new RuntimeException('Missing prepared native view fixture'); }
 $normalViewBefore = $normalView->fetchText();
