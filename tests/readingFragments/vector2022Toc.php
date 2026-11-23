@@ -91,7 +91,10 @@ if (!$flags['vector-2022'] || !$flags['markup-toc'] ||
 	!$flags['toc-available'] || $flags['toc-not-available'] ||
 	!$flags['heading-alpha'] || !$flags['heading-epsilon']) {
 	throw new RuntimeException('CLI-prepared Vector 2022 HTML lost the anonymous sidebar TOC: ' .
-		json_encode(['flags' => $flags, 'bytes' => strlen($html)], JSON_THROW_ON_ERROR));
+		json_encode(['flags' => $flags, 'bytes' => strlen($html),
+			'parser_diagnostics' => is_file($root . '/state/toc-diagnostics.jsonl') ?
+				file_get_contents($root . '/state/toc-diagnostics.jsonl') : null
+		], JSON_THROW_ON_ERROR));
 }
 echo json_encode(['result' => 'PASS', 'page_id' => $pageId, 'toc' => true],
 	JSON_THROW_ON_ERROR) . "\n";
