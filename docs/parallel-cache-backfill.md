@@ -73,6 +73,16 @@ empeche d'amplifier une surcharge. Chaque tentative reverifie la revision
 et la visibilite anonyme. HTTP 403, NO_HEADER et les sorties inconnues
 restent des echecs a inspecter ; ils ne font pas avancer les curseurs.
 
+Quand une page change d'identite pendant la creation (revision ou page_touched),
+le balayage reinterroge la base PRIMARY et refait toutes les phases de la
+page avec la nouvelle revision. Au plus deux nouvelles tentatives courtes
+sont autorisees par page, sans relacher les controles ACL/RevDel. Les refus
+explicites de cache (par exemple SKIPPED_NONCONTENT et BYPASS-parser-expiry)
+restent des exclusions normales et ne sont pas forces. Si l'identite demeure
+instable, le journal s'arrete sans marquer la page terminee ; consulter
+le premier evenement scan-error dans le journal avant une nouvelle reprise.
+
+
 ## Journaux et commandes de controle
 
     umask 077

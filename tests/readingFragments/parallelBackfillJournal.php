@@ -34,6 +34,19 @@ try {
 	$journal = new ParallelBackfillJournal($queue, 'testwikidebates');
 	parallelAssert($journal->snapshot() === null, 'Missing journal must be null');
 
+	parallelAssert(ParallelBackfillJournal::safeFailureReason([
+		'state' => 'retry-page-changed',
+		'phases' => ['vector' => 'REUSED', 'minerva' => 'android=MISS;iphone=HIT']
+	]) === 'retry-page-changed',
+		'Composite successful device states must not hide an identity change');
+	parallelAssert(ParallelBackfillJournal::safeFailureReason([
+		'state' => 'retry', 'phases' => ['minerva' => 'HTTP_403']
+	]) === 'HTTP_403', 'Direct safe HTTP error reason should remain visible');
+	parallelAssert(ParallelBackfillJournal::safeFailureReason([
+		'state' => 'unexpected::status', 'phases' => ['minerva' => 'private=secret;token=hidden']
+	]) === 'invalid-outcome', 'Do not persist unknown composite diagnostics');
+
+
 	$first = $journal->activate(100, 111, 3, $signature);
 	$token1 = $first['run_id'];
 	parallelAssert(count($first['lanes']) === 3, 'Three disjoint lanes');

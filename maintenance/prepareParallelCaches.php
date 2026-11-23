@@ -508,7 +508,7 @@ class PrepareParallelCaches extends Maintenance {
 					$result = $this->processWithRetry(
 						$queue, $journal, $session, $id, $lane,
 						static function () use (
-							$queue, $coordinator, $latest, $prepare, $identity, $id, $row
+							$queue, $coordinator, $latest, $prepare, $identity, $id, $db
 						): array {
 							$queued = $queue->current($id);
 							if ($queued !== null) {
@@ -518,8 +518,22 @@ class PrepareParallelCaches extends Maintenance {
 									$result['state'] = 'queue-changed-after-preparation';
 								}
 							} else {
+								// The batch's original page_latest may be stale after
+								// a concurrent edit or purge. Re-read PRIMARY on EVERY
+								// retry instead of repeating with the old revision.
+								$current = $db->selectRow('page',
+									['page_latest', 'page_is_redirect'],
+									['page_id' => $id], __METHOD__);
+								if (!$current || (int)$current->page_is_redirect !== 0) {
+									// Deleted or newly redirected: no new cache to publish.
+									return ['state' => 'skipped-nonpublic', 'phases' => []];
+								}
+								$revision = (int)$current->page_latest;
+								if ($revision < 1) {
+									return ['state' => 'retry', 'phases' => []];
+								}
 								$result = $coordinator->processUnqueued(
-									$id, (int)$row->page_latest, $latest, $prepare, $identity
+									$id, $revision, $latest, $prepare, $identity
 								);
 								if ($result['state'] === 'complete' && $queue->current($id) !== null) {
 									$result['state'] = 'queue-changed-after-preparation';
@@ -530,8 +544,7 @@ class PrepareParallelCaches extends Maintenance {
 					);
 					if ($result['state'] === 'interrupted') { return true; }
 					if (!in_array($result['state'], ['complete', 'skipped-nonpublic', 'acknowledged'], true)) {
-						$reason = (string)($result['phases'][array_key_last($result['phases'])] ??
-							$result['state']);
+						$reason = ParallelBackfillJournal::safeFailureReason($result);
 						$journal->failed($session, $lane, $id, $reason);
 						$this->report(['mode' => 'scan-error', 'lane' => $lane,
 							'page_id' => $id, 'state' => $result['state'],
@@ -553,6 +566,16 @@ class PrepareParallelCaches extends Maintenance {
 					return true;
 				}
 			}
+		} catch (\RuntimeException $e) {
+			// Another lane may fail after this worker validated its page but
+			// before its checkpoint write. Treat that as a graceful, shared
+			// stop rather than producing a secondary exception in every lane.
+			$current = $journal->snapshot();
+			if ($current !== null && $current['run_id'] === $session &&
+				$current['state'] === 'failed') {
+				return true;
+			}
+			throw $e;
 		} finally {
 			fclose($lock);
 		}
@@ -609,7 +632,21 @@ class PrepareParallelCaches extends Maintenance {
 			}
 			$delay = ParallelBackfillRetryPolicy::delay($result, $attempt);
 			if ($delay === null) {
-				return $result;
+				$identityDelay = ParallelBackfillRetryPolicy::identityDelayMicroseconds(
+					$result, $attempt
+				);
+				if ($identityDelay === null) {
+					return $result;
+				}
+				$this->report([
+					'mode' => 'identity-retry',
+					'page_id' => $pageId,
+					'lane' => $lane,
+					'attempt' => $attempt + 1,
+					'state' => $result['state']
+				]);
+				usleep($identityDelay);
+				continue;
 			}
 			$journal->cooldown($session, $delay);
 			$this->report([

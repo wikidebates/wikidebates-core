@@ -225,6 +225,26 @@ final class ParallelBackfillJournal {
 		});
 	}
 
+	/**
+	 * Use a bounded diagnostic from the last phase when possible, otherwise
+	 * retain the safe coordinator state. Composite Minerva statuses contain
+	 * delimiters and must never be replaced by an unhelpful generic label.
+	 *
+	 * @param array<string,mixed> $result
+	 */
+	public static function safeFailureReason(array $result): string {
+		$phases = $result['phases'] ?? null;
+		$lastPhase = is_array($phases) && $phases !== [] ?
+			$phases[array_key_last($phases)] : null;
+		foreach ([$lastPhase, $result['state'] ?? null] as $candidate) {
+			if (is_string($candidate) &&
+				preg_match('/\A[a-zA-Z0-9_-]{1,80}\z/D', $candidate)) {
+				return $candidate;
+			}
+		}
+		return 'invalid-outcome';
+	}
+
 	public function failed(string $runId, int $lane, int $pageId, string $reason): void {
 		$this->locked(true, function () use ($runId, $lane, $pageId, $reason) {
 			$data = $this->requireRun($runId);
