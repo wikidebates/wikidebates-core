@@ -6,6 +6,7 @@ use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCommands;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCoordinator;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationQueue;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillGovernor;
+use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillFpmStatus;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillJournal;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillState;
 use MediaWiki\WikiMap\WikiMap;
@@ -38,6 +39,7 @@ class PrepareParallelCaches extends Maintenance {
 		$this->addOption('reserve-mb', 'Required available RAM (default 2048 MB).', false, true);
 		$this->addOption('max-health-ms', 'Maximum public-site GET latency (default 2500 ms).', false, true);
 		$this->addOption('health-title', 'Existing public page for health GET; main page by default.', false, true);
+		$this->addOption('fpm-status-url', 'Optional loopback HTTP PHP-FPM status endpoint (?json).', false, true);
 		$this->addOption('max-seconds', 'Stop gracefully after this budget (600-86400; default 28800).', false, true);
 		$this->addOption('worker-lane', 'Internal: run one reserved lane.', false, true);
 		$this->addOption('worker-queue', 'Internal: consume recent direct edits while scanning.');
@@ -129,6 +131,17 @@ class PrepareParallelCaches extends Maintenance {
 		$reserveMb = $this->number('reserve-mb', 2048, 128, 65536);
 		$healthMs = $this->number('max-health-ms', 2500, 200, 20000);
 		$maxSeconds = $this->number('max-seconds', 28800, 600, 86400);
+		$fpmUrl = (string)$this->getOption('fpm-status-url', '');
+		if ($fpmUrl !== '') {
+			$fpmParts = parse_url($fpmUrl);
+			if (!is_array($fpmParts) ||
+				($fpmParts['scheme'] ?? null) !== 'http' ||
+				!in_array($fpmParts['host'] ?? '', ['127.0.0.1', 'localhost', '[::1]'], true) ||
+				isset($fpmParts['user']) || isset($fpmParts['pass']) ||
+				isset($fpmParts['fragment'])) {
+				$this->fatalError('PHP-FPM status must use a local loopback HTTP endpoint.');
+			}
+		}
 		if (!function_exists('curl_init')) {
 			$this->fatalError('The PHP cURL extension is required for public availability checks.');
 		}
@@ -185,7 +198,7 @@ class PrepareParallelCaches extends Maintenance {
 			);
 			return $this->supervise($queue, $journal, $wiki, $run, $workers,
 				$devices, $minervaDelay, (float)$loadRaw, $reserveMb,
-				$healthMs, $maxSeconds, $healthUrl);
+				$healthMs, $maxSeconds, $healthUrl, $fpmUrl);
 		} finally {
 			fclose($lock);
 		}
@@ -198,7 +211,8 @@ class PrepareParallelCaches extends Maintenance {
 	private function supervise(
 		CachePreparationQueue $queue, ParallelBackfillJournal $journal, string $wiki,
 		array $run, int $workers, array $devices, int $minervaDelay,
-		float $maxLoad, int $reserveMb, int $healthMs, int $maxSeconds, string $healthUrl
+		float $maxLoad, int $reserveMb, int $healthMs, int $maxSeconds,
+		string $healthUrl, string $fpmUrl
 	): bool {
 		$started = microtime(true);
 		$runId = $run['run_id'];
@@ -246,9 +260,10 @@ class PrepareParallelCaches extends Maintenance {
 					$load = sys_getloadavg();
 					$available = $this->availableMemoryMb();
 					[$httpStatus, $latency] = $this->probePublic($healthUrl);
+					$fpm = $fpmUrl !== '' ? $this->probeFpm($fpmUrl) : null;
 					$permits = $governor->sample(
 						is_array($load) && isset($load[0]) ? (float)$load[0] : null,
-						$available, $httpStatus, $latency
+						$available, $httpStatus, $latency, $fpm, $fpmUrl !== ''
 					);
 					$totalCompleted = $snapshot['metrics']['completed'] +
 						$snapshot['metrics']['skipped'];
@@ -269,6 +284,9 @@ class PrepareParallelCaches extends Maintenance {
 						'load_1m' => is_array($load) ? round((float)$load[0], 2) : null,
 						'available_mb' => $available, 'health_http' => $httpStatus,
 						'health_ms' => $latency,
+						'fpm_active' => $fpm['active'] ?? null,
+						'fpm_idle' => $fpm['idle'] ?? null,
+						'fpm_listen_queue' => $fpm['listen_queue'] ?? null,
 						'pages_per_second_current' => round($currentRate, 3),
 						'pages_per_second_average' => round($averageRate, 3),
 						'processes_alive' => count($children)]);
@@ -545,6 +563,32 @@ class PrepareParallelCaches extends Maintenance {
 			return null;
 		}
 		return intdiv((int)$match[1], 1024);
+	}
+
+	/**
+	 * Optional local PHP-FPM scoreboard; never send credentials or expose
+	 * the response body in a public progress report.
+	 *
+	 * @return array{active:int,idle:int,listen_queue:int}|null
+	 */
+	private function probeFpm(string $url): ?array {
+		$handle = curl_init($url);
+		if ($handle === false) { return null; }
+		$body = '';
+		curl_setopt_array($handle, [
+			CURLOPT_FOLLOWLOCATION => false,
+			CURLOPT_CONNECTTIMEOUT_MS => 500,
+			CURLOPT_TIMEOUT_MS => 1500,
+			CURLOPT_WRITEFUNCTION => static function ($ch, string $chunk) use (&$body): int {
+				if (strlen($body) + strlen($chunk) > 8192) { return 0; }
+				$body .= $chunk;
+				return strlen($chunk);
+			}
+		]);
+		$ok = curl_exec($handle) !== false;
+		$status = (int)curl_getinfo($handle, CURLINFO_HTTP_CODE);
+		curl_close($handle);
+		return $ok && $status === 200 ? ParallelBackfillFpmStatus::parse($body) : null;
 	}
 
 	/** @return array{0:int|null,1:int|null} */
