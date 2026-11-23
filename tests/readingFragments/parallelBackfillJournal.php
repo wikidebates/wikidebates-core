@@ -4,9 +4,11 @@ require_once __DIR__ . '/../../src/Reading/CachePreparationQueue.php';
 require_once __DIR__ . '/../../src/Reading/ParallelBackfillState.php';
 require_once __DIR__ . '/../../src/Reading/CachePreparationCoordinator.php';
 require_once __DIR__ . '/../../src/Reading/ParallelBackfillJournal.php';
+require_once __DIR__ . '/../../src/Reading/ParallelBackfillFailures.php';
 
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationQueue;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillJournal;
+use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillFailures;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillState;
 
 function parallelAssert(bool $yes, string $message): void {
@@ -46,6 +48,34 @@ try {
 		'state' => 'unexpected::status', 'phases' => ['minerva' => 'private=secret;token=hidden']
 	]) === 'invalid-outcome', 'Do not persist unknown composite diagnostics');
 
+
+
+	$errors = new ParallelBackfillFailures($queue);
+	$errors->record(104, 404, 'WRITE_FAILED');
+	$errors->record(105, 405, 'HTTP_503');
+	$summary = $errors->summary();
+	parallelAssert($summary['open'] === 2 && $summary['resolved'] === 0 &&
+		$summary['recent'][0]['page_id'] === 104,
+		'Private ledger persists two real page errors');
+	$initialSignature = $summary['signature'];
+	$alertCalls = 0;
+	$send = static function (array $report) use (&$alertCalls): bool {
+		$alertCalls++;
+		return $report['open'] >= 1;
+	};
+	parallelAssert($errors->alert($send) === 'sent' &&
+		$errors->alert($send) === 'unchanged' && $alertCalls === 1,
+		'An unchanged incident must not mail repeatedly');
+	$errors->resolved(104);
+	$summary = $errors->summary();
+	parallelAssert($summary['open'] === 1 && $summary['resolved'] === 1 &&
+		$summary['signature'] !== $initialSignature,
+		'A successful later retry resolves the error without erasing history');
+	parallelAssert($errors->alert($send) === 'rate-limited' && $alertCalls === 1,
+		'A new error signature may not flood email within one hour');
+	$errors->record(105, 406, 'PRIVATE/invalid;message');
+	parallelAssert($errors->summary()['recent'][0]['reason'] === 'invalid-outcome',
+		'Only allowlisted bounded reasons belong in durable alerts');
 
 	$first = $journal->activate(100, 111, 3, $signature);
 	$token1 = $first['run_id'];
@@ -141,6 +171,27 @@ try {
 	parallelAssert($newCycle['start_after'] === 0, 'New cycle explicitly resets lanes');
 	$journal->stop();
 	parallelAssert($journal->snapshot()['stop_requested'], 'Stop request persists');
+
+	// Separate session so the existing journal recovery assertions remain
+	// unchanged: "deferred" is neither a cache hit nor a discarded page.
+	$deferCycle = $journal->activate(0, 4, 2, $signature, true);
+	$deferToken = $deferCycle['run_id'];
+	mustReject(fn() => $journal->deferred($deferToken, 0, 1, 'WRITE_FAILED', $queue));
+	parallelAssert($queue->enqueue(1, 11), 'Prepare a durable retry queue record');
+	$journal->deferred($deferToken, 0, 1, 'WRITE_FAILED', $queue);
+	$deferred = $journal->snapshot();
+	parallelAssert($deferred['lanes'][0]['after'] === 1 &&
+		$deferred['metrics']['deferred'] === 1 &&
+		$deferred['metrics']['completed'] === 0 &&
+		$queue->current(1)['revisionId'] === 11,
+		'Uncached failure can advance only after durable requeue');
+	mustReject(fn() => $journal->deferred($deferToken, 0, 1, 'WRITE_FAILED', $queue));
+	$journal->exhausted($deferToken, 0);
+	$journal->exhausted($deferToken, 1);
+	$journal->markComplete($deferToken);
+	parallelAssert($journal->snapshot()['state'] === 'complete' &&
+		$queue->current(1) !== null,
+		'Full scan can complete while a failed page remains retryable');
 
 	$checkpointPath = $queue->parallelDirectory() . '/checkpoint.json';
 	file_put_contents($checkpointPath, '{"version":1,"wiki":"testwikidebates","lanes":[]}');
