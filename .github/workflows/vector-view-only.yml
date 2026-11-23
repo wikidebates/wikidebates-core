@@ -8,6 +8,7 @@ on:
       - 'src/Reading/CachePreparationQueue.php'
       - 'src/Reading/CachePreparationCommands.php'
       - 'src/Reading/CachePreparationResults.php'
+      - 'src/Reading/AtomicVectorViewFileCache.php'
       - 'tests/readingFragments/vectorViewOnly.php'
       - 'tests/readingFragments/vector2022Toc.php'
       - 'tests/readingFragments/nativeVectorParity.php'
@@ -39,6 +40,7 @@ jobs:
           php -l src/Reading/CachePreparationQueue.php
           php -l src/Reading/CachePreparationCommands.php
           php -l src/Reading/CachePreparationResults.php
+          php -l src/Reading/AtomicVectorViewFileCache.php
           php -l tests/readingFragments/vectorViewOnly.php
           php -l tests/readingFragments/vector2022Toc.php
           php -l tests/readingFragments/nativeVectorParity.php
