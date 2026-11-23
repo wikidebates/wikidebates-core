@@ -190,6 +190,10 @@ final class ParallelBackfillJournal {
 			], true)) {
 				throw new \InvalidArgumentException('Unsafe parallel completion');
 			}
+			if ($status === 'skipped-cache-policy' &&
+				!CachePreparationCoordinator::hasExplicitNoCachePolicy($phases)) {
+				throw new \InvalidArgumentException('No verified non-cacheable page policy');
+			}
 			$state = (new ParallelBackfillState($data['lanes']))->completed($lane, $pageId);
 			$data['lanes'] = $state->lanes();
 			$key = in_array($status, ['skipped-nonpublic', 'skipped-cache-policy'], true) ?
