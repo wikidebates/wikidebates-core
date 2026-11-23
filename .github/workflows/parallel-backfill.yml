@@ -5,7 +5,11 @@ on:
     paths:
       - 'src/Reading/ParallelBackfill*.php'
       - 'src/Reading/CachePreparationQueue.php'
+      - 'maintenance/prepareParallelCaches.php'
+      - 'maintenance/prepareReadingCache.php'
+      - 'maintenance/prepareDailyCaches.php'
       - 'tests/php/parallelBackfillState.php'
+      - 'tests/php/parallelBackfillGovernor.php'
       - 'tests/readingFragments/parallelBackfillJournal.php'
       - '.github/workflows/parallel-backfill.yml'
 
@@ -26,6 +30,11 @@ jobs:
       - name: Syntax of new code and existing queue
         run: |
           php -l src/Reading/ParallelBackfillState.php
+          php -l src/Reading/ParallelBackfillGovernor.php
+          php -l maintenance/prepareParallelCaches.php
+          php -l maintenance/prepareReadingCache.php
+          php -l maintenance/prepareDailyCaches.php
+          php -l tests/php/parallelBackfillGovernor.php
           php -l src/Reading/ParallelBackfillJournal.php
           php -l src/Reading/CachePreparationQueue.php
           php -l tests/php/parallelBackfillState.php
@@ -33,4 +42,5 @@ jobs:
       - name: Check safe lane progression and durable checkpoints
         run: |
           php tests/php/parallelBackfillState.php
+          php tests/php/parallelBackfillGovernor.php
           php tests/readingFragments/parallelBackfillJournal.php
