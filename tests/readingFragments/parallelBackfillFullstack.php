@@ -67,6 +67,38 @@ $noCacheId = (int)\MediaWiki\MediaWikiServices::getInstance()
 if ($noCacheId < 1) {
 	throw new RuntimeException('Disposable no-cache page has no page ID');
 }
+// Reproduce a valid MediaWiki title whose native URL-encoded Vector cache
+// filename is too long for Linux. Minerva and Reading must still be tried.
+$longTitle = Title::newFromText('Long file ' . str_repeat('z', 240));
+if (!$longTitle) {
+	throw new RuntimeException('Cannot construct disposable long-title page');
+}
+$longPage = \MediaWiki\MediaWikiServices::getInstance()
+	->getWikiPageFactory()->newFromTitle($longTitle);
+$longUpdater = $longPage->newPageUpdater($testUser);
+$longUpdater->setContent(\MediaWiki\Revision\SlotRecord::MAIN,
+	\MediaWiki\Content\ContentHandler::makeContent(
+		"== Summary ==\nA publicly readable page with a very long title.\n" .
+		str_repeat("Substantial HTML output for a long title. ", 70),
+		$longTitle
+	)
+);
+$longUpdater->saveRevision(
+	\MediaWiki\CommentStore\CommentStoreComment::newUnsavedComment('Disposable long title')
+);
+if (!$longUpdater->wasSuccessful()) {
+	throw new RuntimeException('Failed to create disposable long-title page');
+}
+\MediaWiki\Deferred\DeferredUpdates::doUpdates();
+$longId = (int)\MediaWiki\MediaWikiServices::getInstance()
+	->getConnectionProvider()->getPrimaryDatabase()->selectField(
+		'page', 'page_id',
+		['page_namespace' => $longTitle->getNamespace(),
+			'page_title' => $longTitle->getDBkey()], __METHOD__
+	);
+if ($longId < 1) {
+	throw new RuntimeException('Disposable long-title page has no page ID');
+}
 // The initial lab creates unrelated fixture edits, including deliberately
 // uncacheable examples. Isolate one real direct edit for this integration test.
 foreach ($queue->pending(10000) as $record) {
@@ -161,6 +193,32 @@ try {
 	$noCacheVector = new HTMLFileCache($noCacheTitle, 'view');
 	if ($noCacheVector->isCached()) {
 		throw new RuntimeException('Native Vector HTML must never be created for __NOCACHE__ test page');
+	}
+	// A real child invocation, not just a unit-level length calculation:
+	// the command must accept a valid overlong page with an explicit safe
+	// skip, without trying to write a native Vector file.
+	$longCommand = [
+		PHP_BINARY, '-d', 'auto_prepend_file=' . __DIR__ . '/bootstrap.php',
+		MW_INSTALL_PATH . '/maintenance/run.php', 'Wikidebates:prepareVectorViewCache',
+		'--wiki=' . $wiki, '--page-id=' . $longId, '--json', '--dry-run'
+	];
+	$longProbe = proc_open($longCommand, [
+		['file', '/dev/null', 'r'],
+		['pipe', 'w'], ['pipe', 'w']
+	], $longPipes);
+	if (!is_resource($longProbe)) {
+		throw new RuntimeException('Cannot run long-title native Vector dry-run');
+	}
+	$longOutput = stream_get_contents($longPipes[1]);
+	$longErrors = stream_get_contents($longPipes[2]);
+	fclose($longPipes[1]);
+	fclose($longPipes[2]);
+	$longExit = proc_close($longProbe);
+	$longReport = json_decode(trim($longOutput), true);
+	if ($longExit !== 0 || ($longReport['state'] ?? null) !== 'SKIPPED_FILENAME_TOO_LONG' ||
+		($longReport['pageId'] ?? null) !== $longId || trim($longErrors) !== '') {
+		throw new RuntimeException('Native long-title Vector skip was not reported: ' .
+			substr($longOutput . $longErrors, -2000));
 	}
 	$vector = new HTMLFileCache(Title::newFromText('Cache study argument'), 'view');
 	if (!$vector->isCached()) {
