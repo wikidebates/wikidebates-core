@@ -27,6 +27,7 @@ define('MW_INSTALL_PATH', $root . '/mediawiki');
 require MW_INSTALL_PATH . '/includes/BootstrapHelperFunctions.php';
 require MW_INSTALL_PATH . '/includes/Setup.php';
 
+use MediaWiki\Extension\Wikidebates\Reading\ArgumentCategory;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationQueue;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Title\Title;
@@ -38,6 +39,25 @@ $page = $services->getWikiPageFactory()->newFromTitle($title);
 $pageId = (int)$page->getId();
 $revision = (int)$page->getLatest();
 if ($pageId < 1 || $revision < 1) { throw new RuntimeException('Missing argument fixture'); }
+// A dedicated content-language category, not a UI label, determines
+// which pages deserve reading fragment preparation.
+$argumentCategory = ArgumentCategory::dbKey($services->getMainConfig());
+$primary = $services->getConnectionProvider()->getPrimaryDatabase();
+$otherPageId = (int)Title::newFromText('Another public page')->getArticleID();
+if ($argumentCategory !== 'Arguments' ||
+	!ArgumentCategory::containsPage($primary, $pageId, $argumentCategory) ||
+	ArgumentCategory::containsPage($primary, $otherPageId, $argumentCategory)) {
+	throw new RuntimeException('Reading eligibility escaped the direct arguments category');
+}
+$configOverride = new class {
+	public function get(string $name) {
+		if ($name !== 'WikidebatesReadingArgumentCategory') { throw new RuntimeException('Unexpected config'); }
+		return 'Other configured argument category';
+	}
+};
+if (ArgumentCategory::dbKey($configOverride) !== 'Other_configured_argument_category') {
+	throw new RuntimeException('Explicit per-wiki category override must remain supported');
+}
 $queue = new CachePreparationQueue($state . '/preparation-queue', WikiMap::getCurrentWikiId());
 foreach ($queue->pending(10000) as $record) {
 	if (!$queue->acknowledge($record['pageId'], $record['revisionId'], $record['generation'] ?? null)) {
