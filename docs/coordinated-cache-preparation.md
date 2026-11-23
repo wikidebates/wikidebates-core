@@ -76,8 +76,8 @@ globales de `CacheEpoch` provoquées par `LocalSettings.php`.
 
 ## Limites encore ouvertes
 
-- La file traite les éditions directes ; **elle ne parcourt pas encore toutes les pages historiques sans fichier**. Un parcours global borné, reprenable et partagé avec ce coordinateur reste à développer et tester.
-- La prévalidation Minerva sans HTTP, notamment pour les variantes de User-Agent, reste à ajouter après vérification des clés de stockage et de la politique de cache.
+- Le nouveau parcours quotidien doit encore être validé sur un lot réel avant activation automatique, avec contrôle des fichiers, du curseur et de la charge.
+- Le contrôle Minerva sans HTTP est réservé au mode ciblé : des variantes issues d'autres User-Agents ne sont pas considérées comme équivalentes.
 - L'installation du cron quotidien, le choix des limites de charge et le déploiement ne sont **pas** accomplis par les commandes ci-dessus.
 - Les essais jetables MediaWiki 1.43 / PHP 8.4, SQLite et MariaDB, sont nécessaires avant activation automatique. Les tests autonomes ne prouvent pas à eux seuls le comportement en production.
 
