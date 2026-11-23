@@ -91,6 +91,53 @@ Une veritable erreur de stockage (WRITE_FAILED) ou de rendu reste bloquante,
 et une commande enfant Vector qui quitte avec un code 1 conserve desormais
 un diagnostic interne connu, sans exposer ses messages d'erreur arbitraires.
 
+## Erreurs locales : poursuivre sans masquer les lacunes
+
+Une erreur sur une page ne doit pas immobiliser tout un wiki. Si la
+preparation echoue apres les tentatives bornees, le balayage :
+
+- conserve la cause dans un dossier prive /parallel/page-errors (ID, revision,
+  code interne uniquement, jamais de titre, URL, sortie HTML ni message PHP) ;
+- ajoute la page a la file persistante des reprises, sans effacer ou remplacer
+  une generation de modification plus recente ;
+- n'avance son checkpoint de plage qu'APRES preuve de cette mise en file ;
+- journalise un evenement scan-deferred avec le motif et comptabilise une
+  page deferred, distincte des caches crees, des pages terminees et des
+  exclusions de politique de cache ;
+- poursuit les pages suivantes. Au bout de 12 erreurs consecutives dans
+  une meme plage, l'erreur est consideree comme potentiellement generale et
+  provoque un arret de securite pour investigation.
+
+Une erreur du travailleur de la file de modifications ne supprime aucun
+element de cette file et ne stoppe plus tout le superviseur. Les reprises
+sont espacees et les generations plus recentes restent prioritaires.
+
+Les arrets globaux existants (indisponibilite HTTP de controle, ressources,
+configurations incoherentes, acces et protections) restent actifs. Le
+remplissage peut se terminer avec des pages deferred : ces pages ne sont
+PAS declarees cachees. Le cron quotidien reprend la file lorsque FR et EN
+sont termines. Il n'interrompt plus son lot complet pour une erreur isolee
+sur une page deja en attente.
+
+Pour lister les erreurs et leur etat, sans declencher de rendu :
+
+    php maintenance/run.php Wikidebates:prepareParallelCaches --wiki=fr --report-errors
+    php maintenance/run.php Wikidebates:prepareParallelCaches --wiki=en --report-errors
+
+Pour envoyer un recapitulatif deduplique au maximum une fois par heure,
+au destinataire fixe erreurcache@wikidebats.org :
+
+    php maintenance/run.php Wikidebates:prepareParallelCaches \
+    	--wiki=fr --report-errors --mail-errors
+
+L'envoi utilise le Mailer MediaWiki configure sur le serveur. Il n'est
+jamais effectue par les travailleurs de rendu. Une erreur d'envoi ne
+supprime pas les evenements ni ne bloque la preparation. La premiere alerte
+et les nouveaux problemes sont resumes avec le nombre de pages affectees
+et jusqu'a trente identifiants, revisons et motifs ; les rapports inchanges
+ne sont pas renvoyes. Aucun email n'est envoye sans planification explicite
+de cette commande.
+
 ## Pages explicitement non cacheables
 
 Une page dont la sortie anonyme refuse la mise en cache, notamment par le mot
