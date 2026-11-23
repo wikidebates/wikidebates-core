@@ -31,7 +31,8 @@ case "$2" in
 		printf '{"type":"wikidebates-parallel-backfill","wiki":"%swikidebates","mode":"status","checkpoint":{"state":"%s"}}\n' "$wiki" "$state"
 		;;
 	Wikidebates:prepareDailyCaches)
-		for expected in "--wiki=fr" "--execute" "--limit=100" "--max-seconds=900"; do
+		for expected in "--wiki=fr" "--execute" "--limit=100" "--max-seconds=900" \
+			"--max-load=6" "--queue-limit=30" "--minerva-delay-ms=1500" "--delay-ms=1000"; do
 			case " $* " in
 				*" $expected "*) ;;
 				*) echo "Missing $expected" >&2; exit 2 ;;
@@ -99,6 +100,19 @@ if sh "$repo/maintenance/scanCacheWindow.sh" fr > "$temp/invalid.log" 2>&1; then
 	exit 1
 fi
 grep -q 'reason=invalid-batch-report' "$temp/invalid.log"
+
+if WD_CACHE_WINDOW_MINERVA_DELAY_MS=5 sh "$repo/maintenance/scanCacheWindow.sh" fr > "$temp/pacing.log" 2>&1; then
+	echo 'Unsafe Minerva pacing incorrectly accepted' >&2
+	exit 1
+fi
+if WD_CACHE_WINDOW_PAGE_DELAY_MS=none sh "$repo/maintenance/scanCacheWindow.sh" fr > "$temp/page-delay.log" 2>&1; then
+	echo 'Malformed page pacing incorrectly accepted' >&2
+	exit 1
+fi
+if WD_CACHE_WINDOW_QUEUE_LIMIT=101 sh "$repo/maintenance/scanCacheWindow.sh" fr > "$temp/queue-limit.log" 2>&1; then
+	echo 'Unsafe queue batch incorrectly accepted' >&2
+	exit 1
+fi
 
 if sh "$repo/maintenance/scanCacheWindow.sh" unknown > "$temp/wiki.log" 2>&1; then
 	echo 'Unknown wiki incorrectly accepted' >&2
