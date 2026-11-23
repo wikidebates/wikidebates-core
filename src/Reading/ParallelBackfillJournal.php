@@ -83,6 +83,7 @@ final class ParallelBackfillJournal {
 				$data['stop_requested'] = false;
 				$data['desired_workers'] = min(2, $workers);
 				$data['heartbeat_at'] = time();
+				$data['cooldown_until'] = 0;
 				$data['last_failure'] = null;
 			} else {
 				if ($data !== null && !$newCycle) {
@@ -103,6 +104,7 @@ final class ParallelBackfillJournal {
 					'heartbeat_at' => time(),
 					'desired_workers' => min(2, $workers),
 					'stop_requested' => false,
+					'cooldown_until' => 0,
 					'lanes' => ParallelBackfillState::create($startAfter, $highWatermark, $workers)->lanes(),
 					'metrics' => [
 						'completed' => 0, 'skipped' => 0, 'queue_acknowledged' => 0,
@@ -126,6 +128,9 @@ final class ParallelBackfillJournal {
 	): void {
 		$this->locked(true, function () use ($runId, $desiredWorkers, $currentRate, $averageRate) {
 			$data = $this->requireRun($runId);
+			if ($data['state'] !== 'running') {
+				throw new \RuntimeException('Cannot renew failed supervisor heartbeat');
+			}
 			if ($desiredWorkers < 0 || $desiredWorkers > count($data['lanes'])) {
 				throw new \InvalidArgumentException('Invalid desired worker count');
 			}
@@ -137,6 +142,25 @@ final class ParallelBackfillJournal {
 			$data['desired_workers'] = $desiredWorkers;
 			$data['metrics']['rate_current'] = round($currentRate, 3);
 			$data['metrics']['rate_average'] = round($averageRate, 3);
+			$this->write($data);
+		});
+	}
+
+	/**
+	 * A transient HTTP throttle applies to EVERY lane, not only its origin.
+	 * The supervisor temporarily reports zero permits while this barrier
+	 * is active. No failed result is checkpointed.
+	 */
+	public function cooldown(string $runId, int $seconds): void {
+		if ($seconds < 1 || $seconds > 120) {
+			throw new \InvalidArgumentException('Invalid parallel HTTP retry cooldown');
+		}
+		$this->locked(true, function () use ($runId, $seconds) {
+			$data = $this->requireRun($runId);
+			if ($data['state'] !== 'running') {
+				throw new \RuntimeException('Cannot cool down inactive backfill');
+			}
+			$data['cooldown_until'] = max($data['cooldown_until'], time() + $seconds);
 			$this->write($data);
 		});
 	}
@@ -158,6 +182,9 @@ final class ParallelBackfillJournal {
 	public function completed(string $runId, int $lane, int $pageId, string $status, array $phases): void {
 		$this->locked(true, function () use ($runId, $lane, $pageId, $status, $phases) {
 			$data = $this->requireRun($runId);
+			if ($data['state'] !== 'running') {
+				throw new \RuntimeException('Cannot checkpoint a failed run');
+			}
 			if (!in_array($status, ['complete', 'skipped-nonpublic', 'acknowledged'], true)) {
 				throw new \InvalidArgumentException('Unsafe parallel completion');
 			}
@@ -173,20 +200,26 @@ final class ParallelBackfillJournal {
 		});
 	}
 
-	/** Exhaustion is only legal after the caller has queried the entire lane. */
 	/** Successful edit-queue work outside a scan lane does not advance the frontier. */
 	public function acknowledgedQueue(string $runId, array $phases = []): void {
 		$this->locked(true, function () use ($runId, $phases) {
 			$data = $this->requireRun($runId);
+			if ($data['state'] !== 'running') {
+				throw new \RuntimeException('Cannot update failed run statistics');
+			}
 			$data['metrics']['queue_acknowledged']++;
 			$this->recordPhases($data['metrics'], $phases);
 			$this->write($data);
 		});
 	}
 
+	/** Exhaustion is only legal after the caller has queried the entire lane. */
 	public function exhausted(string $runId, int $lane): void {
 		$this->locked(true, function () use ($runId, $lane) {
 			$data = $this->requireRun($runId);
+			if ($data['state'] !== 'running') {
+				throw new \RuntimeException('Cannot exhaust a lane after failure');
+			}
 			$data['lanes'] = (new ParallelBackfillState($data['lanes']))->exhausted($lane)->lanes();
 			$this->write($data);
 		});
@@ -195,6 +228,10 @@ final class ParallelBackfillJournal {
 	public function failed(string $runId, int $lane, int $pageId, string $reason): void {
 		$this->locked(true, function () use ($runId, $lane, $pageId, $reason) {
 			$data = $this->requireRun($runId);
+			if ($data['state'] === 'failed') {
+				// Preserve the first failure rather than masking its cause.
+				return;
+			}
 			$data['state'] = 'failed';
 			$data['stop_requested'] = true;
 			// Never store a response body, URL, title or exception message.
@@ -216,6 +253,9 @@ final class ParallelBackfillJournal {
 	public function markComplete(string $runId): void {
 		$this->locked(true, function () use ($runId) {
 			$data = $this->requireRun($runId);
+			if ($data['state'] !== 'running') {
+				throw new \RuntimeException('Cannot complete failed backfill');
+			}
 			if (!(new ParallelBackfillState($data['lanes']))->finished()) {
 				throw new \RuntimeException('Cannot complete parallel scan with unfinished lanes');
 			}
@@ -302,6 +342,7 @@ final class ParallelBackfillJournal {
 			!in_array($data['state'] ?? null, ['running', 'failed', 'complete'], true) ||
 			!is_int($data['desired_workers'] ?? null) ||
 			!is_bool($data['stop_requested'] ?? null) ||
+			!is_int($data['cooldown_until'] ?? null) || $data['cooldown_until'] < 0 ||
 			!is_array($data['metrics'] ?? null) ||
 			!is_array($data['lanes'] ?? null)) {
 			throw new \RuntimeException('Malformed parallel backfill checkpoint');
