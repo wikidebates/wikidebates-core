@@ -11,6 +11,7 @@ on:
       - 'tests/php/parallelBackfillState.php'
       - 'tests/php/parallelBackfillGovernor.php'
       - 'tests/php/parallelBackfillRetryPolicy.php'
+      - 'tests/php/parallelBackfillIdentityChange.php'
       - 'tests/readingFragments/parallelBackfillFullstack.php'
       - 'tests/readingFragments/parallelBackfillJournal.php'
       - '.github/workflows/parallel-backfill.yml'
@@ -35,6 +36,7 @@ jobs:
           php -l src/Reading/ParallelBackfillGovernor.php
           php -l src/Reading/ParallelBackfillRetryPolicy.php
           php -l tests/php/parallelBackfillRetryPolicy.php
+          php -l tests/php/parallelBackfillIdentityChange.php
           php -l src/Reading/ParallelBackfillFpmStatus.php
           php -l maintenance/prepareParallelCaches.php
           php -l maintenance/prepareReadingCache.php
@@ -49,6 +51,7 @@ jobs:
           php tests/php/parallelBackfillState.php
           php tests/php/parallelBackfillGovernor.php
           php tests/php/parallelBackfillRetryPolicy.php
+          php tests/php/parallelBackfillIdentityChange.php
           php tests/readingFragments/parallelBackfillJournal.php
 
   fullstack-2-workers:
