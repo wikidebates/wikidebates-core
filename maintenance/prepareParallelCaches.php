@@ -210,6 +210,9 @@ class PrepareParallelCaches extends Maintenance {
 		$children = [];
 		$governor = new ParallelBackfillGovernor($workers, $maxLoad, $reserveMb, $healthMs);
 		$lastProbe = 0.0;
+		$previousProgressAt = $started;
+		$previousCompleted = $run['metrics']['completed'] + $run['metrics']['skipped'];
+		$initialCompleted = $previousCompleted;
 		$longPressureSince = null;
 		$failure = false;
 		try {
@@ -247,7 +250,15 @@ class PrepareParallelCaches extends Maintenance {
 						is_array($load) && isset($load[0]) ? (float)$load[0] : null,
 						$available, $httpStatus, $latency
 					);
-					$journal->heartbeat($runId, $permits);
+					$totalCompleted = $snapshot['metrics']['completed'] +
+						$snapshot['metrics']['skipped'];
+					$interval = max(0.001, $now - $previousProgressAt);
+					$currentRate = max(0, $totalCompleted - $previousCompleted) / $interval;
+					$averageRate = max(0, $totalCompleted - $initialCompleted) /
+						max(0.001, $now - $started);
+					$previousProgressAt = $now;
+					$previousCompleted = $totalCompleted;
+					$journal->heartbeat($runId, $permits, $currentRate, $averageRate);
 					if ($permits === 0) {
 						$longPressureSince ??= $now;
 					} else {
@@ -257,7 +268,10 @@ class PrepareParallelCaches extends Maintenance {
 						'mode' => 'resources', 'permits' => $permits,
 						'load_1m' => is_array($load) ? round((float)$load[0], 2) : null,
 						'available_mb' => $available, 'health_http' => $httpStatus,
-						'health_ms' => $latency]);
+						'health_ms' => $latency,
+						'pages_per_second_current' => round($currentRate, 3),
+						'pages_per_second_average' => round($averageRate, 3),
+						'processes_alive' => count($children)]);
 					// Never ignore a publicly visible access denial or throttle.
 					if (in_array($httpStatus, [403, 429], true)) {
 						$journal->failed($runId, -1, 0, 'public-http-' . $httpStatus);
