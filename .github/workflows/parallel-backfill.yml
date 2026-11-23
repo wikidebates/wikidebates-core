@@ -6,6 +6,11 @@ on:
       - 'src/Reading/ParallelBackfill*.php'
       - 'src/Reading/CachePreparationQueue.php'
       - 'src/Reading/CachePreparationCoordinator.php'
+      - 'src/Reading/VectorCacheEligibility.php'
+      - 'src/Reading/CachePreparationResults.php'
+      - 'src/Reading/CachePreparationCommands.php'
+      - 'maintenance/prepareVectorViewCache.php'
+      - 'tests/php/vectorFilenameLimit.php'
       - 'maintenance/prepareParallelCaches.php'
       - 'maintenance/prepareReadingCache.php'
       - 'maintenance/prepareDailyCaches.php'
@@ -47,6 +52,11 @@ jobs:
           php -l src/Reading/ParallelBackfillJournal.php
           php -l src/Reading/CachePreparationQueue.php
           php -l src/Reading/CachePreparationCoordinator.php
+          php -l src/Reading/VectorCacheEligibility.php
+          php -l src/Reading/CachePreparationResults.php
+          php -l src/Reading/CachePreparationCommands.php
+          php -l maintenance/prepareVectorViewCache.php
+          php -l tests/php/vectorFilenameLimit.php
           php -l tests/php/parallelBackfillState.php
           php -l tests/readingFragments/parallelBackfillJournal.php
       - name: Check safe lane progression and durable checkpoints
@@ -55,6 +65,7 @@ jobs:
           php tests/php/parallelBackfillGovernor.php
           php tests/php/parallelBackfillRetryPolicy.php
           php tests/php/parallelBackfillIdentityChange.php
+          php tests/php/vectorFilenameLimit.php
           php tests/readingFragments/parallelBackfillJournal.php
 
   fullstack-2-workers:
