@@ -551,16 +551,18 @@ class PrepareParallelCaches extends Maintenance {
 					if (CachePreparationCoordinator::isExplicitNoCacheRace($result)) {
 						$build = $queue->lockBuildPage($id);
 						try {
-							$before = $db->selectRow('page',
-								['page_latest', 'page_is_redirect'], ['page_id' => $id], __METHOD__);
-							$public = AnonymousCacheSafety::fingerprint($id);
-							$after = $db->selectRow('page',
-								['page_latest', 'page_is_redirect'], ['page_id' => $id], __METHOD__);
-							if ($before && $after && $public !== null &&
-								(int)$before->page_latest === $result['revisionId'] &&
-								(int)$after->page_latest === $result['revisionId'] &&
-								(int)$before->page_is_redirect === 0 &&
-								(int)$after->page_is_redirect === 0) {
+							$snapshotPage = static function (int $pid) use ($db): ?array {
+								$row = $db->selectRow('page',
+									['page_latest', 'page_is_redirect'],
+									['page_id' => $pid], __METHOD__);
+								return $row ? [
+									'revisionId' => (int)$row->page_latest,
+									'isRedirect' => (bool)$row->page_is_redirect
+								] : null;
+							};
+							if (CachePreparationCoordinator::canCheckpointNoCacheRace(
+								$result, $snapshotPage, $identity
+							)) {
 								$result['state'] = 'skipped-cache-policy';
 								$result['phases']['reading'] = 'skipped-cache-policy';
 							}
