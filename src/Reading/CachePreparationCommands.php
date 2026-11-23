@@ -67,7 +67,8 @@ final class CachePreparationCommands {
 			return ['ok' => true, 'status' => implode(';', $parts)];
 		}
 		$args = $phase === 'vector'
-			? ['Wikidebates:prepareVectorViewCache', '--page-id=' . $pageId, '--json']
+			? ['Wikidebates:prepareVectorViewCache', '--page-id=' . $pageId,
+				'--repair-missing-toc', '--json']
 			: ['Wikidebates:prepareReadingCache', '--page-id=' . $pageId,
 				'--json', '--sleep-ms=0', '--progress-every=0', '--max-seconds=70'];
 		$command = [PHP_BINARY, $this->entrypoint, ...$args, '--wiki=' . $this->wiki];
