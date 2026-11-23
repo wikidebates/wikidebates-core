@@ -107,6 +107,7 @@ final class ParallelBackfillJournal {
 					'metrics' => [
 						'completed' => 0, 'skipped' => 0, 'queue_acknowledged' => 0,
 						'cache_created' => 0, 'cache_reused' => 0,
+						'rate_current' => 0.0, 'rate_average' => 0.0,
 						'by_phase' => array_fill_keys(
 							CachePreparationCoordinator::PHASES,
 							['created' => 0, 'reused' => 0, 'skipped' => 0]
@@ -120,14 +121,22 @@ final class ParallelBackfillJournal {
 		});
 	}
 
-	public function heartbeat(string $runId, int $desiredWorkers): void {
-		$this->locked(true, function () use ($runId, $desiredWorkers) {
+	public function heartbeat(
+		string $runId, int $desiredWorkers, float $currentRate = 0.0, float $averageRate = 0.0
+	): void {
+		$this->locked(true, function () use ($runId, $desiredWorkers, $currentRate, $averageRate) {
 			$data = $this->requireRun($runId);
 			if ($desiredWorkers < 0 || $desiredWorkers > count($data['lanes'])) {
 				throw new \InvalidArgumentException('Invalid desired worker count');
 			}
+			if (!is_finite($currentRate) || !is_finite($averageRate) ||
+				$currentRate < 0 || $averageRate < 0) {
+				throw new \InvalidArgumentException('Invalid measured preparation throughput');
+			}
 			$data['heartbeat_at'] = time();
 			$data['desired_workers'] = $desiredWorkers;
+			$data['metrics']['rate_current'] = round($currentRate, 3);
+			$data['metrics']['rate_average'] = round($averageRate, 3);
 			$this->write($data);
 		});
 	}
@@ -307,6 +316,12 @@ final class ParallelBackfillJournal {
 		foreach (['completed', 'skipped', 'queue_acknowledged', 'cache_created', 'cache_reused'] as $key) {
 			if (!is_int($data['metrics'][$key] ?? null) || $data['metrics'][$key] < 0) {
 				throw new \RuntimeException('Invalid parallel backfill counter');
+			}
+		}
+		foreach (['rate_current', 'rate_average'] as $rateName) {
+			if (!is_float($data['metrics'][$rateName] ?? null) ||
+				!is_finite($data['metrics'][$rateName]) || $data['metrics'][$rateName] < 0) {
+				throw new \RuntimeException('Invalid parallel throughput counter');
 			}
 		}
 		if (!is_array($data['metrics']['by_phase'] ?? null) ||
