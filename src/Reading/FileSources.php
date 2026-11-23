@@ -26,7 +26,8 @@ class FileSources {
 				strtolower($host) === strtolower($canonicalHost) &&
 				$cache->isCacheGood($page->getTouched())) {
 				$created = (int)wfTimestamp(TS_UNIX, $cache->cacheTimestamp());
-				$limit = $created + min(2592000, (int)$config->get('WikidebatesReadingCacheTTL'));
+				$ttl = (int)$config->get('WikidebatesReadingCacheTTL');
+				$limit = $ttl === 0 ? PHP_INT_MAX : $created + min($ttl, PHP_INT_MAX - $created);
 				if ($limit > time()) {
 					$html = FragmentExtractor::canonical($cache->fetchText());
 					if ($html !== '') { return self::result($html, $title, $page, 'vector-file', $limit); }

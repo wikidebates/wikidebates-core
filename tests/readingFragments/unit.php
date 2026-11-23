@@ -11,6 +11,9 @@ function check($value, string $message): void {
 	if (!$value) { throw new RuntimeException($message); }
 	$assertions++;
 }
+$manifest = json_decode(file_get_contents(dirname(__DIR__, 2) . '/extension.json'), true, 512, JSON_THROW_ON_ERROR);
+check(($manifest['config']['WikidebatesReadingCacheTTL']['value'] ?? null) === 0,
+	'Anonymous reading fragments have no default age limit');
 $dir = sys_get_temp_dir() . '/minerva-store-unit-' . bin2hex(random_bytes(6));
 mkdir($dir, 0700);
 try {
@@ -78,7 +81,32 @@ try {
 	$snapshot = $long->read('A', 'common', $identity);
 	$long->publish('A', 'common', $identity, $snapshot['generation'], 'LONG', [], time() + 99999999);
 	$entry = $long->read('A', 'common', $identity)['entry'];
-	check($entry['expires'] <= $entry['created'] + 2592000, 'Retention never exceeds thirty days');
+	check($entry['expires'] > $entry['created'] + 2592000, 'Configured retention can exceed thirty days');
+	$unlimited = new Store($dir, 'unlimited-wiki', 0, 4096);
+	$unlimitedSnapshot = $unlimited->read('A', 'common', $identity);
+	check($unlimited->publish('A', 'common', $identity, $unlimitedSnapshot['generation'],
+		'UNLIMITED', [], PHP_INT_MAX), 'Zero TTL accepts an explicitly shareable long-lived result');
+	check($unlimited->read('A', 'common', $identity)['entry']['expires'] === PHP_INT_MAX,
+		'Zero TTL does not shorten caller expiry');
+	check($unlimited->prune() === 0, 'Unlimited TTL retains a valid entry');
+
+	// Migration regression: existing valid entries older than 30 days must survive.
+	$old = $unlimited->read('Old', 'common', $identity);
+	check($unlimited->publish('Old', 'common', $identity, $old['generation'],
+		'FORTY_DAYS_OLD', [], PHP_INT_MAX), 'Long-lived old entry can be published');
+	$oldHash = hash('sha256', 'Old');
+	$oldPath = $dir . '/' . hash('sha256', 'unlimited-wiki') . '/' . substr($oldHash, 0, 2) .
+		'/' . $oldHash . '/' . hash('sha256', 'common') . '.cache';
+	$oldData = json_decode(gzdecode(file_get_contents($oldPath)), true, 512, JSON_THROW_ON_ERROR);
+	$oldData['created'] = time() - 40 * 86400;
+	file_put_contents($oldPath, gzencode(json_encode($oldData)));
+	touch($oldPath, time() - 40 * 86400);
+	check($unlimited->read('Old', 'common', $identity)['entry']['body'] === 'FORTY_DAYS_OLD',
+		'TTL zero accepts a valid entry created more than thirty days ago');
+	check($unlimited->prune() === 0 && is_file($oldPath),
+		'Pruning preserves existing valid content older than thirty days');
+	check(!$unlimited->publish('A', 'expired', $identity, $unlimitedSnapshot['generation'],
+		'NOT_STORED', [], time() - 1), 'Zero TTL cannot override rejected caller expiry');
 
 	echo json_encode(['assertions' => $assertions, 'result' => 'PASS']) . "\n";
 } finally {

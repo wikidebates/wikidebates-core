@@ -620,7 +620,8 @@
 			"value": false
 		},
 		"WikidebatesReadingCacheTTL": {
-			"value": 2592000
+			"value": 0,
+			"description": "Anonymous reading-cache lifetime in seconds; 0 keeps a valid fragment indefinitely until page or cache identity changes."
 		},
 		"WikidebatesReadingCacheEpoch": {
 			"value": "2"

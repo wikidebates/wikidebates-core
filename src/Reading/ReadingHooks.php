@@ -70,7 +70,8 @@ class ReadingHooks {
 					!$candidate->expired($touched)) { $po = $candidate; break; }
 			}
 			if (!$po) { return; }
-			$expires = (int)wfTimestamp(TS_UNIX, $po->getCacheTime()) + $po->getCacheExpiry();
+			// The full public rendering is eligible; parser TTL must not cap fragment retention.
+			$expires = PHP_INT_MAX;
 			$html = $out->getHTML();
 			$generation = FragmentService::store()->read($out->getTitle()->getPrefixedDBkey(), '', [])['generation'];
 			self::$pending[spl_object_id($out)] = [$html, $expires, $revision, $touched, $generation];

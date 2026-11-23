@@ -1,0 +1,49 @@
+name: Reading fragments disposable MediaWiki 1.43 HTTP integration
+
+on:
+  pull_request:
+    paths:
+      - 'src/Reading/**'
+      - 'tests/readingFragments/**'
+      - '.github/workflows/reading-disposable-integration.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  reading:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          submodules: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: mbstring,intl,xml,dom,pdo_sqlite,sqlite3,curl
+      - name: Prepare pinned disposable MediaWiki, Vector, Minerva and MobileFrontend
+        run: |
+          LAB="$RUNNER_TEMP/wikidebates-reading-$GITHUB_RUN_ID"
+          python3 tests/minervaFileCache/prepare.py "$LAB"
+          echo "WD_MINERVA_STUDY_ROOT=$LAB" >> "$GITHUB_ENV"
+          echo "MW_INSTALL_PATH=$LAB/mediawiki" >> "$GITHUB_ENV"
+          git init -q "$LAB/Cite"
+          git -C "$LAB/Cite" fetch --quiet --depth=1 https://github.com/wikimedia/mediawiki-extensions-Cite.git 3f6a8e0395112bbdbe3b53732e259cad6375aaab
+          git -C "$LAB/Cite" checkout --quiet --detach FETCH_HEAD
+          install -d -m 0700 "$LAB/state/reading-cache" "$LAB/state/minerva-cache" "$LAB/state/desktop-cache"
+      - name: Standalone fragment and store regressions
+        run: php tests/readingFragments/unit.php
+      - name: Initialize isolated SQLite content and test account
+        run: php tests/readingFragments/manage.php initialize
+      - name: HTTP checks for parser retention, anonymous HTML and connected safety
+        run: php tests/readingFragments/integration.php
+      - name: Preserve disposable test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reading-disposable-php84
+          path: ${{ env.WD_MINERVA_STUDY_ROOT }}/state/reading-tests.json
+          if-no-files-found: ignore
