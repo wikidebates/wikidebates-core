@@ -63,4 +63,18 @@ $fpmController->sample(2.0, 12000, 200, 100, null, true);
 if ($fpmController->permitted() !== 0) {
 	throw new RuntimeException('Unavailable configured FPM scoreboard must fail closed');
 }
+
+$databaseController = new ParallelBackfillGovernor(4, 10.0, 2048, 2500, 500);
+$databaseController->sample(2.0, 12000, 200, 100, null, false, 10, true);
+if ($databaseController->permitted() !== 2) {
+	throw new RuntimeException('Healthy indexed database query must not delay initial renders');
+}
+$databaseController->sample(2.0, 12000, 200, 100, null, false, 850, true);
+if ($databaseController->permitted() !== 0) {
+	throw new RuntimeException('Slow PRIMARY queries must pause new render operations');
+}
+$databaseController->sample(2.0, 12000, 200, 100, null, false, null, true);
+if ($databaseController->permitted() !== 0) {
+	throw new RuntimeException('Unavailable primary SQL latency must fail closed');
+}
 echo "OK: automatic concurrency reduction, pause and gradual recovery\n";
