@@ -37,12 +37,19 @@ changer** la borne de 100 pages imposée par la commande PHP.
 - Aucun lot ne commence s'il reste moins de 900 secondes dans la fenêtre.
 - Chaque lot conserve le curseur atomique de `prepareDailyCaches` et
   garde l'ordre Vector, Minerva Android/iPhone, Lecture.
+- Les paramètres sont initialement **identiques au cron de production** :
+  charge maximale 6, pause entre variantes Minerva 1500 ms, temporisation
+  après rendu 1000 ms et file prioritaire de 30 pages. Ces valeurs sont
+  personnalisables par `WD_CACHE_WINDOW_MAX_LOAD`,
+  `WD_CACHE_WINDOW_MINERVA_DELAY_MS`, `WD_CACHE_WINDOW_PAGE_DELAY_MS` et
+  `WD_CACHE_WINDOW_QUEUE_LIMIT`, sous les bornes MediaWiki habituelles.
 - Le résultat JSON est validé (type, wiki, état, compteurs). Les sorties
   inconnues, erreurs ou `retry-required` ne sont jamais traitées comme un
   succès ; la boucle cesse.
 - `system-load` met fin au travail jusqu'au prochain créneau, sans
-  relance en boucle. Le plafond par défaut est de 10 de charge moyenne
-  Linux sur une minute ; il peut être réduit si les mesures l'exigent.
+  relance en boucle. Le plafond par défaut est de 6 de charge moyenne
+  Linux sur une minute, comme dans le cron existant ; à ajuster uniquement
+  après mesure.
 - Un verrou privé `flock` empêche deux fenêtres du même wiki de se
   chevaucher. Le verrou du coordinateur PHP protège également les
   opérations concurrentes avec le cron horaire.
@@ -98,19 +105,32 @@ modifie ni le cache, ni le checkpoint, ni la signature des alertes.
 
 ## Mise en production des crons (seulement après validation)
 
-**Attendre la fin réelle de FR et EN**, la réussite des workflows GitHub
-sur la PR, la synchronisation du sous-module dans la ferme et le déploiement
-contrôlé. Conserver une sauvegarde du crontab avant de l'éditer et
-ne remplacer **que** les deux lignes de balayage historique, en
-conservant les deux lignes de file horaire, sitemaps, moteur de recherche,
-Milito, alertes crawlers et PHP-FPM.
+**Attendre la fin réelle de FR et EN**, la réussite des workflows GitHub,
+la synchronisation du sous-module dans la ferme et le déploiement contrôlé.
+Sur le serveur existant, les crons d'entretien utilisent déjà le script
+`$HOME/wikidebates-cache-logs/daily-cache-cron.sh`, qui détient un verrou
+`flock` par wiki, crée un journal daté et vérifie les deux checkpoints.
+**Conserver exactement les quatre lignes cron actuelles** (deux éditions
+horaires et deux balayages nocturnes) : on ne doit pas court-circuiter
+leurs protections en lançant `scanCacheWindow.sh` directement du crontab.
 
-Remplacer les deux crons de balayage par :
+Après sauvegarde du fichier local `daily-cache-cron.sh` et vérification
+de sa version, garder tout le préambule, les verrous, la branche
+`mode=queue` et la journalisation existants. Modifier **uniquement la
+branche `else` du balayage**, qui devient :
 
-~~~cron
-45 2 * * * /bin/sh /home/users/webmaster/www/farm.wikidebates.org/w/extensions/Wikidebates/maintenance/scanCacheWindow.sh fr >> /home/users/webmaster/wikidebates-cache-logs/scan-window-fr.log 2>&1
-45 3 * * * /bin/sh /home/users/webmaster/www/farm.wikidebates.org/w/extensions/Wikidebates/maintenance/scanCacheWindow.sh en >> /home/users/webmaster/wikidebates-cache-logs/scan-window-en.log 2>&1
+~~~sh
+else
+	/bin/sh "$ROOT/extensions/Wikidebates/maintenance/scanCacheWindow.sh" "$wiki"
+fi
 ~~~
+
+La branche `queue` garde son rythme horaire, son plafond de 50 éditions,
+les limites de charge et ses pauses existantes. Le nouveau balayage
+est lui-même verrouillé et reste soumis au verrou partagé du
+coordinateur MediaWiki. Les paramètres prudents du cron d'origine sont
+conservés par défaut. Les logs `cron-$wiki-$mode-YYYYMMDD.log` et le
+verrou `cron-$wiki.lock` continuent de fonctionner normalement.
 
 Ajouter deux commandes horaires de notification (sans `--test-mail`) :
 
@@ -130,8 +150,8 @@ Après la première nuit, contrôler les lignes `CACHE_WINDOW_BATCH`,
 charge machine et les vrais HIT sur des pages anonymes. Ajuster
 `WD_CACHE_WINDOW_MAX_LOAD` et `WD_CACHE_WINDOW_SECONDS` en fonction
 des mesures, sans supprimer les protections ni agrandir aveuglément le
-nombre de travailleurs. La fenêtre de 45 minutes évite par défaut
-le chevauchement FR/EN prévu par les horaires ci-dessus.
+nombre de travailleurs. La fenêtre de 45 minutes évite par défaut le chevauchement des balayages
+FR/EN prévus à 02:45 et 03:45 par les crons conservés.
 
 ## Limites de cette procédure
 
