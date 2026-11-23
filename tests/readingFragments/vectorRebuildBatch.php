@@ -139,47 +139,6 @@ for ($i = 0; $i < 30; $i++) {
 	$report = $run($settings);
 	$reports[] = $report;
 	$current = $queue->vectorRebuildCheckpoint();
-	if ($report['stop_reason'] === 'page-failed') {
-		// Only the disposable lab may collect raw child stderr.
-		$failedId = (int)($report['pages'][0]['pageId'] ?? 0);
-		$probe = [
-			PHP_BINARY, $root . '/mediawiki/maintenance/run.php',
-			'Wikidebates:prepareVectorViewCache', '--wiki=' . $wiki,
-			'--page-id=' . $failedId, '--force-view', '--existing-only', '--json',
-			'--conf=' . $root . '/mediawiki/LocalSettings.php'
-		];
-		$proc = proc_open($probe,
-			[['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']], $pipes);
-		if (is_resource($proc)) {
-			fclose($pipes[0]);
-			$raw = stream_get_contents($pipes[1]) . stream_get_contents($pipes[2]);
-			fclose($pipes[1]); fclose($pipes[2]);
-			$code = proc_close($proc);
-			$direct = [
-				PHP_BINARY, '-d', 'auto_prepend_file=' . __DIR__ . '/bootstrap.php',
-				$root . '/mediawiki/maintenance/run.php',
-				'Wikidebates:prepareVectorViewCache', '--wiki=' . $wiki,
-				'--page-id=' . $failedId, '--force-view', '--existing-only', '--json',
-				'--conf=' . $root . '/mediawiki/LocalSettings.php'
-			];
-			$explicit = proc_open($direct,
-				[['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']], $xpipes);
-			$explicitOutput = 'not-started';
-			$explicitCode = -1;
-			if (is_resource($explicit)) {
-				fclose($xpipes[0]);
-				$explicitOutput = stream_get_contents($xpipes[1]) .
-					stream_get_contents($xpipes[2]);
-				fclose($xpipes[1]); fclose($xpipes[2]);
-				$explicitCode = proc_close($explicit);
-			}
-			throw new RuntimeException('Disposable Vector child probe exit=' . $code .
-				' output=' . substr($raw, -700) .
-				'; explicit exit=' . $explicitCode .
-				' output=' . substr($explicitOutput, -1200) .
-				'; php_ini_scan_dir=' . getenv('PHP_INI_SCAN_DIR'));
-		}
-	}
 	if ($current === null || $current['after'] < $previous ||
 		$current['after'] > $current['high_watermark'] ||
 		$report['checkpoint'] !== $current ||
