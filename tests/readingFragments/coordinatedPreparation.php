@@ -43,6 +43,53 @@ try {
 		'The three caches run sequentially in the declared order');
 	$check($queue->current(11) === null, 'Completed record is removed');
 
+	$scanCalls = [];
+	$scanPrepare = static function (string $phase, int $id) use (&$scanCalls): array {
+		$scanCalls[] = $phase;
+		return ['ok' => true, 'status' => 'REUSED'];
+	};
+	$scanDone = $coordinator->processUnqueued(99, 100,
+		static fn(int $id): ?int => 100, $scanPrepare,
+		static fn(int $id): ?string => 'public-identity');
+	$check($scanDone['state'] === 'complete' &&
+		$scanCalls === CachePreparationCoordinator::PHASES,
+		'Historic page runs all phases exactly once in the correct order');
+	$scanCalls = [];
+	$scanSkipped = $coordinator->processUnqueued(99, 100,
+		static fn(int $id): ?int => 100, $scanPrepare,
+		static fn(int $id): ?string => null);
+	$check($scanSkipped['state'] === 'skipped-nonpublic' && $scanCalls === [],
+		'Nonpublic historic pages cannot generate HTML or block the cursor');
+	$scanCalls = [];
+	$GLOBALS['dailyScanRevision'] = 101;
+	$scanChanged = $coordinator->processUnqueued(99, 100,
+		static fn(int $id): ?int => $GLOBALS['dailyScanRevision'],
+		$scanPrepare,
+		static fn(int $id): ?string => 'public-identity');
+	$check($scanChanged['state'] === 'retry-page-changed' && $scanCalls === [],
+		'No page render is launched if its initial primary revision differs');
+	$GLOBALS['dailyScanRevision'] = 100;
+	$scanChanged = $coordinator->processUnqueued(99, 100,
+		static fn(int $id): ?int => $GLOBALS['dailyScanRevision'],
+		static function (string $phase) use (&$scanCalls): array {
+			$scanCalls[] = $phase;
+			$GLOBALS['dailyScanRevision'] = 101;
+			return ['ok' => true, 'status' => 'CREATED'];
+		},
+		static fn(int $id): ?string => 'public-identity');
+	$check($scanChanged['state'] === 'retry-page-changed' &&
+		$scanCalls === ['vector'], 'Concurrent edit stops sweep after its first renderer');
+	$scanCalls = [];
+	$scanRate = $coordinator->processUnqueued(99, 100,
+		static fn(int $id): ?int => 100,
+		static function (string $phase) use (&$scanCalls): array {
+			$scanCalls[] = $phase;
+			return ['ok' => $phase !== 'minerva', 'status' => $phase === 'minerva' ? 'HTTP_429' : 'REUSED'];
+		},
+		static fn(int $id): ?string => 'public-identity');
+	$check($scanRate['state'] === 'retry' && $scanCalls === ['vector', 'minerva'],
+		'Rate limiting stops a historic sweep before fragment preparation');
+
 	$queue->enqueue(12, 200);
 	$failure = $coordinator->process($queue->current(12),
 		static fn(int $id): ?int => 200,
