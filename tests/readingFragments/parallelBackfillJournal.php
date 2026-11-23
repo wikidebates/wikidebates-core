@@ -71,16 +71,34 @@ try {
 		hash('sha256', 'changed cache configuration')));
 	mustReject(fn() => $journal->activate(100, 111, 3, $signature, true));
 
+	$journal->cooldown($token1, 30);
+	$cooldown = $journal->snapshot()['cooldown_until'];
+	parallelAssert($cooldown >= time() + 29, 'Transient throttle must reach every lane');
+	$journal->cooldown($token1, 10);
+	parallelAssert($journal->snapshot()['cooldown_until'] === $cooldown,
+		'Shorter throttle must not shorten the barrier');
+	mustReject(fn() => $journal->cooldown($token1, 121));
+
 	$journal->failed($token1, 0, 101, 'HTTP_503');
 	$failed = $journal->snapshot();
 	parallelAssert($failed['last_failure']['page_id'] === 101 &&
 		$failed['state'] === 'failed' &&
 		$failed['lanes'][0]['after'] === 100, 'Failure cannot advance cursor');
+	$journal->failed($token1, 2, 111, 'HTTP_404');
+	parallelAssert($journal->snapshot()['last_failure']['page_id'] === 101,
+		'First failure reason must not be replaced');
+	mustReject(fn() => $journal->completed($token1, 0, 101, 'complete', []));
+	mustReject(fn() => $journal->exhausted($token1, 0));
+	mustReject(fn() => $journal->cooldown($token1, 10));
+
 
 	$resumed = $journal->activate(100, 999, 3, $signature);
 	$token2 = $resumed['run_id'];
 	parallelAssert($token2 !== $token1 && $resumed['high_watermark'] === 111 &&
 		$resumed['lanes'][2]['done'], 'Restart resumes original bounds and completed lanes');
+	parallelAssert($resumed['cooldown_until'] === 0,
+		'Resume must clear old transient cooldown but keep completed lanes');
+
 	mustReject(fn() => $journal->completed($token1, 0, 101, 'complete', []));
 	mustReject(fn() => $journal->markComplete($token2));
 
