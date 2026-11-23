@@ -144,7 +144,7 @@ $signature = static function (string $html): array {
 			throw new RuntimeException('Cannot canonicalize HTML region: ' . $name);
 		}
 		$fragment = preg_replace('/<!-- Cached(?:\/compressed)? [^>]* -->\s*/', '', $fragment);
-		$result[$name] = hash('sha256', $fragment);
+		$result[$name] = $fragment;
 	}
 	return $result;
 };
@@ -154,7 +154,21 @@ $compare = static function (string $left, string $right, string $label) use ($si
 	$changes = [];
 	foreach ($a as $name => $value) {
 		if ($value !== $b[$name]) {
-			$changes[$name] = ['native' => $value, 'prewarm' => $b[$name]];
+			$nativeString = (string)$value;
+			$prewarmString = (string)$b[$name];
+			$offset = 0;
+			$limit = min(strlen($nativeString), strlen($prewarmString));
+			while ($offset < $limit && $nativeString[$offset] === $prewarmString[$offset]) {
+				$offset++;
+			}
+			$start = max(0, $offset - 120);
+			$changes[$name] = [
+				'offset' => $offset,
+				'native_length' => strlen($nativeString),
+				'prewarm_length' => strlen($prewarmString),
+				'native' => substr($nativeString, $start, 320),
+				'prewarm' => substr($prewarmString, $start, 320)
+			];
 		}
 	}
 	if ($changes) {
