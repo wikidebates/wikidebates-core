@@ -1,6 +1,7 @@
 <?php
 
 use MediaWiki\Extension\Wikidebates\Reading\AnonymousCacheSafety;
+use MediaWiki\Extension\Wikidebates\Reading\ArgumentCategory;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCommands;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCoordinator;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationQueue;
@@ -113,6 +114,7 @@ class PrepareDailyCaches extends Maintenance {
 				$row = $primary->selectRow('page', ['page_latest'], ['page_id' => $id], __METHOD__);
 				return $row ? (int)$row->page_latest : null;
 			};
+			$categoryKey = $execute ? ArgumentCategory::dbKey($config) : '';
 			$identity = static fn(int $id): ?string => AnonymousCacheSafety::fingerprint($id);
 			$coordinator = new CachePreparationCoordinator($queue);
 			$commands = null;
@@ -120,7 +122,10 @@ class PrepareDailyCaches extends Maintenance {
 				$root = defined('MW_INSTALL_PATH') ? MW_INSTALL_PATH : dirname(__DIR__, 3);
 				$commands = new CachePreparationCommands($root, $wiki, $minervaDelay, 100, $devices);
 			}
-			$prepare = static fn(string $phase, int $id): array => $commands->prepare($phase, $id);
+			$prepare = static fn(string $phase, int $id): array =>
+				$phase === 'reading' && !ArgumentCategory::containsPage($primary, $id, $categoryKey)
+					? ['ok' => true, 'status' => 'not-an-argument']
+					: $commands->prepare($phase, $id);
 			$remaining = static function () use ($started, $budget, $devices): bool {
 				// Vector, Reading and each selected mobile variant have bounded children.
 				return microtime(true) - $started < $budget - (230 + 100 * count($devices));
