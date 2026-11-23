@@ -174,23 +174,29 @@ try {
 
 	// Separate session so the existing journal recovery assertions remain
 	// unchanged: "deferred" is neither a cache hit nor a discarded page.
-	$deferCycle = $journal->activate(0, 4, 2, $signature, true);
+	$deferRoot = $root . '/deferred';
+	if (!mkdir($deferRoot, 0700)) {
+		throw new \RuntimeException('Cannot create isolated deferred journal directory');
+	}
+	$deferQueue = new CachePreparationQueue($deferRoot, 'deferredwikidebates');
+	$deferJournal = new ParallelBackfillJournal($deferQueue, 'deferredwikidebates');
+	$deferCycle = $deferJournal->activate(0, 4, 2, $signature);
 	$deferToken = $deferCycle['run_id'];
-	mustReject(fn() => $journal->deferred($deferToken, 0, 1, 'WRITE_FAILED', $queue));
-	parallelAssert($queue->enqueue(1, 11), 'Prepare a durable retry queue record');
-	$journal->deferred($deferToken, 0, 1, 'WRITE_FAILED', $queue);
-	$deferred = $journal->snapshot();
+	mustReject(fn() => $deferJournal->deferred($deferToken, 0, 1, 'WRITE_FAILED', $deferQueue));
+	parallelAssert($deferQueue->enqueue(1, 11), 'Prepare a durable retry queue record');
+	$deferJournal->deferred($deferToken, 0, 1, 'WRITE_FAILED', $deferQueue);
+	$deferred = $deferJournal->snapshot();
 	parallelAssert($deferred['lanes'][0]['after'] === 1 &&
 		$deferred['metrics']['deferred'] === 1 &&
 		$deferred['metrics']['completed'] === 0 &&
-		$queue->current(1)['revisionId'] === 11,
+		$deferQueue->current(1)['revisionId'] === 11,
 		'Uncached failure can advance only after durable requeue');
-	mustReject(fn() => $journal->deferred($deferToken, 0, 1, 'WRITE_FAILED', $queue));
-	$journal->exhausted($deferToken, 0);
-	$journal->exhausted($deferToken, 1);
-	$journal->markComplete($deferToken);
-	parallelAssert($journal->snapshot()['state'] === 'complete' &&
-		$queue->current(1) !== null,
+	mustReject(fn() => $deferJournal->deferred($deferToken, 0, 1, 'WRITE_FAILED', $deferQueue));
+	$deferJournal->exhausted($deferToken, 0);
+	$deferJournal->exhausted($deferToken, 1);
+	$deferJournal->markComplete($deferToken);
+	parallelAssert($deferJournal->snapshot()['state'] === 'complete' &&
+		$deferQueue->current(1) !== null,
 		'Full scan can complete while a failed page remains retryable');
 
 	$checkpointPath = $queue->parallelDirectory() . '/checkpoint.json';
