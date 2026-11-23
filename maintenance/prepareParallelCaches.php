@@ -530,8 +530,7 @@ class PrepareParallelCaches extends Maintenance {
 					);
 					if ($result['state'] === 'interrupted') { return true; }
 					if (!in_array($result['state'], ['complete', 'skipped-nonpublic', 'acknowledged'], true)) {
-						$reason = (string)($result['phases'][array_key_last($result['phases'])] ??
-							$result['state']);
+						$reason = ParallelBackfillJournal::safeFailureReason($result);
 						$journal->failed($session, $lane, $id, $reason);
 						$this->report(['mode' => 'scan-error', 'lane' => $lane,
 							'page_id' => $id, 'state' => $result['state'],
@@ -553,6 +552,16 @@ class PrepareParallelCaches extends Maintenance {
 					return true;
 				}
 			}
+		} catch (\RuntimeException $e) {
+			// Another lane may fail after this worker validated its page but
+			// before its checkpoint write. Treat that as a graceful, shared
+			// stop rather than producing a secondary exception in every lane.
+			$current = $journal->snapshot();
+			if ($current !== null && $current['run_id'] === $session &&
+				$current['state'] === 'failed') {
+				return true;
+			}
+			throw $e;
 		} finally {
 			fclose($lock);
 		}
