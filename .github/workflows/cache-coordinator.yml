@@ -14,6 +14,8 @@ on:
       - 'maintenance/preparePendingCaches.php'
       - 'maintenance/prepareDailyCaches.php'
       - 'src/Reading/DailyCacheDeferral.php'
+      - 'src/Reading/DailyCacheScanIncident.php'
+      - 'tests/php/dailyCacheScanIncident.php'
       - 'tests/php/dailyCacheDeferral.php'
       - 'maintenance/scanCacheWindow.sh'
       - 'tests/readingFragments/scanWindowScript.sh'
@@ -57,11 +59,14 @@ jobs:
           php -l maintenance/preparePendingCaches.php
           php -l maintenance/prepareDailyCaches.php
           php -l src/Reading/DailyCacheDeferral.php
+          php -l src/Reading/DailyCacheScanIncident.php
+          php -l tests/php/dailyCacheScanIncident.php
           php -l tests/php/dailyCacheDeferral.php
           sh -n maintenance/scanCacheWindow.sh
           sh -n tests/readingFragments/scanWindowScript.sh
           sh tests/readingFragments/scanWindowScript.sh
           php tests/php/dailyCacheDeferral.php
+          php tests/php/dailyCacheScanIncident.php
           sh -n maintenance/backfillDailyCaches.sh
           sh -n tests/readingFragments/backfillScript.sh
           sh tests/readingFragments/backfillScript.sh
