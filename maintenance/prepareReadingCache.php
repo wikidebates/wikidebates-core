@@ -54,8 +54,11 @@ class PrepareReadingCache extends Maintenance {
 			$progressEvery < 0 || $progressEvery > 100000 || $maxSeconds < 0 || $maxSeconds > 86400) {
 			$this->fatalError('Invalid batch, delay, cursor or limit.');
 		}
-		// A single worker per wiki; web fills also use the existing nonblocking page lock.
-		$scope = \MediaWiki\Extension\Wikidebates\Reading\FragmentService::store()->startFill("\0daily-preparation");
+		// Bulk scans stay exclusive per wiki. Independently targeted page IDs
+		// may run concurrently; each has its own fill guard and the fragment
+		// store still serializes the real page's publication/invalidation.
+		$scopeKey = $pageId === null ? "\0daily-preparation" : "\0targeted-" . $pageId;
+		$scope = \MediaWiki\Extension\Wikidebates\Reading\FragmentService::store()->startFill($scopeKey);
 		if (!$scope) { $this->fatalError('Another preparation is running.'); }
 		$started = microtime(true);
 		$categoryKey = ArgumentCategory::dbKey($config);
