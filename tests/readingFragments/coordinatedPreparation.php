@@ -117,6 +117,10 @@ try {
 	$check($blockedSemantic['state'] === 'awaiting-deferred-touch' &&
 		$queue->current(18)['ready'] === false,
 		'Pending deferred invalidation cannot start any cache renderer');
+	$check(!in_array(18, array_column($queue->pending(100, true), 'pageId'), true),
+		'Legacy indirect-SMW requests cannot trigger direct-edit cache preparation');
+	$check(in_array(18, array_column($queue->pending(100), 'pageId'), true),
+		'Historic requests remain inspectable without being executed');
 
 	$pendingSemantic = $queue->current(18);
 	$check(!$queue->confirmTouched(18, 700, $pendingSemantic['generation'], '20261122140000'),
@@ -209,6 +213,26 @@ try {
 		'Valid native Vector view is accepted');
 	$check(CachePreparationResults::interpret('vector', 17, 0, $vector(17, 'REUSED'))['ok'],
 		'Valid pre-existing Vector file is accepted');
+	$check(CachePreparationResults::interpret('vector', 17, 0, $vector(17, 'SKIPPED_CACHE_POLICY'))
+		=== ['ok' => true, 'status' => 'SKIPPED_CACHE_POLICY'],
+		'An explicit Vector policy veto is a completed skip, not a retry loop');
+	$check(CachePreparationResults::interpret('vector', 17, 0,
+		$vector(17, 'SKIPPED_REDIRECT_OR_INVALID'))['ok'],
+		'An intentional Vector redirect exclusion must not stall other cache preparation');
+	$queue->enqueue(24, 706);
+	$policyPhases = [];
+	$policySkip = $coordinator->process($queue->current(24),
+		static fn(int $id): ?int => 706,
+		static function (string $phase, int $id) use (&$policyPhases): array {
+			$policyPhases[] = $phase;
+			return $phase === 'vector'
+				? CachePreparationResults::interpret('vector', $id, 0,
+					json_encode(['pageId' => $id, 'state' => 'SKIPPED_CACHE_POLICY'], JSON_THROW_ON_ERROR))
+				: ['ok' => true, 'status' => 'REUSED'];
+		});
+	$check($policySkip['state'] === 'acknowledged' &&
+		$policyPhases === CachePreparationCoordinator::PHASES && $queue->current(24) === null,
+		'Vector cache exclusion still prepares Minerva and Lecture before acknowledging');
 	$check(!CachePreparationResults::interpret('vector', 17, 0, $vector(17, 'WRITE_FAILED'))['ok'],
 		'Failed Vector publication is rejected');
 	$check(!CachePreparationResults::interpret('vector', 17, 0, $vector(18, 'CREATED'))['ok'],
@@ -237,6 +261,12 @@ try {
 	$check(CachePreparationResults::interpret('minerva', 17, 0,
 		$minerva(['BYPASS' => 1, 'bypassReasons' => ['not-public' => 1]]))['ok'],
 		'Explicit nonpublic veto skips storing without retry');
+	$check(CachePreparationResults::interpret('minerva', 17, 0,
+		$minerva(['BYPASS' => 1, 'bypassReasons' => ['page' => 1]]))['ok'],
+		'Intentional mobile redirect/page exclusion is a completed skip');
+	$check(CachePreparationResults::interpret('minerva', 17, 0,
+		$minerva(['BYPASS' => 1, 'bypassReasons' => ['redirect' => 1]]))['ok'],
+		'Mobile redirect after rendering must not block the preparation queue');
 	$check(!CachePreparationResults::interpret('minerva', 17, 0,
 		$minerva(['BYPASS' => 1, 'bypassReasons' => ['storage-error' => 1]]))['ok'],
 		'Storage error cannot be acknowledged as a safe Minerva bypass');
