@@ -47,6 +47,7 @@ Depuis la racine MediaWiki :
     	--max-load=10 \
     	--reserve-mb=2048 \
     	--max-health-ms=2500 \
+    	--max-db-ms=500 \
     	--max-seconds=28800 \
     	--health-title="Titre public existant"
 
@@ -54,9 +55,9 @@ Commencer par un seul wiki, puis etudier le second. Le superviseur lance
 ses propres enfants : ne pas lancer plusieurs exemplaires concurrents de
 backfillDailyCaches.sh.
 
-Les permissions de debut de nouveaux rendus sont ajustées en fonction de la
-charge sur une minute, de la memoire disponible, du code HTTP et de la latence
-publique. Une degradation importante donne zero permission sans abandonner les
+Les permissions de debut de nouveaux rendus sont ajustees en fonction de la
+charge sur une minute, de la memoire disponible, du code HTTP, de la latence
+publique et de la latence d'une requete SQL indexee sur la base primaire. Une degradation importante donne zero permission sans abandonner les
 phases deja en cours. La reprise est progressive.
 
 Pour prendre egalement en compte la file d'attente PHP-FPM, fournir
@@ -65,6 +66,12 @@ etre expose uniquement en loopback et fournir la sortie JSON standard de
 PHP-FPM. S'il a ete configure mais devient illisible, les nouveaux rendus
 sont suspendus. Sans endpoint disponible, la charge FPM est estimee
 indirectement par la latence publique, pas par un compteur PHP-FPM.
+
+Une erreur HTTP 429 ou 500/502/503/504 de rendu peut donner lieu a deux
+nouvelles tentatives maximum. Une pause partagee entre les travailleurs
+empeche d'amplifier une surcharge. Chaque tentative reverifie la revision
+et la visibilite anonyme. HTTP 403, NO_HEADER et les sorties inconnues
+restent des echecs a inspecter ; ils ne font pas avancer les curseurs.
 
 ## Journaux et commandes de controle
 
@@ -75,6 +82,7 @@ indirectement par la latence publique, pas par un compteur PHP-FPM.
     	--wiki=fr --execute --workers=4 \
     	--minerva-devices=android,iphone --minerva-delay-ms=250 \
     	--max-load=10 --reserve-mb=2048 --max-health-ms=2500 \
+    	--max-db-ms=500 \
     	--max-seconds=28800 \
     	--health-title="Titre public existant" \
     	> "/home/users/webmaster/files/cache-preparation/wikidebates/logs/parallel-fr-$(date -u +%Y%m%dT%H%M%SZ).jsonl" 2>&1 < /dev/null &
