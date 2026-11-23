@@ -92,7 +92,7 @@ try {
 	$command = [
 		PHP_BINARY, '-d', 'auto_prepend_file=' . __DIR__ . '/bootstrap.php',
 		MW_INSTALL_PATH . '/maintenance/run.php', 'Wikidebates:prepareParallelCaches',
-		'--wiki=' . $wiki, '--execute', '--workers=2', '--minerva-devices=android,iphone',
+		'--wiki=' . $wiki, '--execute', '--workers=4', '--minerva-devices=android,iphone',
 		'--minerva-delay-ms=250', '--max-load=100', '--reserve-mb=128',
 		'--max-health-ms=15000', '--max-seconds=600',
 		'--health-title=Cache study argument'
@@ -148,7 +148,7 @@ try {
 	foreach (array_merge($mobile, $reading) as $file) {
 		$existingHashes[$file] = hash_file('sha256', $file);
 	}
-	$testCycle = $journal->activate(0, $checkpoint['high_watermark'], 2,
+	$testCycle = $journal->activate(0, $checkpoint['high_watermark'], 4,
 		$checkpoint['cache_signature'], true);
 	$journal->failed($testCycle['run_id'], 1, $pageId, 'injected-worker-crash');
 	$oldGeneration = $testCycle['run_id'];
@@ -198,7 +198,7 @@ try {
 		}
 	}
 	echo json_encode([
-		'result' => 'PASS', 'wiki' => $wiki, 'workers' => 2,
+		'result' => 'PASS', 'wiki' => $wiki, 'workers' => 4,
 		'vector' => true, 'minerva' => count($mobile),
 		'reading' => count($reading), 'metrics' => $checkpoint['metrics'],
 		'completed' => true
