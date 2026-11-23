@@ -81,9 +81,75 @@ vérifier les tâches déjà présentes sur le serveur, les versions déployées
 les autorisations `0700` du dossier privé et les éventuelles invalidations
 globales de `CacheEpoch` provoquées par `LocalSettings.php`.
 
+## Remplissage initial complet, puis entretien économique
+
+Le préchauffage ciblé `MinervaFileCache:prewarm --page-id` n'attend plus six
+secondes après sa seule requête HTTP. La commande autonome **multipages**
+conserve sa temporisation par défaut de 6000 ms. Pour la préparation coordonnée,
+`--minerva-delay-ms` impose une pause entre deux variantes mobiles qui effectuent
+un GET ; `--delay-ms` espace les pages ayant nécessité un rendu ou un GET, y
+compris celles ayant reçu un BYPASS de politique. `LOCAL_HIT` n'effectue aucun
+GET et ne déclenche pas cette attente.
+
+Le script `maintenance/backfillDailyCaches.sh` constitue un **remplissage unique**,
+redémarrable depuis le curseur privé, jusqu'au rapport `cycle-complete`.
+Il lance des lots plafonnés à 100 pages, donne la priorité aux éditions,
+s'arrête sur un échec, attend 120 secondes après une surcharge et ne remet
+jamais le curseur à zéro lui-même. Il refuse un deuxième backfill simultané
+du même wiki via un verrou de processus situé dans `$HOME/.cache`.
+Exécuter depuis la racine de la ferme MediaWiki, en tant qu'utilisateur qui
+exécute normalement la maintenance :
+
+~~~sh
+sh extensions/Wikidebates/maintenance/backfillDailyCaches.sh fr android,iphone
+sh extensions/Wikidebates/maintenance/backfillDailyCaches.sh en android,iphone
+~~~
+
+Ces commandes sont **à lancer séparément**, éventuellement via `nohup` avec
+journaux privés. Ne pas programmer les deux instances du même wiki
+simultanément ; mettre temporairement en pause le cron de balayage historique
+pour éviter les conflits de verrous. Le seuil de charge par défaut est 4 ;
+les pauses de préparation sont de 1500 ms entre variantes ayant effectué
+un GET et de 1500 ms entre pages ayant eu du travail. Ajustements facultatifs,
+uniquement après tests de charge et des limites HTTP :
+
+- `WD_BACKFILL_MAX_LOAD=4`
+- `WD_BACKFILL_MINERVA_DELAY_MS=1500`
+- `WD_BACKFILL_PAGE_DELAY_MS=1500`
+
+Lorsqu'un cycle est terminé, le curseur revient automatiquement à zéro. Une
+exception de stockage ou un HTTP de refus inconnu stoppe le script ; on doit
+inspecter le dernier JSON avant de le relancer, sans effacer son état.
+`BYPASS-header-set-cookie` est une exclusion documentée **sans fichier Minerva**,
+pas un échec ni un fichier créé. Les autres politiques de confidentialité
+continuent de s'appliquer. Le terme « complet » s'entend exclusivement des
+pages et variantes éligibles ; Vector ne couvre pas les pages non contenues
+dans sa politique, Lecture ne couvre que les arguments et Minerva conserve des
+clés distinctes pour chaque User-Agent. Les deux User-Agents canoniques
+`android,iphone` ne représentent pas toutes les variantes possibles.
+
+Après ce remplissage, l'entretien rapide peut traiter les éditions directes
+**sans parcourir toute la table `page`**, grâce à `--queue-only` :
+
+~~~sh
+php maintenance/run.php Wikidebates:prepareDailyCaches \
+	--wiki=fr --execute --queue-only --limit=40 --queue-limit=40 \
+	--max-seconds=900 --max-load=4 \
+	--minerva-devices=android,iphone \
+	--minerva-delay-ms=1500 --delay-ms=1500 --json
+~~~
+
+Un **audit historique à cadence réduite** doit continuer avec le mode
+standard (sans `--queue-only`) pour retrouver les fichiers manquants ou
+invalidés hors des éditions connues. Cet audit bénéficie des vérifications
+locales `REUSED` et `LOCAL_HIT`, mais n'est pas gratuit : chaque page passe
+par les contrôles de sécurité et certains sous-processus. La file des éditions
+reste prioritaire avant le balayage. Aucun de ces crons n'est installé par le
+script de remplissage.
+
 ## Limites encore ouvertes
 
-- Le nouveau parcours quotidien doit encore être validé sur un lot réel avant activation automatique, avec contrôle des fichiers, du curseur et de la charge.
+- Des lots réels de préparation ont été validés en production en novembre 2026 sur les deux wikis ; l'optimisation de la pause cible, le mode queue-only et le remplissage intégral doivent encore être validés après déploiement.
 - Le contrôle Minerva sans HTTP est réservé au mode ciblé : des variantes issues d'autres User-Agents ne sont pas considérées comme équivalentes.
 - L'installation du cron quotidien, le choix des limites de charge et le déploiement ne sont **pas** accomplis par les commandes ci-dessus.
 - Les essais jetables MediaWiki 1.43 / PHP 8.4, SQLite et MariaDB, sont nécessaires avant activation automatique. Les tests autonomes ne prouvent pas à eux seuls le comportement en production.
