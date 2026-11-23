@@ -12,6 +12,7 @@ on:
       - 'tests/readingFragments/publicVisibilityBenchmark.php'
       - 'tests/readingFragments/visibilityBenchmarkLab.php'
       - 'maintenance/preparePendingCaches.php'
+      - 'maintenance/prepareDailyCaches.php'
       - 'tests/readingFragments/coordinatedPreparation.php'
       - 'tests/readingFragments/coordinatorFullstack.php'
       - 'tests/readingFragments/bootstrap.php'
@@ -48,6 +49,7 @@ jobs:
           php -l src/Reading/CachePreparationResults.php
           php -l src/Reading/CachePreparationCommands.php
           php -l maintenance/preparePendingCaches.php
+          php -l maintenance/prepareDailyCaches.php
           php -l tests/readingFragments/coordinatedPreparation.php
           php -l src/Reading/SemanticCachePurgeJob.php
           php -l debatephp/src/TrackedSemanticQuery.php
@@ -107,7 +109,7 @@ jobs:
           git -C "$FARM" remote add origin https://github.com/wikidebates/wikidebates-mediawiki-farm.git
           git -C "$FARM" config core.sparseCheckout true
           printf 'extensions/MinervaFileCache/\n' > "$FARM/.git/info/sparse-checkout"
-          git -C "$FARM" fetch --quiet --depth=1 --filter=blob:none origin 7d061fb7f86a1ff00e942d7ad24f7a32c15166cf
+          git -C "$FARM" fetch --quiet --depth=1 --filter=blob:none origin 772ad5dfc30ec84c1e959fd713ed6aa5e356ad42
           git -C "$FARM" checkout --quiet --detach FETCH_HEAD
           test -f "$FARM/extensions/MinervaFileCache/maintenance/prewarm.php"
           cp -a "$FARM/extensions/MinervaFileCache/." extensions/MinervaFileCache/

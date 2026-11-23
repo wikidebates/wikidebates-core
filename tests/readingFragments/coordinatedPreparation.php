@@ -43,6 +43,53 @@ try {
 		'The three caches run sequentially in the declared order');
 	$check($queue->current(11) === null, 'Completed record is removed');
 
+	$scanCalls = [];
+	$scanPrepare = static function (string $phase, int $id) use (&$scanCalls): array {
+		$scanCalls[] = $phase;
+		return ['ok' => true, 'status' => 'REUSED'];
+	};
+	$scanDone = $coordinator->processUnqueued(99, 100,
+		static fn(int $id): ?int => 100, $scanPrepare,
+		static fn(int $id): ?string => 'public-identity');
+	$check($scanDone['state'] === 'complete' &&
+		$scanCalls === CachePreparationCoordinator::PHASES,
+		'Historic page runs all phases exactly once in the correct order');
+	$scanCalls = [];
+	$scanSkipped = $coordinator->processUnqueued(99, 100,
+		static fn(int $id): ?int => 100, $scanPrepare,
+		static fn(int $id): ?string => null);
+	$check($scanSkipped['state'] === 'skipped-nonpublic' && $scanCalls === [],
+		'Nonpublic historic pages cannot generate HTML or block the cursor');
+	$scanCalls = [];
+	$GLOBALS['dailyScanRevision'] = 101;
+	$scanChanged = $coordinator->processUnqueued(99, 100,
+		static fn(int $id): ?int => $GLOBALS['dailyScanRevision'],
+		$scanPrepare,
+		static fn(int $id): ?string => 'public-identity');
+	$check($scanChanged['state'] === 'retry-page-changed' && $scanCalls === [],
+		'No page render is launched if its initial primary revision differs');
+	$GLOBALS['dailyScanRevision'] = 100;
+	$scanChanged = $coordinator->processUnqueued(99, 100,
+		static fn(int $id): ?int => $GLOBALS['dailyScanRevision'],
+		static function (string $phase) use (&$scanCalls): array {
+			$scanCalls[] = $phase;
+			$GLOBALS['dailyScanRevision'] = 101;
+			return ['ok' => true, 'status' => 'CREATED'];
+		},
+		static fn(int $id): ?string => 'public-identity');
+	$check($scanChanged['state'] === 'retry-page-changed' &&
+		$scanCalls === ['vector'], 'Concurrent edit stops sweep after its first renderer');
+	$scanCalls = [];
+	$scanRate = $coordinator->processUnqueued(99, 100,
+		static fn(int $id): ?int => 100,
+		static function (string $phase) use (&$scanCalls): array {
+			$scanCalls[] = $phase;
+			return ['ok' => $phase !== 'minerva', 'status' => $phase === 'minerva' ? 'HTTP_429' : 'REUSED'];
+		},
+		static fn(int $id): ?string => 'public-identity');
+	$check($scanRate['state'] === 'retry' && $scanCalls === ['vector', 'minerva'],
+		'Rate limiting stops a historic sweep before fragment preparation');
+
 	$queue->enqueue(12, 200);
 	$failure = $coordinator->process($queue->current(12),
 		static fn(int $id): ?int => 200,
@@ -260,6 +307,10 @@ try {
 		$minerva(['HIT' => 1, 'bypassReasons' => []]))['ok'],
 		'Validated Minerva HIT is accepted');
 	$check(CachePreparationResults::interpret('minerva', 17, 0,
+		$minerva(['LOCAL_HIT' => 1, 'bypassReasons' => []])) ===
+		['ok' => true, 'status' => 'LOCAL_HIT'],
+		'Exact local Minerva hit avoids anonymous HTTP and is accepted');
+	$check(CachePreparationResults::interpret('minerva', 17, 0,
 		$minerva(['MISS' => 1, 'bypassReasons' => []]))['ok'],
 		'Validated Minerva MISS publication is accepted');
 	$check(CachePreparationResults::interpret('minerva', 17, 0,
@@ -311,6 +362,16 @@ PHP;
 			'Real shell-free subprocess runner accepts correct ' . $phase . ' report');
 		$check(!$commands->prepare($phase, 99)['ok'],
 			'Real shell-free subprocess runner rejects failing ' . $phase . ' exit');
+	}
+	$dual = new CachePreparationCommands($root, 'fr', 250, 10, ['android', 'iphone']);
+	$check($dual->prepare('minerva', 17) ===
+		['ok' => true, 'status' => 'android=HIT;iphone=HIT'],
+		'Two distinct mobile variants are coordinated within a single Minerva phase');
+	try {
+		new CachePreparationCommands($root, 'fr', 250, 10, ['android', 'android']);
+		throw new RuntimeException('Duplicate mobile variant accepted');
+	} catch (InvalidArgumentException $e) {
+		$check(true, 'Duplicate mobile variant selection is rejected');
 	}
 	$check((new CachePreparationQueue($root, 'en'))->pending() === [],
 		'No subprocess can accidentally alter the other wiki queue');

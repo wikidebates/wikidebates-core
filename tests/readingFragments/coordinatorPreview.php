@@ -42,5 +42,32 @@ if ($records() !== $before || (glob($state . '/reading-cache/*/*/*/*.cache') ?: 
 	(glob($state . '/minerva-cache/*/*/*/*.cache') ?: []) !== []) {
 	throw new RuntimeException('Preview unexpectedly altered the pending journal or HTML caches');
 }
+// The daily coordinator shares the same queue but adds a read-only page sweep.
+// A preview must not create a cursor, cache files, or acknowledge pending edits.
+$daily = [PHP_BINARY, '-d', 'auto_prepend_file=' . __DIR__ . '/bootstrap.php',
+	dirname(__DIR__, 2) . '/maintenance/prepareDailyCaches.php',
+	'--conf=' . $conf, '--json', '--limit=5', '--queue-limit=2'];
+$dailyProcess = proc_open($daily, [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']], $dailyPipes);
+if (!is_resource($dailyProcess)) { throw new RuntimeException('Cannot start daily preview'); }
+fclose($dailyPipes[0]);
+$dailyOut = stream_get_contents($dailyPipes[1]);
+$dailyErr = stream_get_contents($dailyPipes[2]);
+fclose($dailyPipes[1]);
+fclose($dailyPipes[2]);
+$dailyExit = proc_close($dailyProcess);
+$dailyReport = json_decode(trim($dailyOut), true);
+if ($dailyExit !== 0 || !is_array($dailyReport) ||
+	($dailyReport['mode'] ?? null) !== 'preview' ||
+	($dailyReport['queue_processed'] ?? 0) < 1 ||
+	($dailyReport['scan_processed'] ?? 0) < 1 ||
+	($dailyReport['start_after'] ?? null) !== 0 ||
+	$records() !== $before ||
+	(glob($state . '/preparation-queue/*/daily-cursor.json') ?: []) !== [] ||
+	(glob($state . '/reading-cache/*/*/*/*.cache') ?: []) !== [] ||
+	(glob($state . '/minerva-cache/*/*/*/*.cache') ?: []) !== []) {
+	throw new RuntimeException('Daily preview mutated state or failed: ' .
+		substr($dailyOut . $dailyErr, -2000));
+}
+
 echo json_encode(['result' => 'PASS', 'mode' => 'preview',
 	'pending' => count($before), 'acknowledged' => 0], JSON_THROW_ON_ERROR) . "\n";

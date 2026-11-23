@@ -10,7 +10,8 @@ function readingFragmentTestSettings($settings): void {
 	$root = getenv('WD_MINERVA_STUDY_ROOT');
 	$settings->overrideConfigValues([
 		'Server' => 'http://127.0.0.1:8080', 'ScriptPath' => '', 'ArticlePath' => '/index.php?title=$1',
-		'CacheEpoch' => '20200101000000',
+		'CacheEpoch' => is_file($root . '/state/consistent-cache-epoch') ?
+			'20261101000000' : '20200101000000',
 		'Sitename' => 'Disposable extension test', 'LanguageCode' => 'en',
 		'DBtype' => 'sqlite', 'DBname' => 'minerva_file_cache_test', 'DBserver' => '',
 		'SQLiteDataDir' => $root . '/state', 'SecretKey' => 'disposable-extension-test-only',

@@ -29,10 +29,62 @@ php maintenance/run.php Wikidebates:preparePendingCaches --wiki=fr --limit=3 --m
 
 La commande contrôle la visibilité sur la base primaire, utilise un verrou exclusif par wiki et conserve une entrée si la révision a changé pendant la préparation. Une erreur de stockage ou HTTP arrête le lot.
 
+## Parcours quotidien des pages historiques
+
+La commande `Wikidebates:prepareDailyCaches` réutilise la même file et le même
+verrou exclusif que `preparePendingCaches`. Elle consomme d'abord un lot
+d'éditions directes, puis parcourt progressivement les pages non redirigées
+selon `page_id`, même si elles n'ont jamais été modifiées récemment.
+
+Le curseur atomique `daily-cursor.json` est conservé dans le dossier privé
+propre à chaque wiki. Il avance seulement après une préparation terminée
+ou une exclusion de sécurité avérée. Une erreur de préparation ou une
+modification concurrente interrompt le passage sans avancer le curseur
+sur la page concernée. À la fin de la table `page`, le curseur revient à
+zéro pour une nouvelle vérification légère au cycle suivant.
+
+Aperçu entièrement en lecture seule :
+
+```sh
+php maintenance/run.php Wikidebates:prepareDailyCaches --wiki=fr --limit=10 --json
+php maintenance/run.php Wikidebates:prepareDailyCaches --wiki=en --limit=10 --json
+```
+
+Exécution limitée, **uniquement après installation des versions coordonnées**
+de Wikidebates et MinervaFileCache et vérification des permissions :
+
+```sh
+php maintenance/run.php Wikidebates:prepareDailyCaches --wiki=fr \
+	--execute --limit=10 --queue-limit=5 --max-seconds=1200 \
+	--minerva-devices=android --minerva-delay-ms=6000 --delay-ms=1000 --json
+```
+
+Pour préparer aussi iPhone, utiliser `--minerva-devices=android,iphone`.
+Chaque variante Minerva est contrôlée localement via `--skip-valid` ;
+une clé identique donne `LOCAL_HIT` sans requête HTTP ni écriture.
+Une variante manquante passe toujours par le GET anonyme normal.
+
+Le coordinateur Lecture utilise `deferred-no-html` si aucun fichier complet
+n'est exploitable. Le parseur direct reste accessible pour l'API de
+consultation, mais pas pour le cron. Les pages non éligibles au fragment
+sont simplement ignorées.
+
+Le seuil optionnel `--max-load` interrompt le traitement avant une nouvelle
+page si la charge moyenne Linux sur une minute le dépasse. La valeur `0`
+désactive ce contrôle ; choisir un seuil **après mesure du nombre de CPU et
+de la charge habituelle sur le serveur**, par exemple en ajoutant
+`--max-load=4` uniquement si cette limite est pertinente. Une interruption
+pour `system-load` conserve le curseur et les éditions non traitées.
+
+Le cron n'est **pas** installé par ces commandes. Avant toute programmation,
+vérifier les tâches déjà présentes sur le serveur, les versions déployées,
+les autorisations `0700` du dossier privé et les éventuelles invalidations
+globales de `CacheEpoch` provoquées par `LocalSettings.php`.
+
 ## Limites encore ouvertes
 
-- La file traite les éditions directes ; **elle ne parcourt pas encore toutes les pages historiques sans fichier**. Un parcours global borné, reprenable et partagé avec ce coordinateur reste à développer et tester.
-- La prévalidation Minerva sans HTTP, notamment pour les variantes de User-Agent, reste à ajouter après vérification des clés de stockage et de la politique de cache.
+- Le nouveau parcours quotidien doit encore être validé sur un lot réel avant activation automatique, avec contrôle des fichiers, du curseur et de la charge.
+- Le contrôle Minerva sans HTTP est réservé au mode ciblé : des variantes issues d'autres User-Agents ne sont pas considérées comme équivalentes.
 - L'installation du cron quotidien, le choix des limites de charge et le déploiement ne sont **pas** accomplis par les commandes ci-dessus.
 - Les essais jetables MediaWiki 1.43 / PHP 8.4, SQLite et MariaDB, sont nécessaires avant activation automatique. Les tests autonomes ne prouvent pas à eux seuls le comportement en production.
 

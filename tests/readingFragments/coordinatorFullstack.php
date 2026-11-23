@@ -11,6 +11,10 @@ if (!$root || !is_file($root . '/.wikidebates-minerva-lab') ||
 	throw new RuntimeException('Only a marked, disposable MediaWiki queue laboratory is supported');
 }
 $state = $root . '/state';
+// Keep HTTP and maintenance identities equal despite --conf mtime in this lab.
+if (!touch($state . '/consistent-cache-epoch')) {
+	throw new RuntimeException('Cannot pin disposable cache identity');
+}
 // Only this disposable HTTP laboratory selects unlimited cache retention.
 // Existing duration-oriented integration tests keep their own finite TTL.
 if (!touch($state . '/unlimited-ttl')) { throw new RuntimeException('Cannot enable lab-only no-TTL fixture'); }
@@ -54,6 +58,11 @@ putenv('PHP_INI_SCAN_DIR=:' . $iniDir);
 $conf = $root . '/mediawiki/LocalSettings.php';
 file_put_contents($conf, "<?php\n");
 chmod($conf, 0600);
+// Keep the test's LocalSettings mtime older than its fixed, past CacheEpoch.
+// A future CacheEpoch would make native Vector file caching impossible.
+if (!touch($conf, strtotime('2026-01-01 00:00:00 UTC'))) {
+	throw new RuntimeException('Cannot stabilize disposable LocalSettings mtime');
+}
 
 $server = proc_open([PHP_BINARY, '-d', 'auto_prepend_file=' . __DIR__ . '/bootstrap.php',
 	'-d', 'zlib.output_compression=0', '-S', '127.0.0.1:8080', '-t', $root . '/mediawiki'],
@@ -120,6 +129,62 @@ try {
 	$readingFiles = glob($state . '/reading-cache/*/*/*/*.cache') ?: [];
 	if (count($mobileFiles) !== 1 || count($readingFiles) < 1) {
 		throw new RuntimeException('Expected exactly one Minerva file and at least one reading fragment');
+	}
+
+	// A historical sweep must resume after a bounded page and avoid rewriting
+	// complete HTML or making mobile HTTP requests on a second unchanged pass.
+	$runDaily = static function () use ($conf): array {
+		$cmd = [PHP_BINARY, '-d', 'auto_prepend_file=' . __DIR__ . '/bootstrap.php',
+			dirname(__DIR__, 2) . '/maintenance/prepareDailyCaches.php',
+			'--conf=' . $conf, '--execute', '--limit=1', '--queue-limit=0',
+			'--max-seconds=480', '--minerva-delay-ms=250', '--delay-ms=0', '--json'];
+		$process = proc_open($cmd, [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']], $p);
+		if (!is_resource($process)) { throw new RuntimeException('Cannot run daily cache sweep'); }
+		fclose($p[0]);
+		$out = stream_get_contents($p[1]);
+		$err = stream_get_contents($p[2]);
+		fclose($p[1]);
+		fclose($p[2]);
+		$exit = proc_close($process);
+		$data = json_decode(trim($out), true);
+		if ($exit !== 0 || !is_array($data)) {
+			throw new RuntimeException('Daily cache sweep failed: ' . substr($out . $err, -2200));
+		}
+		return $data;
+	};
+	$firstDaily = $runDaily();
+	$sweepId = (int)($firstDaily['pages'][0]['pageId'] ?? 0);
+	if (($firstDaily['scan_processed'] ?? 0) !== 1 || $sweepId < 1 ||
+		!in_array(($firstDaily['pages'][0]['state'] ?? ''), ['complete', 'skipped-nonpublic'], true) ||
+		$queue->dailyCursor() !== $sweepId) {
+		throw new RuntimeException('Daily cursor did not persist one safely completed page: ' .
+			json_encode($firstDaily, JSON_THROW_ON_ERROR));
+	}
+	if (($firstDaily['pages'][0]['state'] ?? '') === 'complete') {
+		$existingHashes = static function () use ($state): array {
+			$files = array_merge(
+				glob($state . '/minerva-cache/*/*/*/*.cache') ?: [],
+				glob($state . '/reading-cache/*/*/*/*.cache') ?: []
+			);
+			sort($files);
+			return array_combine($files, array_map('hash_file', array_fill(0, count($files), 'sha256'), $files)) ?: [];
+		};
+		$beforeDailyReplay = $existingHashes();
+		$cursorLock = $queue->tryLockWorker();
+		if (!$cursorLock) { throw new RuntimeException('Cannot lock daily cursor in lab'); }
+		try { $queue->saveDailyCursor(max(0, $pageId - 1)); }
+		finally { fclose($cursorLock); }
+		$secondDaily = $runDaily();
+		$secondPhases = $secondDaily['pages'][0]['phases'] ?? [];
+		if (($secondDaily['pages'][0]['pageId'] ?? null) !== $pageId ||
+			($secondDaily['pages'][0]['state'] ?? null) !== 'complete' ||
+			($secondPhases['vector'] ?? null) !== 'REUSED' ||
+			($secondPhases['minerva'] ?? null) !== 'LOCAL_HIT' ||
+			($secondPhases['reading'] ?? null) !== 'already-valid' ||
+			$beforeDailyReplay !== $existingHashes()) {
+			throw new RuntimeException('Second unchanged daily pass rewrote caches or made a Minerva GET: ' .
+				json_encode($secondDaily, JSON_THROW_ON_ERROR));
+		}
 	}
 
 	// Exercise actual HTTP Minerva GETs against the new TTL=0 production

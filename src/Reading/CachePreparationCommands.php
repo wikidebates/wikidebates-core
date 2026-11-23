@@ -13,13 +13,16 @@ final class CachePreparationCommands {
 		string $installRoot,
 		private string $wiki,
 		private int $minervaDelayMs = 6000,
-		private int $timeoutSeconds = 100
+		private int $timeoutSeconds = 100,
+		private array $minervaDevices = ['android']
 	) {
 		$path = realpath(rtrim($installRoot, '/') . '/maintenance/run.php');
 		if ($path === false || !is_file($path) ||
 			!preg_match('/\A[a-zA-Z0-9_-]{1,64}\z/D', $wiki) ||
 			$minervaDelayMs < 250 || $minervaDelayMs > 60000 ||
-			$timeoutSeconds < 10 || $timeoutSeconds > 180) {
+			$timeoutSeconds < 10 || $timeoutSeconds > 180 ||
+			$minervaDevices === [] || count($minervaDevices) !== count(array_unique($minervaDevices)) ||
+			array_diff($minervaDevices, ['android', 'iphone'])) {
 			throw new \InvalidArgumentException('Invalid private cache preparation runner configuration');
 		}
 		$this->entrypoint = $path;
@@ -30,13 +33,34 @@ final class CachePreparationCommands {
 		if ($pageId < 1 || !in_array($phase, CachePreparationCoordinator::PHASES, true)) {
 			throw new \InvalidArgumentException('Unknown cache target');
 		}
-		$args = match ($phase) {
-			'vector' => ['Wikidebates:prepareVectorViewCache', '--page-id=' . $pageId, '--json'],
-			'minerva' => ['MinervaFileCache:prewarm', '--page-id=' . $pageId,
-				'--delay-ms=' . $this->minervaDelayMs, '--timeout=30', '--retries=0'],
-			'reading' => ['Wikidebates:prepareReadingCache', '--page-id=' . $pageId,
-				'--json', '--sleep-ms=0', '--progress-every=0', '--max-seconds=70'],
-		};
+		if ($phase === 'minerva') {
+			$statuses = [];
+			foreach ($this->minervaDevices as $device) {
+				$args = [
+					'MinervaFileCache:prewarm', '--page-id=' . $pageId,
+					'--device=' . $device, '--skip-valid',
+					'--delay-ms=' . $this->minervaDelayMs, '--timeout=30', '--retries=0'
+				];
+				$command = [PHP_BINARY, $this->entrypoint, ...$args, '--wiki=' . $this->wiki];
+				$result = $this->execute($command);
+				if (!$result['ok']) {
+					return ['ok' => false, 'status' => $result['status']];
+				}
+				$outcome = CachePreparationResults::interpret($phase, $pageId, 0, $result['stdout']);
+				if (!$outcome['ok']) { return $outcome; }
+				$statuses[$device] = $outcome['status'];
+			}
+			if (count($statuses) === 1) {
+				return ['ok' => true, 'status' => reset($statuses)];
+			}
+			$parts = [];
+			foreach ($statuses as $device => $status) { $parts[] = $device . '=' . $status; }
+			return ['ok' => true, 'status' => implode(';', $parts)];
+		}
+		$args = $phase === 'vector'
+			? ['Wikidebates:prepareVectorViewCache', '--page-id=' . $pageId, '--json']
+			: ['Wikidebates:prepareReadingCache', '--page-id=' . $pageId,
+				'--json', '--sleep-ms=0', '--progress-every=0', '--max-seconds=70'];
 		$command = [PHP_BINARY, $this->entrypoint, ...$args, '--wiki=' . $this->wiki];
 		$result = $this->execute($command);
 		if (!$result['ok']) {

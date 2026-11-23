@@ -128,6 +128,66 @@ final class CachePreparationCoordinator {
 	}
 
 
+
+	/**
+	 * Prepare a page discovered by the background cursor rather than the edit queue.
+	 * The cursor advances only after a stable primary revision and public identity
+	 * have been checked before and after every cache operation.
+	 *
+	 * @param callable(int):?int $latestRevision
+	 * @param callable(string,int):array{ok:bool,status:string} $prepare
+	 * @param callable(int):?string $publicIdentity
+	 * @return array<string,mixed>
+	 */
+	public function processUnqueued(
+		int $pageId, int $revision, callable $latestRevision, callable $prepare,
+		callable $publicIdentity
+	): array {
+		if ($pageId < 1 || $revision < 1) {
+			throw new \InvalidArgumentException('Invalid page or revision for cache sweep');
+		}
+		$report = ['pageId' => $pageId, 'revisionId' => $revision,
+			'state' => 'pending', 'phases' => []];
+		try {
+			$baselineIdentity = $publicIdentity($pageId);
+			if ($baselineIdentity === null) {
+				// Permanently ineligible pages must not trap a resumable cursor.
+				$report['state'] = 'skipped-nonpublic';
+				return $report;
+			}
+			if (!is_string($baselineIdentity) || $baselineIdentity === '') {
+				throw new \RuntimeException('Unexpected public page identity');
+			}
+			foreach (self::PHASES as $phase) {
+				if ($latestRevision($pageId) !== $revision ||
+					$publicIdentity($pageId) !== $baselineIdentity) {
+					$report['state'] = 'retry-page-changed';
+					return $report;
+				}
+				$outcome = $prepare($phase, $pageId);
+				if (!is_array($outcome) || !is_bool($outcome['ok'] ?? null) ||
+					!is_string($outcome['status'] ?? null)) {
+					throw new \RuntimeException('Malformed cache preparation outcome');
+				}
+				$report['phases'][$phase] = $outcome['status'];
+				if (!$outcome['ok']) {
+					$report['state'] = 'retry';
+					return $report;
+				}
+				if ($latestRevision($pageId) !== $revision ||
+					$publicIdentity($pageId) !== $baselineIdentity) {
+					$report['state'] = 'retry-page-changed';
+					return $report;
+				}
+			}
+			$report['state'] = 'complete';
+		} catch (\Throwable $e) {
+			$report['state'] = 'retry';
+			$report['errorType'] = get_class($e);
+		}
+		return $report;
+	}
+
 	/**
 	 * A semantic invalidation can supersede a request without changing its
 	 * revision. This check must be repeated before each phase and after the
