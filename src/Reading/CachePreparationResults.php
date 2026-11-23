@@ -76,6 +76,12 @@ final class CachePreparationResults {
 				$nonzero === ['LOCAL_HIT' => 1]) {
 				return ['ok' => true, 'status' => (string)array_key_first($nonzero)];
 			}
+			// SMW's own ArticleFromTitle handler replaces our mobile adapter on
+			// Property and Concept pages. The Minerva CLI verifies this locally
+			// without HTTP; only this explicit safe skip may advance the cursor.
+			if ($nonzero === ['SKIPPED_SMW_ARTICLE' => 1]) {
+				return ['ok' => true, 'status' => 'SKIPPED_SMW_ARTICLE'];
+			}
 			if ($nonzero === ['BYPASS' => 1]) {
 				$reasons = $stats['bypassReasons'] ?? [];
 				// Only a single well-formed diagnostic reason is safe to include in reports.
