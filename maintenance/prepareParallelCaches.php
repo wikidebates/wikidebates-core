@@ -163,6 +163,9 @@ class PrepareParallelCaches extends Maintenance {
 		if (!$healthTitle || !$healthTitle->canExist()) {
 			$this->fatalError('Invalid public health page title.');
 		}
+		if (AnonymousCacheSafety::forTitle($healthTitle) === null) {
+			$this->fatalError('The public health page must exist and be readable anonymously.');
+		}
 		$healthUrl = $healthTitle->getFullURL();
 		$healthParts = parse_url($healthUrl);
 		if (!is_array($healthParts) ||
@@ -663,8 +666,7 @@ class PrepareParallelCaches extends Maintenance {
 		$handle = curl_init($url);
 		if ($handle === false) { return [null, null]; }
 		curl_setopt_array($handle, [
-			CURLOPT_FOLLOWLOCATION => true,
-			CURLOPT_MAXREDIRS => 2,
+			CURLOPT_FOLLOWLOCATION => false,
 			CURLOPT_CONNECTTIMEOUT_MS => 2500,
 			CURLOPT_TIMEOUT_MS => 5000,
 			CURLOPT_USERAGENT => 'WikidebatesCachePreparationHealth/1',
