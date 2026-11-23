@@ -10,6 +10,14 @@ if (!$root || !is_file($root . '/.wikidebates-minerva-lab') ||
 	throw new RuntimeException('Vector rebuild test requires a marked disposable wiki');
 }
 $state = $root . '/state';
+// MediaWiki maintenance/run.php resolves an extension CLI by its installed
+// extensions/<name>/maintenance directory. Earlier targeted test commands
+// invoked the script by path and did not need this disposable symlink.
+$extensionLink = $root . '/mediawiki/extensions/Wikidebates';
+if (file_exists($extensionLink) || is_link($extensionLink) ||
+	!symlink(dirname(__DIR__, 2), $extensionLink)) {
+	throw new RuntimeException('Could not create isolated Wikidebates maintenance registration');
+}
 $queueDir = $state . '/preparation-queue';
 if (!is_dir($queueDir) && !mkdir($queueDir, 0700)) {
 	throw new RuntimeException('Could not create disposable queue directory');
