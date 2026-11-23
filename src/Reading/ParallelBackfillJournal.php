@@ -346,7 +346,7 @@ final class ParallelBackfillJournal {
 		if (is_link($this->path)) {
 			throw new \RuntimeException('Symlinked parallel checkpoint');
 		}
-		$json = json_encode($data, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES) . "\n";
+		$json = json_encode($data, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION) . "\n";
 		$temp = @tempnam($this->directory, '.parallel-state-');
 		if (!$temp || dirname($temp) !== $this->directory) {
 			throw new \RuntimeException('Cannot allocate parallel checkpoint file');
