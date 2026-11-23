@@ -14,6 +14,9 @@ function check($value, string $message): void {
 $dir = sys_get_temp_dir() . '/minerva-store-unit-' . bin2hex(random_bytes(6));
 mkdir($dir, 0700);
 try {
+	$metadata = json_decode(file_get_contents(dirname(__DIR__, 2) . '/extension.json'), true, 512, JSON_THROW_ON_ERROR);
+	check($metadata['config']['WikidebatesReadingCacheTTL']['value'] === 0,
+		'Reading fragments do not expire by default');
 	$store = new Store($dir, 'wiki-one', 300, 4096);
 	$identity = ['revision' => 1, 'touched' => '20261022000000'];
 	$first = $store->read('A', 'android', $identity);
@@ -40,7 +43,7 @@ try {
 	check($store->prune() === 0 && is_file($path), 'Pruning preserves live payloads');
 	check($store->read('A', 'android', $identity)['entry']['body'] === 'CURRENT', 'Pruning cannot alter reading behavior');
 	$entry = json_decode(gzdecode(file_get_contents($path)), true);
-	$entry['expires'] = time() - 1;
+	$entry['created'] = time() - 301;
 	file_put_contents($path, gzencode(json_encode($entry)));
 	check($store->read('A', 'android', $identity)['entry'] === null, 'Expired entries miss');
 	check($store->prune() === 1 && !is_file($path), 'Cleanup removes expired payloads');
@@ -78,7 +81,36 @@ try {
 	$snapshot = $long->read('A', 'common', $identity);
 	$long->publish('A', 'common', $identity, $snapshot['generation'], 'LONG', [], time() + 99999999);
 	$entry = $long->read('A', 'common', $identity)['entry'];
-	check($entry['expires'] <= $entry['created'] + 2592000, 'Retention never exceeds thirty days');
+	check($entry['expires'] === $entry['created'] + 99999999,
+		'Explicit fragment TTL is honored without a fixed 30-day cap');
+
+	// No explicit TTL: even an old file bearing a historical 30-day
+	// expiry remains valid until this page is invalidated.
+	$unlimited = new Store($dir, 'unlimited-reading', 0, 4096);
+	$shot = $unlimited->read('Old', 'common', $identity);
+	check($unlimited->publish('Old', 'common', $identity, $shot['generation'],
+		'STABLE_FRAGMENT', [], time() + 2), 'Unlimited reading fragment is eligible');
+	$oldPath = glob($dir . '/' . hash('sha256', 'unlimited-reading') . '/*/*/*.cache')[0];
+	$legacy = json_decode(gzdecode(file_get_contents($oldPath)), true, 512, JSON_THROW_ON_ERROR);
+	$legacy['created'] = time() - 86400 * 90;
+	$legacy['expires'] = $legacy['created'] + 2592000;
+	file_put_contents($oldPath, gzencode(json_encode($legacy, JSON_THROW_ON_ERROR)));
+	check($unlimited->read('Old', 'common', $identity)['entry']['body'] === 'STABLE_FRAGMENT',
+		'Legacy fragment still loads after its old 30-day deadline');
+	check($unlimited->prune() === 0 && is_file($oldPath),
+		'Unlimited pruning retains old fragments');
+	check($unlimited->read('Old', 'common', ['revision' => 3])['entry'] === null,
+		'Unlimited fragments still obey page identity');
+	$unlimited->invalidate('Old');
+	check($unlimited->read('Old', 'common', $identity)['entry'] === null,
+		'Direct page invalidation still removes unlimited fragments');
+	try {
+		new Store($dir, 'negative-ttl', -1, 4096);
+		throw new RuntimeException('Negative TTL accepted');
+	} catch (RuntimeException $e) {
+		check($e->getMessage() === 'Cache directory or limits are not usable',
+			'Negative fragment TTL remains invalid');
+	}
 
 	echo json_encode(['assertions' => $assertions, 'result' => 'PASS']) . "\n";
 } finally {
