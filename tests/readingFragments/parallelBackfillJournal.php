@@ -117,6 +117,15 @@ try {
 
 	$journal->heartbeat($token2, 3);
 	parallelAssert($journal->snapshot()['desired_workers'] === 3, 'Adaptive worker permits');
+	mustReject(fn() => $journal->completed($token2, 0, 101,
+		'skipped-cache-policy', ['vector' => 'CREATED']));
+	$journal->completed($token2, 0, 101, 'skipped-cache-policy', [
+		'vector' => 'SKIPPED_NONCONTENT',
+		'minerva' => 'android=BYPASS-parser-expiry;iphone=BYPASS-parser-expiry',
+		'reading' => 'skipped-cache-policy'
+	]);
+	parallelAssert($journal->snapshot()['metrics']['skipped'] === 1,
+		'Explicit NOCACHE page is counted as skipped, not as created');
 	$journal->completed($token2, 0, 102, 'complete', ['vector' => 'REUSED']);
 	$journal->exhausted($token2, 0);
 	parallelAssert((new ParallelBackfillState($journal->snapshot()['lanes']))->contiguousAfter() === 104,
