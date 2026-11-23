@@ -91,6 +91,26 @@ Une veritable erreur de stockage (WRITE_FAILED) ou de rendu reste bloquante,
 et une commande enfant Vector qui quitte avec un code 1 conserve desormais
 un diagnostic interne connu, sans exposer ses messages d'erreur arbitraires.
 
+## Sortie imprevisible d'un processus enfant
+
+Le superviseur distingue desormais l'etat reelement termine d'une plage
+(checkpoint `done` confirme) du code de sortie rapporte par PHP. Sur PHP 8.4,
+`proc_get_status()` peut rendre `exitcode=-1` (signal ou code non disponible).
+`proc_close()` est egalement examine et le signal est rapporte explicitement.
+
+Si la plage n'est PAS terminee et que l'etat global est sain, le superviseur
+relance au plus deux fois ce processus avec la meme session et la meme plage
+de pages. Il ne valide ni fichiers ni pages en cas de sortie inconnue.
+La file des editions peut elle aussi etre relancee si une autre plage reste
+a traiter. Si la plage est deja terminee (ou si l'arret global est demande),
+un code de sortie indisponible ne transforme plus un travail reussi en echec.
+
+Chaque terminaison produit un evenement `worker-exit` comprenant `worker`,
+`exit_code`, `signal`, `action`, et `restarts` sans exposer de titre, URL ou
+sortie du sous-processus. Apres epuisement des reprises, le checkpoint passe
+en `failed` et retient la cause et le nom de la plage. Les controles HTTP,
+base de donnees, ressources et ACL restent inchanges.
+
 ## Erreurs locales : poursuivre sans masquer les lacunes
 
 Une erreur sur une page ne doit pas immobiliser tout un wiki. Si la
