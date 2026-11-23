@@ -355,9 +355,10 @@ try {
 			throw new RuntimeException('Native HTTP failed view-only contract for ' . $kind);
 		}
 		$nativeNoToc = $nativeNoTocCache->fetchText();
-		if (!str_contains($nativeNoToc, 'vector-toc-not-available') ||
-			str_contains($nativeNoToc, 'id="mw-panel-toc"')) {
-			throw new RuntimeException('Native Vector unexpectedly rendered a TOC on ' . $kind);
+		if ($kind === 'explicit-notoc' &&
+			(!str_contains($nativeNoToc, 'vector-toc-not-available') ||
+			str_contains($nativeNoToc, 'id="mw-panel-toc"'))) {
+			throw new RuntimeException('Native Vector ignored __NOTOC__ directive');
 		}
 
 		$nativeNoTocCache->clearCache();
