@@ -374,4 +374,23 @@ final class CachePreparationQueue {
 		}
 		return $batch;
 	}
+	/**
+	 * Dedicated private workspace for resumable parallel backfill state.
+	 * This does not change the existing queue or the daily scan cursor.
+	 */
+	public function parallelDirectory(): string {
+		$this->ensureDirectory();
+		$path = $this->root . '/parallel';
+		if (is_link($path) || (file_exists($path) && !is_dir($path))) {
+			throw new \RuntimeException('Invalid parallel backfill workspace');
+		}
+		if (!is_dir($path) && !@mkdir($path, 0700) && !is_dir($path)) {
+			throw new \RuntimeException('Cannot create parallel backfill workspace');
+		}
+		if ((fileperms($path) & 0077) !== 0) {
+			throw new \RuntimeException('Parallel backfill workspace is not private');
+		}
+		return $path;
+	}
+
 }
