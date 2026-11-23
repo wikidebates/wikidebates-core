@@ -38,7 +38,8 @@ final class CachePreparationResults {
 				return ['ok' => true, 'status' => 'not-an-argument'];
 			}
 			$statuses = (array)($report['statuses'] ?? []);
-			$accepted = ['created', 'already-valid', 'skipped', 'not-cacheable'];
+			// Deferred preparation is a deliberate no-op, not a cache failure.
+			$accepted = ['created', 'already-valid', 'skipped', 'not-cacheable', 'deferred-no-html'];
 			$ok = 0;
 			$status = '';
 			foreach ($statuses as $name => $count) {

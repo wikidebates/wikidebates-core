@@ -43,7 +43,7 @@ class WarmFragmentsJob extends \Job {
 			// same page. Retry only in this background preparation, never in
 			// the ordinary visitor request path.
 			for ($attempt = 0; $attempt < 4; $attempt++) {
-				FragmentService::read($context, $this->title->getPrefixedText(), 'vector', null, $this->preparation);
+				FragmentService::read($context, $this->title->getPrefixedText(), 'vector', null, $this->preparation, false);
 				if (($this->preparation['status'] ?? null) !== 'busy') { break; }
 				if ($attempt < 3) { usleep(200000); }
 			}

@@ -245,6 +245,10 @@ try {
 		'Reused fragment is accepted');
 	$check(CachePreparationResults::interpret('reading', 17, 0,
 		$reading(17, 0, []))['ok'], 'A nonargument page skips the reading phase');
+	$check(CachePreparationResults::interpret('reading', 17, 0,
+		$reading(17, 1, ['deferred-no-html' => 1])) ===
+		['ok' => true, 'status' => 'deferred-no-html'],
+		'No full HTML available defers unattended fragment preparation without parsing');
 	$check(!CachePreparationResults::interpret('reading', 17, 0,
 		$reading(17, 1, ['not-stored' => 1]))['ok'],
 		'Failed fragment storage preserves the pending queue record');

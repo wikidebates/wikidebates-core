@@ -82,7 +82,7 @@ class PrepareReadingCache extends Maintenance {
 		$db = $pageId !== null ? $services->getConnectionProvider()->getPrimaryDatabase() :
 			$services->getDBLoadBalancer()->getConnection(DB_REPLICA);
 		$count = 0;
-		$statuses = array_fill_keys(['already-valid', 'created', 'not-cacheable', 'not-stored', 'busy', 'skipped', 'failed'], 0);
+		$statuses = array_fill_keys(['already-valid', 'created', 'not-cacheable', 'not-stored', 'busy', 'skipped', 'deferred-no-html', 'failed'], 0);
 		$sources = array_fill_keys(['fragment-cache', 'vector-file', 'minerva-file', 'parser', 'page-output', 'other'], 0);
 		$stopReason = 'complete';
 		try {
