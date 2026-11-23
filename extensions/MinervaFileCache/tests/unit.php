@@ -14,6 +14,8 @@ function check($value, string $message): void {
 $manifest = json_decode(file_get_contents(dirname(__DIR__) . '/extension.json'), true, 512, JSON_THROW_ON_ERROR);
 check(($manifest['config']['MinervaFileCacheEnabled']['value'] ?? null) === true,
 	'Loading the extension enables mobile file cache by default');
+check(($manifest['config']['MinervaFileCacheTTL']['value'] ?? null) === 0,
+	'Default Minerva cache does not expire by age');
 $dir = sys_get_temp_dir() . '/minerva-store-unit-' . bin2hex(random_bytes(6));
 mkdir($dir, 0700);
 try {
@@ -286,7 +288,7 @@ try {
 	$paths = glob($dir . '/' . hash('sha256', 'wiki-one') . '/*/*/*.cache');
 	$path = $paths[0];
 	$entry = json_decode(gzdecode(file_get_contents($path)), true);
-	$entry['expires'] = time() - 1;
+	$entry['created'] = time() - 301;
 	file_put_contents($path, gzencode(json_encode($entry)));
 	check($store->read('A', 'android', $identity)['entry'] === null, 'Expired entries miss');
 	check($store->prune() === 1 && !is_file($path), 'Cleanup removes expired payloads');
@@ -300,7 +302,7 @@ try {
 		$otherPath = $dir . '/' . $wikiHash . '/' . substr($pageHash, 0, 2) . '/' .
 			$pageHash . '/' . hash('sha256', 'android') . '.cache';
 		$otherEntry = json_decode(gzdecode(file_get_contents($otherPath)), true);
-		$otherEntry['expires'] = time() - 1;
+		$otherEntry['created'] = time() - 301;
 		file_put_contents($otherPath, gzencode(json_encode($otherEntry)));
 		touch($otherPath, time() - 1);
 		$expiredPaths[] = $otherPath;
@@ -324,6 +326,53 @@ try {
 	}
 	check(ResponsePolicy::headersForStorage(str_replace('<body', '<body nonce="private"', $html), $headers) === null, 'Nonce markup is never replayed');
 	check(ResponsePolicy::headersForStorage(str_replace('skin-minerva', 'skin-vector', $html), $headers) === null, 'Desktop content cannot enter mobile cache');
+	// No TTL: old snapshots remain valid even when a historical payload has
+	// an expired 30-day deadline or a very old creation timestamp.
+	$unlimited = new Store($dir, 'unlimited-wiki', 0, 4096);
+	$noAge = $unlimited->read('Old', 'android', $identity);
+	check($unlimited->publish('Old', 'android', $identity, $noAge['generation'],
+		'UNCHANGED_FOR_MONTHS', [], time() + 2),
+		'Eligible parser output may be retained without a time limit');
+	$oldPath = glob($dir . '/' . hash('sha256', 'unlimited-wiki') . '/*/*/*.cache')[0];
+	$oldEntry = json_decode(gzdecode(file_get_contents($oldPath)), true, 512, JSON_THROW_ON_ERROR);
+	$oldEntry['created'] = time() - 86400 * 90;
+	$oldEntry['expires'] = $oldEntry['created'] + 2592000;
+	file_put_contents($oldPath, gzencode(json_encode($oldEntry, JSON_THROW_ON_ERROR)));
+	check($unlimited->read('Old', 'android', $identity)['entry']['body'] === 'UNCHANGED_FOR_MONTHS',
+		'Legacy 30-day expiry does not invalidate an unlimited file');
+	check($unlimited->prune() === 0 && is_file($oldPath),
+		'Unlimited cleanup does not delete old snapshots');
+	check($unlimited->publish('Old', $fragmentVariant, $identity, $noAge['generation'],
+		'UNCHANGED_FRAGMENT', [], time() + 2),
+		'Unlimited Minerva HTML remains a valid source for reading fragments');
+	$mobileFragment = $unlimited->readForFragment('Old', $identity, $fragmentContext);
+	check($mobileFragment['body'] === 'UNCHANGED_FRAGMENT' &&
+		$mobileFragment['expires'] === PHP_INT_MAX,
+		'Fragment fallback inherits unlimited Minerva file lifetime');
+	check($unlimited->read('Old', 'android', ['revision' => 2])['entry'] === null,
+		'Unlimited lifetime never bypasses page revision identity');
+	$unlimited->invalidate('Old');
+	check($unlimited->read('Old', 'android', $identity)['entry'] === null,
+		'Direct invalidation still clears unlimited files');
+
+	// An explicit TTL can exceed 30 days; parser expiry does not shorten it.
+	$longTtl = new Store($dir, 'long-ttl-wiki', 86400 * 90, 4096);
+	$longShot = $longTtl->read('Old', 'android', $identity);
+	check($longTtl->publish('Old', 'android', $identity, $longShot['generation'],
+		'LONG_TTL', [], time() + 2), 'Explicit TTL publishes independently of parser expiry');
+	$longEntry = $longTtl->read('Old', 'android', $identity)['entry'];
+	check($longEntry['expires'] === $longEntry['created'] + 86400 * 90,
+		'Explicit 90-day limit is honored without a 30-day cap');
+	foreach ([-1, -86400] as $badTtl) {
+		try {
+			new Store($dir, 'invalid-ttl', $badTtl, 4096);
+			throw new RuntimeException('Negative TTL was accepted');
+		} catch (RuntimeException $e) {
+			check($e->getMessage() === 'Cache directory or limits are not usable',
+				'Negative TTL remains invalid');
+		}
+	}
+
 	$alias = new Store($dir . '/../' . basename($dir), 'wiki-one', 300, 4096);
 	$snapshot = $alias->read('A', 'canonical-path', $identity);
 	check($alias->publish('A', 'canonical-path', $identity, $snapshot['generation'], 'CANONICAL', []),
