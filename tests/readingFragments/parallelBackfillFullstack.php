@@ -249,10 +249,11 @@ try {
 	fclose($reportPipes[2]);
 	$reportExit = proc_close($reportProcess);
 	$reportData = json_decode(trim($reportOutput), true);
-	if ($reportExit !== 0 ||
+	if ($reportExit !== 0 || !is_array($reportData) ||
 		($reportData['mode'] ?? null) !== 'errors' ||
 		($reportData['summary']['open'] ?? 0) < 1 ||
-		($reportData['mail_status'] ?? 'unexpected') !== null) {
+		!array_key_exists('mail_status', $reportData) ||
+		$reportData['mail_status'] !== null) {
 		throw new RuntimeException('Read-only failure report broke: ' .
 			substr($reportOutput . $reportErrors, -2500));
 	}
