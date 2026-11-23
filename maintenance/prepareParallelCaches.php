@@ -433,9 +433,7 @@ class PrepareParallelCaches extends Maintenance {
 					// Never continue a detached orphan after supervisor exit.
 					return false;
 				}
-				if ($snapshot['desired_workers'] === 0 ||
-					time() < $snapshot['cooldown_until'] ||
-					$lane !== null && $lane >= $snapshot['desired_workers']) {
+				if (!$this->lanePermitted($snapshot, $lane)) {
 					usleep(500000);
 					continue;
 				}
@@ -504,9 +502,7 @@ class PrepareParallelCaches extends Maintenance {
 						$snapshot['state'] !== 'running') {
 						return true;
 					}
-					if ($snapshot['desired_workers'] === 0 ||
-						time() < $snapshot['cooldown_until'] ||
-						$lane >= $snapshot['desired_workers']) {
+					if (!$this->lanePermitted($snapshot, $lane)) {
 						break;
 					}
 					$result = $this->processWithRetry(
@@ -563,6 +559,30 @@ class PrepareParallelCaches extends Maintenance {
 	}
 
 	/**
+	 * Permits follow the first unfinished lanes, not fixed numeric lane IDs.
+	 * Otherwise a throttled 4-lane sweep with a single worker would finish
+	 * lane 0 and leave lanes 1-3 waiting forever.
+	 */
+	private function lanePermitted(array $snapshot, ?int $lane): bool {
+		if ($snapshot['desired_workers'] === 0 ||
+			time() < $snapshot['cooldown_until']) {
+			return false;
+		}
+		if ($lane === null) {
+			return true;
+		}
+		$position = 0;
+		foreach ($snapshot['lanes'] as $index => $data) {
+			if ($data['done']) { continue; }
+			if ($index === $lane) {
+				return $position < $snapshot['desired_workers'];
+			}
+			$position++;
+		}
+		return false;
+	}
+
+	/**
 	 * Retry a transient HTTP failure at most twice with a globally visible
 	 * cooldown. Release the per-page build lock between attempts, but always
 	 * repeat every phase and the coordinator's fresh identity checks.
@@ -582,9 +602,7 @@ class PrepareParallelCaches extends Maintenance {
 					time() - $snapshot['heartbeat_at'] > 45) {
 					return ['state' => 'interrupted', 'phases' => []];
 				}
-				if ($snapshot['desired_workers'] > 0 &&
-					($lane === null || $lane < $snapshot['desired_workers']) &&
-					time() >= $snapshot['cooldown_until']) {
+				if ($this->lanePermitted($snapshot, $lane)) {
 					break;
 				}
 				usleep(250000);
