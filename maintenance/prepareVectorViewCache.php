@@ -107,7 +107,16 @@ class PrepareVectorViewCache extends Maintenance {
 
 		$context = new RequestContext();
 		$context->setTitle($title);
-		$context->setSkin($services->getSkinFactory()->makeSkin($skinName));
+		// RequestContext::setSkin() CLONES the Skin. On MediaWiki 1.43
+		// the clone retains a component registry bound to the ORIGINAL
+		// Skin, whose OutputPage has no parsed TOC. The cached Vector
+		// 2022 HTML then omits #mw-panel-toc even with section headings.
+		// Let this request build its own Skin, binding its components to
+		// the same OutputPage used by Article::view().
+		$actualSkin = $context->getSkin();
+		if ($actualSkin->getSkinName() !== $skinName) {
+			$this->fatalError('The isolated prewarm context did not select the configured Vector skin.');
+		}
 		$article = Article::newFromTitle($title, $context);
 		$context->setWikiPage($article->getPage());
 		RequestContext::getMain()->setTitle($title);
