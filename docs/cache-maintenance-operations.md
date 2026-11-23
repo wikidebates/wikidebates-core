@@ -74,6 +74,9 @@ zéro. Les incidents détectés sont :
 - pour EN : absence de checkpoint plus d'une heure après la fin
   observée du checkpoint FR, afin de détecter un enchaînement qui n'a
   jamais lancé la seconde langue.
+- arrêt du balayage quotidien sur une révision impossible à reprendre ou sur
+  douze erreurs consécutives, même si aucune erreur individuelle n'a pu
+  être enregistrée ; le problème est conservé dans un fichier privé distinct.
 
 `--report-errors --mail-errors` regroupe les incidents et les erreurs de
 pages, déduplique par session/signature et limite les envois à un
