@@ -69,6 +69,13 @@ n'est exploitable. Le parseur direct reste accessible pour l'API de
 consultation, mais pas pour le cron. Les pages non éligibles au fragment
 sont simplement ignorées.
 
+Le seuil optionnel `--max-load` interrompt le traitement avant une nouvelle
+page si la charge moyenne Linux sur une minute le dépasse. La valeur `0`
+désactive ce contrôle ; choisir un seuil **après mesure du nombre de CPU et
+de la charge habituelle sur le serveur**, par exemple en ajoutant
+`--max-load=4` uniquement si cette limite est pertinente. Une interruption
+pour `system-load` conserve le curseur et les éditions non traitées.
+
 Le cron n'est **pas** installé par ces commandes. Avant toute programmation,
 vérifier les tâches déjà présentes sur le serveur, les versions déployées,
 les autorisations `0700` du dossier privé et les éventuelles invalidations
