@@ -58,6 +58,11 @@ putenv('PHP_INI_SCAN_DIR=:' . $iniDir);
 $conf = $root . '/mediawiki/LocalSettings.php';
 file_put_contents($conf, "<?php\n");
 chmod($conf, 0600);
+// Keep the test's LocalSettings mtime older than its fixed, past CacheEpoch.
+// A future CacheEpoch would make native Vector file caching impossible.
+if (!touch($conf, strtotime('2026-01-01 00:00:00 UTC'))) {
+	throw new RuntimeException('Cannot stabilize disposable LocalSettings mtime');
+}
 
 $server = proc_open([PHP_BINARY, '-d', 'auto_prepend_file=' . __DIR__ . '/bootstrap.php',
 	'-d', 'zlib.output_compression=0', '-S', '127.0.0.1:8080', '-t', $root . '/mediawiki'],
