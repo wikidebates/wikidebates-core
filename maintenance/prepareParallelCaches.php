@@ -132,11 +132,14 @@ class PrepareParallelCaches extends Maintenance {
 		}
 		$server = (string)$config->get('Server');
 		$parts = parse_url($server);
-		if (!is_array($parts) || ($parts['scheme'] ?? null) !== 'https' ||
+		$loopbackLab = is_array($parts) && ($parts['scheme'] ?? null) === 'http' &&
+			in_array($parts['host'] ?? '', ['127.0.0.1', '::1', 'localhost'], true);
+		if (!is_array($parts) ||
+			(($parts['scheme'] ?? null) !== 'https' && !$loopbackLab) ||
 			!isset($parts['host']) || isset($parts['user']) || isset($parts['pass']) ||
 			isset($parts['query']) || isset($parts['fragment']) ||
 			isset($parts['path'])) {
-			$this->fatalError('The wiki needs an absolute HTTPS $wgServer origin.');
+			$this->fatalError('The wiki needs an HTTPS origin (HTTP only for localhost lab).');
 		}
 		$lock = $queue->tryLockWorker();
 		if (!$lock) {
