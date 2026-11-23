@@ -112,15 +112,17 @@ mettant `$wgMinervaFileCacheDebugHeaders = false` si souhaité.
 - Les fichiers sont compressés sur disque. La compression HTTP reste gérée par
   MediaWiki, PHP ou le serveur web, avec les réglages existants.
 
-La durée maximale est de **2 592 000 secondes (30 jours)** par défaut. Les modifications de page,
-purges et invalidations de dépendances retirent les variantes mobiles via le
-pipeline HTML de MediaWiki. Les jobs de mise à jour des dépendances doivent
-fonctionner, comme pour les autres caches MediaWiki.
+**Par défaut, les fichiers ne sont soumis à aucune expiration temporelle.**
+Le HTML est conservé jusqu'à la modification de sa page, une purge explicite,
+un changement d'identité de cache ou un événement de sécurité. Un changement
+des résultats de recherches SMW sur une autre page ne déclenche pas de purge
+dans l'extension Wikidebates. Les droits de lecture et les règles de
+publication anonyme restent vérifiés.
 
 Les paramètres facultatifs sont :
 
 ```php
-$wgMinervaFileCacheTTL = 2592000; // Maximum 30 jours, limité aussi par le ParserOutput.
+$wgMinervaFileCacheTTL = 604800; // FACULTATIF : sept jours si souhaités (défaut = 0, illimité).
 $wgMinervaFileCacheMaxBytes = 4194304; // Taille maximale du HTML par fichier.
 $wgMinervaFileCacheDebugHeaders = true;
 $wgMinervaFileCacheEpoch = '1';
@@ -416,14 +418,16 @@ pour éviter les collisions de variantes non validées.
 
 ## Nettoyage et désactivation
 
-Planifier une exécution régulière du nettoyage, par exemple toutes les heures,
-depuis la racine MediaWiki et avec l'utilisateur PHP :
+Le nettoyage temporel est **inactif par défaut** car le TTL vaut 0.
+Si un TTL strictement positif a été défini explicitement, il est possible
+d'exécuter ponctuellement le nettoyage depuis la racine MediaWiki avec
+l'utilisateur PHP :
 
 ```sh
 php maintenance/run.php MinervaFileCache:prune
 ```
 
-Le nettoyage retire les fichiers expirés ou endommagés. Il parcourt
+Avec TTL positif, le nettoyage retire les fichiers expirés ou endommagés. Il parcourt
 les répertoires et les variantes progressivement, sans constituer en mémoire
 la liste de tous les fichiers du wiki : son empreinte mémoire reste ainsi
 limitée même si le cache contient de nombreuses pages. Les nouvelles
@@ -476,10 +480,12 @@ mode lecture continuent de suivre leur chemin actuel et leur parser cache.
 
 ### Durée des sources du lecteur
 
-La durée par défaut est maintenant de 30 jours maximum. Une écriture conserve
-également l’expiration restante du ParserOutput ; les contenus dynamiques gardent
-leurs durées réduites. Pour les pages stables, vérifier aussi
-`$wgParserCacheExpireTime = 2592000` : conserver son plafond plus court empêcherait
-d’atteindre cette durée. Les anciennes entrées ne voient pas leur échéance prolongée.
+La durée d'un fichier Minerva est illimitée par défaut. Le ParserOutput
+sert à déterminer si la réponse peut être initialement enregistrée, mais son
+délai d'expiration ne limite pas ensuite l'existence du fichier.
+Un TTL positif explicite est appliqué sans plafond arbitraire, y compris au-delà
+de 30 jours. Les anciennes entrées ayant un marqueur d'expiration à 30 jours
+restent utilisables tant que leur identité de page est valide et que le TTL
+n'est pas configuré. Le cache Lecture applique séparément son éventuel TTL.
 Quand Wikidebates est chargé, le lecteur peut réutiliser ces fichiers après le
 cache natif Vector ; l’extension reste installable et utilisable seule.
