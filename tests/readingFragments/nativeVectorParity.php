@@ -222,10 +222,11 @@ try {
 	}
 	if (!$ready) { throw new RuntimeException('Disposable HTTP server did not start'); }
 
-	$get = static function (string $action) use ($title): array {
+	$get = static function (string $action, ?MediaWiki\Title\Title $requested = null) use ($title): array {
+		$target = $requested ?? $title;
 		// Normal article navigation has no action=view query parameter.
 		// This matters for returntoquery and mobile-view links in the DOM.
-		$query = ['title' => $title->getPrefixedDBkey()];
+		$query = ['title' => $target->getPrefixedDBkey()];
 		if ($action !== 'view') { $query['action'] = $action; }
 		$url = 'http://127.0.0.1:8080/index.php?' . http_build_query($query);
 		$body = @file_get_contents($url, false,
@@ -313,6 +314,80 @@ try {
 		$historyBeforeTimestamp !== $cache('history')->cacheTimestamp()) {
 		throw new RuntimeException('Wikidebates view prewarming unexpectedly modified native history HTML');
 	}
+	// Pages with no legitimate table of contents must remain TOC-less,
+	// including a page with explicit __NOTOC__ despite five headings.
+	$noTocCases = [
+		'short' => [
+			'title' => 'Vector parity two headings',
+			'body' => "== One ==\nShort text with [[Main Page]]\n== Two ==\nSecond section text"
+		],
+		'explicit-notoc' => [
+			'title' => 'Vector parity explicit NOTOC',
+			'body' => "__NOTOC__\n" .
+				"== One ==\nBody\n== Two ==\nBody\n== Three ==\nBody\n" .
+				"== Four ==\nBody\n== Five ==\nBody"
+		]
+	];
+	$noTocReports = [];
+	foreach ($noTocCases as $kind => $fixture) {
+		$noTocTitle = MediaWiki\Title\Title::newFromText($fixture['title']);
+		$noTocPage = $services->getWikiPageFactory()->newFromTitle($noTocTitle);
+		$writer = $noTocPage->newPageUpdater($user);
+		$writer->setContent(MediaWiki\Revision\SlotRecord::MAIN,
+			MediaWiki\Content\ContentHandler::makeContent($fixture['body'], $noTocTitle));
+		$writer->saveRevision(MediaWiki\CommentStore\CommentStoreComment::newUnsavedComment(
+			'Disposable native parity without TOC'
+		));
+		if (!$writer->wasSuccessful()) {
+			throw new RuntimeException('Cannot create TOC-free fixture: ' . $kind);
+		}
+		MediaWiki\Deferred\DeferredUpdates::doUpdates();
+		$noTocId = (int)$noTocTitle->getArticleID();
+		if ($noTocId < 1) {
+			throw new RuntimeException('Missing TOC-free fixture page ID');
+		}
+		(new HTMLFileCache($noTocTitle, 'view'))->clearCache();
+		(new HTMLFileCache($noTocTitle, 'history'))->clearCache();
+		$anonymousNoToc = $get('view', $noTocTitle);
+		$nativeNoTocCache = new HTMLFileCache($noTocTitle, 'view');
+		if (!$nativeNoTocCache->isCached() ||
+			(new HTMLFileCache($noTocTitle, 'history'))->isCached()) {
+			throw new RuntimeException('Native HTTP failed view-only contract for ' . $kind);
+		}
+		$nativeNoToc = $nativeNoTocCache->fetchText();
+		if (!str_contains($nativeNoToc, 'vector-toc-not-available') ||
+			str_contains($nativeNoToc, 'id="mw-panel-toc"')) {
+			throw new RuntimeException('Native Vector unexpectedly rendered a TOC on ' . $kind);
+		}
+
+		$nativeNoTocCache->clearCache();
+		$prewarmNoTocOut = $run([
+			dirname(__DIR__, 2) . '/maintenance/prepareVectorViewCache.php',
+			'--conf=' . $conf, '--page-id=' . $noTocId, '--json'
+		], 'Wikidebates no-TOC preparation');
+		$prewarmNoTocReport = json_decode(trim($prewarmNoTocOut), true);
+		if (($prewarmNoTocReport['state'] ?? null) !== 'CREATED' ||
+			(new HTMLFileCache($noTocTitle, 'history'))->isCached()) {
+			throw new RuntimeException('Wikidebates no-TOC preparation changed history or failed');
+		}
+		$prewarmNoToc = (new HTMLFileCache($noTocTitle, 'view'))->fetchText();
+		$comparedNoToc = $compare($nativeNoToc, $prewarmNoToc,
+			'Anonymous HTTP and Wikidebates no-TOC ' . $kind);
+
+		$run([
+			$root . '/mediawiki/maintenance/rebuildFileCache.php',
+			'--conf=' . $conf, '--start=' . $noTocId,
+			'--end=' . $noTocId, '--overwrite'
+		], 'Core no-TOC rebuildFileCache');
+		$coreNoToc = (new HTMLFileCache($noTocTitle, 'view'))->fetchText();
+		$compare($nativeNoToc, $coreNoToc,
+			'Anonymous HTTP and core no-TOC ' . $kind);
+		if (!(new HTMLFileCache($noTocTitle, 'history'))->isCached()) {
+			throw new RuntimeException('Core maintenance did not create history for ' . $kind);
+		}
+		$noTocReports[$kind] = count($comparedNoToc);
+	}
+
 	$httpThird = $get('view');
 	if (!str_contains($httpThird['body'], 'Evidence') ||
 		!str_contains($read('view'), 'vector-toc-available')) {
@@ -324,7 +399,7 @@ try {
 		'page_id' => $id, 'history_first_visit_created' => true,
 		'history_second_visit_reused' => true, 'prewarm_preserved_history' => true,
 		'http_parity_regions' => $httpRegions, 'core_cli_parity_regions' => $cliRegions,
-		'prewarm_state' => $report['state']
+		'prewarm_state' => $report['state'], 'no_toc_parity_regions' => $noTocReports
 	], JSON_THROW_ON_ERROR) . "\n";
 } finally {
 	proc_terminate($server);
