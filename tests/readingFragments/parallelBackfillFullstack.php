@@ -152,6 +152,29 @@ try {
 		$checkpoint['cache_signature'], true);
 	$journal->failed($testCycle['run_id'], 1, $pageId, 'injected-worker-crash');
 	$oldGeneration = $testCycle['run_id'];
+
+	// Ordinary daily work must never pass a page in an unfinished parallel
+	// lane. This command is invoked with the shared wiki lock available, so
+	// its failure proves the durable journal guard, not a temporary lock.
+	$ordinary = [
+		PHP_BINARY, '-d', 'auto_prepend_file=' . __DIR__ . '/bootstrap.php',
+		MW_INSTALL_PATH . '/maintenance/run.php', 'Wikidebates:prepareDailyCaches',
+		'--wiki=' . $wiki, '--execute', '--limit=1', '--queue-limit=0',
+		'--minerva-delay-ms=250', '--max-seconds=480'
+	];
+	$ordinaryProc = proc_open($ordinary, [
+		['file', '/dev/null', 'r'],
+		['file', $stateDir . '/daily-during-parallel.out', 'w'],
+		['file', $stateDir . '/daily-during-parallel.err', 'w']
+	], $ordinaryPipes);
+	if (!is_resource($ordinaryProc)) {
+		throw new RuntimeException('Cannot probe daily cursor protection');
+	}
+	$ordinaryExit = proc_close($ordinaryProc);
+	if ($ordinaryExit === 0 || $queue->dailyCursor() !== 0) {
+		throw new RuntimeException('Ordinary daily scan ignored unfinished parallel checkpoint');
+	}
+
 	$resumedProcess = proc_open($command,
 		[['file', '/dev/null', 'r'],
 			['file', $stateDir . '/parallel-resume.out', 'w'],
