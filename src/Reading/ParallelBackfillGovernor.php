@@ -32,14 +32,22 @@ final class ParallelBackfillGovernor {
 	 * @param int|null $responseMs End-to-end public site response duration.
 	 */
 	public function sample(
-		?float $load, ?int $availableMb, ?int $responseCode, ?int $responseMs
+		?float $load, ?int $availableMb, ?int $responseCode, ?int $responseMs,
+		?array $fpm = null, bool $fpmRequired = false
 	): int {
 		$unavailable = $load === null || $availableMb === null ||
 			$responseCode === null || $responseMs === null;
 		$publicProblem = $responseCode === null || $responseCode < 200 ||
 			$responseCode >= 400 || $responseMs === null ||
 			$responseMs > $this->maximumResponseMs;
-		$hardPressure = $unavailable || $publicProblem ||
+		// A configured status endpoint becomes a mandatory signal, while sites
+		// without one still rely on the public response-time safeguard.
+		$fpmUnhealthy = $fpmRequired && ($fpm === null ||
+			!is_int($fpm['listen_queue'] ?? null) ||
+			!is_int($fpm['active'] ?? null) ||
+			!is_int($fpm['idle'] ?? null) ||
+			$fpm['listen_queue'] > 0);
+		$hardPressure = $unavailable || $publicProblem || $fpmUnhealthy ||
 			$availableMb < $this->minimumAvailableMb ||
 			$load > $this->maximumLoad * 1.2;
 		$softPressure = $load > $this->maximumLoad;
