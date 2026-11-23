@@ -35,7 +35,8 @@ final class DailyCacheScanIncident {
 				['retry-required', 'systemic-page-errors'], true) ||
 			!is_int($state['page_id'] ?? null) || $state['page_id'] < 0 ||
 			!is_int($state['at'] ?? null) || $state['at'] < 1 ||
-			!is_int($state['resolved_at'] ?? null) && ($state['resolved_at'] ?? 'invalid') !== null) {
+			(!array_key_exists('resolved_at', $state) ||
+			!($state['resolved_at'] === null || is_int($state['resolved_at'])))) {
 			throw new \RuntimeException('Malformed daily cache incident');
 		}
 		return $state;
