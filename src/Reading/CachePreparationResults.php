@@ -72,7 +72,8 @@ final class CachePreparationResults {
 				}
 				if ($count > 0) { $nonzero[$name] = $count; }
 			}
-			if ($nonzero === ['HIT' => 1] || $nonzero === ['MISS' => 1]) {
+			if ($nonzero === ['HIT' => 1] || $nonzero === ['MISS' => 1] ||
+				$nonzero === ['LOCAL_HIT' => 1]) {
 				return ['ok' => true, 'status' => (string)array_key_first($nonzero)];
 			}
 			if ($nonzero === ['BYPASS' => 1]) {
