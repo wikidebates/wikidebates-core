@@ -19,6 +19,7 @@ on:
       - 'tests/php/parallelBackfillGovernor.php'
       - 'tests/php/parallelBackfillRetryPolicy.php'
       - 'tests/php/parallelBackfillIdentityChange.php'
+      - 'tests/php/parallelBackfillWorkerExit.php'
       - 'tests/readingFragments/parallelBackfillFullstack.php'
       - 'tests/readingFragments/bootstrap.php'
       - 'tests/readingFragments/parallelBackfillJournal.php'
@@ -52,6 +53,8 @@ jobs:
           php -l tests/php/parallelBackfillGovernor.php
           php -l src/Reading/ParallelBackfillJournal.php
           php -l src/Reading/ParallelBackfillFailures.php
+          php -l src/Reading/ParallelBackfillWorkerExit.php
+          php -l tests/php/parallelBackfillWorkerExit.php
           php -l src/Reading/CachePreparationQueue.php
           php -l src/Reading/CachePreparationCoordinator.php
           php -l src/Reading/VectorCacheEligibility.php
@@ -67,6 +70,7 @@ jobs:
           php tests/php/parallelBackfillGovernor.php
           php tests/php/parallelBackfillRetryPolicy.php
           php tests/php/parallelBackfillIdentityChange.php
+          php tests/php/parallelBackfillWorkerExit.php
           php tests/php/vectorFilenameLimit.php
           php tests/readingFragments/parallelBackfillJournal.php
 

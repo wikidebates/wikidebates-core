@@ -10,6 +10,7 @@ use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillFpmStatus;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillFailures;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillJournal;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillState;
+use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillWorkerExit;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillRetryPolicy;
 use MediaWiki\WikiMap\WikiMap;
 use MediaWiki\Title\Title;
@@ -284,6 +285,8 @@ class PrepareParallelCaches extends Maintenance {
 			throw new \RuntimeException('No MediaWiki maintenance runner');
 		}
 		$children = [];
+		$commands = [];
+		$restartCounts = [];
 		$governor = new ParallelBackfillGovernor($workers, $maxLoad, $reserveMb, $healthMs, $dbMsLimit);
 		$lastProbe = 0.0;
 		$previousProgressAt = $started;
@@ -298,13 +301,18 @@ class PrepareParallelCaches extends Maintenance {
 					'--wiki=' . $wiki, '--execute', '--worker-lane=' . $lane,
 					'--session=' . $runId, '--minerva-devices=' . implode(',', $devices),
 					'--minerva-delay-ms=' . $minervaDelay];
-				$children['lane-' . $lane] = $this->spawn($command);
+				$key = 'lane-' . $lane;
+				$commands[$key] = $command;
+				$restartCounts[$key] = 0;
+				$children[$key] = $this->spawn($command);
 			}
 			if ($children !== []) {
 				$command = [PHP_BINARY, $entrypoint, 'Wikidebates:prepareParallelCaches',
 					'--wiki=' . $wiki, '--execute', '--worker-queue', '--session=' . $runId,
 					'--minerva-devices=' . implode(',', $devices),
 					'--minerva-delay-ms=' . $minervaDelay];
+				$commands['queue'] = $command;
+				$restartCounts['queue'] = 0;
 				$children['queue'] = $this->spawn($command);
 			}
 			while ($children !== []) {
@@ -390,15 +398,48 @@ class PrepareParallelCaches extends Maintenance {
 						}
 						fclose($child['pipes'][$channel]);
 					}
-					$exit = (int)$status['exitcode'];
-					@proc_close($child['process']);
+					$closeExit = (int)@proc_close($child['process']);
 					unset($children[$key]);
-					if ($exit !== 0) {
-						$failure = true;
-						$current = $journal->snapshot();
-						if ($current['state'] === 'running') {
-							$journal->failed($runId, -1, 0, 'worker-exit-' . $exit);
+					$current = $journal->snapshot();
+					// Check the durable lane frontier *after* collecting the
+					// child: an old snapshot could predate its final commit.
+					$needed = $current['run_id'] === $runId &&
+						$current['state'] === 'running' && !$current['stop_requested'] &&
+						($key === 'queue'
+							? !(new ParallelBackfillState($current['lanes']))->finished()
+							: !$current['lanes'][(int)substr($key, 5)]['done']);
+					$decision = ParallelBackfillWorkerExit::decide(
+						$status, $closeExit, $needed, $restartCounts[$key]
+					);
+					$this->report([
+						'type' => 'wikidebates-parallel-backfill', 'wiki' => $wiki,
+						'mode' => 'worker-exit', 'worker' => $key,
+						'exit_code' => $decision['exit_code'],
+						'signal' => $decision['signal'],
+						'reason' => $decision['reason'],
+						'action' => $decision['action'],
+						'restarts' => $restartCounts[$key]
+					]);
+					if ($decision['action'] === 'restart') {
+						// The old child's lane lock is released by process
+						// exit. Reuse the identical session and page range.
+						// Never change a cursor or acknowledge pending edits.
+						$restartCounts[$key]++;
+						try {
+							$children[$key] = $this->spawn($commands[$key]);
+						} catch (\RuntimeException $e) {
+							// Process-table exhaustion or another global
+							// spawning failure is not a recoverable page
+							// error. Persist a bounded reason, not the
+							// environment-specific exception message.
+							$failure = true;
+							$journal->failed($runId, -1, 0,
+								'worker-respawn-failed-' . $key);
 						}
+					} elseif ($decision['action'] === 'fatal') {
+						$failure = true;
+						$journal->failed($runId, -1, 0,
+							$decision['reason'] . '-' . $key);
 					}
 				}
 				if ($failure && $children === []) { break; }
