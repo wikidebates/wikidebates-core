@@ -425,7 +425,17 @@ class PrepareParallelCaches extends Maintenance {
 						// exit. Reuse the identical session and page range.
 						// Never change a cursor or acknowledge pending edits.
 						$restartCounts[$key]++;
-						$children[$key] = $this->spawn($commands[$key]);
+						try {
+							$children[$key] = $this->spawn($commands[$key]);
+						} catch (\RuntimeException $e) {
+							// Process-table exhaustion or another global
+							// spawning failure is not a recoverable page
+							// error. Persist a bounded reason, not the
+							// environment-specific exception message.
+							$failure = true;
+							$journal->failed($runId, -1, 0,
+								'worker-respawn-failed-' . $key);
+						}
 					} elseif ($decision['action'] === 'fatal') {
 						$failure = true;
 						$journal->failed($runId, -1, 0,
