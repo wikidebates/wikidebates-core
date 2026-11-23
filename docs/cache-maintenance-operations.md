@@ -69,6 +69,38 @@ La reprise des erreurs individuelles appartient à la **file des éditions**
 et reste prioritaire. Les pages valides ne sont pas régénérées si les
 commandes Vector/Minerva/Lecture constatent leurs fichiers valides.
 
+## Réparation progressive des sommaires Vector 2022 anonymes
+
+L'ancien préchauffage Vector 2022 pouvait cloner un Skin dont les composants
+conservaient une référence à l'ancien contexte. Les fichiers HTML étaient
+complets, mais le sommaire `#mw-panel-toc` y manquait sur les pages avec
+plusieurs titres de section. La mise à jour du générateur ne modifie pas
+les anciens fichiers tant qu'ils sont considérés comme valides.
+
+La commande ciblée peut identifier puis remplacer **uniquement** un cache
+Vector qui omet un sommaire pourtant présent dans le ParserOutput courant :
+
+~~~sh
+php maintenance/run.php Wikidebates:prepareVectorViewCache \
+	--wiki=fr --page-id=34700 --repair-missing-toc --dry-run --json
+php maintenance/run.php Wikidebates:prepareVectorViewCache \
+	--wiki=fr --page-id=34700 --repair-missing-toc --json
+~~~
+
+Le premier passage ne modifie aucun fichier. Il rend `MISSING_TOC`
+uniquement si la révision publique est stable, le fichier existant est
+valide, il annonce `vector-toc-not-available`, et le ParserOutput de la
+page contient réellement un sommaire autorisé. `REUSED` indique soit
+un fichier déjà corrigé, soit une page sans sommaire requis. Le second
+passage peut reconstruire un fichier ; il ne modifie ni Minerva ni Lecture.
+
+Le coordinateur des modifications et le balayage nocturne passent
+désormais automatiquement cette option. Ils corrigent donc
+progressivement les anciens fichiers affectés, dans leurs budgets de
+charge et de temps. Aucune suppression générale de caches ni modification
+du `CacheEpoch` ne sont nécessaires. Vérifier le résultat sur des pages
+avec au moins quatre sections avant d'estimer la couverture globale.
+
 ## Supervision et courriels
 
 `--report-errors` affiche maintenant les erreurs individuelles et un

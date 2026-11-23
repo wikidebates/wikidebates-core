@@ -26,16 +26,18 @@
 	}
 
 	function wkReadingGetVectorPinnedContainer() {
-		var el = D.querySelector( '.vector-sticky-pinned-container' );
-		if ( el ) return el;
-
-		el = D.querySelector( '.vector-column-start .vector-pinnable-element' );
-		if ( el ) return el;
-
-		el = D.querySelector( '#mw-panel' );
-		if ( el ) return el;
-
-		return null;
+		// Vector 2022 uses this class in BOTH sidebars. When the table
+		// of contents is unavailable, the first matching container is
+		// on the RIGHT, inside .vector-column-end. Reading mode hides
+		// that column, which would also hide the breadcrumb.
+		// Only attach to the genuine left TOC column when its pinned
+		// layout is active. Anonymous visitors may use the unpinned TOC
+		// client preference, which moves that column below the article.
+		// Otherwise ensureUi() keeps the breadcrumb in the reading panel.
+		if ( D.documentElement.classList.contains( 'vector-feature-toc-pinned-clientpref-0' ) ) {
+			return null;
+		}
+		return D.querySelector( '.vector-column-start .vector-sticky-pinned-container' );
 	}
 
 	function wkReadingGetVectorTopContainer() {

@@ -5,6 +5,8 @@ on:
     paths:
       - 'maintenance/prepareVectorViewCache.php'
       - 'tests/readingFragments/vectorViewOnly.php'
+      - 'tests/readingFragments/vector2022Toc.php'
+      - 'tests/readingFragments/bootstrap.php'
       - '.github/workflows/vector-view-only.yml'
 
 permissions:
@@ -28,6 +30,7 @@ jobs:
         run: |
           php -l maintenance/prepareVectorViewCache.php
           php -l tests/readingFragments/vectorViewOnly.php
+          php -l tests/readingFragments/vector2022Toc.php
       - name: Prepare pinned disposable MediaWiki 1.43
         run: |
           LAB="$RUNNER_TEMP/wd-vector-view-$GITHUB_RUN_ID"
@@ -41,3 +44,5 @@ jobs:
           php tests/readingFragments/manage.php initialize
       - name: Assert single view file, zero history files and reused HTML
         run: php tests/readingFragments/vectorViewOnly.php
+      - name: Assert anonymous Vector 2022 TOC survives CLI file preparation
+        run: php tests/readingFragments/vector2022Toc.php
