@@ -39,6 +39,7 @@ class PrepareParallelCaches extends Maintenance {
 		$this->addOption('max-load', 'Maximum tolerable 1-minute load (default 10).', false, true);
 		$this->addOption('reserve-mb', 'Required available RAM (default 2048 MB).', false, true);
 		$this->addOption('max-health-ms', 'Maximum public-site GET latency (default 2500 ms).', false, true);
+		$this->addOption('max-db-ms', 'Maximum PRIMARY indexed query latency (default 500 ms).', false, true);
 		$this->addOption('health-title', 'Existing public page for health GET; main page by default.', false, true);
 		$this->addOption('fpm-status-url', 'Optional loopback HTTP PHP-FPM status endpoint (?json).', false, true);
 		$this->addOption('max-seconds', 'Stop gracefully after this budget (600-86400; default 28800).', false, true);
@@ -131,6 +132,7 @@ class PrepareParallelCaches extends Maintenance {
 		}
 		$reserveMb = $this->number('reserve-mb', 2048, 128, 65536);
 		$healthMs = $this->number('max-health-ms', 2500, 200, 20000);
+		$dbMsLimit = $this->number('max-db-ms', 500, 50, 5000);
 		$maxSeconds = $this->number('max-seconds', 28800, 600, 86400);
 		$fpmUrl = (string)$this->getOption('fpm-status-url', '');
 		if ($fpmUrl !== '') {
@@ -202,7 +204,7 @@ class PrepareParallelCaches extends Maintenance {
 			);
 			return $this->supervise($queue, $journal, $wiki, $run, $workers,
 				$devices, $minervaDelay, (float)$loadRaw, $reserveMb,
-				$healthMs, $maxSeconds, $healthUrl, $fpmUrl);
+				$healthMs, $maxSeconds, $healthUrl, $fpmUrl, $dbMsLimit);
 		} finally {
 			fclose($lock);
 		}
@@ -216,7 +218,7 @@ class PrepareParallelCaches extends Maintenance {
 		CachePreparationQueue $queue, ParallelBackfillJournal $journal, string $wiki,
 		array $run, int $workers, array $devices, int $minervaDelay,
 		float $maxLoad, int $reserveMb, int $healthMs, int $maxSeconds,
-		string $healthUrl, string $fpmUrl
+		string $healthUrl, string $fpmUrl, int $dbMsLimit
 	): bool {
 		$started = microtime(true);
 		$runId = $run['run_id'];
@@ -226,7 +228,7 @@ class PrepareParallelCaches extends Maintenance {
 			throw new \RuntimeException('No MediaWiki maintenance runner');
 		}
 		$children = [];
-		$governor = new ParallelBackfillGovernor($workers, $maxLoad, $reserveMb, $healthMs);
+		$governor = new ParallelBackfillGovernor($workers, $maxLoad, $reserveMb, $healthMs, $dbMsLimit);
 		$lastProbe = 0.0;
 		$previousProgressAt = $started;
 		$previousCompleted = $run['metrics']['completed'] + $run['metrics']['skipped'];
@@ -269,9 +271,11 @@ class PrepareParallelCaches extends Maintenance {
 					$available = $this->availableMemoryMb();
 					[$httpStatus, $latency] = $this->probePublic($healthUrl);
 					$fpm = $fpmUrl !== '' ? $this->probeFpm($fpmUrl) : null;
+					$databaseMs = $this->probeDatabaseLatency();
 					$healthPermits = $governor->sample(
 						is_array($load) && isset($load[0]) ? (float)$load[0] : null,
-						$available, $httpStatus, $latency, $fpm, $fpmUrl !== ''
+						$available, $httpStatus, $latency, $fpm, $fpmUrl !== '',
+						$databaseMs, true
 					);
 					$inCooldown = time() < $snapshot['cooldown_until'];
 					$permits = $inCooldown ? 0 : $healthPermits;
@@ -295,6 +299,7 @@ class PrepareParallelCaches extends Maintenance {
 						'available_mb' => $available, 'health_http' => $httpStatus,
 						'health_ms' => $latency,
 						'http_cooldown_until' => $snapshot['cooldown_until'],
+						'database_ms' => $databaseMs,
 						'fpm_active' => $fpm['active'] ?? null,
 						'fpm_idle' => $fpm['idle'] ?? null,
 						'fpm_listen_queue' => $fpm['listen_queue'] ?? null,
@@ -624,6 +629,21 @@ class PrepareParallelCaches extends Maintenance {
 			$values[$key] = $config->get($key);
 		}
 		return hash('sha256', json_encode($values, JSON_THROW_ON_ERROR));
+	}
+
+	/**
+	 * Measure one indexed PRIMARY query. A slow or unavailable database
+	 * pauses new cache writes, without revealing SQL errors in public logs.
+	 */
+	private function probeDatabaseLatency(): ?int {
+		try {
+			$db = $this->getServiceContainer()->getConnectionProvider()->getPrimaryDatabase();
+			$started = microtime(true);
+			$db->selectField('page', 'page_id', ['page_id' => 1], __METHOD__);
+			return max(0, (int)round((microtime(true) - $started) * 1000));
+		} catch (\Throwable $e) {
+			return null;
+		}
 	}
 
 	/** @return int|null */
