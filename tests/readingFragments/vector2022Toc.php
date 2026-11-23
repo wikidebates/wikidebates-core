@@ -53,23 +53,29 @@ $command = [
 	'--conf=' . $root . '/state/LocalSettings.php',
 	'--page-id=' . $pageId, '--json'
 ];
-$proc = proc_open($command, [
-	['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']
-], $pipes);
-if (!is_resource($proc)) { throw new RuntimeException('Cannot start native Vector 2022 cache preparation'); }
-fclose($pipes[0]);
-$stdout = stream_get_contents($pipes[1]);
-$stderr = stream_get_contents($pipes[2]);
-fclose($pipes[1]);
-fclose($pipes[2]);
-$status = proc_close($proc);
-$report = json_decode(trim($stdout), true);
-if ($status !== 0 || !is_array($report) ||
-	($report['pageId'] ?? null) !== $pageId ||
-	($report['state'] ?? null) !== 'CREATED') {
-	throw new RuntimeException('Vector 2022 view file creation failed: ' .
-		json_encode(['exit' => $status, 'report' => $report,
-			'stderr_tail' => substr($stderr, -700)], JSON_THROW_ON_ERROR));
+$run = static function (array $options = []) use ($command, $pageId): array {
+	$proc = proc_open([...$command, ...$options], [
+		['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']
+	], $pipes);
+	if (!is_resource($proc)) { throw new RuntimeException('Cannot run Vector 2022 cache preparation'); }
+	fclose($pipes[0]);
+	$stdout = stream_get_contents($pipes[1]);
+	$stderr = stream_get_contents($pipes[2]);
+	fclose($pipes[1]);
+	fclose($pipes[2]);
+	$status = proc_close($proc);
+	$report = json_decode(trim($stdout), true);
+	if ($status !== 0 || !is_array($report) || ($report['pageId'] ?? null) !== $pageId) {
+		throw new RuntimeException('Vector 2022 preparation returned an unexpected result: ' .
+			json_encode(['exit' => $status, 'report' => $report,
+				'stderr_tail' => substr($stderr, -700)], JSON_THROW_ON_ERROR));
+	}
+	return $report;
+};
+$report = $run();
+if ($report['state'] !== 'CREATED') {
+	throw new RuntimeException('Vector 2022 view file was not created: ' .
+		json_encode($report, JSON_THROW_ON_ERROR));
 }
 // FileCacheBase memoizes isCached() on each object. Our previous object
 // deliberately observed a missing file after clearCache(); use a fresh one.
@@ -93,5 +99,37 @@ if (!$flags['vector-2022'] || !$flags['markup-toc'] ||
 	throw new RuntimeException('CLI-prepared Vector 2022 HTML lost the anonymous sidebar TOC: ' .
 		json_encode(['flags' => $flags, 'bytes' => strlen($html)], JSON_THROW_ON_ERROR));
 }
-echo json_encode(['result' => 'PASS', 'page_id' => $pageId, 'toc' => true],
-	JSON_THROW_ON_ERROR) . "\n";
+// Simulate a valid, pre-fix anonymous file: five sections but no sidebar TOC.
+// The targeted repair must restore only the stale Vector view, not any other cache.
+$broken = str_replace(
+	['vector-toc-available', 'id="mw-panel-toc"'],
+	['vector-toc-not-available', 'id="mw-panel-toc-legacy-broken"'],
+	$html
+);
+if ($broken === $html) {
+	throw new RuntimeException('Could not assemble a representative old TOC-less HTML fixture');
+}
+$view->saveToFileCache($broken);
+$probe = $run(['--repair-missing-toc', '--dry-run']);
+if ($probe['state'] !== 'MISSING_TOC') {
+	throw new RuntimeException('Dry-run did not detect the missing TOC in valid HTML');
+}
+$repaired = $run(['--repair-missing-toc']);
+if ($repaired['state'] !== 'CREATED' || ($repaired['repaired_toc'] ?? null) !== true) {
+	throw new RuntimeException('Targeted TOC repair did not regenerate the affected HTML: ' .
+		json_encode($repaired, JSON_THROW_ON_ERROR));
+}
+clearstatcache(true);
+$after = (new HTMLFileCache($title, 'view'))->fetchText();
+if (!str_contains($after, 'id="mw-panel-toc"') ||
+	!str_contains($after, 'vector-toc-available') ||
+	str_contains($after, 'id="mw-panel-toc-legacy-broken"')) {
+	throw new RuntimeException('TOC repair did not publish complete Vector 2022 HTML');
+}
+$reused = $run(['--repair-missing-toc']);
+if ($reused['state'] !== 'REUSED') {
+	throw new RuntimeException('Already repaired TOC should be reused, not rebuilt');
+}
+echo json_encode(['result' => 'PASS', 'page_id' => $pageId, 'toc' => true,
+	'repair_dry_run' => $probe['state'], 'repair' => $repaired['state'],
+	'after' => $reused['state']], JSON_THROW_ON_ERROR) . "\n";
