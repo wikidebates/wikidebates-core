@@ -29,11 +29,12 @@ if (!mkdir($root, 0700)) {
 	throw new \RuntimeException('Cannot create private test root');
 }
 try {
+	$signature = hash('sha256', 'known initial cache configuration');
 	$queue = new CachePreparationQueue($root, 'testwikidebates');
 	$journal = new ParallelBackfillJournal($queue, 'testwikidebates');
 	parallelAssert($journal->snapshot() === null, 'Missing journal must be null');
 
-	$first = $journal->activate(100, 111, 3);
+	$first = $journal->activate(100, 111, 3, $signature);
 	$token1 = $first['run_id'];
 	parallelAssert(count($first['lanes']) === 3, 'Three disjoint lanes');
 	parallelAssert($first['desired_workers'] === 2, 'Conservative initial worker limit');
@@ -58,9 +59,11 @@ try {
 
 	mustReject(fn() => $journal->completed($token1, 0, 101, 'retry', []));
 	mustReject(fn() => $journal->completed($token1, 2, 111, 'complete', []));
-	mustReject(fn() => $journal->activate(100, 111, 4));
-	mustReject(fn() => $journal->activate(101, 111, 3));
-	mustReject(fn() => $journal->activate(100, 111, 3, true));
+	mustReject(fn() => $journal->activate(100, 111, 4, $signature));
+	mustReject(fn() => $journal->activate(101, 111, 3, $signature));
+	mustReject(fn() => $journal->activate(100, 111, 3,
+		hash('sha256', 'changed cache configuration')));
+	mustReject(fn() => $journal->activate(100, 111, 3, $signature, true));
 
 	$journal->failed($token1, 0, 101, 'HTTP_503');
 	$failed = $journal->snapshot();
@@ -68,7 +71,7 @@ try {
 		$failed['state'] === 'failed' &&
 		$failed['lanes'][0]['after'] === 100, 'Failure cannot advance cursor');
 
-	$resumed = $journal->activate(100, 999, 3);
+	$resumed = $journal->activate(100, 999, 3, $signature);
 	$token2 = $resumed['run_id'];
 	parallelAssert($token2 !== $token1 && $resumed['high_watermark'] === 111 &&
 		$resumed['lanes'][2]['done'], 'Restart resumes original bounds and completed lanes');
@@ -87,8 +90,8 @@ try {
 		'All lanes exhausted');
 	$journal->markComplete($token2);
 	parallelAssert($journal->snapshot()['state'] === 'complete', 'Final state');
-	mustReject(fn() => $journal->activate(100, 111, 3));
-	$newCycle = $journal->activate(0, 111, 2, true);
+	mustReject(fn() => $journal->activate(100, 111, 3, $signature));
+	$newCycle = $journal->activate(0, 111, 2, $signature, true);
 	parallelAssert($newCycle['start_after'] === 0, 'New cycle explicitly resets lanes');
 	$journal->stop();
 	parallelAssert($journal->snapshot()['stop_requested'], 'Stop request persists');
