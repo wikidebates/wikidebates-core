@@ -139,6 +139,21 @@ $signature = static function (string $html): array {
 			continue;
 		}
 		$node = $matches->item(0);
+		if ($name === 'body') {
+			// MediaWiki appends per-request backend timings and parser profiling
+			// in a dedicated inline script. These cannot be equal across HTTP
+			// and CLI, and are not presentation or behavior differences.
+			$metrics = $xpath->query('.//script[contains(text(), "wgBackendResponseTime")]', $node);
+			if ($metrics === false || $metrics->length !== 1) {
+				throw new RuntimeException('Missing or ambiguous native runtime metrics script');
+			}
+			$script = $metrics->item(0);
+			if (!str_starts_with(trim($script->textContent),
+				'(RLQ=window.RLQ||[]).push(function(){mw.config.set({"wgBackendResponseTime"')) {
+				throw new RuntimeException('Unexpected runtime metrics script contents');
+			}
+			$script->parentNode->removeChild($script);
+		}
 		$fragment = $node->C14N();
 		if (!is_string($fragment)) {
 			throw new RuntimeException('Cannot canonicalize HTML region: ' . $name);
