@@ -9,6 +9,7 @@ use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillGovernor;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillFpmStatus;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillJournal;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillState;
+use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillRetryPolicy;
 use MediaWiki\WikiMap\WikiMap;
 use MediaWiki\Title\Title;
 
@@ -255,16 +256,22 @@ class PrepareParallelCaches extends Maintenance {
 				if ($finishedLanes && !$snapshot['stop_requested']) {
 					$journal->stop();
 				}
-				if ($now - $lastProbe >= 5 && !$snapshot['stop_requested']) {
+				if ($snapshot['state'] === 'failed') {
+					$failure = true;
+				}
+				if ($now - $lastProbe >= 5 && !$snapshot['stop_requested'] &&
+					$snapshot['state'] === 'running') {
 					$lastProbe = $now;
 					$load = sys_getloadavg();
 					$available = $this->availableMemoryMb();
 					[$httpStatus, $latency] = $this->probePublic($healthUrl);
 					$fpm = $fpmUrl !== '' ? $this->probeFpm($fpmUrl) : null;
-					$permits = $governor->sample(
+					$healthPermits = $governor->sample(
 						is_array($load) && isset($load[0]) ? (float)$load[0] : null,
 						$available, $httpStatus, $latency, $fpm, $fpmUrl !== ''
 					);
+					$inCooldown = time() < $snapshot['cooldown_until'];
+					$permits = $inCooldown ? 0 : $healthPermits;
 					$totalCompleted = $snapshot['metrics']['completed'] +
 						$snapshot['metrics']['skipped'];
 					$interval = max(0.001, $now - $previousProgressAt);
@@ -274,7 +281,7 @@ class PrepareParallelCaches extends Maintenance {
 					$previousProgressAt = $now;
 					$previousCompleted = $totalCompleted;
 					$journal->heartbeat($runId, $permits, $currentRate, $averageRate);
-					if ($permits === 0) {
+					if ($healthPermits === 0) {
 						$longPressureSince ??= $now;
 					} else {
 						$longPressureSince = null;
@@ -284,6 +291,7 @@ class PrepareParallelCaches extends Maintenance {
 						'load_1m' => is_array($load) ? round((float)$load[0], 2) : null,
 						'available_mb' => $available, 'health_http' => $httpStatus,
 						'health_ms' => $latency,
+						'http_cooldown_until' => $snapshot['cooldown_until'],
 						'fpm_active' => $fpm['active'] ?? null,
 						'fpm_idle' => $fpm['idle'] ?? null,
 						'fpm_listen_queue' => $fpm['listen_queue'] ?? null,
@@ -418,6 +426,7 @@ class PrepareParallelCaches extends Maintenance {
 					return false;
 				}
 				if ($snapshot['desired_workers'] === 0 ||
+					time() < $snapshot['cooldown_until'] ||
 					$lane !== null && $lane >= $snapshot['desired_workers']) {
 					usleep(500000);
 					continue;
@@ -432,14 +441,17 @@ class PrepareParallelCaches extends Maintenance {
 						$id = $sample['pageId'];
 						if (($deferredQueuePages[$id] ?? 0) > time()) { continue; }
 						$attempts++;
-						$build = $queue->lockBuildPage($id);
-						try {
-							$current = $queue->current($id);
-							if ($current === null || $current['schema'] === 3) { continue; }
-							$result = $coordinator->process($current, $latest, $prepare, $identity);
-						} finally {
-							fclose($build);
-						}
+						$result = $this->processWithRetry(
+							$queue, $journal, $session, $id, null,
+							static function () use ($queue, $coordinator, $latest, $prepare, $identity, $id): array {
+								$current = $queue->current($id);
+								if ($current === null || $current['schema'] === 3) {
+									return ['state' => 'superseded', 'phases' => []];
+								}
+								return $coordinator->process($current, $latest, $prepare, $identity);
+							}
+						);
+						if ($result['state'] === 'interrupted') { return true; }
 						if ($result['state'] === 'acknowledged') {
 							unset($deferredQueuePages[$id]);
 							$journal->acknowledgedQueue($session, $result['phases']);
@@ -485,29 +497,34 @@ class PrepareParallelCaches extends Maintenance {
 						return true;
 					}
 					if ($snapshot['desired_workers'] === 0 ||
+						time() < $snapshot['cooldown_until'] ||
 						$lane >= $snapshot['desired_workers']) {
 						break;
 					}
-					$build = $queue->lockBuildPage($id);
-					try {
-						$queued = $queue->current($id);
-						if ($queued !== null) {
-							$result = $coordinator->process($queued, $latest, $prepare, $identity);
-							// A newly enqueued generation must not be skipped.
-							if ($result['state'] === 'acknowledged' && $queue->current($id) !== null) {
-								$result['state'] = 'queue-changed-after-preparation';
+					$result = $this->processWithRetry(
+						$queue, $journal, $session, $id, $lane,
+						static function () use (
+							$queue, $coordinator, $latest, $prepare, $identity, $id, $row
+						): array {
+							$queued = $queue->current($id);
+							if ($queued !== null) {
+								$result = $coordinator->process($queued, $latest, $prepare, $identity);
+								// A newly enqueued generation must not be skipped.
+								if ($result['state'] === 'acknowledged' && $queue->current($id) !== null) {
+									$result['state'] = 'queue-changed-after-preparation';
+								}
+							} else {
+								$result = $coordinator->processUnqueued(
+									$id, (int)$row->page_latest, $latest, $prepare, $identity
+								);
+								if ($result['state'] === 'complete' && $queue->current($id) !== null) {
+									$result['state'] = 'queue-changed-after-preparation';
+								}
 							}
-						} else {
-							$result = $coordinator->processUnqueued(
-								$id, (int)$row->page_latest, $latest, $prepare, $identity
-							);
-							if ($result['state'] === 'complete' && $queue->current($id) !== null) {
-								$result['state'] = 'queue-changed-after-preparation';
-							}
+							return $result;
 						}
-					} finally {
-						fclose($build);
-					}
+					);
+					if ($result['state'] === 'interrupted') { return true; }
 					if (!in_array($result['state'], ['complete', 'skipped-nonpublic', 'acknowledged'], true)) {
 						$reason = (string)($result['phases'][array_key_last($result['phases'])] ??
 							$result['state']);
@@ -535,6 +552,56 @@ class PrepareParallelCaches extends Maintenance {
 		} finally {
 			fclose($lock);
 		}
+	}
+
+	/**
+	 * Retry a transient HTTP failure at most twice with a globally visible
+	 * cooldown. Release the per-page build lock between attempts, but always
+	 * repeat every phase and the coordinator's fresh identity checks.
+	 *
+	 * @param callable():array<string,mixed> $prepareAttempt
+	 * @return array<string,mixed>
+	 */
+	private function processWithRetry(
+		CachePreparationQueue $queue, ParallelBackfillJournal $journal,
+		string $session, int $pageId, ?int $lane, callable $prepareAttempt
+	): array {
+		for ($attempt = 0; $attempt < 3; $attempt++) {
+			while (true) {
+				$snapshot = $journal->snapshot();
+				if ($snapshot === null || $snapshot['run_id'] !== $session ||
+					$snapshot['stop_requested'] || $snapshot['state'] !== 'running' ||
+					time() - $snapshot['heartbeat_at'] > 45) {
+					return ['state' => 'interrupted', 'phases' => []];
+				}
+				if ($snapshot['desired_workers'] > 0 &&
+					($lane === null || $lane < $snapshot['desired_workers']) &&
+					time() >= $snapshot['cooldown_until']) {
+					break;
+				}
+				usleep(250000);
+			}
+			$build = $queue->lockBuildPage($pageId);
+			try {
+				$result = $prepareAttempt();
+			} finally {
+				fclose($build);
+			}
+			$delay = ParallelBackfillRetryPolicy::delay($result, $attempt);
+			if ($delay === null) {
+				return $result;
+			}
+			$journal->cooldown($session, $delay);
+			$this->report([
+				'mode' => 'transient-retry',
+				'page_id' => $pageId,
+				'lane' => $lane,
+				'attempt' => $attempt + 1,
+				'delay_seconds' => $delay,
+				'reason' => end($result['phases'])
+			]);
+		}
+		return ['state' => 'retry', 'phases' => []];
 	}
 
 	/**
