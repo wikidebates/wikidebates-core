@@ -56,6 +56,12 @@ try {
 		'Finished later lane must not skip earlier pages');
 	parallelAssert($saved['metrics']['cache_created'] === 2 &&
 		$saved['metrics']['cache_reused'] === 2, 'Phase status counters');
+	parallelAssert($saved['metrics']['by_phase']['vector']['created'] === 1 &&
+		$saved['metrics']['by_phase']['minerva']['created'] === 1 &&
+		$saved['metrics']['by_phase']['minerva']['reused'] === 1 &&
+		$saved['metrics']['by_phase']['reading']['reused'] === 1,
+		'Per-phase creation and reuse counters');
+
 
 	mustReject(fn() => $journal->completed($token1, 0, 101, 'retry', []));
 	mustReject(fn() => $journal->completed($token1, 2, 111, 'complete', []));
