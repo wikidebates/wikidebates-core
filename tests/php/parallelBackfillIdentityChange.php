@@ -61,11 +61,11 @@ try {
 	ensureIdentity(ParallelBackfillRetryPolicy::identityDelayMicroseconds($first, 0) === 250000,
 		'Page may receive a bounded retry');
 	$second = $coordinator->processUnqueued(6429, $latest(6429), $latest, $prepare, $public);
-	ensureIdentity($second['state'] === 'complete' &&
-		$second['phases']['reading'] === 'not-an-argument',
-		'Stable revalidation must accept a page with no cacheable anonymous output');
-	ensureIdentity(count($phaseCalls) === 5,
-		'Second attempt must redo Vector, Minerva and Reading in order');
+	ensureIdentity($second['state'] === 'skipped-cache-policy' &&
+		$second['phases']['reading'] === 'skipped-cache-policy',
+		'Stable no-cache page must be safely skipped');
+	ensureIdentity(count($phaseCalls) === 4,
+		'Skip must not invoke the Reading renderer on a no-cache page');
 
 	// A real edit must similarly invalidate the old revision; retrying
 	// against the old revision would get stuck in retry-page-changed.
@@ -74,8 +74,36 @@ try {
 	ensureIdentity($third['state'] === 'retry-page-changed' && $latest(6429) === 101,
 		'Actual revision changes must invalidate the in-flight preparation');
 	$fourth = $coordinator->processUnqueued(6429, $latest(6429), $latest, $prepare, $public);
-	ensureIdentity($fourth['state'] === 'complete',
-		'New PRIMARY revision must pass a complete fresh guarded preparation');
+	ensureIdentity($fourth['state'] === 'skipped-cache-policy',
+		'New PRIMARY revision must also honor explicit no-cache policy');
+	ensureIdentity(count(array_filter($phaseCalls,
+		static fn(array $call): bool => $call[1] === 'reading')) === 0,
+		'No Reading cache may be generated for explicit no-cache policy');
+
+	// A real direct-edit queue record may be acknowledged after all identity
+	// and generation checks even though the page opts out of caching.
+	$queue = new CachePreparationQueue($root, 'testwikidebates');
+	ensureIdentity($queue->enqueue(6429, $latestRevision),
+		'Queue record should be present for the current revision');
+	$queuedCoordinator = new CachePreparationCoordinator($queue);
+	$queuedResult = $queuedCoordinator->process(
+		$queue->current(6429), $latest, $prepare, $public
+	);
+	ensureIdentity($queuedResult['state'] === 'acknowledged' &&
+		$queuedResult['phases']['reading'] === 'skipped-cache-policy' &&
+		$queue->current(6429) === null,
+		'Explicit no-cache queue item should not remain indefinitely pending');
+
+	// Merely seeing parser expiry is insufficient if a previous phase has
+	// created or reused HTML; such a page must retain all safety checks.
+	ensureIdentity(!CachePreparationCoordinator::hasExplicitNoCachePolicy([
+		'vector' => 'CREATED',
+		'minerva' => 'android=BYPASS-parser-expiry;iphone=BYPASS-parser-expiry'
+	]), 'Skip forbidden after native Vector HTML was created');
+	ensureIdentity(!CachePreparationCoordinator::hasExplicitNoCachePolicy([
+		'vector' => 'SKIPPED_NONCONTENT',
+		'minerva' => 'android=HIT;iphone=BYPASS-parser-expiry'
+	]), 'Skip forbidden if a Minerva file was reused');
 
 	echo "OK: non-content page_touched and revision races retry with fresh identity\n";
 } finally {
