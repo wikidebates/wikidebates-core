@@ -85,7 +85,9 @@ sur la politique effective du parseur.
 
 Si page_touched change pendant ces requetes, la page est revalidee contre
 PRIMARY (identite publique et revision inchangée) avant tout saut. Aucun
-fichier n'est declare cree sur la base d'un simple BYPASS. Les erreurs HTTP,
+fichier n'est declare cree sur la base d'un simple BYPASS. Cette meme
+regle est appliquee au coordinateur quotidien pour qu'il n'arrete pas le
+curseur apres une exclusion NOCACHE verifiee. Les erreurs HTTP,
 les refus ACL et les pages avec des fichiers Vector ou Minerva effectivement
 crees ou reutilises n'entrent pas dans cette exception. L'etat du balayage et
 la file de modifications ne sont jamais remis a zero.
