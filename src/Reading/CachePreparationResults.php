@@ -23,7 +23,8 @@ final class CachePreparationResults {
 			'REJECTED_SHORT_OUTPUT',
 			'RETRY_PUBLIC_IDENTITY_CHANGED',
 			'RETRY_PAGE_CHANGED',
-			'WRITE_FAILED'
+			'WRITE_FAILED',
+			'RETRY_MISSING_TOC'
 		], true) ? $status : null;
 	}
 
