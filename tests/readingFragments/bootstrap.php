@@ -27,10 +27,11 @@ function readingFragmentTestSettings($settings): void {
 			$root . '/state/preparation-queue' : false,
 		'WikidebatesReadingPrewarm' => true,
 		'MinervaFileCacheDirectory' => $root . '/state/minerva-cache',
-		'MinervaFileCacheTTL' => 2592000,
+		'MinervaFileCacheTTL' => is_file($root . '/state/unlimited-ttl') ? 0 : 2592000,
 		'MinervaFileCacheEnabled' => !is_file($root . '/state/minerva-disabled'),
 		'WikidebatesReadingCacheEpoch' => is_file($root . '/state/epoch-changed') ? '2' : '1',
-		'WikidebatesReadingCacheTTL' => is_file($root . '/state/short-ttl') ? 1 : 300,
+		'WikidebatesReadingCacheTTL' => is_file($root . '/state/short-ttl') ? 1 :
+			(is_file($root . '/state/unlimited-ttl') ? 0 : 300),
 		'Hooks' => [
 			'ParserAfterParse' => [static function ($parser) {
 				if ($parser->getTitle()->getText() === 'Uncacheable') { $parser->getOutput()->updateCacheExpiry(0); }
