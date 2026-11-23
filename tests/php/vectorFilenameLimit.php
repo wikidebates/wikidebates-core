@@ -69,4 +69,24 @@ $wrongPage = CachePreparationResults::interpret('vector', 99, 0,
 assertVectorName($wrongPage['ok'] === false,
 	'Skip status cannot be accepted from a different page');
 
+foreach ([
+	'REJECTED_SHORT_OUTPUT', 'RETRY_PUBLIC_IDENTITY_CHANGED',
+	'RETRY_PAGE_CHANGED', 'WRITE_FAILED'
+] as $failure) {
+	assertVectorName(
+		CachePreparationResults::knownVectorFailure(15810,
+			json_encode(['pageId' => 15810, 'state' => $failure], JSON_THROW_ON_ERROR)
+		) === $failure, 'Known Vector error must retain its safe diagnosis'
+	);
+}
+foreach ([
+	['pageId' => 15810, 'state' => 'SKIPPED_FILENAME_TOO_LONG'],
+	['pageId' => 15810, 'state' => 'warning: private path /etc/passwd'],
+	['pageId' => 100, 'state' => 'WRITE_FAILED'],
+] as $unexpected) {
+	assertVectorName(CachePreparationResults::knownVectorFailure(15810,
+		json_encode($unexpected, JSON_THROW_ON_ERROR)
+	) === null, 'Unknown status or mismatched ID must not leak into diagnostics');
+}
+
 echo "OK: bounded native Vector filename skip and fail-closed output parser\n";
