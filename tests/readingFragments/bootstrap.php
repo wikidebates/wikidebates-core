@@ -74,10 +74,10 @@ function readingFragmentTestSettings($settings): void {
 				'type' => 'parser-output',
 				'parser_sections' => $toc ? count($toc->getSections()) : null,
 				'output_sections' => $out->getTOCData() ? count($out->getTOCData()->getSections()) : null,
-				'no_toc' => $parserOutput->getOutputFlag(\\MediaWiki\\Parser\\ParserOutputFlags::NO_TOC)
+				'no_toc' => $parserOutput->getOutputFlag(\MediaWiki\Parser\ParserOutputFlags::NO_TOC)
 			];
 			file_put_contents(getenv('WD_MINERVA_STUDY_ROOT') . '/state/toc-diagnostics.jsonl',
-				json_encode($data, JSON_THROW_ON_ERROR) . "\\n", FILE_APPEND);
+				json_encode($data, JSON_THROW_ON_ERROR) . "\n", FILE_APPEND);
 		}],
 		'BeforePageDisplay' => [static function ($out, $skin) {
 				// Simulate an isolated Vector-only renderer failure. The native
