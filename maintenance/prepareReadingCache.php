@@ -1,5 +1,6 @@
 <?php
 
+use MediaWiki\Extension\Wikidebates\Reading\ArgumentCategory;
 use MediaWiki\Extension\Wikidebates\Reading\WarmFragmentsJob;
 use MediaWiki\MediaWikiServices;
 
@@ -57,6 +58,7 @@ class PrepareReadingCache extends Maintenance {
 		$scope = \MediaWiki\Extension\Wikidebates\Reading\FragmentService::store()->startFill("\0daily-preparation");
 		if (!$scope) { $this->fatalError('Another preparation is running.'); }
 		$started = microtime(true);
+		$categoryKey = ArgumentCategory::dbKey($config);
 		$wiki = \MediaWiki\WikiMap\WikiMap::getCurrentWikiId();
 		if ($resumeFile !== '') {
 			// A user-controlled checkpoint only resumes the same wiki. Explicit
@@ -87,7 +89,7 @@ class PrepareReadingCache extends Maintenance {
 		$stopReason = 'complete';
 		try {
 			do {
-				$conditions = ['cl_to' => str_replace(' ', '_', $config->get('WikidebatesReadingArgumentCategory')),
+				$conditions = ['cl_to' => $categoryKey,
 					'page_namespace' => NS_MAIN, 'page_is_redirect' => 0];
 				if ($pageId !== null) {
 					$conditions['page_id'] = $pageId;
