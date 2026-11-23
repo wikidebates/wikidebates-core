@@ -141,6 +141,40 @@ try {
 	if ($repeatExit === 0) {
 		throw new RuntimeException('Completed parallel sweep restarted without --new-cycle');
 	}
+	// Recreate the state of a crash before any new page was committed.
+	// A real supervisor must resume from that same durable journal, reuse
+	// all existing files and reject the stale previous run generation.
+	$existingHashes = [];
+	foreach (array_merge($mobile, $reading) as $file) {
+		$existingHashes[$file] = hash_file('sha256', $file);
+	}
+	$testCycle = $journal->activate(0, $checkpoint['high_watermark'], 2,
+		$checkpoint['cache_signature'], true);
+	$journal->failed($testCycle['run_id'], 1, $pageId, 'injected-worker-crash');
+	$oldGeneration = $testCycle['run_id'];
+	$resumedProcess = proc_open($command,
+		[['file', '/dev/null', 'r'],
+			['file', $stateDir . '/parallel-resume.out', 'w'],
+			['file', $stateDir . '/parallel-resume.err', 'w']], $resumePipes);
+	if (!is_resource($resumedProcess)) {
+		throw new RuntimeException('Cannot restart interrupted parallel scan');
+	}
+	$resumeExit = proc_close($resumedProcess);
+	$resumeOut = (string)file_get_contents($stateDir . '/parallel-resume.out');
+	$resumeErr = (string)file_get_contents($stateDir . '/parallel-resume.err');
+	$recovered = $journal->snapshot();
+	if ($resumeExit !== 0 || $recovered['state'] !== 'complete' ||
+		$recovered['run_id'] === $oldGeneration ||
+		$recovered['metrics']['cache_created'] !== 0 ||
+		$recovered['metrics']['cache_reused'] < 1) {
+		throw new RuntimeException('Parallel resume did not reuse validated HTML safely: ' .
+			substr($resumeOut . $resumeErr, -3500));
+	}
+	foreach ($existingHashes as $file => $hash) {
+		if (!is_file($file) || hash_file('sha256', $file) !== $hash) {
+			throw new RuntimeException('Unchanged cache was rewritten after journal resume');
+		}
+	}
 	echo json_encode([
 		'result' => 'PASS', 'wiki' => $wiki, 'workers' => 2,
 		'vector' => true, 'minerva' => count($mobile),
