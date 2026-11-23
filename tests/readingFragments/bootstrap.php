@@ -67,6 +67,13 @@ function readingFragmentTestSettings($settings): void {
 				}
 			}],
 			'BeforePageDisplay' => [static function ($out, $skin) {
+				// Simulate an isolated Vector-only renderer failure. The native
+				// cache CLI sets this distinctive encoding token; mobile HTTP
+				// requests do not, so no real cache policy is weakened.
+				if ($out->getTitle()?->getText() === 'Synthetic Vector fault' &&
+					($_SERVER['HTTP_ACCEPT_ENCODING'] ?? '') === 'bgzip') {
+					throw new \RuntimeException('Disposable isolated Vector renderer failure');
+				}
 				file_put_contents(getenv('WD_MINERVA_STUDY_ROOT') . '/state/render.log', $skin->getSkinName() . "\n", FILE_APPEND);
 				$out->getRequest()->response()->header('Referrer-Policy: same-origin');
 				if ($out->getTitle()->getText() === 'Uncacheable') { $out->disableClientCache(); }

@@ -7,6 +7,7 @@ use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCoordinator;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationQueue;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillGovernor;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillFpmStatus;
+use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillFailures;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillJournal;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillState;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillRetryPolicy;
@@ -31,6 +32,8 @@ class PrepareParallelCaches extends Maintenance {
 		$this->requireExtension('Wikidebates');
 		$this->addOption('execute', 'Explicitly enable cache creation and durable state changes.');
 		$this->addOption('status', 'Read-only progress report.');
+		$this->addOption('report-errors', 'Read-only per-page failure summary.');
+		$this->addOption('mail-errors', 'With --report-errors: send a rate-limited aggregated email.');
 		$this->addOption('stop', 'Request graceful stop at the next page boundary.');
 		$this->addOption('new-cycle', 'Start a fresh cycle only after the previous one completed.');
 		$this->addOption('workers', 'Number of parallel scan lanes (1-8; default 4).', false, true);
@@ -72,6 +75,58 @@ class PrepareParallelCaches extends Maintenance {
 		$queue = new CachePreparationQueue($directory, $wiki);
 		$journal = new ParallelBackfillJournal($queue, $wiki);
 
+		if ($this->hasOption('report-errors')) {
+			if ($this->hasOption('status') || $this->hasOption('stop') ||
+				$this->hasOption('execute') || $this->hasOption('worker-lane') ||
+				$this->hasOption('worker-queue') || $this->hasOption('new-cycle')) {
+				$this->fatalError('Error reporting cannot be combined with cache operations.');
+			}
+			$failures = new ParallelBackfillFailures($queue);
+			$summary = $failures->summary();
+			$mailStatus = null;
+			if ($this->hasOption('mail-errors')) {
+				$mailStatus = $failures->alert(
+					static function (array $data) use ($wiki): bool {
+						$lines = [
+							'Wikidebates cache preparation incident report',
+							'Wiki: ' . $wiki,
+							'Unresolved page failures: ' . $data['open'],
+							'Previously resolved: ' . $data['resolved'],
+							'',
+							'Recent unresolved pages (ID / revision / error / attempts):'
+						];
+						foreach ($data['recent'] as $item) {
+							$lines[] = implode(' / ', [
+								$item['page_id'], $item['revision_id'],
+								$item['reason'], $item['attempts']
+							]);
+						}
+						$lines[] = '';
+						$lines[] = 'The failures remain durably queued for future preparation.';
+						$lines[] = 'No failed or private HTML was declared cacheable.';
+						$subject = '[Wikidebates cache] ' . $wiki . ' - ' .
+							$data['open'] . ' pages to retry';
+						return \UserMailer::send(
+							new \MailAddress('erreurcache@wikidebats.org'),
+							new \MailAddress('noreply@wikidebats.org', 'Wikidebats'),
+							$subject, implode("\n", $lines)
+						)->isOK();
+					}
+				);
+			}
+			unset($summary['signature']);
+			$this->report([
+				'type' => 'wikidebates-parallel-backfill',
+				'wiki' => $wiki, 'mode' => 'errors',
+				'summary' => $summary,
+				'mail_status' => $mailStatus
+			]);
+			return $mailStatus !== 'failed';
+		}
+		if ($this->hasOption('mail-errors')) {
+			$this->fatalError('--mail-errors requires --report-errors.');
+		}
+
 		if ($this->hasOption('status')) {
 			if ($this->hasOption('execute') || $this->hasOption('stop') ||
 				$this->hasOption('worker-lane') || $this->hasOption('worker-queue')) {
@@ -79,6 +134,7 @@ class PrepareParallelCaches extends Maintenance {
 			}
 			$snapshot = $journal->snapshot();
 			if ($snapshot !== null) {
+				$snapshot['metrics']['deferred'] ??= 0;
 				$snapshot['contiguous_after'] =
 					(new ParallelBackfillState($snapshot['lanes']))->contiguousAfter();
 				unset($snapshot['run_id']);
@@ -413,11 +469,13 @@ class PrepareParallelCaches extends Maintenance {
 			$root = defined('MW_INSTALL_PATH') ? MW_INSTALL_PATH : dirname(__DIR__, 3);
 			$commands = new CachePreparationCommands($root, $wiki, $minervaDelay, 180, $devices);
 			$coordinator = new CachePreparationCoordinator($queue);
+			$failures = new ParallelBackfillFailures($queue);
 			$prepare = static fn(string $phase, int $id): array =>
 				$phase === 'reading' && !ArgumentCategory::containsPage($db, $id, $categoryKey)
 					? ['ok' => true, 'status' => 'not-an-argument']
 					: $commands->prepare($phase, $id);
 			$processed = 0;
+			$consecutiveErrors = 0;
 			$deferredQueuePages = [];
 			while (true) {
 				$snapshot = $journal->snapshot();
@@ -445,7 +503,11 @@ class PrepareParallelCaches extends Maintenance {
 					foreach ($pending as $sample) {
 						if ($attempts >= 10 || $journal->snapshot()['stop_requested']) { break; }
 						$id = $sample['pageId'];
-						if (($deferredQueuePages[$id] ?? 0) > time()) { continue; }
+						$deferred = $deferredQueuePages[$id] ?? null;
+						if ($deferred !== null && $deferred['until'] > time() &&
+							$deferred['generation'] === ($sample['generation'] ?? '')) {
+							continue;
+						}
 						$attempts++;
 						$result = $this->processWithRetry(
 							$queue, $journal, $session, $id, null,
@@ -460,22 +522,30 @@ class PrepareParallelCaches extends Maintenance {
 						if ($result['state'] === 'interrupted') { return true; }
 						if ($result['state'] === 'acknowledged') {
 							unset($deferredQueuePages[$id]);
+							$failures->resolved($id);
 							$journal->acknowledgedQueue($session, $result['phases']);
 							$this->report(['mode' => 'queue', 'page_id' => $id,
 								'state' => 'acknowledged']);
-						} elseif ($result['state'] === 'retry') {
-							$this->report(['mode' => 'queue-error', 'page_id' => $id,
-								'state' => 'retry', 'phases' => $result['phases']]);
-							$journal->failed($session, -1, $id, 'queue-retry');
-							return false;
 						} else {
-							$deferredQueuePages[$id] = time() + 60;
+							$deferredQueuePages[$id] = [
+								'until' => time() + ($result['state'] === 'retry' ? 300 : 60),
+								'generation' => $sample['generation'] ?? ''
+							];
+							if ($result['state'] === 'retry') {
+								$reason = ParallelBackfillJournal::safeFailureReason($result);
+								$record = $queue->current($id);
+								if ($record !== null) {
+									$failures->record($id, $record['revisionId'], $reason);
+								}
+								$this->report(['mode' => 'queue-deferred', 'page_id' => $id,
+									'reason' => $reason]);
+							}
 						}
 					}
 					// Bound the in-memory exception list even for very long runs.
 					if (count($deferredQueuePages) > 10000) {
 						$deferredQueuePages = array_filter($deferredQueuePages,
-							static fn(int $until): bool => $until > time());
+							static fn(array $entry): bool => $entry['until'] > time());
 					}
 					sleep($pending === [] ? 3 : 1);
 					continue;
@@ -574,14 +644,39 @@ class PrepareParallelCaches extends Maintenance {
 						'complete', 'skipped-nonpublic', 'skipped-cache-policy', 'acknowledged'
 					], true)) {
 						$reason = ParallelBackfillJournal::safeFailureReason($result);
-						$journal->failed($session, $lane, $id, $reason);
-						$this->report(['mode' => 'scan-error', 'lane' => $lane,
-							'page_id' => $id, 'state' => $result['state'],
-							'phases' => $result['phases']]);
-						return false;
+						// Do not confuse "continue" with accepting an incomplete
+						// cache: the latest revision MUST be queued durably
+						// before this lane may advance its checkpoint.
+						$build = $queue->lockBuildPage($id);
+						try {
+							$current = $db->selectRow('page',
+								['page_latest'], ['page_id' => $id], __METHOD__);
+							$revision = $current ? (int)$current->page_latest : 0;
+							if ($revision < 1) {
+								$journal->failed($session, $lane, $id, 'missing-retry-revision');
+								return false;
+							}
+							$queue->enqueue($id, $revision);
+							$failures->record($id, $revision, $reason);
+							$journal->deferred($session, $lane, $id, $reason, $queue);
+						} finally {
+							fclose($build);
+						}
+						$consecutiveErrors++;
+						$this->report(['mode' => 'scan-deferred', 'lane' => $lane,
+							'page_id' => $id, 'reason' => $reason,
+							'consecutive_errors' => $consecutiveErrors]);
+						if ($consecutiveErrors >= 12) {
+							$journal->failed($session, $lane, $id,
+								'too-many-consecutive-page-errors');
+							return false;
+						}
+						continue;
 					}
 					$journal->completed($session, $lane, $id,
 						$result['state'], $result['phases']);
+					$failures->resolved($id);
+					$consecutiveErrors = 0;
 					if ($result['state'] === 'skipped-cache-policy') {
 						$this->report([
 							'mode' => 'cache-policy-skip',

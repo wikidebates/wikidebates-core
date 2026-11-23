@@ -6,6 +6,7 @@ use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCommands;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCoordinator;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationQueue;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillJournal;
+use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillFailures;
 use MediaWiki\WikiMap\WikiMap;
 
 require_once (getenv('MW_INSTALL_PATH') ?: dirname(__DIR__, 3)) . '/maintenance/Maintenance.php';
@@ -137,6 +138,7 @@ class PrepareDailyCaches extends Maintenance {
 				] : null;
 			};
 			$coordinator = new CachePreparationCoordinator($queue);
+			$failures = $execute ? new ParallelBackfillFailures($queue) : null;
 			$commands = null;
 			if ($execute) {
 				$root = defined('MW_INSTALL_PATH') ? MW_INSTALL_PATH : dirname(__DIR__, 3);
@@ -177,10 +179,16 @@ class PrepareDailyCaches extends Maintenance {
 					['pageId' => $id, 'revisionId' => $record['revisionId'], 'state' => 'preview-queue'];
 				$report['pages'][] = $result;
 				$report['queue_processed']++;
-				if ($result['state'] === 'acknowledged') { $report['queue_acknowledged']++; }
+				if ($result['state'] === 'acknowledged') {
+					$report['queue_acknowledged']++;
+					$failures->resolved($id);
+				}
 				if ($result['state'] === 'retry') {
-					$report['stop_reason'] = 'retry-required';
-					break;
+					// The durable edit record remains intact. One bad page
+					// must not block other edits in this bounded cron batch.
+					$failures->record($id, $record['revisionId'],
+						ParallelBackfillJournal::safeFailureReason($result));
+					$report['queue_deferred'] = ($report['queue_deferred'] ?? 0) + 1;
 				}
 				if ($execute && $delay > 0 && $needsPacing($result)) { usleep($delay * 1000); }
 			}

@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'src/Reading/ParallelBackfill*.php'
+      - 'src/Reading/ParallelBackfillFailures.php'
       - 'src/Reading/CachePreparationQueue.php'
       - 'src/Reading/CachePreparationCoordinator.php'
       - 'src/Reading/VectorCacheEligibility.php'
@@ -50,6 +51,7 @@ jobs:
           php -l maintenance/prepareDailyCaches.php
           php -l tests/php/parallelBackfillGovernor.php
           php -l src/Reading/ParallelBackfillJournal.php
+          php -l src/Reading/ParallelBackfillFailures.php
           php -l src/Reading/CachePreparationQueue.php
           php -l src/Reading/CachePreparationCoordinator.php
           php -l src/Reading/VectorCacheEligibility.php
