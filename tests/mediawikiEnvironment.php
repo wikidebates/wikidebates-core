@@ -69,6 +69,15 @@ function wikidebatesTestConfig($settings): void {
 		'MainCacheType' => CACHE_NONE,
 		'MessageCacheType' => CACHE_NONE,
 		'ParserCacheType' => (getenv('WD_TEST_SEMANTIC_BASELINE') === '1' || getenv('WD_TEST_SEMANTIC_TRACKING') === '1') ? CACHE_DB : CACHE_NONE,
+		// Do not change the settings of existing integration suites.
+		...(defined('WD_TEST_PAGE_OWNED_CACHE') ? [
+			'UseFileCache' => true,
+			'FileCacheDirectory' => $temporary . '/vector-files',
+			'FileCacheDepth' => 0,
+			'UseGzip' => false,
+			'CacheEpoch' => '20200101000000',
+			'DefaultSkin' => 'vector'
+		] : []),
 		'UseDatabaseMessages' => defined('WD_I18N_TEST'),
 		'JobRunRate' => 0,
 		// Real production workers need this exclusion before installing the pilot.
