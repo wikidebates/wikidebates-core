@@ -302,6 +302,48 @@ final class CachePreparationQueue {
 		} finally { fclose($lock); }
 	}
 
+
+	/**
+	 * The daily sweep cursor lives inside this wiki's private queue directory.
+	 * Missing cursor means the first cycle; malformed state must fail closed.
+	 */
+	public function dailyCursor(): int {
+		$path = $this->root . '/daily-cursor.json';
+		if (is_link($path)) { throw new \RuntimeException('Symlinked daily cursor'); }
+		if (!is_file($path)) { return 0; }
+		clearstatcache(true, $path);
+		if (filesize($path) > 512) { throw new \RuntimeException('Oversized daily cursor'); }
+		$raw = @file_get_contents($path);
+		$data = $raw === false ? null : json_decode($raw, true);
+		if (!is_array($data) || ($data['version'] ?? null) !== 1 ||
+			!is_int($data['after'] ?? null) || $data['after'] < 0) {
+			throw new \RuntimeException('Malformed daily cursor');
+		}
+		return $data['after'];
+	}
+
+	/** Call only under tryLockWorker(); atomic replacement survives interruption. */
+	public function saveDailyCursor(int $after): void {
+		if ($after < 0) { throw new \InvalidArgumentException('Invalid daily cursor'); }
+		$this->ensureDirectory();
+		$path = $this->root . '/daily-cursor.json';
+		if (is_link($path)) { throw new \RuntimeException('Symlinked daily cursor'); }
+		$temp = @tempnam($this->root, '.daily-cursor-');
+		if ($temp === false || dirname($temp) !== $this->root) {
+			throw new \RuntimeException('Cannot allocate daily cursor');
+		}
+		try {
+			$json = json_encode(['version' => 1, 'after' => $after], JSON_THROW_ON_ERROR) . "\n";
+			if (!@chmod($temp, 0600) ||
+				@file_put_contents($temp, $json) !== strlen($json) ||
+				!@rename($temp, $path)) {
+				throw new \RuntimeException('Cannot persist daily cursor');
+			}
+		} finally {
+			if (is_file($temp)) { @unlink($temp); }
+		}
+	}
+
 	/**
 	 * Bounded, unordered snapshot. Completed items are removed by acknowledge,
 	 * so an interrupted worker needs no fragile numeric offset or global cursor.
