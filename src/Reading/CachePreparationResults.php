@@ -9,6 +9,25 @@ namespace MediaWiki\Extension\Wikidebates\Reading;
  */
 final class CachePreparationResults {
 	/**
+	 * Keep useful bounded diagnostics from failed Vector child processes.
+	 * Only report our known internal codes, never stderr, raw URLs, titles,
+	 * exception messages or arbitrary page output.
+	 */
+	public static function knownVectorFailure(int $pageId, string $stdout): ?string {
+		$report = json_decode(trim($stdout), true);
+		if (!is_array($report) || ($report['pageId'] ?? null) !== $pageId) {
+			return null;
+		}
+		$status = $report['state'] ?? null;
+		return is_string($status) && in_array($status, [
+			'REJECTED_SHORT_OUTPUT',
+			'RETRY_PUBLIC_IDENTITY_CHANGED',
+			'RETRY_PAGE_CHANGED',
+			'WRITE_FAILED'
+		], true) ? $status : null;
+	}
+
+	/**
 	 * @return array{ok:bool,status:string}
 	 */
 	public static function interpret(string $phase, int $pageId, int $exit, string $stdout): array {
