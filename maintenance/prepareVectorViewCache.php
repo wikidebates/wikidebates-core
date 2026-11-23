@@ -195,6 +195,14 @@ class PrepareVectorViewCache extends Maintenance {
 			$this->report($id, 'RETRY_PUBLIC_IDENTITY_CHANGED');
 			return false;
 		}
+		// If the current renderer still cannot supply the expected TOC,
+		// preserve the previously valid file rather than publish a broken
+		// replacement or delete it. The next bounded scan may retry.
+		if ($repairToc && (!str_contains($html, 'id="mw-panel-toc"') ||
+			!str_contains($html, 'vector-toc-available'))) {
+			$this->report($id, 'RETRY_MISSING_TOC');
+			return false;
+		}
 		$view->saveToFileCache($html);
 		$latest = $dbr->selectRow('page', ['page_latest', 'page_touched'], ['page_id' => $id], __METHOD__);
 		if (!$latest || (int)$latest->page_latest !== (int)$row->page_latest ||
@@ -206,13 +214,6 @@ class PrepareVectorViewCache extends Maintenance {
 		}
 		if (!$view->isCacheGood($touched)) {
 			$this->report($id, 'WRITE_FAILED');
-			return false;
-		}
-		if ($repairToc && (!str_contains($html, 'id="mw-panel-toc"') ||
-			!str_contains($html, 'vector-toc-available'))) {
-			// Do not silently treat an incomplete replacement as repaired.
-			$view->clearCache();
-			$this->report($id, 'RETRY_MISSING_TOC');
 			return false;
 		}
 		$this->report($id, 'CREATED',
