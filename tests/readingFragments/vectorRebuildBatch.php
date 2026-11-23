@@ -147,8 +147,29 @@ for ($i = 0; $i < 30; $i++) {
 			$raw = stream_get_contents($pipes[1]) . stream_get_contents($pipes[2]);
 			fclose($pipes[1]); fclose($pipes[2]);
 			$code = proc_close($proc);
+			$direct = [
+				PHP_BINARY, '-d', 'auto_prepend_file=' . __DIR__ . '/bootstrap.php',
+				$root . '/mediawiki/maintenance/run.php',
+				'Wikidebates:prepareVectorViewCache', '--wiki=' . $wiki,
+				'--page-id=' . $failedId, '--force-view', '--existing-only', '--json',
+				'--conf=' . $root . '/mediawiki/LocalSettings.php'
+			];
+			$explicit = proc_open($direct,
+				[['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']], $xpipes);
+			$explicitOutput = 'not-started';
+			$explicitCode = -1;
+			if (is_resource($explicit)) {
+				fclose($xpipes[0]);
+				$explicitOutput = stream_get_contents($xpipes[1]) .
+					stream_get_contents($xpipes[2]);
+				fclose($xpipes[1]); fclose($xpipes[2]);
+				$explicitCode = proc_close($explicit);
+			}
 			throw new RuntimeException('Disposable Vector child probe exit=' . $code .
-				' output=' . substr($raw, -2000));
+				' output=' . substr($raw, -700) .
+				'; explicit exit=' . $explicitCode .
+				' output=' . substr($explicitOutput, -1200) .
+				'; php_ini_scan_dir=' . getenv('PHP_INI_SCAN_DIR'));
 		}
 	}
 	if ($current === null || $current['after'] < $previous ||
