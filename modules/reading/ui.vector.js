@@ -30,8 +30,13 @@
 		// of contents is unavailable, the first matching container is
 		// on the RIGHT, inside .vector-column-end. Reading mode hides
 		// that column, which would also hide the breadcrumb.
-		// Only attach to the genuine left TOC column. Without it,
-		// ensureUi() keeps the breadcrumb inside the visible reading panel.
+		// Only attach to the genuine left TOC column when its pinned
+		// layout is active. Anonymous visitors may use the unpinned TOC
+		// client preference, which moves that column below the article.
+		// Otherwise ensureUi() keeps the breadcrumb in the reading panel.
+		if ( D.documentElement.classList.contains( 'vector-feature-toc-pinned-clientpref-0' ) ) {
+			return null;
+		}
 		return D.querySelector( '.vector-column-start .vector-sticky-pinned-container' );
 	}
 
