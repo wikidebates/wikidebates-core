@@ -167,14 +167,15 @@ try {
 		$beforeDailyReplay = $existingHashes();
 		$cursorLock = $queue->tryLockWorker();
 		if (!$cursorLock) { throw new RuntimeException('Cannot lock daily cursor in lab'); }
-		try { $queue->saveDailyCursor(0); }
+		try { $queue->saveDailyCursor(max(0, $pageId - 1)); }
 		finally { fclose($cursorLock); }
 		$secondDaily = $runDaily();
 		$secondPhases = $secondDaily['pages'][0]['phases'] ?? [];
-		if (($secondDaily['pages'][0]['pageId'] ?? null) !== $sweepId ||
+		if (($secondDaily['pages'][0]['pageId'] ?? null) !== $pageId ||
 			($secondDaily['pages'][0]['state'] ?? null) !== 'complete' ||
 			($secondPhases['vector'] ?? null) !== 'REUSED' ||
 			($secondPhases['minerva'] ?? null) !== 'LOCAL_HIT' ||
+			($secondPhases['reading'] ?? null) !== 'already-valid' ||
 			$beforeDailyReplay !== $existingHashes()) {
 			throw new RuntimeException('Second unchanged daily pass rewrote caches or made a Minerva GET: ' .
 				json_encode($secondDaily, JSON_THROW_ON_ERROR));
