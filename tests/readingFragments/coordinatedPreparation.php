@@ -341,6 +341,29 @@ try {
 		['ok' => false, 'status' => 'HTTP_404'],
 		'HTTP 404 is distinguishable from a cache HIT without being accepted');
 	$check(CachePreparationResults::interpret('minerva', 17, 0,
+		$minerva(['BYPASS' => 1, 'bypassReasons' => ['header-set-cookie' => 1]])) ===
+		['ok' => true, 'status' => 'BYPASS-header-set-cookie'],
+		'A Set-Cookie output is never cached; daily scans must safely skip it');
+	$check(CachePreparationResults::interpret('minerva', 17, 0,
+		$minerva(['BYPASS' => 1, 'bypassReasons' => ['header-authorization' => 1]])) ===
+		['ok' => false, 'status' => 'BYPASS-header-authorization'],
+		'Unknown response headers remain retryable, never broaden header exceptions');
+	$scanCookieCalls = [];
+	$scanCookie = $coordinator->processUnqueued(11, 100,
+		static fn(int $id): ?int => 100,
+		static function (string $phase) use (&$scanCookieCalls, $minerva): array {
+			$scanCookieCalls[] = $phase;
+			return $phase === 'minerva'
+				? CachePreparationResults::interpret('minerva', 11, 0,
+					$minerva(['BYPASS' => 1, 'bypassReasons' => ['header-set-cookie' => 1]]))
+				: ['ok' => true, 'status' => $phase === 'vector' ? 'SKIPPED_NONCONTENT' : 'not-an-argument'];
+		},
+		static fn(int $id): ?string => 'public-identity');
+	$check($scanCookie['state'] === 'complete' &&
+		($scanCookie['phases']['minerva'] ?? null) === 'BYPASS-header-set-cookie' &&
+		$scanCookieCalls === CachePreparationCoordinator::PHASES,
+		'The scan can advance past an uncachable cookie-setting response without saving Minerva HTML');
+	$check(CachePreparationResults::interpret('minerva', 17, 0,
 		$minerva(['BYPASS' => 1, 'bypassReasons' => ['storage-error' => 1]])) ===
 		['ok' => false, 'status' => 'BYPASS-storage-error'],
 		'Storage failures remain fatal and expose a bounded safe reason');
