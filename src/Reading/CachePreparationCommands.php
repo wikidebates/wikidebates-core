@@ -73,6 +73,17 @@ final class CachePreparationCommands {
 		$command = [PHP_BINARY, $this->entrypoint, ...$args, '--wiki=' . $this->wiki];
 		$result = $this->execute($command);
 		if (!$result['ok']) {
+			// The Vector command reports certain intentional refusals with
+			// exit 1 and a small JSON status on stdout. Preserve only those
+			// allowlisted diagnostics; never expose arbitrary child output.
+			if ($phase === 'vector' && $result['status'] === 'subprocess-exit-1') {
+				$reason = CachePreparationResults::knownVectorFailure(
+					$pageId, $result['stdout']
+				);
+				if ($reason !== null) {
+					return ['ok' => false, 'status' => $reason];
+				}
+			}
 			return ['ok' => false, 'status' => $result['status']];
 		}
 		return CachePreparationResults::interpret($phase, $pageId, 0, $result['stdout']);
