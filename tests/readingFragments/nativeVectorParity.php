@@ -190,7 +190,7 @@ try {
 	}
 	if (!$ready) { throw new RuntimeException('Disposable HTTP server did not start'); }
 
-	$get = static function (string $action): array use ($title) {
+	$get = static function (string $action) use ($title): array {
 		$url = 'http://127.0.0.1:8080/index.php?' . http_build_query([
 			'title' => $title->getPrefixedDBkey(), 'action' => $action
 		]);
