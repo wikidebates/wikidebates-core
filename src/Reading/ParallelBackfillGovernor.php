@@ -37,8 +37,9 @@ final class ParallelBackfillGovernor {
 	): int {
 		$unavailable = $load === null || $availableMb === null ||
 			$responseCode === null || $responseMs === null;
-		$publicProblem = $responseCode === null || $responseCode < 200 ||
-			$responseCode >= 400 || $responseMs === null ||
+		// Health must be the requested anonymous HTML page itself: a redirect
+		// to login or a CDN challenge is not proof of public availability.
+		$publicProblem = $responseCode !== 200 || $responseMs === null ||
 			$responseMs > $this->maximumResponseMs;
 		// A configured status endpoint becomes a mandatory signal, while sites
 		// without one still rely on the public response-time safeguard.
