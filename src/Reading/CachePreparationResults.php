@@ -78,16 +78,31 @@ final class CachePreparationResults {
 			}
 			if ($nonzero === ['BYPASS' => 1]) {
 				$reasons = $stats['bypassReasons'] ?? [];
-				// Deliberate public-cache policy vetoes may be skipped. Storage
-				// failure, busy locks and unknown bypass reasons must retry.
+				// Only a single well-formed diagnostic reason is safe to include in reports.
 				if (is_array($reasons) && count($reasons) === 1) {
 					$reason = (string)array_key_first($reasons);
 					if (($reasons[$reason] ?? null) === 1 &&
-						in_array($reason, [
+						preg_match('/\A[a-z][a-z0-9-]{0,63}\z/D', $reason)) {
+						// Explicit policy exclusions can complete. All other BYPASS
+						// reasons stay retryable and report only the validated reason.
+						$safe = in_array($reason, [
 							'not-public', 'parser-expiry', 'extension-veto', 'page', 'redirect'
-						], true)) {
-						return ['ok' => true, 'status' => 'BYPASS-' . $reason];
+						], true);
+						return ['ok' => $safe, 'status' => 'BYPASS-' . $reason];
 					}
+				}
+				return ['ok' => false, 'status' => 'BYPASS-invalid-reason'];
+			}
+			// A successful prewarm process can still receive an HTTP error, a
+			// CDN response without the diagnostic header, or an unknown header.
+			// Preserve only a bounded, known state; never leak response bodies or URLs.
+			if (count($nonzero) === 1) {
+				$state = (string)array_key_first($nonzero);
+				if ($nonzero[$state] === 1 && (
+					in_array($state, ['NO_HEADER', 'UNKNOWN_HEADER'], true) ||
+					preg_match('/\AHTTP_[1-5][0-9]{2}\z/D', $state)
+				)) {
+					return ['ok' => false, 'status' => $state];
 				}
 			}
 			return ['ok' => false, 'status' => 'minerva-not-prepared'];
