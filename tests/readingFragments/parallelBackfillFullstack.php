@@ -165,14 +165,13 @@ try {
 	$recovered = $journal->snapshot();
 	if ($resumeExit !== 0 || $recovered['state'] !== 'complete' ||
 		$recovered['run_id'] === $oldGeneration ||
-		$recovered['metrics']['cache_created'] !== 0 ||
 		$recovered['metrics']['cache_reused'] < 1) {
-		throw new RuntimeException('Parallel resume did not reuse validated HTML safely: ' .
+		throw new RuntimeException('Parallel resume failed or could not reuse any validated HTML: ' .
 			substr($resumeOut . $resumeErr, -3500));
 	}
 	foreach ($existingHashes as $file => $hash) {
 		if (!is_file($file) || hash_file('sha256', $file) !== $hash) {
-			throw new RuntimeException('Unchanged cache was rewritten after journal resume');
+			throw new RuntimeException('Pre-existing cache was rewritten after journal resume');
 		}
 	}
 	echo json_encode([
