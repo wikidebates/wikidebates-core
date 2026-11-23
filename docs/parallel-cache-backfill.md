@@ -73,6 +73,23 @@ empeche d'amplifier une surcharge. Chaque tentative reverifie la revision
 et la visibilite anonyme. HTTP 403, NO_HEADER et les sorties inconnues
 restent des echecs a inspecter ; ils ne font pas avancer les curseurs.
 
+## Pages explicitement non cacheables
+
+Une page dont la sortie anonyme refuse la mise en cache, notamment par le mot
+magique __NOCACHE__, ne doit pas bloquer le balayage. Lorsque Vector a
+explicitement ignore le cache et que toutes les variantes Minerva demandee
+renvoient BYPASS-parser-expiry, la phase Lecture est ignoree, et la page est
+journalisee comme skipped-cache-policy au lieu de complete. La source wikitexte
+n'est pas lue pour faire une recherche naive du mot magique : le refus repose
+sur la politique effective du parseur.
+
+Si page_touched change pendant ces requetes, la page est revalidee contre
+PRIMARY (identite publique et revision inchangée) avant tout saut. Aucun
+fichier n'est declare cree sur la base d'un simple BYPASS. Les erreurs HTTP,
+les refus ACL et les pages avec des fichiers Vector ou Minerva effectivement
+crees ou reutilises n'entrent pas dans cette exception. L'etat du balayage et
+la file de modifications ne sont jamais remis a zero.
+
 Quand une page change d'identite pendant la creation (revision ou page_touched),
 le balayage reinterroge la base PRIMARY et refait toutes les phases de la
 page avec la nouvelle revision. Au plus deux nouvelles tentatives courtes
