@@ -29,8 +29,9 @@ final class CachePreparationCommands {
 	}
 
 	/** @return array{ok:bool,status:string} */
-	public function prepare(string $phase, int $pageId): array {
-		if ($pageId < 1 || !in_array($phase, CachePreparationCoordinator::PHASES, true)) {
+	public function prepare(string $phase, int $pageId, bool $forceExistingVectorView = false): array {
+		if ($pageId < 1 || !in_array($phase, CachePreparationCoordinator::PHASES, true) ||
+			($forceExistingVectorView && $phase !== 'vector')) {
 			throw new \InvalidArgumentException('Unknown cache target');
 		}
 		if ($phase === 'minerva') {
@@ -68,7 +69,8 @@ final class CachePreparationCommands {
 		}
 		$args = $phase === 'vector'
 			? ['Wikidebates:prepareVectorViewCache', '--page-id=' . $pageId,
-				'--repair-missing-toc', '--json']
+				...($forceExistingVectorView ? ['--force-view', '--existing-only'] : ['--repair-missing-toc']),
+				'--json']
 			: ['Wikidebates:prepareReadingCache', '--page-id=' . $pageId,
 				'--json', '--sleep-ms=0', '--progress-every=0', '--max-seconds=70'];
 		$command = [PHP_BINARY, $this->entrypoint, ...$args, '--wiki=' . $this->wiki];

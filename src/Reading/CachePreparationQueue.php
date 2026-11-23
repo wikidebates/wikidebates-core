@@ -304,6 +304,63 @@ final class CachePreparationQueue {
 
 
 	/**
+	 * A separate one-time Vector view migration cursor. It never changes the
+	 * daily scan cursor, direct edit queue, or parallel backfill journal.
+	 *
+	 * @return array{version:int,high_watermark:int,after:int,created_at:int,state:string}|null
+	 */
+	public function vectorRebuildCheckpoint(): ?array {
+		$path = $this->root . '/vector-rebuild-checkpoint.json';
+		if (is_link($path)) { throw new \RuntimeException('Symlinked Vector rebuild checkpoint'); }
+		if (!is_file($path)) { return null; }
+		clearstatcache(true, $path);
+		if (filesize($path) > 512) {
+			throw new \RuntimeException('Oversized Vector rebuild checkpoint');
+		}
+		$raw = @file_get_contents($path);
+		$data = $raw === false ? null : json_decode($raw, true);
+		if (!is_array($data) || !self::validVectorRebuildCheckpoint($data)) {
+			throw new \RuntimeException('Malformed Vector rebuild checkpoint');
+		}
+		return $data;
+	}
+
+	/** Called only with tryLockWorker() held; atomic and separate from other cursors. */
+	public function saveVectorRebuildCheckpoint(array $data): void {
+		if (!self::validVectorRebuildCheckpoint($data)) {
+			throw new \InvalidArgumentException('Invalid Vector rebuild checkpoint');
+		}
+		$this->ensureDirectory();
+		$path = $this->root . '/vector-rebuild-checkpoint.json';
+		if (is_link($path)) { throw new \RuntimeException('Symlinked Vector rebuild checkpoint'); }
+		$temp = @tempnam($this->root, '.vector-rebuild-');
+		if ($temp === false || dirname($temp) !== $this->root) {
+			throw new \RuntimeException('Cannot allocate private Vector checkpoint');
+		}
+		try {
+			$json = json_encode($data, JSON_THROW_ON_ERROR) . "\n";
+			if (!@chmod($temp, 0600) ||
+				@file_put_contents($temp, $json) !== strlen($json) ||
+				!@rename($temp, $path)) {
+				throw new \RuntimeException('Cannot persist Vector checkpoint');
+			}
+		} finally {
+			if (is_file($temp)) { @unlink($temp); }
+		}
+	}
+
+	private static function validVectorRebuildCheckpoint(array $data): bool {
+		return ($data['version'] ?? null) === 1 &&
+			is_int($data['high_watermark'] ?? null) && $data['high_watermark'] > 0 &&
+			is_int($data['after'] ?? null) && $data['after'] >= 0 &&
+			$data['after'] <= $data['high_watermark'] &&
+			is_int($data['created_at'] ?? null) && $data['created_at'] > 0 &&
+			in_array($data['state'] ?? null, ['running', 'complete'], true) &&
+			($data['state'] !== 'complete' ||
+				$data['after'] === $data['high_watermark']);
+	}
+
+	/**
 	 * The daily sweep cursor lives inside this wiki's private queue directory.
 	 * Missing cursor means the first cycle; malformed state must fail closed.
 	 */

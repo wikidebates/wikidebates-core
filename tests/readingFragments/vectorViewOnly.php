@@ -14,11 +14,12 @@ $localSettings = $root . '/state/LocalSettings.php';
 file_put_contents($localSettings, "<?php\n");
 chmod($localSettings, 0600);
 
-$run = static function (int $id, bool $dryRun = false) use ($root): array {
+$run = static function (int $id, bool $dryRun = false, array $extra = []) use ($root): array {
 	$command = [PHP_BINARY, '-d', 'auto_prepend_file=' . __DIR__ . '/bootstrap.php',
 		dirname(__DIR__, 2) . '/maintenance/prepareVectorViewCache.php',
 		'--conf=' . $root . '/state/LocalSettings.php', '--page-id=' . $id, '--json'];
 	if ($dryRun) { $command[] = '--dry-run'; }
+	array_push($command, ...$extra);
 	$proc = proc_open($command, [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']], $pipes);
 	if (!is_resource($proc)) { throw new RuntimeException('Cannot start Vector view maintenance'); }
 	fclose($pipes[0]);
@@ -63,6 +64,22 @@ $second = $run($pageId);
 if (($second['state'] ?? '') !== 'REUSED') {
 	throw new RuntimeException('Valid native view must be reused without regeneration: ' . json_encode($second));
 }
+$forcePreview = $run($pageId, true, ['--force-view', '--existing-only']);
+if (($forcePreview['state'] ?? '') !== 'WOULD_REBUILD_VIEW') {
+	throw new RuntimeException('Force-view preview did not detect existing native file');
+}
+$forced = $run($pageId, false, ['--force-view', '--existing-only']);
+if (($forced['state'] ?? '') !== 'CREATED' || ($forced['rebuilt_view'] ?? false) !== true) {
+	throw new RuntimeException('Force-view did not rebuild a valid native view file');
+}
+$anotherId = (int)$database->query(
+	"SELECT page_id FROM page WHERE page_title = 'Another_public_page'"
+)->fetchColumn();
+if ($anotherId < 1) { throw new RuntimeException('No missing-view fixture'); }
+$skip = $run($anotherId, false, ['--force-view', '--existing-only']);
+if (($skip['state'] ?? '') !== 'SKIPPED_MISSING_VIEW') {
+	throw new RuntimeException('Existing-only rebuilt a missing native view file');
+}
 
 require __DIR__ . '/bootstrap.php';
 define('MEDIAWIKI', true);
@@ -85,4 +102,5 @@ if (!str_contains($html, 'ARGUMENT_VERSION_ONE') || !str_contains($html, 'skin-v
 echo json_encode(['result' => 'PASS', 'pageId' => $pageId,
 	'dryRun' => $dryRun['state'], 'policyVeto' => $veto['state'],
 	'nonpublic' => $nonpublic['state'], 'first' => $first['state'], 'second' => $second['state'],
-	'historyCreated' => false], JSON_THROW_ON_ERROR) . "\n";
+	'historyCreated' => false, 'forcePreview' => $forcePreview['state'],
+	'forced' => $forced['state'], 'skipMissingView' => $skip['state']], JSON_THROW_ON_ERROR) . "\n";

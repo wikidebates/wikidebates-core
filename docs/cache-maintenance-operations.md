@@ -101,6 +101,84 @@ charge et de temps. Aucune suppression générale de caches ni modification
 du `CacheEpoch` ne sont nécessaires. Vérifier le résultat sur des pages
 avec au moins quatre sections avant d'estimer la couverture globale.
 
+## Reconstruction ponctuelle des anciens fichiers Vector uniquement
+
+**Ne pas utiliser `rebuildFileCache.php --overwrite` pour cette migration :**
+la commande native reconstruit également `history`. Le cache d'historique
+MediaWiki doit rester disponible et se remplir à la demande, indépendamment
+de la page de consultation `view`.
+
+La commande `Wikidebates:rebuildVectorViews` est une opération **manuelle
+et opt-in** destinée à renouveler une seule fois les fichiers HTML
+`view` déjà présents sur le disque. Elle ne crée pas de fichiers là où
+Vector n'en avait pas, ne touche jamais aux fichiers `history`, et ne
+sollicite ni Minerva ni les fragments Lecture. Le rendu et le stockage
+s'appuient sur `Article::view()`, `OutputPage` et `HTMLFileCache`
+natifs, avec le contexte corrigé et les protections de visibilité des
+pages, de stabilité de révision et de politique de cache. Lors d'une
+reconstruction forcée, le fichier déjà valide est remplacé par renommage
+atomique d'un fichier temporaire situé dans le même dossier : la lecture
+anonyme ne voit pas un HTML tronqué pendant le remplacement.
+
+**Lecture seule (premier essai) :**
+
+~~~sh
+php maintenance/run.php Wikidebates:rebuildVectorViews --wiki=fr --status
+php maintenance/run.php Wikidebates:rebuildVectorViews --wiki=fr --limit=20
+php maintenance/run.php Wikidebates:rebuildVectorViews --wiki=en --status
+php maintenance/run.php Wikidebates:rebuildVectorViews --wiki=en --limit=20
+~~~
+
+Le seul moyen d'autoriser la reconstruction est d'ajouter `--execute` :
+
+~~~sh
+php maintenance/run.php Wikidebates:rebuildVectorViews --wiki=fr \
+	--execute --limit=20 --max-seconds=480 --delay-ms=1000 \
+	--max-load=6 --json
+~~~
+
+Chaque invocation traite **au plus 20 pages** ici ; la limite absolue est
+100. Le plafond de charge Linux sur une minute est 6, les traitements sont
+temporisés, et le temps total est borné. Une erreur interrompt la passe à
+la page concernée : le curseur n'est alors **pas avancé** pour cette
+page. Il suffit de relancer exactement la même commande pour reprendre.
+L'opération demande le verrou du travailleur par wiki, puis les verrous
+de préparation par page ; le cron horaire/nocturne ou le superviseur
+parallèle déjà actif peuvent donc l'empêcher de démarrer. La présence
+de modifications directes en attente interrompt également la passe pour
+laisser la priorité au renouvellement des trois caches.
+
+Un checkpoint privé distinct, `vector-rebuild-checkpoint.json`, fixe
+la borne supérieure des identifiants au début de la passe et conserve
+`after`, `high_watermark`, `state`. **Il ne modifie ni le curseur du
+balayage quotidien, ni le checkpoint parallèle, ni la file des éditions.**
+Après `state=complete`, toute nouvelle passe demande explicitement
+`--new-cycle --execute`; ne pas relancer aveuglément la reconstruction.
+
+Pour inspecter ou reconstruire **une page précise** sans changer le
+checkpoint du lot :
+
+~~~sh
+php maintenance/run.php Wikidebates:prepareVectorViewCache \
+	--wiki=fr --page-id=34700 --force-view --existing-only \
+	--dry-run --json
+php maintenance/run.php Wikidebates:prepareVectorViewCache \
+	--wiki=fr --page-id=34700 --force-view --existing-only --json
+~~~
+
+La prévisualisation retourne `WOULD_REBUILD_VIEW` pour un ancien fichier
+existant, `SKIPPED_MISSING_VIEW` s'il n'existe pas, et le vrai
+renouvellement retourne `CREATED` avec `rebuilt_view=true`.
+Le préchauffage automatique habituel reste inchangé et n'emploie **pas**
+`--force-view`.
+
+Cette reconstruction est facultative : la réparation ciblée des sommaires
+reste active dans les crons ordinaires. Avant toute série FR/EN sur
+`dialectica`, valider les workflows CI, déployer le gitlink de la ferme
+puis confirmer la disponibilité et la charge du serveur. Ne jamais
+exécuter les deux wikis en parallèle ni augmenter les paramètres sans
+mesures.
+
 ## Supervision et courriels
 
 `--report-errors` affiche maintenant les erreurs individuelles et un
