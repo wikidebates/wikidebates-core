@@ -99,6 +99,35 @@ $longId = (int)\MediaWiki\MediaWikiServices::getInstance()
 if ($longId < 1) {
 	throw new RuntimeException('Disposable long-title page has no page ID');
 }
+// Reproduce one uncacheable-for-technical-reasons Vector renderer. A safe
+// backfill must save a retry record, continue every other page and finish
+// the scan with this page explicitly unresolved.
+$faultTitle = Title::newFromText('Synthetic Vector fault');
+$faultPage = \MediaWiki\MediaWikiServices::getInstance()
+	->getWikiPageFactory()->newFromTitle($faultTitle);
+$faultUpdater = $faultPage->newPageUpdater($testUser);
+$faultUpdater->setContent(\MediaWiki\Revision\SlotRecord::MAIN,
+	\MediaWiki\Content\ContentHandler::makeContent(
+		"== Render fault ==\n" . str_repeat("Visible safe public test body. ", 70),
+		$faultTitle
+	)
+);
+$faultUpdater->saveRevision(
+	\MediaWiki\CommentStore\CommentStoreComment::newUnsavedComment('Disposable Vector fault')
+);
+if (!$faultUpdater->wasSuccessful()) {
+	throw new RuntimeException('Failed to create disposable Vector fault test page');
+}
+\MediaWiki\Deferred\DeferredUpdates::doUpdates();
+$faultId = (int)\MediaWiki\MediaWikiServices::getInstance()
+	->getConnectionProvider()->getPrimaryDatabase()->selectField(
+		'page', 'page_id',
+		['page_namespace' => $faultTitle->getNamespace(),
+			'page_title' => $faultTitle->getDBkey()], __METHOD__
+	);
+if ($faultId < 1) {
+	throw new RuntimeException('Disposable Vector fault page missing');
+}
 // The initial lab creates unrelated fixture edits, including deliberately
 // uncacheable examples. Isolate one real direct edit for this integration test.
 foreach ($queue->pending(10000) as $record) {
@@ -180,7 +209,10 @@ try {
 		$queue->dailyCursor() !== 0 ||
 		($checkpoint['metrics']['completed'] ?? 0) < 1 ||
 		($checkpoint['metrics']['skipped'] ?? 0) < 1 ||
-		!str_contains($out . $err, '"page_id":' . $noCacheId . ',"reason":"parser-expiry"')) {
+		($checkpoint['metrics']['deferred'] ?? 0) < 1 ||
+		$queue->current($faultId) === null ||
+		!str_contains($out . $err, '"page_id":' . $noCacheId . ',"reason":"parser-expiry"') ||
+		!str_contains($out . $err, '"mode":"scan-deferred"')) {
 		throw new RuntimeException('Parallel scan missed pages or failed to finalize: ' .
 			substr($out . $err, -3000));
 	}
@@ -189,6 +221,14 @@ try {
 	if (count($mobile) < 2 || count($reading) < 1 ||
 		$queue->current($pageId) !== null) {
 		throw new RuntimeException('Real mobile or fragment cache missing after parallel fill');
+	}
+	$failureLedger = new \MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillFailures($queue);
+	$faultSummary = $failureLedger->summary();
+	if ($faultSummary['open'] < 1 || count(array_filter(
+		$faultSummary['recent'],
+		static fn(array $item): bool => $item['page_id'] === $faultId
+	)) !== 1) {
+		throw new RuntimeException('Fullscan lost its durable failed-page diagnostics');
 	}
 	$noCacheVector = new HTMLFileCache($noCacheTitle, 'view');
 	if ($noCacheVector->isCached()) {
