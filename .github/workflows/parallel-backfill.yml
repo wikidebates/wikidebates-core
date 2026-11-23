@@ -1,0 +1,36 @@
+name: Parallel HTML backfill safety (PHP 8.4)
+
+on:
+  pull_request:
+    paths:
+      - 'src/Reading/ParallelBackfill*.php'
+      - 'src/Reading/CachePreparationQueue.php'
+      - 'tests/php/parallelBackfillState.php'
+      - 'tests/readingFragments/parallelBackfillJournal.php'
+      - '.github/workflows/parallel-backfill.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  state-and-journal:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Syntax of new code and existing queue
+        run: |
+          php -l src/Reading/ParallelBackfillState.php
+          php -l src/Reading/ParallelBackfillJournal.php
+          php -l src/Reading/CachePreparationQueue.php
+          php -l tests/php/parallelBackfillState.php
+          php -l tests/readingFragments/parallelBackfillJournal.php
+      - name: Check safe lane progression and durable checkpoints
+        run: |
+          php tests/php/parallelBackfillState.php
+          php tests/readingFragments/parallelBackfillJournal.php
