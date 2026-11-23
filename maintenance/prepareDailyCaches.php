@@ -5,6 +5,7 @@ use MediaWiki\Extension\Wikidebates\Reading\ArgumentCategory;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCommands;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationCoordinator;
 use MediaWiki\Extension\Wikidebates\Reading\CachePreparationQueue;
+use MediaWiki\Extension\Wikidebates\Reading\DailyCacheDeferral;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillJournal;
 use MediaWiki\Extension\Wikidebates\Reading\ParallelBackfillFailures;
 use MediaWiki\WikiMap\WikiMap;
@@ -97,7 +98,7 @@ class PrepareDailyCaches extends Maintenance {
 			'type' => 'wikidebates-daily-cache-preparation',
 			'wiki' => $wiki, 'mode' => $execute ? 'execute' : 'preview',
 			'limit' => $limit, 'queue_processed' => 0, 'queue_acknowledged' => 0,
-			'scan_processed' => 0, 'scan_skipped_queue' => 0,
+			'scan_processed' => 0, 'scan_deferred' => 0, 'scan_skipped_queue' => 0,
 			'stop_reason' => 'complete', 'pages' => []
 		];
 		try {
@@ -139,6 +140,7 @@ class PrepareDailyCaches extends Maintenance {
 			};
 			$coordinator = new CachePreparationCoordinator($queue);
 			$failures = $execute ? new ParallelBackfillFailures($queue) : null;
+			$deferral = $execute ? new DailyCacheDeferral($queue, $failures) : null;
 			$commands = null;
 			if ($execute) {
 				$root = defined('MW_INSTALL_PATH') ? MW_INSTALL_PATH : dirname(__DIR__, 3);
@@ -194,6 +196,7 @@ class PrepareDailyCaches extends Maintenance {
 			}
 
 			if ($report['stop_reason'] === 'complete' && !$queueOnly) {
+				$consecutiveDeferred = 0;
 				$replica = $services->getConnectionProvider()->getReplicaDatabase();
 				while (count($report['pages']) < $limit) {
 					if ($execute && $overloaded()) {
@@ -245,16 +248,36 @@ class PrepareDailyCaches extends Maintenance {
 							}
 							if (!in_array($result['state'],
 								['complete', 'skipped-nonpublic', 'skipped-cache-policy'], true)) {
-								$report['stop_reason'] = 'retry-required';
-								$report['pages'][] = $result;
-								break 2;
+								$reason = ParallelBackfillJournal::safeFailureReason($result);
+								if (!$deferral->enqueue($id, $latest, $reason)) {
+									// A deleted PRIMARY revision or an unresolved semantic
+									// barrier cannot be acknowledged as a durable retry.
+									$report['stop_reason'] = 'retry-required';
+									$report['pages'][] = $result;
+									break 2;
+								}
+								$result['state'] = 'deferred';
+								$result['reason'] = $reason;
+								$report['scan_deferred']++;
+								$consecutiveDeferred++;
+								if ($consecutiveDeferred >= 12) {
+									// Stop a likely systemic outage rather than silently
+									// deferring thousands of pages. Do not move the cursor.
+									$report['stop_reason'] = 'systemic-page-errors';
+									$report['pages'][] = $result;
+									break 2;
+								}
+							} else {
+								$consecutiveDeferred = 0;
 							}
 						} else {
 							$result = ['pageId' => $id, 'revisionId' => (int)$row->page_latest,
 								'state' => 'preview-scan'];
 						}
 						$report['pages'][] = $result;
-						$report['scan_processed']++;
+						if ($result['state'] !== 'deferred') {
+							$report['scan_processed']++;
+						}
 						$cursor = $id;
 						if ($execute) { $queue->saveDailyCursor($cursor); }
 						if ($execute && $delay > 0 && $needsPacing($result)) { usleep($delay * 1000); }
@@ -282,7 +305,8 @@ class PrepareDailyCaches extends Maintenance {
 		}
 		$report['duration_seconds'] = round(microtime(true) - $started, 3);
 		$this->output(json_encode($report, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES) . "\n");
-		return $report['stop_reason'] !== 'retry-required';
+		return !in_array($report['stop_reason'],
+			['retry-required', 'systemic-page-errors'], true);
 	}
 }
 
