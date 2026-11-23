@@ -571,15 +571,9 @@ class PrepareParallelCaches extends Maintenance {
 		if ($lane === null) {
 			return true;
 		}
-		$position = 0;
-		foreach ($snapshot['lanes'] as $index => $data) {
-			if ($data['done']) { continue; }
-			if ($index === $lane) {
-				return $position < $snapshot['desired_workers'];
-			}
-			$position++;
-		}
-		return false;
+		return (new ParallelBackfillState($snapshot['lanes']))->laneMayRun(
+			$lane, $snapshot['desired_workers']
+		);
 	}
 
 	/**
