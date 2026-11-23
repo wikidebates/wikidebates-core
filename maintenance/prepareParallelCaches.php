@@ -32,6 +32,8 @@ class PrepareParallelCaches extends Maintenance {
 		$this->requireExtension('Wikidebates');
 		$this->addOption('execute', 'Explicitly enable cache creation and durable state changes.');
 		$this->addOption('status', 'Read-only progress report.');
+		$this->addOption('report-errors', 'Read-only per-page failure summary.');
+		$this->addOption('mail-errors', 'With --report-errors: send a rate-limited aggregated email.');
 		$this->addOption('stop', 'Request graceful stop at the next page boundary.');
 		$this->addOption('new-cycle', 'Start a fresh cycle only after the previous one completed.');
 		$this->addOption('workers', 'Number of parallel scan lanes (1-8; default 4).', false, true);
@@ -73,6 +75,58 @@ class PrepareParallelCaches extends Maintenance {
 		$queue = new CachePreparationQueue($directory, $wiki);
 		$journal = new ParallelBackfillJournal($queue, $wiki);
 
+		if ($this->hasOption('report-errors')) {
+			if ($this->hasOption('status') || $this->hasOption('stop') ||
+				$this->hasOption('execute') || $this->hasOption('worker-lane') ||
+				$this->hasOption('worker-queue') || $this->hasOption('new-cycle')) {
+				$this->fatalError('Error reporting cannot be combined with cache operations.');
+			}
+			$failures = new ParallelBackfillFailures($queue);
+			$summary = $failures->summary();
+			$mailStatus = null;
+			if ($this->hasOption('mail-errors')) {
+				$mailStatus = $failures->alert(
+					static function (array $data) use ($wiki): bool {
+						$lines = [
+							'Wikidebates cache preparation incident report',
+							'Wiki: ' . $wiki,
+							'Unresolved page failures: ' . $data['open'],
+							'Previously resolved: ' . $data['resolved'],
+							'',
+							'Recent unresolved pages (ID / revision / error / attempts):'
+						];
+						foreach ($data['recent'] as $item) {
+							$lines[] = implode(' / ', [
+								$item['page_id'], $item['revision_id'],
+								$item['reason'], $item['attempts']
+							]);
+						}
+						$lines[] = '';
+						$lines[] = 'The failures remain durably queued for future preparation.';
+						$lines[] = 'No failed or private HTML was declared cacheable.';
+						$subject = '[Wikidebates cache] ' . $wiki . ' - ' .
+							$data['open'] . ' pages to retry';
+						return \UserMailer::send(
+							new \MailAddress('erreurcache@wikidebats.org'),
+							new \MailAddress('noreply@wikidebats.org', 'Wikidebats'),
+							$subject, implode("\n", $lines)
+						)->isOK();
+					}
+				);
+			}
+			unset($summary['signature']);
+			$this->report([
+				'type' => 'wikidebates-parallel-backfill',
+				'wiki' => $wiki, 'mode' => 'errors',
+				'summary' => $summary,
+				'mail_status' => $mailStatus
+			]);
+			return $mailStatus !== 'failed';
+		}
+		if ($this->hasOption('mail-errors')) {
+			$this->fatalError('--mail-errors requires --report-errors.');
+		}
+
 		if ($this->hasOption('status')) {
 			if ($this->hasOption('execute') || $this->hasOption('stop') ||
 				$this->hasOption('worker-lane') || $this->hasOption('worker-queue')) {
@@ -80,6 +134,7 @@ class PrepareParallelCaches extends Maintenance {
 			}
 			$snapshot = $journal->snapshot();
 			if ($snapshot !== null) {
+				$snapshot['metrics']['deferred'] ??= 0;
 				$snapshot['contiguous_after'] =
 					(new ParallelBackfillState($snapshot['lanes']))->contiguousAfter();
 				unset($snapshot['run_id']);
