@@ -57,7 +57,7 @@ final class CachePreparationCommands {
 				if (!$outcome['ok']) { return $outcome; }
 				$statuses[$device] = $outcome['status'];
 				$previousMadeHttpRequest = !in_array($outcome['status'],
-					['LOCAL_HIT', 'SKIPPED_SMW_ARTICLE'], true);
+					['LOCAL_HIT', 'SKIPPED_SMW_ARTICLE', 'SKIPPED_FLOW_BOARD'], true);
 			}
 			if (count($statuses) === 1) {
 				return ['ok' => true, 'status' => reset($statuses)];

@@ -315,6 +315,10 @@ try {
 		['ok' => true, 'status' => 'SKIPPED_SMW_ARTICLE'],
 		'Explicit SMW custom Article classification is a safe no-HTTP exclusion');
 	$check(CachePreparationResults::interpret('minerva', 17, 0,
+		$minerva(['SKIPPED_FLOW_BOARD' => 1, 'bypassReasons' => []])) ===
+		['ok' => true, 'status' => 'SKIPPED_FLOW_BOARD'],
+		'Explicit Flow board content model reports safe no-HTTP Minerva exclusion');
+	$check(CachePreparationResults::interpret('minerva', 17, 0,
 		$minerva(['MISS' => 1, 'bypassReasons' => []]))['ok'],
 		'Validated Minerva MISS publication is accepted');
 	$check(CachePreparationResults::interpret('minerva', 17, 0,
@@ -375,6 +379,16 @@ try {
 	$check($scanSmw['state'] === 'complete' &&
 		($scanSmw['phases']['minerva'] ?? null) === 'SKIPPED_SMW_ARTICLE',
 		'Resumable scan skips SMW Property and Concept mobile HTML without masking other phases');
+	$scanFlow = $coordinator->processUnqueued(17, 29,
+		static fn(int $id): ?int => 29,
+		static fn(string $phase, int $id): array => [
+			'ok' => true, 'status' => $phase === 'minerva' ? 'SKIPPED_FLOW_BOARD' :
+				($phase === 'reading' ? 'not-an-argument' : 'SKIPPED_NONCONTENT')
+		],
+		static fn(int $id): ?string => 'public-identity');
+	$check($scanFlow['state'] === 'complete' &&
+		($scanFlow['phases']['minerva'] ?? null) === 'SKIPPED_FLOW_BOARD',
+		'Resumable scan advances past Flow board without a fabricated anonymous cache');
 	$check($scanCookie['state'] === 'complete' &&
 		($scanCookie['phases']['minerva'] ?? null) === 'BYPASS-header-set-cookie' &&
 		$scanCookieCalls === CachePreparationCoordinator::PHASES,
