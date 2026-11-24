@@ -69,7 +69,7 @@ final class CachePreparationCommands {
 		}
 		$args = $phase === 'vector'
 			? ['Wikidebates:prepareVectorViewCache', '--page-id=' . $pageId,
-				...($forceExistingVectorView ? ['--force-view', '--existing-only'] : ['--repair-missing-toc']),
+				...($forceExistingVectorView ? ['--force-view', '--existing-only'] : ['--repair-missing-toc', '--repair-legacy-shortdesc']),
 				'--json']
 			: ['Wikidebates:prepareReadingCache', '--page-id=' . $pageId,
 				'--json', '--sleep-ms=0', '--progress-every=0', '--max-seconds=70'];

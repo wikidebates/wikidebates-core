@@ -13,7 +13,14 @@ namespace MediaWiki\Extension\Wikidebates\Reading;
  * compression and filename; only the final file publication is atomic.
  */
 final class AtomicVectorViewFileCache extends \HTMLFileCache {
+	private bool $published = false;
+
+	public function wasPublished(): bool {
+		return $this->published;
+	}
+
 	public function saveText($text) {
+		$this->published = false;
 		if ($this->mType !== 'view') {
 			throw new \LogicException('Atomic Vector publication is restricted to action=view');
 		}
@@ -39,6 +46,7 @@ final class AtomicVectorViewFileCache extends \HTMLFileCache {
 				return false;
 			}
 			$this->mCached = true;
+			$this->published = true;
 			return $payload;
 		} finally {
 			if (is_file($temp)) {
