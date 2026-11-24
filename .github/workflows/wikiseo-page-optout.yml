@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - 'src/Seo/Metadata.php'
+      - 'debatephp/src/MediaWikiContext.php'
+      - 'debatephp/src/ReferenceRenderer.php'
+      - 'debatephp/src/ArgumentReferenceRenderer.php'
+      - 'tests/seo.php'
       - 'extension.json'
       - 'tests/seoCoexistence.php'
       - 'tests/seoCacheInvalidation.php'
@@ -32,11 +36,12 @@ jobs:
           repository: wikimedia/mediawiki
           ref: 1.43.11
           path: .mw-lab
-      - name: Modernized WikiSEO feature branch
+      - name: Modernized WikiSEO (production baseline)
         uses: actions/checkout@v4
         with:
           repository: wikidebates/WikiSEO
-          ref: feature/seo-modernization-mw143-20261124
+          # Exact WikiSEO gitlink in farm main 953d3e24035 (2026-11-24).
+          ref: 3f52f9d7d196bcaed541201f4412f4bf1e6b71e1
           path: .mw-lab/extensions/WikiSEO
       - name: Install isolated MediaWiki vendor dependencies
         working-directory: .mw-lab
