@@ -197,6 +197,7 @@ if (class_exists(\MediaWiki\Extension\WikiSEO\PagePolicy::class)) {
 		'Ordinary page continues producing WikiSEO JSON-LD');
 
 	// A manually authored #seo parser function still works on ordinary pages.
+	$services = \MediaWiki\MediaWikiServices::getInstance();
 	$parser = $services->getParserFactory()->create();
 	$options = \MediaWiki\Parser\ParserOptions::newFromAnon();
 	$manualTitle = \MediaWiki\Title\Title::newFromText('SEO manual parser project');
