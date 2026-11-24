@@ -96,8 +96,7 @@ $publicationGraph = [ '@graph' => [
 $publishedGraph = Metadata::withPublicationDate( $publicationGraph, '2024-01-02T14:37:25Z' )['@graph'];
 same( '2024-01-02T14:37:25Z', $publishedGraph[0]['datePublished'], 'Native page date overrides editorial date' );
 same( '2024-01-02T14:37:25Z', $publishedGraph[2]['datePublished'], 'Native debate date overrides editorial date' );
-check( !isset( $publishedGraph[1]['datePublished'], $publishedGraph[2]['mainEntity']['datePublished'] ) &&
-	!isset( $publishedGraph[1]['datePublished'] ) && !isset( $publishedGraph[2]['mainEntity']['datePublished'] ),
+check( !isset( $publishedGraph[1]['datePublished'] ) && !isset( $publishedGraph[2]['mainEntity']['datePublished'] ),
 	'Page creation must not date the claim or the question itself' );
 same( '1900', $publishedGraph[1]['citation']['datePublished'], 'Bibliographic dates remain intact' );
 $undatedGraph = Metadata::withPublicationDate( $publicationGraph, null )['@graph'];

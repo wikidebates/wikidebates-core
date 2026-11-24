@@ -18,8 +18,6 @@ $services = MediaWikiServices::getInstance();
 $user = User::newSystemUser('Wikidebates publication fixture', ['steal' => false]);
 check($user !== null, 'Test user');
 $cache = $services->getParserCache();
-$provider = $services->getConnectionProvider();
-$lookups = 0;
 $parseEvents = 0;
 
 // This hook is triggered only by actual parse work, not deserialization.

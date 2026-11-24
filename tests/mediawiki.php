@@ -157,12 +157,13 @@ foreach ($fixtures as $name => $text) {
 			is_array($node) && ($node['@type'] ?? '') === 'Organization' && ($node['@id'] ?? '') === $publisherId
 		);
 		same(1, count($publisherNodes), 'Existing publisher node is reused: ' . $name);
-		same('2026-01-01T00:00:00Z', $pageNode['datePublished'] ?? null,
-			'Creation-date is attached to the page: ' . $name);
+		// These fixtures are raw parser previews, not saved revisions.
+		check(!isset($pageNode['datePublished']), 'Unsaved fixture has no fabricated publication date: ' . $name);
 		if ($kind === 'argument') {
 			foreach ($graph as $node) {
 				if (($node['@type'] ?? null) === 'Claim') {
 					check(!isset($node['author']), 'Claim is not assigned a collective intellectual author: ' . $name);
+					check(!isset($node['datePublished']), 'Claim is not assigned the page creation date: ' . $name);
 				}
 			}
 		}
