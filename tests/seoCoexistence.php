@@ -153,4 +153,47 @@ same(['A manually entered description.'], $ordinaryTags['description'] ?? null, 
 same(['https://example.test/project.png'], $ordinaryTags['og:image'] ?? null, 'WikiSEO image preserved on other pages');
 check(str_contains($ordinaryHead, 'application/ld+json'), 'WikiSEO generic structured data kept on other pages');
 
+// New fork: exercise the real WikiSEO hook entrypoints as well as the old
+// final-HTML coexistence strategy. The installed upstream 2.7.0 is still
+// tested by the normal baseline CI when PagePolicy is not present.
+if (class_exists(\MediaWiki\Extension\WikiSEO\PagePolicy::class)) {
+	$policy = \MediaWiki\Extension\WikiSEO\PagePolicy::class;
+	same('global-only', $policy::forOutput($debate), 'HookContainer opts debate out of page metadata');
+	same('global-only', $policy::forOutput($argument), 'HookContainer opts argument out of page metadata');
+	same('full', $policy::forOutput($ordinary), 'HookContainer preserves ordinary WikiSEO page metadata');
+
+	$parserOutput = new ParserOutput();
+	$parserOutput->setExtensionData(Metadata::DATA_KEY, ['wd_kind' => 'debate']);
+	same('global-only', $policy::forRevision($debate->getTitle(), $parserOutput),
+		'HookContainer opts native parser output out of revision updates');
+	$parserOutput = new ParserOutput();
+	same('full', $policy::forRevision($ordinary->getTitle(), $parserOutput),
+		'HookContainer preserves ordinary page revision updates');
+
+	$hook = new \MediaWiki\Extension\WikiSEO\Hooks\PageHooks(
+		\MediaWiki\MediaWikiServices::getInstance()->getMainConfig()
+	);
+	$skin = new class(['name' => 'vector']) extends \Skin {
+		public function outputPage() {}
+	};
+	$nativeOutput = seoLabOutput('Native policy without duplication');
+	seoLabNative($nativeOutput, [
+		'wd_kind' => 'debate',
+		'title' => 'Native Wikidebates title',
+		'description' => 'Native Wikidebates description',
+		'robots' => 'index,follow',
+	]);
+	$hook->onBeforePageDisplay($nativeOutput, $skin);
+	check(!isset($nativeOutput->getHeadItemsArray()['jsonld-metadata']),
+		'WikiSEO JSON-LD is not generated at all for native debate');
+	check(!isset($nativeOutput->getHeadItemsArray()['og:title']),
+		'WikiSEO Open Graph generator is skipped before execution for native debate');
+	$projectOutput = seoLabOutput('Ordinary project page remains automatic');
+	$hook->onBeforePageDisplay($projectOutput, $skin);
+	check(isset($projectOutput->getHeadItemsArray()['jsonld-metadata']),
+		'Ordinary page continues producing WikiSEO JSON-LD');
+	check(isset($projectOutput->getHeadItemsArray()['og:title']),
+		'Ordinary page continues producing WikiSEO Open Graph');
+}
+
 echo "OK: selective WikiSEO coexistence, debate/argument native head, other pages unchanged\n";
