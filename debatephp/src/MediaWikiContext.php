@@ -203,7 +203,7 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 			if (is_array($payload)) {
 				$data = \MediaWiki\Extension\Wikidebates\Seo\Metadata::withDescription($data, $payload);
 			}
-			$json = FormatJson::encode(JsonData::value($data, $this), false, FormatJson::ALL_OK);
+			$json = FormatJson::encode(JsonData::schemaValue($data, $this), false, FormatJson::ALL_OK);
 			if ($json === false) { throw new \RuntimeException('Unable to encode JSON-LD'); }
 		} finally { $this->telemetry?->finish('json', $started); }
 		$started = $this->telemetry?->start();
