@@ -30,7 +30,7 @@ final class Metadata {
 	 */
 	public static function onWikiSEOPageMetadataMode( OutputPage $out, string &$mode ): void {
 		$data = $out->getProperty( self::DATA_KEY );
-		if ( $out->isArticle() && self::isNativeSeoData( $data ) ) {
+		if ( $mode === 'full' && $out->isArticle() && self::isNativeSeoData( $data ) ) {
 			$mode = 'global-only';
 		}
 	}
@@ -42,7 +42,7 @@ final class Metadata {
 	public static function onWikiSEOPageRevisionMode(
 		Title $title, ParserOutput $parserOutput, string &$mode
 	): void {
-		if ( self::isNativeSeoData( $parserOutput->getExtensionData( self::DATA_KEY ) ) ) {
+		if ( $mode === 'full' && self::isNativeSeoData( $parserOutput->getExtensionData( self::DATA_KEY ) ) ) {
 			$mode = 'global-only';
 		}
 	}
