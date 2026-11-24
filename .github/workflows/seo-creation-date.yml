@@ -41,7 +41,7 @@
 				{
 					"name": "Verify native renderers regenerate from preserved Lua snapshots",
 					"if": "matrix.database == 'sqlite'",
-					"run": "python3 debatephp/tests/regenerate.py"
+					"run": "python3 -m venv \"$RUNNER_TEMP/wd-render-generator\"\n\"$RUNNER_TEMP/wd-render-generator/bin/python\" -m pip install --disable-pip-version-check luaparser==3.3.0\n\"$RUNNER_TEMP/wd-render-generator/bin/python\" debatephp/tests/regenerate.py"
 				},
 				{
 					"uses": "shivammathur/setup-php@v2",
