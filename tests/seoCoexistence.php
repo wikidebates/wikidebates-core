@@ -73,6 +73,9 @@ seoLabNative($debate, [
 $mode = 'full';
 Metadata::onWikiSEOPageMetadataMode($debate, $mode);
 same('global-only', $mode, 'Native debate reduces WikiSEO to global-only metadata');
+$mode = 'off';
+Metadata::onWikiSEOPageMetadataMode($debate, $mode);
+same('off', $mode, 'Native debate cannot undo a stronger off decision from another extension');
 $parser = new ParserOutput();
 $parser->setExtensionData(Metadata::DATA_KEY, ['wd_kind' => 'debate']);
 $revisionMode = 'full';
