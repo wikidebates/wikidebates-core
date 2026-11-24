@@ -1258,24 +1258,18 @@ class ReferenceRenderer {
 		return $out;
 	}
 
-	protected function wkBuildIsRelatedTo($args = null) {
+	protected function wkBuildRelatedLinks($args = null) {
 		$out = new Table([]);
-		$raw = Lua::trim(Lua::str((Lua::truth($v204 = (Lua::truth($v205 = $args) ? $args['related-debates'] : $v205)) ? $v204 : '')));
-		if (($raw === '')) {
-			return $out;
-		}
-		$count = 0;
-		foreach (Lua::split($raw, $this->ITEM_SEP, true) as $part) {
-			$part = Lua::trim(Lua::str((Lua::truth($v206 = $part) ? $v206 : '')));
-			if (($part !== '')) {
-				$count = ($count + 1);
-				if (($count > 5)) {
-					break;
-				}
-				$url = $this->wkFullUrl($part);
-				if (($url !== '')) {
-					$out[(Lua::len($out) + 1)] = $this->jsonNode(['@id' => ($url . '#qa')]);
-				}
+		$raw = trim((string)($args['related-debates'] ?? ''));
+		foreach (explode($this->ITEM_SEP, $raw) as $part) {
+			// Related debates are rendered as wiki links, possibly with a label.
+			$title = trim(NativeText::splitOnce($part, '|')[0]);
+			if ($title === '') {
+				continue;
+			}
+			$url = $this->wkFullUrl($title);
+			if ($url !== '') {
+				$out[count($out) + 1] = $url;
 			}
 		}
 		return $out;
@@ -1481,7 +1475,7 @@ class ReferenceRenderer {
 			[$about, $mentions] = $this->wkBuildAboutAndMentions($args);
 			$keywords = $this->wkBuildKeywords($args, $lang);
 			$isPartOf = $this->wkBuildIsPartOf($lang);
-			$isRelatedTo = $this->wkBuildIsRelatedTo($args);
+			$relatedLinks = $this->wkBuildRelatedLinks($args);
 			$questionText = null;
 			if ((Lua::truth($args['expanded-topic']) && (Lua::trim($args['expanded-topic']) !== ''))) {
 				$questionText = Lua::format($this->L($lang, 'text', 'faq_q'), Lua::trim($args['expanded-topic']));
@@ -1578,8 +1572,8 @@ class ReferenceRenderer {
 			$credit = $this->seoL($lang, 'author');
 			$pageNode['creditText'] = $credit;
 			$pageNode['author'] = $this->jsonNode(['@type' => 'Organization', 'name' => $credit]);
-			if ((Lua::len($isRelatedTo) > 0)) {
-				$pageNode['isRelatedTo'] = $isRelatedTo;
+			if ((Lua::len($relatedLinks) > 0)) {
+				$pageNode['relatedLink'] = $relatedLinks;
 			}
 			if ((Lua::len($keywords) > 0)) {
 				$pageNode['keywords'] = $keywords;

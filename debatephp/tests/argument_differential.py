@@ -232,6 +232,8 @@ if __name__=='__main__':
 				print(c['name'],mode, schema_error or '')
 				print('\n'.join(list(difflib.unified_diff(json.dumps(normalize(want, historical=True),ensure_ascii=False,indent=2).splitlines(),json.dumps(normalize(got),ensure_ascii=False,indent=2).splitlines()))[:25]))
 				break
+		if not bad and normalize(modes[0]) != normalize(modes[1]):
+			bad.append((c['name'],'native parity'))
 		if bad:break
 	report={'cases':len(corpus),'renderer_comparisons':len(corpus)*2,'passed':not bad,'failures':bad,'scope':'Lua 5.1 versus PHP, mocked MediaWiki boundary; not a live wiki benchmark'}
 	if len(sys.argv) > 2:

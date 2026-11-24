@@ -47,6 +47,12 @@ for row in rows:
 			if key in want or key in got:
 				if want.get(key)!=got.get(key):dif.append(key)
 		if dif:bad.append([name,mode,dif])
+	# Both native modes must also match exactly, including newly added list entries.
+	left,right=row['variants']['reference'],row['variants']['optimized']
+	for key in ['html','categories','properties','templates','links','externalLinks','languageLinks','modules','flags','expiry','semantic_snapshot','variables','stored_semantics']:
+		if key=='html':
+			if base.html_key(left[key])!=base.html_key(right[key]):bad.append([name,'native parity',key])
+		elif left.get(key)!=right.get(key):bad.append([name,'native parity',key])
 report={'cases':len(rows),'comparisons':tested,'passed':not bad,'failures':bad,'jsonld_encoding_corrections':corrections,'semantic_schema_changes':semantic_changes,
 	'comparison':'Visible output and metadata unchanged except removal of obsolete Lua source dependencies; JSON checked against Lua using exact legacy escaping or explicit semantic projection; other differences fail'}
 text=json.dumps(report,ensure_ascii=False,indent=2)+'\n';print(text)
