@@ -280,10 +280,6 @@
 			"fr": "Titres d'arguments affichés à revoir",
 			"en": "Argument displayed titles to review"
 		},
-		"Debate.categories.creation_date_missing": {
-			"fr": "Articles sans date de création",
-			"en": "Articles without creation date"
-		},
 		"Debate.text.main_banner_color": "vert",
 		"Debate.text.intro_empty_category": {
 			"fr": "Introductions de débats vides",
@@ -629,10 +625,6 @@
 		"Argument.categories.authors_missing": {
 			"fr": "Citations sans auteur",
 			"en": "Quotes without author"
-		},
-		"Argument.categories.creation_date_missing": {
-			"fr": "Articles sans date de création",
-			"en": "Articles without creation date"
 		},
 		"Argument.categories.title_very_short": {
 			"fr": "Titres d'arguments très courts",

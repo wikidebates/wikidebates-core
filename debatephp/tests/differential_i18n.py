@@ -15,7 +15,10 @@ for domain in ['Common','Debate','Argument','ArgumentMap']:
 		for key in items.keys():
 			for lang in ['fr','en']:
 				q=[domain+'.'+section,lang,key,'PAGE','SIDE','THIRD']
-				queries.append(q);expected.append(i18n.msg(*q))
+				queries.append(q)
+				# Two obsolete native keys now intentionally use the missing-key fallback.
+				retired = domain in ('Debate','Argument') and section == 'categories' and key == 'creation_date_missing'
+				expected.append(key if retired else i18n.msg(*q))
 for domain in ['Missing','Debate.missing','Common.text']:
 	for lang in ['fr-CA','EN','xx']:
 		q=[domain,lang,'missing-key','PAGE'];queries.append(q);expected.append(i18n.msg(*q))
