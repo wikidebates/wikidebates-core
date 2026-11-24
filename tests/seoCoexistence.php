@@ -137,6 +137,33 @@ check(!isset($argumentTags['article:author']), 'Invalid article author string is
 check(!str_contains($argumentHead, 'obsolete.png'), 'No obsolete image survives WikiSEO');
 check(!str_contains($argumentHead, 'application/ld+json'), 'WikiSEO generic JSON-LD suppressed on argument');
 
+// Read the payload and revision at the actual head boundary, not from a
+// previously computed array. Late output changes must not produce stale tags.
+$lateOutput = seoLabOutput('SEO late revision');
+$lateData = [
+	'wd_kind' => 'argument',
+	'title' => "'''Original title'''",
+	'wd_summary' => 'Original summary',
+	'robots' => 'index,follow',
+	'wd_creation_date' => '2024-02-01',
+];
+seoLabNative($lateOutput, $lateData);
+Metadata::beforePageDisplay($lateOutput);
+same('Original title', $lateOutput->getHTMLTitle(), 'Early native title is still normalized');
+$lateData['wd_summary'] = 'Updated summary';
+seoLabNative($lateOutput, $lateData);
+$lateOutput->setRevisionTimestamp('20261124101500');
+$lateHead = implode("\n", $lateOutput->getHeadLinksArray()) . "\n" .
+	implode("\n", $lateOutput->getHeadItemsArray());
+$lateTags = seoLabMeta($lateHead);
+same(['Updated summary'], $lateTags['description'] ?? null, 'Final head reads the current payload');
+same(['2026-11-24T10:15:00Z'], $lateTags['article:modified_time'] ?? null,
+	'Final head reads the current revision timestamp');
+check(!str_contains($lateHead, 'Original summary'), 'No early stale metadata in final head');
+$lateHeadAgain = implode("\n", $lateOutput->getHeadLinksArray()) . "\n" .
+	implode("\n", $lateOutput->getHeadItemsArray());
+same($lateTags, seoLabMeta($lateHeadAgain), 'Repeated head assembly keeps the same metadata without duplicates');
+
 $ordinary = seoLabOutput('SEO ordinary project page');
 $mode = 'full';
 Metadata::onWikiSEOPageMetadataMode($ordinary, $mode);

@@ -75,3 +75,19 @@ Commande locale (sur une installation de test disposant de WikiSEO et des dépen
 ```sh
 MW_INSTALL_PATH=/chemin/mediawiki-test WD_TEST_EXTENSIONS=WikiSEO php tests/seoBenchmark.php
 ```
+
+
+### Résultats initiaux et suppression du double calcul
+
+Le [benchmark initial du 24 novembre 2026](https://github.com/wikidebates/wikidebates-core/actions/runs/45378953538) (MediaWiki 1.43.11, PHP 8.4.28) a mesuré, en médiane :
+
+| Type | Mode full | Mode global-only | Réduction |
+|---|---:|---:|---:|
+| Débat | 963,769 µs | 666,077 µs | 30,89 % |
+| Argument | 985,943 µs | 686,425 µs | 30,38 % |
+
+Avant l'optimisation suivante, `BeforePageDisplay` et `OutputPageAfterGetHeadLinksArray` reconstruisaient tous deux les tableaux de métadonnées complets quand WikiSEO était chargé. Désormais, le premier hook ne normalise que le titre et applique les directives robots ; le second construit les tableaux complets. Le hook de compatibilité `WikiSEOPreAddMetadata` ne normalise également que le titre. Sans WikiSEO, la construction complète reste effectuée dans `BeforePageDisplay`.
+
+Aucun nouveau cache, champ persistant, calcul de date, appel réseau ou traitement SMW n'est ajouté. La charge utile et l'horodatage sont toujours lus au moment de l'assemblage du head ; le test de coexistence couvre leur modification entre les hooks et les assemblages répétés. La suppression du double calcul ne modifie ni les données structurées, ni la politique de coexistence, ni les métadonnées produites.
+
+Pour mesurer ce changement indépendamment du bruit entre runners, le workflow compare également le commit de référence `07cc741fd9bbe768ef182a1c123f8c634d4a82f8` et le code candidat, dans le même job et avec la même installation MediaWiki jetable. Ces temps restent informatifs et ne constituent pas un seuil de CI.

@@ -55,6 +55,18 @@ jobs:
           php -d display_errors=1 -d error_reporting=E_ALL tests/seoCoexistence.php
           php -d display_errors=1 -d error_reporting=E_ALL tests/seoCacheInvalidation.php
           php -d display_errors=1 -d error_reporting=E_ALL tests/mediawiki.php
+      - name: Measure pre-optimization baseline on the same runner (informational)
+        env:
+          MW_INSTALL_PATH: ${{ github.workspace }}/.mw-lab
+          WD_TEST_EXTENSIONS: WikiSEO
+        run: |
+          baseline=07cc741fd9bbe768ef182a1c123f8c634d4a82f8
+          git fetch --no-tags --depth=1 origin "$baseline"
+          worktree="$RUNNER_TEMP/wd-seo-before"
+          git worktree add --detach "$worktree" "$baseline"
+          trap 'git worktree remove --force "$worktree"' EXIT
+          echo "WD_SEO_BEFORE $baseline"
+          php -d display_errors=1 -d error_reporting=E_ALL "$worktree/tests/seoBenchmark.php"
       - name: Measure isolated SEO hook cost (informational)
         env:
           MW_INSTALL_PATH: ${{ github.workspace }}/.mw-lab

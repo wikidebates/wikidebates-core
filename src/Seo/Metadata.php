@@ -59,10 +59,21 @@ final class Metadata {
 	}
 
 	public static function beforePageDisplay( OutputPage $out ): void {
-		$values = self::valuesForPage( $out );
-		if ( $values === [] ) {
+		$data = self::dataForPage( $out );
+		if ( $data === [] ) {
 			return;
 		}
+
+		$hasWikiSEO = ExtensionRegistry::getInstance()->isLoaded( 'WikiSEO' );
+		// With WikiSEO the final head hook builds the social metadata.
+		// Only the title and robot policies are needed at this stage.
+		// Without WikiSEO this is the sole full build.
+		$values = $hasWikiSEO
+			? [
+				'title' => self::plainText( (string)( $data['title'] ?? '' ) ),
+				'robots' => (string)( $data['robots'] ?? '' ),
+			]
+			: self::buildForPage( $out, $data );
 
 		$out->setHTMLTitle( $values['title'] );
 		if ( $values['robots'] !== '' ) {
@@ -88,7 +99,7 @@ final class Metadata {
 		// When WikiSEO is loaded it still runs its site-wide hook; filtering
 		// conflicting tags here would depend on extension load order. Instead,
 		// perform the selective handoff in OutputPageAfterGetHeadLinksArray.
-		if ( ExtensionRegistry::getInstance()->isLoaded( 'WikiSEO' ) ) {
+		if ( $hasWikiSEO ) {
 			return;
 		}
 
@@ -113,11 +124,11 @@ final class Metadata {
 		if ( !$out instanceof OutputPage ) {
 			return;
 		}
-		$values = self::valuesForPage( $out );
-		if ( $values === [] ) {
+		$data = self::dataForPage( $out );
+		if ( $data === [] ) {
 			return;
 		}
-		$out->setHTMLTitle( $values['title'] );
+		$out->setHTMLTitle( self::plainText( (string)( $data['title'] ?? '' ) ) );
 		// Legacy page_props from an old ParserCache must not override a
 		// noindex policy that MediaWiki has already established.
 		unset( $metadata['robots'] );
@@ -132,9 +143,9 @@ final class Metadata {
 		if ( !ExtensionRegistry::getInstance()->isLoaded( 'WikiSEO' ) ) {
 			return;
 		}
-		$values = self::valuesForPage( $out );
-		if ( $values !== [] ) {
-			self::replaceCompetingMetadata( $tags, $out, $values );
+		$data = self::dataForPage( $out );
+		if ( $data !== [] ) {
+			self::replaceCompetingMetadata( $tags, $out, self::buildForPage( $out, $data ) );
 		}
 	}
 
@@ -200,8 +211,8 @@ final class Metadata {
 		}
 	}
 
-	/** @return array{title:string,robots:string,meta:array,open_graph:array}|array */
-	private static function valuesForPage( OutputPage $out ): array {
+	/** Return only a valid native payload for the current display context. */
+	private static function dataForPage( OutputPage $out ): array {
 		$data = $out->getProperty( self::DATA_KEY );
 		if (
 			!self::isNativeSeoData( $data ) ||
@@ -210,6 +221,11 @@ final class Metadata {
 		) {
 			return [];
 		}
+		return $data;
+	}
+
+	/** Build from the current output, without retaining stale per-page values. */
+	private static function buildForPage( OutputPage $out, array $data ): array {
 		$revisionTimestamp = $out->getRevisionTimestamp();
 		$modified = $revisionTimestamp
 			? wfTimestamp( TS_ISO_8601, $revisionTimestamp )
