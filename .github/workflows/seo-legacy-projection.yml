@@ -9,7 +9,13 @@
 				"debatephp/tests/argument_differential.py",
 				".github/workflows/seo-legacy-projection.yml",
 				"tests/fullstack.php",
-				"tests/mediawikiEnvironment.php"
+				"tests/mediawikiEnvironment.php",
+				"debatephp/tests/integration/check_schema_vocabulary.py",
+				"debatephp/src/JsonData.php",
+				"debatephp/src/MediaWikiContext.php",
+				"debatephp/src/SchemaData.php",
+				"debatephp/src/ReferenceRenderer.php",
+				"debatephp/src/ArgumentReferenceRenderer.php"
 			]
 		},
 		"workflow_dispatch": {}
@@ -195,6 +201,10 @@
 				{
 					"name": "Compare complete native and historical renders",
 					"run": "python3 debatephp/tests/integration/check_direct_jsonld.py .seo-lab/results/renders.json .seo-lab/results/comparison.json"
+				},
+				{
+					"name": "Check native graph vocabulary against official Schema.org 30.1",
+					"run": "curl --fail --silent --show-error --location --retry 3 --max-time 60 https://raw.githubusercontent.com/schemaorg/schemaorg/5f2d8cdec99b7329459ef6584e94b6a840f88471/data/releases/30.1/schemaorg-current-https.jsonld -o .seo-lab/schemaorg-30.1.jsonld\ntest \"$(git hash-object .seo-lab/schemaorg-30.1.jsonld)\" = d04621d491eff20f3a8defe7bd4351a16db75e42\npython3 debatephp/tests/integration/check_schema_vocabulary.py .seo-lab/schemaorg-30.1.jsonld .seo-lab/results/renders.json .seo-lab/results/schema-vocabulary.json"
 				},
 				{
 					"name": "Retain isolated diagnostics even on comparison failure",

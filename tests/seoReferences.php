@@ -36,3 +36,40 @@ same(['@type' => ['Book', 'PublicationVolume'], 'name' => 'Book', 'volumeNumber'
 	'identifier' => ['@type' => 'PropertyValue', 'propertyID' => 'number', 'value' => '3']],
 	JsonData::value(SchemaData::reference($book)), 'Book number is an identifier, not a periodical issue');
 echo "OK: citation volume, issue, date precision and absolute URLs\n";
+
+
+// Clean only optional SEO data during conversion, not the generic JSON tree.
+// Keep a numbered issue/volume even if its periodical name is unavailable.
+$emptyFields = [
+	'@type' => 'Article', 'name' => 'Paper', 'description' => '',
+	'author' => [1 => ['@type' => 'Person', 'name' => ''], 2 => ['@type' => 'Person', 'name' => '0']],
+	'publisher' => ['@type' => 'Organization', 'name' => '   '],
+	'isPartOf' => ['@type' => 'PublicationIssue', 'issueNumber' => '2',
+		'isPartOf' => ['@type' => 'PublicationVolume', 'volumeNumber' => 'IV',
+			'isPartOf' => ['@type' => 'Periodical', 'name' => '']]],
+	'identifier' => [1 => ['@type' => 'PropertyValue', 'propertyID' => 'number', 'value' => ''],
+		2 => ['@type' => 'PropertyValue', 'propertyID' => 'volume', 'value' => '0']],
+	'about' => [1 => ['@type' => 'Thing', 'name' => ''], 2 => ['@type' => 'Thing', 'name' => 'Science']],
+	'mentions' => [1 => ['@type' => 'Thing', 'name' => "\u{00a0}"]],
+	'mainEntity' => ['@id' => 'https://example.org/page#claim'],
+];
+$cleanFields = [
+	'@type' => 'Article', 'name' => 'Paper',
+	'author' => [['@type' => 'Person', 'name' => '0']],
+	'isPartOf' => ['@type' => 'PublicationIssue', 'issueNumber' => '2',
+		'isPartOf' => ['@type' => 'PublicationVolume', 'volumeNumber' => 'IV']],
+	'identifier' => [['@type' => 'PropertyValue', 'propertyID' => 'volume', 'value' => '0']],
+	'about' => [['@type' => 'Thing', 'name' => 'Science']],
+	'mainEntity' => ['@id' => 'https://example.org/page#claim'],
+];
+foreach ([$emptyFields, Table::wrap($emptyFields)] as $input) {
+	same($cleanFields, JsonData::schemaValue($input), 'Only empty optional metadata removed; lists reindexed');
+	check(isset(JsonData::value($input)['publisher']), 'Generic JSON conversion unchanged');
+}
+same(['@type' => 'Person', '@id' => 'https://example.org/person'],
+	JsonData::schemaValue(['@type' => 'Person', '@id' => 'https://example.org/person', 'name' => '']),
+	'An explicit identity is not deleted');
+same(['@type' => 'Audience', 'audienceType' => 'General public'],
+	JsonData::schemaValue(['@type' => 'Audience', 'audienceType' => 'General public']),
+	'Not every useful entity requires a name');
+echo "OK: empty optional SEO data, explicit identities and numbered publication containers\n";

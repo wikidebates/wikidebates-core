@@ -176,6 +176,31 @@ def reference_url(value):
 	except ValueError:
 		return False
 
+def prune_optional_metadata(value):
+	"""Expected removal of optional blanks after resolving the old markers."""
+	if isinstance(value, list):
+		items = [prune_optional_metadata(item) for item in value]
+		items = [item for item in items if item is not None]
+		return items or None
+	if not isinstance(value, dict):
+		return value
+	node = {key: prune_optional_metadata(item) for key, item in value.items()}
+	kind = node.get('@type')
+	for key in list(node):
+		item = node[key]
+		if key not in ('@id', '@type', '@graph') and (
+			item is None or (key in ('name','description','alternateName','abstract','value','volumeNumber','issueNumber')
+				and isinstance(item, str) and not item.strip())):
+			del node[key]
+	if '@id' in node:
+		return node
+	if kind == 'PropertyValue' and 'value' not in node:
+		return None
+	if len(node) == 1 and kind in ('Person','Organization','Thing','Periodical','WebSite',
+		'CreativeWork','PublicationIssue','PublicationVolume'):
+		return None
+	return node
+
 def project_reference(old):
 	"""Independent expected reference shape; retain all untouched data."""
 	node = copy.deepcopy(old)
@@ -207,7 +232,7 @@ def project_reference(old):
 			node.pop('url')
 		else:
 			node['url'] = u
-	return node
+	return prune_optional_metadata(node)
 
 def reference_equal(old, new):
 	# When resolving a nowiki marker, its original literal content no longer
@@ -247,7 +272,7 @@ def compare_references(old, new):
 		projected = project_reference(previous)
 		# A name consisting exclusively of removed parser markers is no
 		# longer an identifiable reference.
-		if not projected.get('name', '').strip():
+		if not projected or not projected.get('name', '').strip():
 			continue
 		while index < len(after) and not reference_equal(projected, after[index]):
 			index += 1
@@ -330,4 +355,4 @@ def compare_documents(legacy, native, markers=None):
 		require(text_matches(original['@graph'][claims[0]].get('abstract', ''), abstract, markers=markers), 'Claim abstract changed')
 		if abstract and description is not None:
 			require(abstract == description, 'Claim abstract and page description disagree')
-	require(equal(old, new), 'Unapproved graph difference (identity, citation, relation or other property)')
+	require(equal(prune_optional_metadata(old), new), 'Unapproved graph difference (identity, citation, relation or other property)')

@@ -99,6 +99,24 @@ class ProjectionTests(unittest.TestCase):
 				with self.assertRaises(ValueError):
 					compare_documents(old, changed)
 
+	def test_empty_secondary_metadata(self):
+		old, new = fixture()
+		old['@graph'][1]['about'] = [{'@type':'Thing','name':''}, {'@type':'Thing','name':'0'}]
+		new['@graph'][1]['about'] = [{'@type':'Thing','name':'0'}]
+		old['@graph'][1]['citation'][0]['author'] = {'@type':'Person','name':''}
+		old['@graph'][1]['citation'][0]['publisher'] = {'@type':'Organization','name':'Publisher'}
+		new['@graph'][1]['citation'][0]['publisher'] = {'@type':'Organization','name':'Publisher'}
+		compare_documents(old, new)
+		for mutate in (
+			lambda p: p.pop('about'),
+			lambda p: p['citation'][0].pop('publisher'),
+			lambda p: p['citation'][0].update(author={'@type':'Person','name':''})
+		):
+			changed = copy.deepcopy(new)
+			mutate(changed['@graph'][1])
+			with self.assertRaises(ValueError):
+				compare_documents(old, changed)
+
 	def test_mutations_rejected(self):
 		mutations = [
 			lambda p: p.update(name='Wrong page'),
