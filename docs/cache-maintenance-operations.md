@@ -101,6 +101,31 @@ charge et de temps. Aucune suppression générale de caches ni modification
 du `CacheEpoch` ne sont nécessaires. Vérifier le résultat sur des pages
 avec au moins quatre sections avant d'estimer la couverture globale.
 
+## Migration des descriptions courtes Vector
+
+ShortDescription 4.1.0 produit le sous-titre directement en PHP. Les fichiers
+Vector valides créés avec la version précédente peuvent encore contenir la
+clé JavaScript `wgShortDesc`. Le coordinateur des éditions et le balayage
+ordinaire demandent désormais aussi `--repair-legacy-shortdesc` à la commande
+Vector. La détection est active seulement avec ShortDescription >= 4.1.0 et
+réutilise la lecture du HTML déjà faite pour la réparation du TOC sur Vector
+2022. Elle ne déclenche pas un nouveau cycle, ne touche pas Minerva ni Lecture
+et ne demande ni nouveau cron ni changement du CacheEpoch.
+
+~~~sh
+php maintenance/run.php Wikidebates:prepareVectorViewCache \
+	--wiki=fr --page-id=1 --repair-legacy-shortdesc --dry-run --json
+~~~
+
+`LEGACY_SHORTDESC` signale un ancien fichier valide ; `REUSED` signifie
+qu'aucune réparation n'est nécessaire. Sans `--dry-run`, le remplacement
+ciblé est atomique et le résultat `CREATED` indique `repaired_shortdesc=true`.
+Les protections de visibilité et de stabilité de révision restent actives.
+Une nouvelle sortie encore obsolète, ou dépourvue de sous-titre malgré une
+description active, est refusée. Ne pas lancer de second travailleur pendant
+une reconstruction en cours. Coordonner le déploiement avec la migration SEO
+pour éviter des rendus supplémentaires.
+
 ## Reconstruction ponctuelle des anciens fichiers Vector uniquement
 
 **Ne pas utiliser `rebuildFileCache.php --overwrite` pour cette migration :**

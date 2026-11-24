@@ -27,6 +27,13 @@ final class VectorCacheEligibility {
 		return strlen($filename) > 255;
 	}
 
+	/** Detect the former ShortDescription JS configuration key in the HTML head. */
+	public static function hasLegacyShortDescription(string $html): bool {
+		$headEnd = strpos($html, '</head>');
+		$key = strpos($html, '"wgShortDesc":');
+		return $headEnd !== false && $key !== false && $key < $headEnd;
+	}
+
 	public static function hasSmwSpecialArticle(int $namespace): bool {
 		foreach (['SMW_NS_PROPERTY', 'SMW_NS_CONCEPT'] as $constant) {
 			if (defined($constant) && constant($constant) === $namespace) {

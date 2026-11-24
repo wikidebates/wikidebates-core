@@ -9,6 +9,7 @@ use MediaWiki\Debug\MWDebug;
 use MediaWiki\MainConfigNames;
 use MediaWiki\Parser\ParserOutput;
 use MediaWiki\Parser\ParserOutputFlags;
+use MediaWiki\Registration\ExtensionRegistry;
 use MediaWiki\Settings\SettingsBuilder;
 use MediaWiki\Title\Title;
 use Wikimedia\AtEase\AtEase;
@@ -35,6 +36,8 @@ class PrepareVectorViewCache extends Maintenance {
 			'With --force-view, skip pages that have no native view file (one-time migration).');
 		$this->addOption('repair-missing-toc',
 			'For Vector 2022, replace a valid prewarmed view only if its expected sidebar TOC is missing.');
+		$this->addOption('repair-legacy-shortdesc',
+			'Replace a valid view still using the removed ShortDescription JavaScript, with ShortDescription >= 4.1.0.');
 		$this->addOption('json', 'Print a machine-readable status report.');
 	}
 
@@ -155,8 +158,9 @@ class PrepareVectorViewCache extends Maintenance {
 		if ($existingOnly && !$forceView) {
 			$this->fatalError('--existing-only requires --force-view.');
 		}
-		if ($forceView && $this->hasOption('repair-missing-toc')) {
-			$this->fatalError('--force-view and --repair-missing-toc are mutually exclusive.');
+		if ($forceView && ($this->hasOption('repair-missing-toc') ||
+			$this->hasOption('repair-legacy-shortdesc'))) {
+			$this->fatalError('--force-view and targeted repair options are mutually exclusive.');
 		}
 		$exists = $view->isCached();
 		$valid = $view->isCacheGood($touched);
@@ -165,13 +169,20 @@ class PrepareVectorViewCache extends Maintenance {
 			return true;
 		}
 		$repairToc = false;
-		if ($valid && $this->hasOption('repair-missing-toc') && $skinName === 'vector-2022') {
+		$repairShortDesc = false;
+		$checkToc = $this->hasOption('repair-missing-toc') && $skinName === 'vector-2022';
+		$shortDescVersion = ExtensionRegistry::getInstance()->getAllThings()['ShortDescription']['version'] ?? null;
+		$checkShortDesc = $this->hasOption('repair-legacy-shortdesc') &&
+			is_string($shortDescVersion) && version_compare($shortDescVersion, '4.1.0', '>=');
+		if ($valid && ($checkToc || $checkShortDesc)) {
 			// Native HTML prepared by an earlier Skin clone could contain the
 			// actual page body but omit the Vector 2022 sidebar TOC. Do not
 			// rebuild a truly TOC-less page; ask ParserOutput whether the
 			// current public revision has a real table of contents.
 			$existing = $view->fetchText();
-			if (str_contains($existing, 'vector-toc-not-available') &&
+			$repairShortDesc = $checkShortDesc && is_string($existing) &&
+				VectorCacheEligibility::hasLegacyShortDescription($existing);
+			if ($checkToc && is_string($existing) && str_contains($existing, 'vector-toc-not-available') &&
 				!str_contains($existing, 'id="mw-panel-toc"')) {
 				$parsed = $article->getParserOutput();
 				if ($parsed instanceof ParserOutput) {
@@ -181,14 +192,18 @@ class PrepareVectorViewCache extends Maintenance {
 				}
 			}
 		}
-		if ($valid && !$repairToc && !$forceView) {
+		if ($valid && !$repairToc && !$repairShortDesc && !$forceView) {
 			$this->report($id, 'REUSED');
 			return true;
 		}
 		if ($this->hasOption('dry-run')) {
 			$this->report($id, $forceView && $exists ? 'WOULD_REBUILD_VIEW' :
-				($repairToc ? 'MISSING_TOC' : 'MISSING_FILE'));
+				($repairShortDesc ? 'LEGACY_SHORTDESC' : ($repairToc ? 'MISSING_TOC' : 'MISSING_FILE')));
 			return true;
+		}
+		if ($repairShortDesc) {
+			// Preserve the old complete document until its replacement is ready.
+			$view = new AtomicVectorViewFileCache($title, 'view');
 		}
 
 		// Match the safe native rebuild technique, but capture only action=view.
@@ -225,7 +240,23 @@ class PrepareVectorViewCache extends Maintenance {
 			$this->report($id, 'RETRY_MISSING_TOC');
 			return false;
 		}
+		if ($repairShortDesc) {
+			// The description may have been removed or disabled since the old
+			// render. In that case, absence of both subtitle and legacy JS is valid.
+			$expectsSubtitle = $services->getConfigFactory()->makeConfig('shortdescription')
+				->get('ShortDescriptionEnableTagline') && $title->getContentModel() === CONTENT_MODEL_WIKITEXT &&
+				isset($services->getPageProps()->getProperties($title, 'shortdesc')[$id]);
+			if (VectorCacheEligibility::hasLegacyShortDescription($html) ||
+				($expectsSubtitle && !str_contains($html, 'class="ext-shortdesc shortdescription"'))) {
+				$this->report($id, 'RETRY_LEGACY_SHORTDESC');
+				return false;
+			}
+		}
 		$view->saveToFileCache($html);
+		if ($repairShortDesc && !$view->wasPublished()) {
+			$this->report($id, 'WRITE_FAILED');
+			return false;
+		}
 		$latest = $dbr->selectRow('page', ['page_latest', 'page_touched'], ['page_id' => $id], __METHOD__);
 		if (!$latest || (int)$latest->page_latest !== (int)$row->page_latest ||
 			(string)$latest->page_touched !== $touched ||
@@ -241,6 +272,7 @@ class PrepareVectorViewCache extends Maintenance {
 		$this->report($id, 'CREATED',
 			['bytes' => strlen($html)] +
 			($repairToc ? ['repaired_toc' => true] : []) +
+			($repairShortDesc ? ['repaired_shortdesc' => true] : []) +
 			($forceView && $exists ? ['rebuilt_view' => true] : []));
 		return true;
 	}

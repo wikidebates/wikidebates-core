@@ -24,6 +24,15 @@ $root = sys_get_temp_dir() . '/wd-coordinator-unit-' . bin2hex(random_bytes(8));
 if (!mkdir($root, 0700)) { throw new RuntimeException('Cannot create queue fixture'); }
 
 try {
+	$check(VectorCacheEligibility::hasLegacyShortDescription(
+		'<html><head><script>RLCONF={"wgShortDesc":"Public description"};</script></head><body></body></html>'
+	), 'Old ShortDescription JavaScript configuration is detected');
+	$check(!VectorCacheEligibility::hasLegacyShortDescription(
+		'<html><head></head><body><span class="ext-shortdesc shortdescription">Native</span></body></html>'
+	), 'Native ShortDescription needs no repair');
+	$check(!VectorCacheEligibility::hasLegacyShortDescription(
+		'<html><head></head><body><pre>"wgShortDesc":</pre></body></html>'
+	), 'Documentation in the article body is not legacy configuration');
 	$check(VectorCacheEligibility::hasSmwSpecialArticle((int)constant('SMW_NS_PROPERTY')) &&
 		VectorCacheEligibility::hasSmwSpecialArticle((int)constant('SMW_NS_CONCEPT')),
 		'Exact SMW Property and Concept namespace constants are dynamically recognized');

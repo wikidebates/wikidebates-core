@@ -24,7 +24,8 @@ final class CachePreparationResults {
 			'RETRY_PUBLIC_IDENTITY_CHANGED',
 			'RETRY_PAGE_CHANGED',
 			'WRITE_FAILED',
-			'RETRY_MISSING_TOC'
+			'RETRY_MISSING_TOC',
+			'RETRY_LEGACY_SHORTDESC'
 		], true) ? $status : null;
 	}
 
