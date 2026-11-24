@@ -33,6 +33,8 @@
 			"MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onOutputPageParserOutput",
 			"MediaWiki\\Extension\\Wikidebates\\Seo\\Metadata::onOutputPageParserOutput"
 		],
+		"OutputPageAfterGetHeadLinksArray": "MediaWiki\\Extension\\Wikidebates\\Seo\\Metadata::onOutputPageAfterGetHeadLinksArray",
+		"WikiSEOPreAddMetadata": "MediaWiki\\Extension\\Wikidebates\\Seo\\Metadata::onWikiSEOPreAddMetadata",
 		"AfterFinalPageOutput": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onAfterFinalPageOutput"
 	},
 	"ResourceFileModulePaths": {
