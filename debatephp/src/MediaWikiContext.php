@@ -250,31 +250,12 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 				$values['wd_summary'] = (string)( $args['summary'] ?? '' );
 			}
 
-			// Independent of WikiSEO: parser-cache metadata is consumed by
-			// Wikidebates on page display after the cutover.
+			// ParserCache carries these values into the OutputPage. No WikiSEO
+			// Validator, page_props or legacy SEO hooks are required. WikiSEO
+			// remains free to manage every other page.
 			$this->parser->getOutput()->setExtensionData(
 				\MediaWiki\Extension\Wikidebates\Seo\Metadata::DATA_KEY, $values
 			);
-
-			// Reversible deployment: preserve existing WikiSEO page properties
-			// while that extension is loaded, without depending on its Validator.
-			if (\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('WikiSEO')) {
-				$legacyKeys = [
-					'title', 'title_mode', 'title_separator', 'keywords', 'description',
-					'canonical', 'robots', 'googlebot', 'image', 'image_width',
-					'image_height', 'image_alt', 'type', 'site_name', 'locale',
-					'section', 'author', 'published_time', 'twitter_site',
-				];
-				$legacy = array_intersect_key($values, array_fill_keys($legacyKeys, true));
-				MediaWikiServices::getInstance()->getHookContainer()->run(
-					'WikiSEOLuaPreAddPageProps', [&$legacy]
-				);
-				foreach ($legacy as $key => $value) {
-					if (is_scalar($value) && $value !== '') {
-						$this->parser->getOutput()->setPageProperty($key, $value);
-					}
-				}
-			}
 		} catch (\Throwable $e) {
 			DatabaseFailure::rethrow($e);
 			$this->telemetry?->problem('seo', 'exception', $e);
