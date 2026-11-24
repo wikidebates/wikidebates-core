@@ -392,7 +392,7 @@ foreach (['fr', 'en'] as $lang) {
 				same([$resource['datePublished']], $tags['article:published_time'] ?? null, 'Same publication date in head: ' . $label);
 				same([$resource['dateModified']], $tags['article:modified_time'] ?? null, 'Same modification date in head: ' . $label);
 			} else {
-				check(!isset($tags['article:published_time'], $tags['article:modified_time']), 'No article dates on debate: ' . $label);
+				check(!isset($tags['article:published_time']) && !isset($tags['article:modified_time']), 'No article dates on debate: ' . $label);
 			}
 			$image = trim((string)($payload['image'] ?? ''));
 			same($image !== '' ? [$image] : null, $tags['og:image'] ?? null, 'Only existing social image: ' . $label);
