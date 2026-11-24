@@ -14,7 +14,14 @@
 				"debatephp/src/ArgumentReferenceRenderer.php",
 				"debatephp/src/ReferenceRenderer.php",
 				"debatephp/tools/**",
-				"debatephp/tests/regenerate.py"
+				"debatephp/tests/regenerate.py",
+				"tests/seoStructuredData.php",
+				"debatephp/src/SchemaData.php",
+				"debatephp/src/MessageCatalog.php",
+				"debatephp/src/NativeText.php",
+				"i18n/en.json",
+				"i18n/fr.json",
+				"i18n/qqq.json"
 			]
 		},
 		"workflow_dispatch": {}
@@ -85,12 +92,19 @@
 					"run": "php -d display_errors=1 -d error_reporting=E_ALL tests/seoPublicationDate.php"
 				},
 				{
-					"name": "Compare fresh stored-page renders on the same runner",
+					"name": "Real bilingual structured data and complete direct argument lists",
+					"env": {
+						"MW_INSTALL_PATH": "${{ github.workspace }}/.mw-lab"
+					},
+					"run": "php -d display_errors=1 -d error_reporting=E_ALL tests/seoStructuredData.php"
+				},
+				{
+					"name": "Compare previous schema and complete ItemLists on the same runner",
 					"if": "matrix.database == 'mariadb'",
 					"env": {
 						"MW_INSTALL_PATH": "${{ github.workspace }}/.mw-lab"
 					},
-					"run": "baseline=912857c47c73b627d09e505626bd59ba7167a028\ngit fetch --no-tags --depth=1 origin \"$baseline\"\nworktree=\"$RUNNER_TEMP/wd-seo-publication-before\"\ngit worktree add --detach \"$worktree\" \"$baseline\"\ntrap 'git worktree remove --force \"$worktree\"' EXIT\nWD_SEO_BENCHMARK_ROOT=\"$worktree\" WD_SEO_BENCHMARK_MODE=baseline php tests/seoPublicationRenderBenchmark.php\nWD_SEO_BENCHMARK_MODE=candidate php tests/seoPublicationRenderBenchmark.php"
+					"run": "baseline=a849b4afb68d728baa00ead7db86ffd592790765\ngit fetch --no-tags --depth=1 origin \"$baseline\"\nworktree=\"$RUNNER_TEMP/wd-seo-publication-before\"\ngit worktree add --detach \"$worktree\" \"$baseline\"\ntrap 'git worktree remove --force \"$worktree\"' EXIT\nWD_SEO_BENCHMARK_ROOT=\"$worktree\" WD_SEO_BENCHMARK_MODE=previous-schema php tests/seoPublicationRenderBenchmark.php\nWD_SEO_BENCHMARK_MODE=candidate php tests/seoPublicationRenderBenchmark.php"
 				},
 				{
 					"name": "Stop disposable MariaDB",

@@ -1231,22 +1231,6 @@ class ReferenceRenderer {
 		return Lua::str($this->context->fullUrl($titleText));
 	}
 
-	protected function wkTakeFirst($items = null, $limit = null) {
-		$out = new Table([]);
-		$limit = (Lua::truth($v189 = Lua::number($limit)) ? $v189 : 0);
-		if (($limit <= 0)) {
-			return $out;
-		}
-		$stop5 = Lua::len($items);
-		for ($i = 1; $i <= $stop5; $i++) {
-			if (($i > $limit)) {
-				break;
-			}
-			$out[(Lua::len($out) + 1)] = $items[$i];
-		}
-		return $out;
-	}
-
 	protected function wkBuildWebsiteNode($lang = null) {
 		$homeUrl = $this->L($lang, 'urls', 'home');
 		$siteName = $this->L($lang, 'seo', 'site_name');
@@ -1265,59 +1249,6 @@ class ReferenceRenderer {
 		$debatesLabel = $this->L($lang, 'urls', 'debates_label');
 		$debatesUrl = $this->wkBuildWikiUrl($lang, 'portal_prefix', 'debates_label');
 		return $this->jsonNode(['@type' => 'BreadcrumbList', '@id' => ($pv['pageUrl'] . '#breadcrumb'), 'itemListElement' => new Table([1 => $this->jsonNode(['@type' => 'ListItem', 'position' => 1, 'item' => $this->jsonNode(['@id' => $homeUrl, 'name' => $homeLabel])]), 2 => $this->jsonNode(['@type' => 'ListItem', 'position' => 2, 'item' => $this->jsonNode(['@id' => $debatesUrl, 'name' => $debatesLabel])]), 3 => $this->jsonNode(['@type' => 'ListItem', 'position' => 3, 'item' => $this->jsonNode(['@id' => $pv['pageUrl'], 'name' => $pv['rawTitle']])])])]);
-	}
-
-	protected function wkSchemaPageLabel($it = null) {
-		$label = Lua::trim(Lua::str((Lua::truth($v190 = (Lua::truth($v191 = $it) ? $it['page'] : $v191)) ? $v190 : '')));
-		if (($label === '')) {
-			$label = Lua::trim(Lua::str((Lua::truth($v192 = (Lua::truth($v193 = $it) ? $it['title'] : $v193)) ? $v192 : '')));
-		}
-		return $label;
-	}
-
-	protected function wkBuildAnswerNode($it = null, $kind = null, $lang = null) {
-		$pageLabel = Lua::trim(Lua::str((Lua::truth($v194 = (Lua::truth($v195 = $it) ? $it['page'] : $v195)) ? $v194 : '')));
-		if (($pageLabel === '')) {
-			return null;
-		}
-		$answerName = Lua::trim(Lua::str((Lua::truth($v196 = (Lua::truth($v197 = $it) ? $it['title'] : $v197)) ? $v196 : '')));
-		if (($answerName === '')) {
-			$answerName = $pageLabel;
-		}
-		$url = $this->wkFullUrl($pageLabel);
-		if (($url === '')) {
-			return null;
-		}
-		$additionalType = null;
-		if (($kind === 'pro')) {
-			$additionalType = $this->wkBuildWikiUrl($lang, 'property_prefix', 'pro_label');
-		}
-		else {
-			$additionalType = $this->wkBuildWikiUrl($lang, 'property_prefix', 'con_label');
-		}
-		return $this->jsonNode(['@type' => 'Answer', '@id' => ($url . '#answer'), 'url' => $url, 'name' => $answerName, 'text' => $pageLabel, 'author' => $this->jsonNode(['@id' => ($this->L($lang, 'urls', 'home') . '#organization')]), 'additionalType' => $additionalType, 'about' => $this->jsonNode(['@type' => 'Claim', '@id' => ($url . '#claim')])]);
-	}
-
-	protected function wkBuildSuggestedAnswers($maps = null, $lang = null) {
-		$out = new Table([]);
-		$position = 1;
-		$proItems = (Lua::truth($v198 = (Lua::truth($v199 = (Lua::truth($v200 = $maps) ? $maps['pro'] : $v200)) ? $maps['pro']['items'] : $v199)) ? $v198 : new Table([]));
-		$conItems = (Lua::truth($v201 = (Lua::truth($v202 = (Lua::truth($v203 = $maps) ? $maps['con'] : $v203)) ? $maps['con']['items'] : $v202)) ? $v201 : new Table([]));
-		foreach (($this->wkTakeFirst($proItems, 3))->sequence() as $_ => $it) {
-			$node = $this->wkBuildAnswerNode($it, 'pro', $lang);
-			if (Lua::truth($node)) {
-				$out[(Lua::len($out) + 1)] = $node;
-				$position = ($position + 1);
-			}
-		}
-		foreach (($this->wkTakeFirst($conItems, 3))->sequence() as $_ => $it) {
-			$node = $this->wkBuildAnswerNode($it, 'con', $lang);
-			if (Lua::truth($node)) {
-				$out[(Lua::len($out) + 1)] = $node;
-				$position = ($position + 1);
-			}
-		}
-		return $out;
 	}
 
 	protected function wkBuildIsPartOf($lang = null) {
@@ -1549,7 +1480,6 @@ class ReferenceRenderer {
 			$organizationNode = $this->wkBuildOrganizationNode($lang);
 			[$about, $mentions] = $this->wkBuildAboutAndMentions($args);
 			$keywords = $this->wkBuildKeywords($args, $lang);
-			$suggestedAnswer = $this->wkBuildSuggestedAnswers($maps, $lang);
 			$isPartOf = $this->wkBuildIsPartOf($lang);
 			$isRelatedTo = $this->wkBuildIsRelatedTo($args);
 			$questionText = null;
@@ -1621,30 +1551,52 @@ class ReferenceRenderer {
 				$citations[(Lua::len($citations) + 1)] = $w[1];
 			}
 			$subjectOf = $this->wkBuildClaimCitationsFromVideography($videographyRaw);
-			$qaNode = (['@type' => 'QAPage', '@id' => ($pv['pageUrl'] . '#qa'), 'url' => $pv['pageUrl'], 'name' => $pv['rawTitle'], 'inLanguage' => $lang, 'educationalUse' => ([1 => 'debate', 2 => 'critical thinking']), 'learningResourceType' => 'debate', 'audience' => (['@type' => 'EducationalAudience', 'educationalLevel' => ([1 => 'general public', 2 => 'secondary education'])]), 'isPartOf' => $isPartOf, 'breadcrumb' => (['@id' => ($pv['pageUrl'] . '#breadcrumb')]), 'discussionUrl' => $this->wkBuildDiscussionUrl($pv, $lang), 'publisher' => (['@id' => ($this->L($lang, 'urls', 'home') . '#organization')]), 'mainEntity' => (['@type' => 'Question', '@id' => ($pv['pageUrl'] . '#question'), 'name' => $pv['rawTitle'], 'text' => $questionText, 'answerCount' => Lua::len($suggestedAnswer), 'suggestedAnswer' => $suggestedAnswer])]);
+			$pageNode = [
+				'@type' => [1 => 'WebPage', 2 => 'LearningResource'],
+				// Keep the existing graph identifier: related pages already reference it.
+				'@id' => $pv['pageUrl'] . '#qa',
+				'url' => $pv['pageUrl'],
+				'name' => $pv['rawTitle'],
+				'inLanguage' => $lang,
+				'isPartOf' => $isPartOf,
+				'breadcrumb' => ['@id' => $pv['pageUrl'] . '#breadcrumb'],
+				'discussionUrl' => $this->wkBuildDiscussionUrl($pv, $lang),
+				'publisher' => ['@id' => $this->L($lang, 'urls', 'home') . '#organization'],
+				'mainEntity' => [
+					'@type' => 'Question',
+					'@id' => $pv['pageUrl'] . '#question',
+					'name' => $pv['rawTitle'],
+					'text' => NativeText::seoPlainText($questionText) ?: $pv['rawTitle']
+				]
+			] + SchemaData::education($lang, 'debate');
+			$parts = SchemaData::sections($maps, ['pro' => 'pro', 'con' => 'con'],
+				$pv['pageUrl'], $lang, fn(string $title): string => $this->wkFullUrl($title));
+			if ($parts !== []) {
+				$pageNode['hasPart'] = $parts;
+			}
 			// Credit the collective as an author of the page, not of its arguments.
 			$credit = $this->seoL($lang, 'author');
-			$qaNode['creditText'] = $credit;
-			$qaNode['author'] = $this->jsonNode(['@type' => 'Organization', 'name' => $credit]);
+			$pageNode['creditText'] = $credit;
+			$pageNode['author'] = $this->jsonNode(['@type' => 'Organization', 'name' => $credit]);
 			if ((Lua::len($isRelatedTo) > 0)) {
-				$qaNode['isRelatedTo'] = $isRelatedTo;
+				$pageNode['isRelatedTo'] = $isRelatedTo;
 			}
 			if ((Lua::len($keywords) > 0)) {
-				$qaNode['keywords'] = $keywords;
+				$pageNode['keywords'] = $keywords;
 			}
 			if ((Lua::len($about) > 0)) {
-				$qaNode['about'] = $about;
+				$pageNode['about'] = $about;
 			}
 			if ((Lua::len($mentions) > 0)) {
-				$qaNode['mentions'] = $mentions;
+				$pageNode['mentions'] = $mentions;
 			}
 			if ((Lua::len($citations) > 0)) {
-				$qaNode['citation'] = $citations;
+				$pageNode['citation'] = $citations;
 			}
 			if (Lua::truth($subjectOf[1])) {
-				$qaNode['subjectOf'] = $subjectOf[1];
+				$pageNode['subjectOf'] = $subjectOf[1];
 			}
-			$data = (['@context' => 'https://schema.org', '@graph' => ([1 => $websiteNode, 2 => $organizationNode, 3 => $breadcrumbNode, 4 => $qaNode])]);
+			$data = (['@context' => 'https://schema.org', '@graph' => ([1 => $websiteNode, 2 => $organizationNode, 3 => $breadcrumbNode, 4 => $pageNode])]);
 			if ($this->context instanceof NativeJsonContext) { return $this->context->jsonLdData($data); }
 			$json = $this->context->jsonEncode(Table::wrap($data));
 			return $this->context->jsonLd($json);

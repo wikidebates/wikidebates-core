@@ -26,4 +26,15 @@ final class NativeText {
 		$position = $separator === '' ? false : strpos($text, $separator);
 		return $position === false ? [$text, ''] : [substr($text, 0, $position), substr($text, $position + strlen($separator))];
 	}
+	/** Plain SEO text shared by HTML attributes and JSON-LD; no additional expansion. */
+	public static function seoPlainText( string $text ): string {
+		$text = preg_replace( '/<!--.*?-->/su', ' ', $text ) ?? $text;
+		$text = preg_replace( '/<ref\b[^>]*>.*?<\/ref>/isu', ' ', $text ) ?? $text;
+		$text = preg_replace( '/<ref\b[^>]*\/>/isu', ' ', $text ) ?? $text;
+		$text = preg_replace( '/\[\[(?:[^\]|]*\|)?([^\]]+)\]\]/u', '$1', $text ) ?? $text;
+		$text = preg_replace( '/\[https?:\/\/[^\s\]]+\s+([^\]]+)\]/u', '$1', $text ) ?? $text;
+		$text = str_replace( [ "'''", "''" ], '', $text );
+		$text = html_entity_decode( strip_tags( $text ), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+		return trim( preg_replace( '/\s+/u', ' ', $text ) ?? $text );
+	}
 }

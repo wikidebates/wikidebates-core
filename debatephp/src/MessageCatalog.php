@@ -55,7 +55,12 @@ final class MessageCatalog {
 		if (isset($entry['wiki'])) {
 			return self::localized(self::json('resources/wiki-names.json')['rendering'][$entry['wiki']], $language);
 		}
-		$messageKey = $entry['message'];
+		return self::plainMessage($entry['message'], $language, $fallback);
+	}
+
+	/** Literal message in the resource language, independent of visitor preferences. */
+	public static function plainMessage(string $messageKey, string $language, string $fallback = ''): string {
+		$language = self::language($language);
 		if (defined('MEDIAWIKI') && function_exists('wfMessage')) {
 			$message = wfMessage($messageKey)->inLanguage($language);
 			if ($message->exists()) { return $message->plain(); }

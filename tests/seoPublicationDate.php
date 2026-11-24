@@ -37,7 +37,7 @@ function publicationCheck($output, string $kind, string $published, string $modi
 	same(['timestamp' => $published], $output->getExtensionData(PublicationDate::DATA_KEY),
 		'Shared parser date');
 	$pageNodes = array_values(array_filter(publicationGraph($output),
-		static fn($node) => ($node['@type'] ?? '') === ($kind === 'argument' ? 'WebPage' : 'QAPage')));
+		static fn($node) => in_array('WebPage', (array)($node['@type'] ?? []), true)));
 	same(1, count($pageNodes), 'One specialized page');
 	same($published, $pageNodes[0]['datePublished'] ?? null, 'Same JSON-LD publication date');
 	same($modified, $pageNodes[0]['dateModified'] ?? null, 'Exact revision date');
@@ -138,7 +138,7 @@ function publicationLifecycleView(string $name, string $published): array {
 	$modified = wfTimestamp(TS_ISO_8601, $revision->getTimestamp());
 	publicationCheck($output, 'argument', $published, $modified);
 	$nodes = array_values(array_filter(publicationGraph($output),
-		static fn($node) => ($node['@type'] ?? '') === 'WebPage'));
+		static fn($node) => in_array('WebPage', (array)($node['@type'] ?? []), true)));
 	same($page->getTitle()->getFullURL(), $nodes[0]['url'] ?? null, 'JSON-LD follows the page URL');
 	$cached = $services->getParserCache()->get($page, $options);
 	check($cached !== false, 'Persistent cache populated after lifecycle operation');

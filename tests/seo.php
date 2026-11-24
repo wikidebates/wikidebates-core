@@ -117,3 +117,17 @@ same( [], Metadata::build( [ 'wd_kind' => 'other' ], 'https://fr.wikidebates.org
 	'Ordinary pages are excluded from Wikidebates native SEO' );
 
 echo "OK: native debate/argument SEO, existing images, publication/modification dates and social metadata\n";
+
+
+// Multi-type resources keep both native dates and the exact SEO description.
+$resource = ['@graph' => [1 => [
+	'@type' => [1 => 'WebPage', 2 => 'LearningResource'],
+	'@id' => 'https://example.org/resource', 'url' => 'https://example.org/resource'
+]]];
+$resource = Metadata::withPublicationDate($resource, '2024-01-02T14:37:25Z');
+$resource = Metadata::withModificationDate($resource, '2026-11-23T12:30:00Z');
+$resource = Metadata::withDescription($resource, $argumentData);
+same('2024-01-02T14:37:25Z', $resource['@graph'][1]['datePublished'], 'Multi-type page publication date');
+same('2026-11-23T12:30:00Z', $resource['@graph'][1]['dateModified'], 'Multi-type page modification date');
+same(Metadata::build($argumentData, 'https://example.org/resource', null)['meta']['description'],
+	$resource['@graph'][1]['description'], 'JSON-LD and HTML use identical native description');

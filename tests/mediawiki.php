@@ -124,7 +124,6 @@ foreach ($fixtures as $name => $text) {
 	if (preg_match('/^complete (debate|argument) (fr|en)$/D', $name, $parts)) {
 		$kind = $parts[1];
 		$lang = $parts[2];
-		$pageType = $kind === 'debate' ? 'QAPage' : 'WebPage';
 		$credit = $lang === 'fr' ? 'Contributeurs de Wikidébats' : 'Wikidebates contributors';
 		$matches = [];
 		preg_match_all('~<script\b[^>]*\btype="application/ld\+json"[^>]*>(.*?)</script>~is', $reference[0], $matches);
@@ -136,7 +135,7 @@ foreach ($fixtures as $name => $text) {
 				continue;
 			}
 			foreach ($data['@graph'] as $node) {
-				if (is_array($node) && ($node['@type'] ?? null) === $pageType) {
+				if (is_array($node) && in_array('WebPage', (array)($node['@type'] ?? []), true)) {
 					$pageNode = $node;
 					$graph = $data['@graph'];
 					break 2;
@@ -334,13 +333,12 @@ foreach ($seoRevisions as [$kind, $revision]) {
 		'Timestamp-dependent output is marked for reparse if a speculative timestamp changes: ' . $kind);
 	same($revision->getTimestamp(), $output->getRevisionTimestampUsed(),
 		'MediaWiki records the exact timestamp used by JSON-LD: ' . $kind);
-	$pageType = $kind === 'debate' ? 'QAPage' : 'WebPage';
 	$nodes = [];
 	preg_match_all('~<script\b[^>]*\btype="application/ld\+json"[^>]*>(.*?)</script>~is', $output->getText(), $matches);
 	foreach ($matches[1] as $script) {
 		$graph = json_decode($script, true, 512, JSON_THROW_ON_ERROR);
 		foreach (($graph['@graph'] ?? []) as $node) {
-			if (($node['@type'] ?? null) === $pageType) {
+			if (in_array('WebPage', (array)($node['@type'] ?? []), true)) {
 				$nodes[] = $node;
 			}
 		}
