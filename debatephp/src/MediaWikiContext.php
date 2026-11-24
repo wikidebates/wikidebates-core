@@ -158,8 +158,13 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 			$parserOutput = $this->parser->getOutput();
 			$timestamp = method_exists($parserOutput, 'getRevisionTimestamp')
 				? $parserOutput->getRevisionTimestamp() : null;
-			if ($timestamp === null && method_exists($this->parser, 'getRevisionRecordObject')) {
-				$timestamp = $this->parser->getRevisionRecordObject()?->getTimestamp();
+			if ($timestamp === null && $this->parser->getRevisionId() !== null) {
+				// A parser callback may supply a MutableRevisionRecord for unsaved
+				// content. Its timestamp is not a published revision's date.
+				$revision = $this->parser->getRevisionRecordObject();
+				if ($revision && $revision->getId() > 0) {
+					$timestamp = $revision->getTimestamp();
+				}
 			}
 			$modified = is_string($timestamp) && preg_match('/^\d{14}$/D', $timestamp)
 				? wfTimestamp(TS_ISO_8601, $timestamp) : null;
