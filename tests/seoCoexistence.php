@@ -191,6 +191,36 @@ if (class_exists(\MediaWiki\Extension\WikiSEO\PagePolicy::class)) {
 		'WikiSEO JSON-LD is not generated at all for native debate');
 	check(!isset($nativeOutput->getHeadItemsArray()['og:title']),
 		'WikiSEO Open Graph generator is skipped before execution for native debate');
+
+	// Exercise the real modern hook together with the final native head, not
+	// only the legacy full-mode compatibility path tested above.
+	$nativeOutput->setIndexPolicy('noindex');
+	$nativeOutput->setFollowPolicy('nofollow');
+	$nativeOutput->addMeta('google-site-verification', 'GLOBAL-VERIFICATION');
+	Metadata::beforePageDisplay($nativeOutput);
+	$nativeHead = implode("\n", $nativeOutput->getHeadLinksArray()) . "\n" .
+		implode("\n", $nativeOutput->getHeadItemsArray());
+	$nativeTags = seoLabMeta($nativeHead);
+	same(['Native Wikidebates description'], $nativeTags['description'] ?? null,
+		'Modern global-only mode emits exactly one native description');
+	same(['website'], $nativeTags['og:type'] ?? null, 'Modern global-only mode retains native Open Graph');
+	same(['GLOBAL-VERIFICATION'], $nativeTags['google-site-verification'] ?? null,
+		'Modern global-only mode preserves global verification');
+	same('noindex', $nativeOutput->getIndexPolicy(), 'Modern global-only mode preserves noindex');
+	same('nofollow', $nativeOutput->getFollowPolicy(), 'Modern global-only mode preserves nofollow');
+	check(!str_contains($nativeHead, 'application/ld+json'), 'Modern global-only mode adds no competing head JSON-LD');
+
+	// A specialized-looking title is not enough to opt out. An old cached
+	// ParserOutput with legacy page properties must continue using WikiSEO.
+	$legacyOutput = seoLabOutput('Old cached debate?');
+	$legacyOutput->setProperty('description', 'Legacy parser cache description');
+	same('full', $policy::forOutput($legacyOutput), 'A marker-less old cached debate retains WikiSEO');
+	$hook->onBeforePageDisplay($legacyOutput, $skin);
+	$legacyHead = implode("\n", $legacyOutput->getHeadLinksArray()) . "\n" .
+		implode("\n", $legacyOutput->getHeadItemsArray());
+	$legacyTags = seoLabMeta($legacyHead);
+	same(['Legacy parser cache description'], $legacyTags['description'] ?? null,
+		'Legacy description is preserved until the native marker is available');
 	$projectOutput = seoLabOutput('Ordinary project page remains automatic');
 	$hook->onBeforePageDisplay($projectOutput, $skin);
 	check(isset($projectOutput->getHeadItemsArray()['jsonld-metadata']),

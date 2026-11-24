@@ -29,13 +29,13 @@ WikiSEO **reste chargé et actif sur toutes les autres pages** : les modèles et
 
 Sur ces deux types de pages, Wikidebates est la source unique des balises SEO visibles. Son moteur n'appelle ni `WikiSEO\\Validator`, ni les hooks Lua de WikiSEO, ni les `page_props` SEO historiques. Les balises génériques que WikiSEO génère encore au niveau de la requête sont neutralisées dans le `<head>` final ; le JSON-LD spécialisé de Wikidebates, déjà inclus dans le HTML du contenu, reste intact. Les anciens fichiers ParserCache ne possédant pas le marqueur continuent provisoirement à fonctionner avec WikiSEO, jusqu'à leur reconstruction.
 
-**Limite de la version installée actuellement :** WikiSEO exécute encore ses hooks internes pendant l'affichage d'un débat, même si ses balises sont ensuite remplacées. La modernisation du fork WikiSEO ajoute les hooks facultatifs `WikiSEOPageMetadataMode` et `WikiSEOPageRevisionMode`. Lorsqu'ils seront déployés, Wikidebates leur indiquera `global-only` pour les pages possédant le marqueur natif `wikidebates-native-seo` (`wd_kind=debate` ou `wd_kind=argument`).
+**État déployé et contrôlé le 24 novembre 2026 :** ferme `953d3e240350158ff4624ef150b0c7afaf48f86a`, Wikidebates `2781d8a38e8a336ff4a397128d28bd6b121f7b44`, WikiSEO `3f52f9d7d196bcaed541201f4412f4bf1e6b71e1`. Le fork WikiSEO modernisé expose les hooks `WikiSEOPageMetadataMode` et `WikiSEOPageRevisionMode`. Wikidebates leur indique `global-only` pour les pages possédant le marqueur natif `wikidebates-native-seo` (`wd_kind=debate` ou `wd_kind=argument`).
 
 Ce mode arrête les générateurs de métadonnées de page de WikiSEO **avant leur exécution** (Open Graph, X/Twitter, JSON-LD, titre, canonical spécifique et champs SEO persistés), tout en conservant les balises techniques globales non concurrentes (vérification de domaine, hreflang configuré et protections robots). Les autres pages conservent automatiquement le mode `full`. Le fork permet aussi `off` pour couper absolument tout WikiSEO sur une page.
 
-**Compatibilité descendante :** si l'ancienne version de WikiSEO est encore installée, ces hooks ne sont simplement pas appelés et le remplacement sélectif du `<head>` final continue de fonctionner comme auparavant. Aucune modification automatique de la ferme ni du sous-module WikiSEO dans cette PR.
+**Compatibilité descendante :** si l'ancienne version de WikiSEO est encore installée, ces hooks ne sont simplement pas appelés et le remplacement sélectif du `<head>` final continue de fonctionner comme auparavant. Cette compatibilité reste utile pour les installations utilisant l'ancien WikiSEO. Le fork modernisé est désormais épinglé dans la ferme.
 
-L'activation nécessite une opération de déploiement distincte, à effectuer après approbation et vérification :
+La migration est activée sur la ferme. Pour une future modification des générateurs SEO, appliquer les précautions de déploiement suivantes :
 
 1. Comparer le serveur à la branche `main` de la ferme et vérifier les modifications locales sans rien écraser.
 2. Fusionner la PR Wikidebates après CI, puis actualiser explicitement le gitlink `extensions/Wikidebates` de la ferme par une PR séparée. Ne pas mettre à jour tous les sous-modules.
@@ -44,15 +44,19 @@ L'activation nécessite une opération de déploiement distincte, à effectuer a
 5. Après déploiement coordonné, invalider les sorties ParserCache et les caches HTML Vector et Minerva des pages Débat/Argument concernées, puis reconstruire selon les procédures existantes, sans vider arbitrairement toute la ferme.
 6. Comparer les en-têtes FR/EN servis aux anonymes sur le serveur et via Cloudflare. En cas de régression, revenir au commit et au gitlink précédents de Wikidebates et reconstruire les caches concernés ; WikiSEO reste installé pendant toute l'opération.
 
-Aucune étape de serveur, cache ou configuration n'est exécutée depuis cette PR.
+### Contrôles de production effectués le 24 novembre 2026
+
+Sur un débat, un argument et la page d'accueil de chacun des wikis FR et EN : HTTP 200, URL canonique unique, aucun doublon détecté. Les quatre pages spécialisées ont le mode `global-only` à l'affichage et pour les mises à jour de révision, un unique script JSON-LD natif, et une date de modification identique à celle de leur révision. Les deux pages d'accueil gardent le mode `full`. L'accueil FR ne fournit pas les mêmes métadonnées que l'accueil EN ; ce constat ne prouve pas une régression de la migration et reste hors périmètre.
+
+Ces contrôles ponctuels ne prouvent pas que tous les fichiers HTML historiques sont renouvelés. Les tests d'invalidation ciblée existent déjà dans `tests/seoCacheInvalidation.php`. Ne pas lancer de reconstruction globale supplémentaire uniquement pour cette mise à jour documentaire et CI.
 
 ## Décisions en attente de validation éditoriale
 
-- Faut-il remplacer `QAPage` par `WebPage` + `Question` pour les débats ? Le JSON-LD natif existant n'est pas modifié.
+- Faut-il remplacer `QAPage` par `WebPage` + `Question` pour les débats ? Le JSON-LD natif existant n'est pas modifié. Le générateur limite actuellement `suggestedAnswer` à trois arguments de chaque côté et calcule `answerCount` sur cette sélection, pas sur l'ensemble des arguments. Google demande que le compteur représente le total des réponses et que les réponses balisées contiennent leur texte complet ([documentation QAPage](https://developers.google.com/search/docs/appearance/structured-data/qapage)). Vérifier la correspondance avec les arguments effectivement affichés et décider de la sémantique avant toute modification. Ne pas inventer de réponse acceptée, de vote ou de texte.
 - Relations `hreflang`, `og:locale:alternate`, `fediverse:creator`, `twitter:creator` : ne pas ajouter sans une source de vérité ou une identité attestée.
 
 ## Validation
 
 - `php tests/run.php` : inclut `tests/seo.php` sans installation MediaWiki.
 - `php tests/mediawiki.php` : transfert de données `ParserOutput` vers `OutputPage` sur MediaWiki 1.43.
-- La CI sur les PR contrôle PHP 8.4, MediaWiki 1.43, JavaScript et navigateur. Un test supplémentaire sous PHP 8.4 charge le **vrai WikiSEO 2.7.0 épinglé**, vérifie le remplacement sélectif des balises et l'absence de régression sur les autres pages. Ces tests ne remplacent pas la comparaison sur le serveur réel.
+- La CI sur les PR contrôle PHP 8.4, MediaWiki 1.43, JavaScript et navigateur. Un test supplémentaire sous PHP 8.4 charge le **vrai WikiSEO 2.7.0 épinglé**, vérifie le remplacement sélectif des balises et l'absence de régression sur les autres pages. Le workflow `wikiseo-page-optout.yml` utilise en outre le commit exact du fork WikiSEO déployé le 24 novembre 2026, indépendamment de toute branche de développement temporaire. Actualiser cette référence lors d'un changement du gitlink de production. Ces tests ne remplacent pas la comparaison sur le serveur réel.
