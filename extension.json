@@ -29,7 +29,10 @@
 		"IsFileCacheable": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onIsFileCacheable",
 		"TitleSquidURLs": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onTitleSquidURLs",
 		"ArticleRevisionVisibilitySet": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onArticleRevisionVisibilitySet",
-		"OutputPageParserOutput": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onOutputPageParserOutput",
+		"OutputPageParserOutput": [
+			"MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onOutputPageParserOutput",
+			"MediaWiki\\Extension\\Wikidebates\\Seo\\Metadata::onOutputPageParserOutput"
+		],
 		"AfterFinalPageOutput": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onAfterFinalPageOutput"
 	},
 	"ResourceFileModulePaths": {
