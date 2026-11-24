@@ -48,6 +48,19 @@ $seoPageOutput = new \MediaWiki\Output\OutputPage(new \MediaWiki\Context\Request
 );
 same( $seoData, $seoPageOutput->getProperty(\MediaWiki\Extension\Wikidebates\Seo\Metadata::DATA_KEY),
 	'Native SEO data survives the ParserOutput to OutputPage boundary' );
+if (!\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('WikiSEO')) {
+	$seoPageOutput->setTitle(Title::newFromText('Native SEO test'));
+	$seoPageOutput->setArticleFlag(true);
+	$seoPageOutput->setRevisionTimestamp('20261123094521');
+	\MediaWiki\Extension\Wikidebates\Seo\Metadata::beforePageDisplay($seoPageOutput);
+	same($seoData['title'], $seoPageOutput->getHTMLTitle(), 'Native SEO controls the browser title');
+	$seoMeta = array_column($seoPageOutput->getMetaTags(), 1, 0);
+	same('A useful summary.', $seoMeta['description'] ?? null, 'Native argument uses the summary');
+	same('A useful summary.', $seoMeta['twitter:description'] ?? null, 'Native X card uses the summary');
+	$seoHead = $seoPageOutput->getHeadItemsArray();
+	check(str_contains(implode("\n", $seoHead), 'article:modified_time'), 'Native Open Graph has revision date');
+	check(!str_contains(implode("\n", $seoHead), 'og:image'), 'No social image invented without an image');
+}
 
 foreach (array_keys((array)$extensionManifest->ResourceModules) as $module) {
 	check($services->getResourceLoader()->getModule($module) !== null, 'ResourceLoader module retained: ' . $module);
