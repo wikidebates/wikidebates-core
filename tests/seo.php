@@ -24,7 +24,10 @@ $debateData = [
 $debate = Metadata::build( $debateData, 'https://fr.wikidebates.org/wiki/Test', '2026-11-23T12:30:00Z' );
 same( $debateData['title'], $debate['title'], 'Legacy debate title retained' );
 same( $debateData['description'], $debate['meta']['description'], 'Legacy debate description retained' );
-same( false, isset( $debate['open_graph']['og:type'] ), 'No unapproved change to debate Open Graph type' );
+same( 'website', $debate['open_graph']['og:type'], 'Debate uses approved website type' );
+foreach ( [ 'author', 'section', 'tag', 'published_time', 'modified_time' ] as $field ) {
+	same( false, isset( $debate['open_graph']['article:' . $field] ), 'No article namespace on debate: ' . $field );
+}
 same( $debateData['image'], $debate['open_graph']['og:image'], 'User-provided debate image retained exactly' );
 same( $debateData['image'], $debate['meta']['twitter:image'], 'Only original image reused on X' );
 same( 'image/png', $debate['open_graph']['og:image:type'], 'Image MIME type inferred without network access' );
@@ -47,12 +50,34 @@ $argumentData = [
 	'image_alt' => $debateData['image_alt'],
 ];
 $argument = Metadata::build( $argumentData, 'https://fr.wikidebates.org/wiki/Argument', '2026-01-05T00:00:00Z' );
-same( 'article', $argument['open_graph']['og:type'], 'No unapproved change to argument Open Graph type' );
+same( 'article', $argument['open_graph']['og:type'], 'Argument retains article type' );
+same( false, isset( $argument['open_graph']['article:author'] ), 'Collective credit is not an Open Graph author profile' );
 same( "La thèse défend l'idée claire & fondée.", $argument['meta']['description'], 'Argument summary converted to plain text' );
 same( $argument['meta']['description'], $argument['open_graph']['og:description'], 'Open Graph uses argument summary' );
 same( $argument['meta']['description'], $argument['meta']['twitter:description'], 'X uses argument summary' );
 same( $argumentData['image'], $argument['meta']['twitter:image'], 'Original user image preserved for argument' );
 same( '2024-01-02T00:00:00Z', $argument['open_graph']['article:published_time'], 'Argument creation-date preserved' );
+$argumentData['keywords'] = 'philosophie, justice, philosophie,   débat';
+$tagged = Metadata::build( $argumentData, 'https://fr.wikidebates.org/wiki/Argument', null );
+same( [ 'philosophie', 'justice', 'débat' ], $tagged['open_graph']['article:tag'], 'Repeat Open Graph tags without duplicates' );
+
+$graph = [
+	'@graph' => [
+		1 => [ '@type' => 'WebSite', '@id' => 'https://example.org/#website', 'url' => 'https://example.org/' ],
+		2 => [ '@type' => 'Organization', '@id' => 'https://example.org/#organization' ],
+		3 => [ '@type' => 'QAPage', '@id' => 'https://example.org/#qa', 'url' => 'https://example.org/' ],
+	],
+];
+$originalGraph = $graph;
+$updatedGraph = Metadata::withModificationDate( $graph, '2026-11-23T12:30:00Z' );
+same( '2026-11-23T12:30:00Z', $updatedGraph['@graph'][3]['dateModified'], 'QAPage has revision date' );
+same( false, isset( $updatedGraph['@graph'][1]['dateModified'] ), 'Website is not modified by page revision' );
+same( false, isset( $updatedGraph['@graph'][2]['dateModified'] ), 'Organization is not modified by page revision' );
+same( $originalGraph, Metadata::withModificationDate( $graph, null ), 'Missing revision does not invent date' );
+$argGraph = [ '@graph' => [ [ '@type' => 'WebPage', '@id' => 'https://example.org/a', 'url' => 'https://example.org/a' ] ] ];
+same( '2026-11-23T12:30:00Z',
+	Metadata::withModificationDate( $argGraph, '2026-11-23T12:30:00Z' )['@graph'][0]['dateModified'],
+	'WebPage has revision date' );
 
 $argumentData['wd_summary'] = '';
 $fallback = Metadata::build( $argumentData, 'https://fr.wikidebates.org/wiki/Argument', null );
