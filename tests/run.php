@@ -45,7 +45,13 @@ $resources = __DIR__ . '/../debatephp/resources/';
 $data = file_get_contents($resources . 'WD-I18N-Data.snapshot.lua');
 $logic = file_get_contents($resources . 'WD-I18N.reference.lua');
 $compiled = require $resources . 'I18nData.php';
-same($compiled['data'], (new LiteralData)->read($data), 'Compiled translations match the complete Lua snapshot');
+$historical = (new LiteralData)->read($data);
+foreach (['Debate', 'Argument'] as $kind) {
+	check(isset($historical[$kind]['categories']['creation_date_missing']), 'Immutable Lua oracle retains historical category: ' . $kind);
+	check(!isset($compiled['data'][$kind]['categories']['creation_date_missing']), 'Native catalogue no longer contains obsolete category: ' . $kind);
+	unset($historical[$kind]['categories']['creation_date_missing']);
+}
+same($compiled['data'], $historical, 'Compiled translations match every non-retired Lua entry');
 $reference = I18n::bundled(false);
 $optimized = I18n::bundled(true);
 $messages = 0;

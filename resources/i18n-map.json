@@ -301,9 +301,6 @@
 				},
 				"displayed_titles_to_review": {
 					"wiki": "Debate.categories.displayed_titles_to_review"
-				},
-				"creation_date_missing": {
-					"wiki": "Debate.categories.creation_date_missing"
 				}
 			},
 			"text": {
@@ -1105,10 +1102,6 @@
 				},
 				"authors_missing": {
 					"wiki": "Argument.categories.authors_missing"
-				},
-				"creation_date_missing": {
-					"wiki": "Argument.categories.creation_date_missing",
-					"legacy_alias": "@Debate.categories.creation_date_missing"
 				},
 				"title_very_short": {
 					"wiki": "Argument.categories.title_very_short"
