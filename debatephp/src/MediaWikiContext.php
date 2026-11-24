@@ -230,17 +230,47 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 		}
 	}
 	public function seoSet(Table $data): void {
-		if (!class_exists(\MediaWiki\Extension\WikiSEO\Validator::class)) { $this->telemetry?->problem('seo', 'service-unavailable'); return; }
 		$started = $this->telemetry?->start();
 		try {
-			$validated = \MediaWiki\Extension\WikiSEO\Validator::validateParams(Table::unwrap($data));
-			MediaWikiServices::getInstance()->getHookContainer()->run('WikiSEOLuaPreAddPageProps', [&$validated]);
-			foreach ($validated as $key => $v) { $this->parser->getOutput()->setPageProperty($key, $v); }
+			$values = Table::unwrap($data);
+			$args = $this->readArguments();
+			$values['wd_kind'] = $this->argumentMode ? 'argument' : 'debate';
+			$values['wd_creation_date'] = (string)( $args['creation-date'] ?? '' );
+			if ($this->argumentMode) {
+				$values['wd_summary'] = (string)( $args['summary'] ?? '' );
+			}
+
+			// Independent of WikiSEO: parser-cache metadata is consumed by
+			// Wikidebates on page display after the cutover.
+			$this->parser->getOutput()->setExtensionData(
+				\MediaWiki\Extension\Wikidebates\Seo\Metadata::DATA_KEY, $values
+			);
+
+			// Reversible deployment: preserve existing WikiSEO page properties
+			// while that extension is loaded, without depending on its Validator.
+			if (\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('WikiSEO')) {
+				$legacyKeys = [
+					'title', 'title_mode', 'title_separator', 'keywords', 'description',
+					'canonical', 'robots', 'googlebot', 'image', 'image_width',
+					'image_height', 'image_alt', 'type', 'site_name', 'locale',
+					'section', 'author', 'published_time', 'twitter_site',
+				];
+				$legacy = array_intersect_key($values, array_fill_keys($legacyKeys, true));
+				MediaWikiServices::getInstance()->getHookContainer()->run(
+					'WikiSEOLuaPreAddPageProps', [&$legacy]
+				);
+				foreach ($legacy as $key => $value) {
+					if (is_scalar($value) && $value !== '') {
+						$this->parser->getOutput()->setPageProperty($key, $value);
+					}
+				}
+			}
 		} catch (\Throwable $e) {
 			DatabaseFailure::rethrow($e);
 			$this->telemetry?->problem('seo', 'exception', $e);
+		} finally {
+			$this->telemetry?->finish('seo', $started);
 		}
-		finally { $this->telemetry?->finish('seo', $started); }
 	}
 	public function smwAvailable(): bool { return class_exists(\SMW\Scribunto\LibraryFactory::class); }
 	public function profiledSmwAsk(Table $query, string $origin): ?Table {
