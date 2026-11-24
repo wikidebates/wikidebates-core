@@ -11,6 +11,7 @@ on:
       - 'extension.json'
       - 'tests/seoCoexistence.php'
       - 'tests/seoCacheInvalidation.php'
+      - 'tests/seoBenchmark.php'
       - 'docs/native-seo-migration.md'
       - '.github/workflows/wikiseo-page-optout.yml'
   workflow_dispatch:
@@ -54,3 +55,8 @@ jobs:
           php -d display_errors=1 -d error_reporting=E_ALL tests/seoCoexistence.php
           php -d display_errors=1 -d error_reporting=E_ALL tests/seoCacheInvalidation.php
           php -d display_errors=1 -d error_reporting=E_ALL tests/mediawiki.php
+      - name: Measure isolated SEO hook cost (informational)
+        env:
+          MW_INSTALL_PATH: ${{ github.workspace }}/.mw-lab
+          WD_TEST_EXTENSIONS: WikiSEO
+        run: php -d display_errors=1 -d error_reporting=E_ALL tests/seoBenchmark.php
