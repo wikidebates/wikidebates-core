@@ -7,6 +7,7 @@ use MediaWiki\Html\Html;
 use MediaWiki\Output\OutputPage;
 use MediaWiki\Parser\ParserOutput;
 use MediaWiki\Registration\ExtensionRegistry;
+use MediaWiki\Title\Title;
 
 /**
  * Native SEO metadata for the two Wikidebates page types.
@@ -20,9 +21,39 @@ use MediaWiki\Registration\ExtensionRegistry;
 final class Metadata {
 	public const DATA_KEY = 'wikidebates-native-seo';
 
+	/**
+	 * Prevent WikiSEO from adding competing page metadata for native Debate
+	 * and Argument pages. Noncompeting site-wide verification, hreflang and
+	 * robot safety tags remain available in WikiSEO's global-only mode.
+	 *
+	 * This hook is optional: Wikidebates remains usable without WikiSEO.
+	 */
+	public static function onWikiSEOPageMetadataMode( OutputPage $out, string &$mode ): void {
+		$data = $out->getProperty( self::DATA_KEY );
+		if ( $out->isArticle() && self::isNativeSeoData( $data ) ) {
+			$mode = 'global-only';
+		}
+	}
+
+	/**
+	 * Skip WikiSEO's deferred description/page-image updates when the parser
+	 * output already contains Wikidebates' native SEO payload.
+	 */
+	public static function onWikiSEOPageRevisionMode(
+		Title $title, ParserOutput $parserOutput, string &$mode
+	): void {
+		if ( self::isNativeSeoData( $parserOutput->getExtensionData( self::DATA_KEY ) ) ) {
+			$mode = 'global-only';
+		}
+	}
+
+	private static function isNativeSeoData( mixed $data ): bool {
+		return is_array( $data ) && in_array( $data['wd_kind'] ?? null, [ 'debate', 'argument' ], true );
+	}
+
 	public static function onOutputPageParserOutput( OutputPage $out, ParserOutput $parserOutput ): void {
 		$data = $parserOutput->getExtensionData( self::DATA_KEY );
-		if ( is_array( $data ) && in_array( $data['wd_kind'] ?? null, [ 'debate', 'argument' ], true ) ) {
+		if ( self::isNativeSeoData( $data ) ) {
 			$out->setProperty( self::DATA_KEY, $data );
 		}
 	}
@@ -173,8 +204,7 @@ final class Metadata {
 	private static function valuesForPage( OutputPage $out ): array {
 		$data = $out->getProperty( self::DATA_KEY );
 		if (
-			!is_array( $data ) ||
-			!in_array( $data['wd_kind'] ?? null, [ 'debate', 'argument' ], true ) ||
+			!self::isNativeSeoData( $data ) ||
 			!$out->isArticle() ||
 			$out->getTitle() === null
 		) {
