@@ -62,11 +62,14 @@ final class Metadata {
 				$out->addMeta( $name, $value );
 			}
 		}
-		foreach ( $values['open_graph'] as $name => $value ) {
-			$out->addHeadItem(
-				'wikidebates-seo-' . $name,
-				Html::element( 'meta', [ 'property' => $name, 'content' => $value ] )
-			);
+		foreach ( $values['open_graph'] as $name => $valuesForProperty ) {
+			// Open Graph article:tag is a repeatable property, not one CSV value.
+			foreach ( (array)$valuesForProperty as $index => $value ) {
+				$out->addHeadItem(
+					'wikidebates-seo-' . $name . '-' . $index,
+					Html::element( 'meta', [ 'property' => $name, 'content' => $value ] )
+				);
+			}
 		}
 	}
 
@@ -106,9 +109,9 @@ final class Metadata {
 		self::put( $openGraph, 'og:description', $description );
 		self::put( $openGraph, 'og:site_name', (string)( $data['site_name'] ?? '' ) );
 		self::put( $openGraph, 'og:locale', (string)( $data['locale'] ?? '' ) );
-		// Keep today's distinction: arguments are 'article', debates had
-		// no explicit og:type. A type change requires an editorial decision.
-		self::put( $openGraph, 'og:type', (string)( $data['type'] ?? '' ) );
+		// The user-approved distinction applies to Open Graph only:
+		// debates are website objects; argument pages are articles.
+		self::put( $openGraph, 'og:type', $kind === 'debate' ? 'website' : 'article' );
 
 		$image = trim( (string)( $data['image'] ?? '' ) );
 		if ( $image !== '' ) {
@@ -138,13 +141,21 @@ final class Metadata {
 			}
 		}
 
-		// Preserve the legacy article:* values, replacing WikiSEO's unreliable
-		// published=last-modified fallback with Wikidebates' creation-date.
-		self::put( $openGraph, 'article:section', (string)( $data['section'] ?? '' ) );
-		self::put( $openGraph, 'article:author', (string)( $data['author'] ?? '' ) );
-		self::put( $openGraph, 'article:tag', (string)( $data['keywords'] ?? '' ) );
-		self::put( $openGraph, 'article:published_time', self::creationDate( $data['wd_creation_date'] ?? '' ) );
-		self::put( $openGraph, 'article:modified_time', (string)( $modified ?? '' ) );
+		// Article namespace applies only to argument pages. article:author
+		// expects an author profile URL, not the collective credit string.
+		// Collective credits and debate dates belong in Wikidebates JSON-LD.
+		if ( $kind === 'argument' ) {
+			self::put( $openGraph, 'article:section', (string)( $data['section'] ?? '' ) );
+			$tags = array_values( array_unique( array_filter(
+				array_map( 'trim', explode( ',', (string)( $data['keywords'] ?? '' ) ) ),
+				static fn ( string $tag ): bool => $tag !== ''
+			) ) );
+			if ( $tags !== [] ) {
+				$openGraph['article:tag'] = $tags;
+			}
+			self::put( $openGraph, 'article:published_time', self::creationDate( $data['wd_creation_date'] ?? '' ) );
+			self::put( $openGraph, 'article:modified_time', (string)( $modified ?? '' ) );
+		}
 
 		return [
 			'title' => $title,
