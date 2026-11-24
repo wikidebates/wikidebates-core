@@ -180,7 +180,7 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 				$data = \MediaWiki\Extension\Wikidebates\Seo\Metadata::withModificationDate($data, $modified);
 			}
 			$data = \MediaWiki\Extension\Wikidebates\Seo\Metadata::withPublicationDate(
-				$data, PublicationDate::forParser($this->parser)
+				$data, $this->publicationDate()
 			);
 			$json = FormatJson::encode(JsonData::value($data), false, FormatJson::ALL_OK);
 			if ($json === false) { throw new \RuntimeException('Unable to encode JSON-LD'); }
@@ -267,7 +267,7 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 			$values = Table::unwrap($data);
 			$args = $this->readArguments();
 			$values['wd_kind'] = $this->argumentMode ? 'argument' : 'debate';
-			$values['wd_published_time'] = PublicationDate::forParser($this->parser);
+			$values['wd_published_time'] = $this->publicationDate();
 			if ($this->argumentMode) {
 				$values['wd_summary'] = (string)( $args['summary'] ?? '' );
 			}
@@ -389,6 +389,11 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 			$this->telemetry?->problem('variables', 'exception', $e);
 			return null;
 		}
+	}
+
+	/** The same ParserOutput value also feeds Open Graph and JSON-LD. */
+	public function publicationDate(): ?string {
+		return PublicationDate::forParser($this->parser);
 	}
 
 	/** Structured magic-variable calls retain MW's timestamp hooks, numbering and cache deadlines. */

@@ -9,7 +9,12 @@
 				"debatephp/src/MediaWikiContext.php",
 				".github/workflows/seo-creation-date.yml",
 				"tests/seoPublicationDate.php",
-				"tests/seoPublicationRenderBenchmark.php"
+				"tests/seoPublicationRenderBenchmark.php",
+				"debatephp/src/ArgumentContext.php",
+				"debatephp/src/ArgumentReferenceRenderer.php",
+				"debatephp/src/ReferenceRenderer.php",
+				"debatephp/tools/**",
+				"debatephp/tests/regenerate.py"
 			]
 		},
 		"workflow_dispatch": {}
@@ -33,6 +38,11 @@
 			"steps": [
 				{
 					"uses": "actions/checkout@v4"
+				},
+				{
+					"name": "Verify native renderers regenerate from preserved Lua snapshots",
+					"if": "matrix.database == 'sqlite'",
+					"run": "python3 -m venv \"$RUNNER_TEMP/wd-render-generator\"\n\"$RUNNER_TEMP/wd-render-generator/bin/python\" -m pip install --disable-pip-version-check luaparser==4.2.0\n\"$RUNNER_TEMP/wd-render-generator/bin/python\" debatephp/tests/regenerate.py > \"$RUNNER_TEMP/wd-render-generator.log\" 2>&1 || { tail -n 360 \"$RUNNER_TEMP/wd-render-generator.log\"; exit 1; }\ntail -n 4 \"$RUNNER_TEMP/wd-render-generator.log\""
 				},
 				{
 					"uses": "shivammathur/setup-php@v2",
