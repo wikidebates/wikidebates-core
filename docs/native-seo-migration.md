@@ -159,3 +159,8 @@ Le corpus réel MediaWiki 1.43.12 / SMW 6.0.1 a révélé que `ParserData::markP
 ### Retrait des derniers noms de catégorie du catalogue natif
 
 Les deux entrées techniques `Debate.categories.creation_date_missing` et `Argument.categories.creation_date_missing` disparaissent de la table de correspondance et des noms de wiki actifs. Aucun message ResourceLoader ni autre catégorie n'est supprimé. Les instantanés Lua, leurs empreintes et le corpus historique sont inchangés ; les tests comparent toutes les autres entrées, contrôlent explicitement le retrait des deux noms et vérifient que l'importeur des anciens catalogues ne peut pas les réintroduire. Les pages de catégorie et les paramètres présents dans les wikis FR/EN restent à inventorier séparément. Les anciens payloads ParserOutput restent compatibles jusqu'à la migration finale des caches.
+
+
+### Références bibliographiques structurées
+
+Les références déjà sélectionnées sont normalisées par un seul helper commun. Un article est rattaché à son numéro (`PublicationIssue`), à son volume (`PublicationVolume`) puis au périodique. Un livre numéroté garde son numéro comme identifiant, et un volume de livre reçoit les deux types `Book` et `PublicationVolume`. Les dates identifiables conservent leur précision (année, mois ou jour) ; les dates numériques ambiguës ne sont pas devinées. Les URL non HTTP(S) ou invalides sont omises du JSON-LD sans supprimer la référence ni modifier son rendu éditorial. Les snapshots Lua sont inchangés ; le comparateur vérifie la transformation explicite et le maintien des autres champs. Aucun accès réseau ni requête SQL supplémentaire. Les marqueurs de parsing sont traités séparément.

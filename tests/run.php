@@ -15,6 +15,7 @@ require __DIR__ . '/../src/Reading/SemanticCacheHooks.php';
 use MediaWiki\Extension\Wikidebates\Reading\SemanticCacheHooks;
 
 require __DIR__ . '/seo.php';
+require __DIR__ . '/seoReferences.php';
 
 $metadata = json_decode(file_get_contents(__DIR__ . '/../extension.json'), true, 512, JSON_THROW_ON_ERROR);
 // Results of embedded SMW queries are snapshots of the owning page.

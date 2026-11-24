@@ -65,7 +65,7 @@ class ReferenceRenderer {
 	protected function wkBuildSingleNodeFromNativeItems(array $items, callable $builder): Table {
 		foreach ($items as $item) {
 			$node = $builder($item);
-			if (Lua::truth($node)) { return new Table([1 => $node]); }
+			if (Lua::truth($node)) { return new Table([1 => SchemaData::reference($node)]); }
 		}
 		return new Table;
 	}
