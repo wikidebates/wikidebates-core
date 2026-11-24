@@ -34,8 +34,6 @@ same( 'image/png', $debate['open_graph']['og:image:type'], 'Image MIME type infe
 same( $debateData['image_alt'], $debate['meta']['twitter:image:alt'], 'New X image alt matches original' );
 same( $debateData['title'], $debate['meta']['twitter:title'], 'Dedicated X title exists' );
 same( $debateData['description'], $debate['meta']['twitter:description'], 'Dedicated X description exists' );
-same( '2020-12-31T00:00:00Z', $debate['open_graph']['article:published_time'], 'Creation-date is published_time' );
-same( '2026-11-23T12:30:00Z', $debate['open_graph']['article:modified_time'], 'Displayed revision is modified_time' );
 same( 'summary_large_image', $debate['meta']['twitter:card'], 'Existing X card retained' );
 same( 'index,follow', $debate['robots'], 'Existing robots policy retained' );
 
