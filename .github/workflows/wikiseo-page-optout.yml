@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
@@ -32,13 +32,13 @@ jobs:
           coverage: none
           tools: composer
       - name: MediaWiki 1.43.11
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
         with:
           repository: wikimedia/mediawiki
           ref: 1.43.11
           path: .mw-lab
       - name: Modernized WikiSEO (production baseline)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
         with:
           repository: wikidebates/WikiSEO
           # Exact WikiSEO gitlink in farm main 953d3e24035 (2026-11-24).
