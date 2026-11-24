@@ -70,6 +70,18 @@ seoLabNative($debate, [
 	'twitter_site' => '@Wikidebats',
 	'robots' => 'index,follow',
 ]);
+$mode = 'full';
+Metadata::onWikiSEOPageMetadataMode($debate, $mode);
+same('global-only', $mode, 'Native debate reduces WikiSEO to global-only metadata');
+$mode = 'off';
+Metadata::onWikiSEOPageMetadataMode($debate, $mode);
+same('off', $mode, 'Native debate cannot undo a stronger off decision from another extension');
+$parser = new ParserOutput();
+$parser->setExtensionData(Metadata::DATA_KEY, ['wd_kind' => 'debate']);
+$revisionMode = 'full';
+Metadata::onWikiSEOPageRevisionMode($debate->getTitle(), $parser, $revisionMode);
+same('global-only', $revisionMode, 'Native debate skips WikiSEO revision data updates');
+
 $debate->setProperty('title', 'ANCIEN TITRE WIKISEO');
 $debate->setProperty('description', 'ANCIENNE DESCRIPTION WIKISEO');
 $debate->setProperty('robots', 'index,follow');
@@ -107,6 +119,10 @@ seoLabNative($argument, [
 	'site_name' => 'Wikidébats',
 	'locale' => 'fr_FR',
 ]);
+$mode = 'full';
+Metadata::onWikiSEOPageMetadataMode($argument, $mode);
+same('global-only', $mode, 'Native argument reduces WikiSEO to global-only metadata');
+
 $argument->setProperty('image', 'https://example.test/obsolete.png');
 [$argumentHead, $argumentTitle] = seoLabRender($argument, false);
 $argumentTags = seoLabMeta($argumentHead);
@@ -122,6 +138,14 @@ check(!str_contains($argumentHead, 'obsolete.png'), 'No obsolete image survives 
 check(!str_contains($argumentHead, 'application/ld+json'), 'WikiSEO generic JSON-LD suppressed on argument');
 
 $ordinary = seoLabOutput('SEO ordinary project page');
+$mode = 'full';
+Metadata::onWikiSEOPageMetadataMode($ordinary, $mode);
+same('full', $mode, 'Ordinary pages retain the entire WikiSEO metadata engine');
+$parser = new ParserOutput();
+$revisionMode = 'full';
+Metadata::onWikiSEOPageRevisionMode($ordinary->getTitle(), $parser, $revisionMode);
+same('full', $revisionMode, 'Ordinary pages retain WikiSEO revision data updates');
+
 $ordinary->setProperty('title', 'Ordinary page from WikiSEO');
 $ordinary->setProperty('description', 'A manually entered description.');
 $ordinary->setProperty('image', 'https://example.test/project.png');
@@ -131,5 +155,106 @@ same('Ordinary page from WikiSEO', $ordinaryTitle, 'Ordinary page title still ma
 same(['A manually entered description.'], $ordinaryTags['description'] ?? null, 'WikiSEO description preserved on other pages');
 same(['https://example.test/project.png'], $ordinaryTags['og:image'] ?? null, 'WikiSEO image preserved on other pages');
 check(str_contains($ordinaryHead, 'application/ld+json'), 'WikiSEO generic structured data kept on other pages');
+
+// New fork: exercise the real WikiSEO hook entrypoints as well as the old
+// final-HTML coexistence strategy. The installed upstream 2.7.0 is still
+// tested by the normal baseline CI when PagePolicy is not present.
+if (class_exists(\MediaWiki\Extension\WikiSEO\PagePolicy::class)) {
+	$policy = \MediaWiki\Extension\WikiSEO\PagePolicy::class;
+	same('global-only', $policy::forOutput($debate), 'HookContainer opts debate out of page metadata');
+	same('global-only', $policy::forOutput($argument), 'HookContainer opts argument out of page metadata');
+	same('full', $policy::forOutput($ordinary), 'HookContainer preserves ordinary WikiSEO page metadata');
+
+	$parserOutput = new ParserOutput();
+	$parserOutput->setExtensionData(Metadata::DATA_KEY, ['wd_kind' => 'debate']);
+	same('global-only', $policy::forRevision($debate->getTitle(), $parserOutput),
+		'HookContainer opts native parser output out of revision updates');
+	$parserOutput = new ParserOutput();
+	same('full', $policy::forRevision($ordinary->getTitle(), $parserOutput),
+		'HookContainer preserves ordinary page revision updates');
+
+	$hook = new \MediaWiki\Extension\WikiSEO\Hooks\PageHooks(
+		\MediaWiki\MediaWikiServices::getInstance()->getMainConfig()
+	);
+	$skin = new class(['name' => 'vector']) extends \Skin {
+		public function outputPage() {}
+	};
+	$nativeOutput = seoLabOutput('Native policy without duplication');
+	seoLabNative($nativeOutput, [
+		'wd_kind' => 'debate',
+		'title' => 'Native Wikidebates title',
+		'description' => 'Native Wikidebates description',
+		'robots' => 'index,follow',
+	]);
+	$hook->onBeforePageDisplay($nativeOutput, $skin);
+	check(!isset($nativeOutput->getHeadItemsArray()['jsonld-metadata']),
+		'WikiSEO JSON-LD is not generated at all for native debate');
+	check(!isset($nativeOutput->getHeadItemsArray()['og:title']),
+		'WikiSEO Open Graph generator is skipped before execution for native debate');
+	$projectOutput = seoLabOutput('Ordinary project page remains automatic');
+	$hook->onBeforePageDisplay($projectOutput, $skin);
+	check(isset($projectOutput->getHeadItemsArray()['jsonld-metadata']),
+		'Ordinary page continues producing WikiSEO JSON-LD');
+
+	// A manually authored #seo parser function still works on ordinary pages.
+	$services = \MediaWiki\MediaWikiServices::getInstance();
+	$parser = $services->getParserFactory()->create();
+	$options = \MediaWiki\Parser\ParserOptions::newFromAnon();
+	$manualTitle = \MediaWiki\Title\Title::newFromText('SEO manual parser project');
+	$manualParserOutput = $parser->parse(
+		'{{#seo:|title=Manual project SEO title|description=Manual SEO description|og_type=website|schema_type=AboutPage}}',
+		$manualTitle,
+		$options
+	);
+	$props = $manualParserOutput->getPageProperties();
+	same('Manual project SEO title', $props['title'] ?? null, '#seo retains manually authored title');
+	same('Manual SEO description', $props['description'] ?? null, '#seo retains authored description');
+	$manual = seoLabOutput($manualTitle->getPrefixedText());
+	foreach ($props as $key => $value) {
+		$manual->setProperty($key, $value);
+	}
+	$hook->onBeforePageDisplay($manual, $skin);
+	$manualHead = $manual->getHeadItemsArray();
+	check(str_contains($manualHead['og:title'] ?? '', 'Manual project SEO title'),
+		'Manually chosen SEO title takes priority in Open Graph');
+	check(str_contains($manualHead['og:description'] ?? '', 'Manual SEO description'),
+		'Manually chosen SEO description is preserved in Open Graph');
+	check(str_contains($manualHead['jsonld-metadata'] ?? '', 'AboutPage'),
+		'Manually chosen Schema.org page type remains available');
+
+	// The old <seo> tag syntax must not disappear when a page is not opted out.
+	$tagTitle = \MediaWiki\Title\Title::newFromText('SEO manual tag project');
+	$tagParsed = $services->getParserFactory()->create()->parse(
+		'<seo title="Manual tag title" description="Manual tag description"></seo>',
+		$tagTitle,
+		$options
+	);
+	$tagProps = $tagParsed->getPageProperties();
+	same('Manual tag title', $tagProps['title'] ?? null, 'Old <seo> tag retains title support');
+	same('Manual tag description', $tagProps['description'] ?? null, 'Old <seo> tag retains description support');
+
+	check(isset($projectOutput->getHeadItemsArray()['og:title']),
+		'Ordinary page continues producing WikiSEO Open Graph');
+
+	// Any other extension or site administrator can opt out a single ordinary
+	// page without disabling WikiSEO globally or changing neighboring pages.
+	$services = \MediaWiki\MediaWikiServices::getInstance();
+	$services->getHookContainer()->register('WikiSEOPageMetadataMode',
+		static function($out, &$mode): void {
+			if ($out->getTitle()?->getPrefixedText() === 'SEO explicitly disabled page') {
+				$mode = 'off';
+			}
+		}
+	);
+	$off = seoLabOutput('SEO explicitly disabled page');
+	same('off', $policy::forOutput($off), 'A custom extension may disable WikiSEO on one ordinary page');
+	$hook->onBeforePageDisplay($off, $skin);
+	check(!isset($off->getHeadItemsArray()['og:title']), 'Off mode does not produce Open Graph');
+	check(!isset($off->getHeadItemsArray()['jsonld-metadata']), 'Off mode does not produce JSON-LD');
+	$headLinks = [];
+	$hook->onOutputPageAfterGetHeadLinksArray($headLinks, $off);
+	same([], $headLinks, 'Off mode does not rewrite the canonical URL');
+
+}
 
 echo "OK: selective WikiSEO coexistence, debate/argument native head, other pages unchanged\n";
