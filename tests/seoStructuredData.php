@@ -85,6 +85,19 @@ foreach (['fr', 'en'] as $lang) {
 		$page['audience'][1]['educationalRole'], 'Localized educational roles');
 	[$empty] = seoSchemaParse('debate', $lang, '');
 	check(!isset($empty['hasPart']), 'Empty lists omitted');
+	$relatedTitles = [];
+	for ($i = 1; $i <= 7; $i++) {
+		$relatedTitles[] = 'Related debate fixture ' . $i;
+	}
+	// A piped link has a label in the displayed section, not in its target URL.
+	$relatedRaw = implode('⟭', $relatedTitles) . '⟭Related labelled debate{{!}}Visible label';
+	[$related] = seoSchemaParse('debate', $lang, '|related-debates=' . $relatedRaw);
+	$relatedTitles[] = 'Related labelled debate';
+	same(array_map(static fn($title) => Title::newFromText($title)->getFullURL(), $relatedTitles),
+		$related['relatedLink'] ?? null, 'Related debates are complete URL-valued links');
+	check(!isset($related['isRelatedTo']), 'No product/service relationship on a WebPage');
+	check(!isset($empty['relatedLink']), 'Empty related links omitted');
+
 	[$oneSide] = seoSchemaParse('debate', $lang, '|con-arguments=' . seoSchemaItems('Con fixture', 1));
 	seoSchemaCheckLists($oneSide, [$fr ? 'Arguments contre' : 'Arguments against'], ['Con fixture'], 1);
 
