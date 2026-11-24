@@ -70,6 +70,15 @@ seoLabNative($debate, [
 	'twitter_site' => '@Wikidebats',
 	'robots' => 'index,follow',
 ]);
+$mode = 'full';
+Metadata::onWikiSEOPageMetadataMode($debate, $mode);
+same('global-only', $mode, 'Native debate reduces WikiSEO to global-only metadata');
+$parser = new ParserOutput();
+$parser->setExtensionData(Metadata::DATA_KEY, ['wd_kind' => 'debate']);
+$revisionMode = 'full';
+Metadata::onWikiSEOPageRevisionMode($debate->getTitle(), $parser, $revisionMode);
+same('global-only', $revisionMode, 'Native debate skips WikiSEO revision data updates');
+
 $debate->setProperty('title', 'ANCIEN TITRE WIKISEO');
 $debate->setProperty('description', 'ANCIENNE DESCRIPTION WIKISEO');
 $debate->setProperty('robots', 'index,follow');
@@ -107,6 +116,10 @@ seoLabNative($argument, [
 	'site_name' => 'Wikidébats',
 	'locale' => 'fr_FR',
 ]);
+$mode = 'full';
+Metadata::onWikiSEOPageMetadataMode($argument, $mode);
+same('global-only', $mode, 'Native argument reduces WikiSEO to global-only metadata');
+
 $argument->setProperty('image', 'https://example.test/obsolete.png');
 [$argumentHead, $argumentTitle] = seoLabRender($argument, false);
 $argumentTags = seoLabMeta($argumentHead);
@@ -122,6 +135,14 @@ check(!str_contains($argumentHead, 'obsolete.png'), 'No obsolete image survives 
 check(!str_contains($argumentHead, 'application/ld+json'), 'WikiSEO generic JSON-LD suppressed on argument');
 
 $ordinary = seoLabOutput('SEO ordinary project page');
+$mode = 'full';
+Metadata::onWikiSEOPageMetadataMode($ordinary, $mode);
+same('full', $mode, 'Ordinary pages retain the entire WikiSEO metadata engine');
+$parser = new ParserOutput();
+$revisionMode = 'full';
+Metadata::onWikiSEOPageRevisionMode($ordinary->getTitle(), $parser, $revisionMode);
+same('full', $revisionMode, 'Ordinary pages retain WikiSEO revision data updates');
+
 $ordinary->setProperty('title', 'Ordinary page from WikiSEO');
 $ordinary->setProperty('description', 'A manually entered description.');
 $ordinary->setProperty('image', 'https://example.test/project.png');
