@@ -60,7 +60,7 @@ def e(v,multi=False):
 		if v.func.id=='preprocess' and isinstance(v.source,n.Name) and v.source.id=='F':
 			def flatten(z):return flatten(z.left)+flatten(z.right) if isinstance(z,n.Concat) else [z]
 			segments=flatten(v.args[0])
-			if len(segments)==3 and isinstance(segments[0],n.String) and segments[0].s==b'{{SHORTDESC: ' and isinstance(segments[-1],n.String) and segments[-1].s==b'}}':
+			if len(segments)==3 and isinstance(segments[0],n.String) and segments[0].s in (b'{{SHORTDESC: ', '{{SHORTDESC: ') and isinstance(segments[-1],n.String) and segments[-1].s in (b'}}', '}}'):
 				return '$this->context->shortDescription('+e(segments[1])+')'
 		name=v.func.id;args=[e(a) for a in v.args]
 		if name in ['find','sub','gsub']:
