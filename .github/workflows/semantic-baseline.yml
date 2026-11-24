@@ -41,7 +41,7 @@
 			},
 			"steps": [
 				{
-					"uses": "actions/checkout@v4"
+					"uses": "actions/checkout@v7.0.1"
 				},
 				{
 					"uses": "shivammathur/setup-php@v2",
@@ -58,7 +58,7 @@
 				},
 				{
 					"name": "MediaWiki 1.43.11 checkout",
-					"uses": "actions/checkout@v4",
+					"uses": "actions/checkout@v7.0.1",
 					"with": {
 						"repository": "wikimedia/mediawiki",
 						"ref": "1.43.11",
@@ -67,7 +67,7 @@
 				},
 				{
 					"name": "Scribunto for MediaWiki 1.43",
-					"uses": "actions/checkout@v4",
+					"uses": "actions/checkout@v7.0.1",
 					"with": {
 						"repository": "wikimedia/mediawiki-extensions-Scribunto",
 						"ref": "REL1_43",
@@ -76,7 +76,7 @@
 				},
 				{
 					"name": "Vector for isolated ApiParse responses",
-					"uses": "actions/checkout@v4",
+					"uses": "actions/checkout@v7.0.1",
 					"with": {
 						"repository": "wikimedia/mediawiki-skins-Vector",
 						"ref": "REL1_43",
@@ -85,7 +85,7 @@
 				},
 				{
 					"name": "SMW 7.3.1",
-					"uses": "actions/checkout@v4",
+					"uses": "actions/checkout@v7.0.1",
 					"with": {
 						"repository": "SemanticMediaWiki/SemanticMediaWiki",
 						"ref": "7.3.1",
@@ -94,7 +94,7 @@
 				},
 				{
 					"name": "SemanticScribunto 2.3.3",
-					"uses": "actions/checkout@v4",
+					"uses": "actions/checkout@v7.0.1",
 					"with": {
 						"repository": "SemanticMediaWiki/SemanticScribunto",
 						"ref": "2.3.3",
@@ -128,7 +128,7 @@
 				{
 					"name": "Retain diagnostic findings",
 					"if": "always()",
-					"uses": "actions/upload-artifact@v4",
+					"uses": "actions/upload-artifact@v7.0.2",
 					"with": {
 						"name": "semantic-baseline-${{ matrix.database }}",
 						"path": "tests/results/semantic-baseline-${{ matrix.database }}.json",
