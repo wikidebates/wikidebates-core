@@ -256,11 +256,13 @@ foreach (['fr', 'en'] as $lang) {
 			$owner = seoReferenceOwner($kind, $page, $nodes);
 			check(!isset($owner['subjectOf']), 'Videos are citations, not claims of being about this entity');
 			same(count($expected), count($owner['citation'] ?? []), 'Every named reference represented');
+			// Do not count the JSON-LD script itself as visible source text.
+			$visible = preg_replace('~<script\b[^>]*>.*?</script>~is', '', $output->getText());
 			foreach ($expected as $index => $reference) {
 				// Object key order is not a semantic requirement.
 				$actual = $owner['citation'][$index];
 				check($reference == $actual, 'Exact documentary reference and editorial order: ' . $reference['name']);
-				check(str_contains($output->getText(), htmlspecialchars($reference['name'], ENT_NOQUOTES)), 'Reference visible in rendered page: ' . $reference['name']);
+				check(str_contains($visible, htmlspecialchars($reference['name'], ENT_NOQUOTES)), 'Reference visible in rendered page: ' . $reference['name']);
 			}
 			[$page, $nodes] = seoSchemaParse($kind, $lang,
 				'|bibliography=' . seoReferenceFixture([seoReferenceBook('Undetermined work', 'Ada', '')]) .
