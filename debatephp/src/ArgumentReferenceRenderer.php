@@ -2515,8 +2515,10 @@ class ArgumentReferenceRenderer {
 			}
 			$subjectOf = $this->wkBuildClaimCitationsFromVideography((Lua::truth($v361 = $args['videography']) ? $v361 : ''));
 			$pageNode = (['@type' => 'WebPage', '@id' => $pv['pageUrl'], 'url' => $pv['pageUrl'], 'name' => $pv['rawTitle'], 'inLanguage' => $lang, 'isPartOf' => (['@id' => ($this->L($lang, 'urls', 'home') . '#website')]), 'breadcrumb' => (['@id' => ($pv['pageUrl'] . '#breadcrumb')]), 'mainEntity' => (['@id' => ($pv['pageUrl'] . '#claim')])]);
-			// A collective credit belongs to the WebPage, not to the Claim's author.
-			$pageNode['creditText'] = $this->seoL($lang, 'author');
+			// Credit collective page authors without attributing the Claim to them.
+			$credit = $this->seoL($lang, 'author');
+			$pageNode['creditText'] = $credit;
+			$pageNode['author'] = $this->jsonNode(['@type' => 'Organization', 'name' => $credit]);
 			$pageNode['publisher'] = ['@id' => ($this->L($lang, 'urls', 'home') . '#organization')];
 			if (Lua::truth($creationDate)) {
 				$pageNode['datePublished'] = $creationDate;
