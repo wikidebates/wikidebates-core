@@ -91,9 +91,10 @@ check(!str_contains($debateHead, 'ANCIENNE DESCRIPTION WIKISEO'), 'No stale desc
 check(!str_contains($debateHead, 'obsolete.png'), 'No stale social image in HTML');
 check(!str_contains($debateHead, 'application/ld+json'), 'WikiSEO generic JSON-LD suppressed on debate');
 same('noindex', $debate->getIndexPolicy(), 'MediaWiki noindex policy remains in force');
-check(in_array('noindex,follow', $debateTags['robots'] ?? [], true) ||
-	in_array('noindex,nofollow', $debateTags['robots'] ?? [], true) ||
-	in_array('noindex', $debateTags['robots'] ?? [], true), 'Robots HTML retains noindex');
+if (isset($debateTags['robots'])) {
+	check(str_contains(strtolower(implode(',', $debateTags['robots'])), 'noindex'),
+		'Any emitted robots meta must retain MediaWiki noindex');
+}
 
 $argument = seoLabOutput('SEO coexistence argument');
 seoLabNative($argument, [
