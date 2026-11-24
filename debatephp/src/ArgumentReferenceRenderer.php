@@ -2097,22 +2097,6 @@ class ArgumentReferenceRenderer {
 		return '';
 	}
 
-	protected function wkTakeFirst($items = null, $limit = null) {
-		$out = new Table([]);
-		$limit = (Lua::truth($v298 = Lua::number($limit)) ? $v298 : 0);
-		if (($limit <= 0)) {
-			return $out;
-		}
-		$stop5 = Lua::len($items);
-		for ($i = 1; $i <= $stop5; $i++) {
-			if (($i > $limit)) {
-				break;
-			}
-			$out[(Lua::len($out) + 1)] = $items[$i];
-		}
-		return $out;
-	}
-
 	protected function wkBuildWebsiteNode($lang = null) {
 		$homeUrl = $this->L($lang, 'urls', 'home');
 		$siteName = $this->L($lang, 'seo', 'site_name');
@@ -2222,42 +2206,6 @@ class ArgumentReferenceRenderer {
 		}
 		if (Lua::truth($this->wkAppendFirstValidId($out, (Lua::truth($v315 = (Lua::truth($v316 = $cache) ? $cache['objs'] : $v316)) ? $v315 : new Table([])), '#claim', $lang))) {
 			return $out;
-		}
-		return $out;
-	}
-
-	protected function wkBuildHasPart($args = null, $maps = null, $lang = null) {
-		$out = new Table([]);
-		$detailedDebate = Lua::trim(Lua::str((Lua::truth($v317 = (Lua::truth($v318 = $args) ? $args['dedicated-debate'] : $v318)) ? $v317 : '')));
-		$detailedDebate = $this->canonicalTitle($detailedDebate);
-		if (($detailedDebate !== '')) {
-			$url = $this->wkFullUrl($detailedDebate, $lang);
-			if (($url !== '')) {
-				$out[(Lua::len($out) + 1)] = $this->jsonNode(['@id' => ($url . '#qa')]);
-				return $out;
-			}
-		}
-		$justifItems = (Lua::truth($v319 = (Lua::truth($v320 = (Lua::truth($v321 = $maps) ? $maps['justif'] : $v321)) ? $maps['justif']['items'] : $v320)) ? $v319 : new Table([]));
-		$objItems = (Lua::truth($v322 = (Lua::truth($v323 = (Lua::truth($v324 = $maps) ? $maps['obj'] : $v324)) ? $maps['obj']['items'] : $v323)) ? $v322 : new Table([]));
-		$stop8 = min(Lua::len($justifItems), 3);
-		for ($i = 1; $i <= $stop8; $i++) {
-			$item = $justifItems[$i];
-			$argTitle = Lua::trim(Lua::str((Lua::truth($v325 = (Lua::truth($v326 = $item) ? $item['page'] : $v326)) ? $v325 : '')));
-			$argTitle = $this->canonicalTitle($argTitle);
-			$url = $this->wkFullUrl($argTitle, $lang);
-			if (($url !== '')) {
-				$out[(Lua::len($out) + 1)] = $this->jsonNode(['@type' => 'Claim', '@id' => ($url . '#claim'), 'additionalType' => $this->wkBuildWikiUrl($lang, 'property_prefix', 'justification_label')]);
-			}
-		}
-		$stop12 = min(Lua::len($objItems), 1);
-		for ($i = 1; $i <= $stop12; $i++) {
-			$item = $objItems[$i];
-			$argTitle = Lua::trim(Lua::str((Lua::truth($v327 = (Lua::truth($v328 = $item) ? $item['page'] : $v328)) ? $v327 : '')));
-			$argTitle = $this->canonicalTitle($argTitle);
-			$url = $this->wkFullUrl($argTitle, $lang);
-			if (($url !== '')) {
-				$out[(Lua::len($out) + 1)] = $this->jsonNode(['@type' => 'Claim', '@id' => ($url . '#claim'), 'additionalType' => $this->wkBuildWikiUrl($lang, 'property_prefix', 'objection_label')]);
-			}
 		}
 		return $out;
 	}
@@ -2489,7 +2437,8 @@ class ArgumentReferenceRenderer {
 			[$about, $mentions] = $this->wkBuildAboutAndMentions($args);
 			$keywords = $this->wkBuildKeywords($args, $lang);
 			$isPartOf = $this->wkBuildClaimIsPartOf($lang, $cache);
-			$hasPart = $this->wkBuildHasPart($args, $maps, $lang);
+			$parts = SchemaData::argumentParts($args, $maps, $pv['pageUrl'], $lang,
+				fn(string $title): string => $this->wkFullUrl($this->canonicalTitle($title)));
 			$citations = new Table([]);
 			$q = $this->wkBuildClaimCitationsFromQuotes((Lua::truth($v358 = $args['_quotes_wikitext']) ? $v358 : ''));
 			if (Lua::truth($q[1])) {
@@ -2504,18 +2453,39 @@ class ArgumentReferenceRenderer {
 				$citations[(Lua::len($citations) + 1)] = $w[1];
 			}
 			$subjectOf = $this->wkBuildClaimCitationsFromVideography((Lua::truth($v361 = $args['videography']) ? $v361 : ''));
-			$pageNode = (['@type' => 'WebPage', '@id' => $pv['pageUrl'], 'url' => $pv['pageUrl'], 'name' => $pv['rawTitle'], 'inLanguage' => $lang, 'isPartOf' => (['@id' => ($this->L($lang, 'urls', 'home') . '#website')]), 'breadcrumb' => (['@id' => ($pv['pageUrl'] . '#breadcrumb')]), 'mainEntity' => (['@id' => ($pv['pageUrl'] . '#claim')])]);
+			$pageNode = [
+				'@type' => [1 => 'WebPage', 2 => 'LearningResource'],
+				'@id' => $pv['pageUrl'],
+				'url' => $pv['pageUrl'],
+				'name' => $pv['rawTitle'],
+				'inLanguage' => $lang,
+				'isPartOf' => ['@id' => $this->L($lang, 'urls', 'home') . '#website'],
+				'breadcrumb' => ['@id' => $pv['pageUrl'] . '#breadcrumb'],
+				'discussionUrl' => $this->wkBuildDiscussionUrl($pv, $lang),
+				'mainEntity' => ['@id' => $pv['pageUrl'] . '#claim']
+			] + SchemaData::education($lang, 'argument');
+			if ($parts !== []) {
+				$pageNode['hasPart'] = $parts;
+			}
 			// Credit collective page authors without attributing the Claim to them.
 			$credit = $this->seoL($lang, 'author');
 			$pageNode['creditText'] = $credit;
 			$pageNode['author'] = $this->jsonNode(['@type' => 'Organization', 'name' => $credit]);
 			$pageNode['publisher'] = ['@id' => ($this->L($lang, 'urls', 'home') . '#organization')];
-			$claimNode = (['@type' => 'Claim', '@id' => ($pv['pageUrl'] . '#claim'), 'url' => $pv['pageUrl'], 'name' => $pv['rawTitle'], 'inLanguage' => $lang, 'learningResourceType' => 'argument', 'educationalUse' => 'analysis', 'educationalLevel' => 'higher education', 'audience' => (['@type' => 'EducationalAudience', 'educationalRole' => 'student']), 'isPartOf' => $isPartOf, 'breadcrumb' => (['@id' => ($pv['pageUrl'] . '#breadcrumb')]), 'discussionUrl' => $this->wkBuildDiscussionUrl($pv, $lang), 'publisher' => (['@id' => ($this->L($lang, 'urls', 'home') . '#organization')])]);
+			$claimNode = [
+				'@type' => 'Claim',
+				'@id' => $pv['pageUrl'] . '#claim',
+				'url' => $pv['pageUrl'],
+				'name' => $pv['rawTitle'],
+				'inLanguage' => $lang,
+				'isPartOf' => $isPartOf,
+				'appearance' => ['@id' => $pv['pageUrl']]
+			];
 			if ((Lua::truth($args['established-name']) && (Lua::trim($args['established-name']) !== ''))) {
 				$claimNode['alternateName'] = $args['established-name'];
 			}
 			{
-				$summary = Lua::trim(Lua::str((Lua::truth($v362 = (Lua::truth($v363 = $args) ? $args['summary'] : $v363)) ? $v362 : '')));
+				$summary = NativeText::seoPlainText((string)($args['summary'] ?? ''));
 				if (($summary !== '')) {
 					$claimNode['abstract'] = $summary;
 				}
@@ -2528,9 +2498,6 @@ class ArgumentReferenceRenderer {
 			}
 			if ((Lua::len($keywords) > 0)) {
 				$claimNode['keywords'] = $keywords;
-			}
-			if ((Lua::len($hasPart) > 0)) {
-				$claimNode['hasPart'] = $hasPart;
 			}
 			if ((Lua::len($citations) > 0)) {
 				$claimNode['citation'] = $citations;

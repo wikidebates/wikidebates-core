@@ -17,7 +17,7 @@ use MediaWiki\Title\Title;
 use MediaWiki\User\User;
 
 $mode = getenv('WD_SEO_BENCHMARK_MODE') ?: 'candidate';
-check(in_array($mode, ['baseline', 'candidate'], true), 'Expected benchmark mode');
+check(in_array($mode, ['baseline', 'previous-schema', 'candidate'], true), 'Expected benchmark mode');
 $services = MediaWikiServices::getInstance();
 $user = User::newSystemUser('Publication render benchmark', ['steal' => false]);
 check($user !== null, 'Fixture user available');
@@ -63,11 +63,11 @@ foreach (['debate', 'argument'] as $kind) {
 			$revision, ParserOptions::newFromAnon()
 		)->getRevisionParserOutput();
 	};
-	$verify = static function($output) use ($mode, $kind): void {
-		$expected = $mode === 'candidate' ? '2024-05-12T14:37:25Z' : '2000-01-01T00:00:00Z';
+	$verify = static function($output) use ($mode, $kind): int {
+		$expected = $mode !== 'baseline' ? '2024-05-12T14:37:25Z' : '2000-01-01T00:00:00Z';
 		$payload = $output->getExtensionData(Metadata::DATA_KEY);
 		same($kind, $payload['wd_kind'] ?? null, 'Rendered native SEO page');
-		if ($mode === 'candidate') {
+		if ($mode !== 'baseline') {
 			same($expected, $payload['wd_published_time'] ?? null, 'Native date in payload');
 		}
 		preg_match_all('~<script\b[^>]*\btype="application/ld\+json"[^>]*>(.*?)</script>~is',
@@ -75,9 +75,16 @@ foreach (['debate', 'argument'] as $kind) {
 		same(1, count($matches[1]), 'Exactly one schema document');
 		$graph = json_decode($matches[1][0], true, 512, JSON_THROW_ON_ERROR)['@graph'];
 		$pages = array_values(array_filter($graph, static fn($n) =>
-			($n['@type'] ?? '') === ($kind === 'argument' ? 'WebPage' : 'QAPage')));
+			in_array($mode === 'candidate' || $kind === 'argument' ? 'WebPage' : 'QAPage', (array)($n['@type'] ?? []), true)));
 		same(1, count($pages), 'Specialized page node');
 		same($expected, $pages[0]['datePublished'] ?? null, 'Correct date for benchmark mode');
+		if ($mode === 'candidate') {
+			same(2, count($pages[0]['hasPart'] ?? []), 'Two direct argument lists');
+			foreach ($pages[0]['hasPart'] as $part) {
+				same(10, $part['mainEntity']['numberOfItems'] ?? null, 'All ten direct relations');
+			}
+		}
+		return strlen($matches[1][0]);
 	};
 	for ($i = 0; $i < 12; $i++) {
 		$verify($render());
@@ -95,7 +102,7 @@ foreach (['debate', 'argument'] as $kind) {
 		unset($output);
 	}
 	$selectAfter = publicationRenderSelects($observer);
-	$verify($render());
+	$schemaBytes = $verify($render());
 	echo 'WD_SEO_PUBLICATION_RENDER ' . json_encode([
 		'mode' => $mode,
 		'kind' => $kind,
@@ -103,6 +110,7 @@ foreach (['debate', 'argument'] as $kind) {
 		'mediawiki' => MW_VERSION,
 		'db' => $testSocket === null ? 'sqlite' : 'mariadb',
 		'iterations' => $iterations,
+		'schema_bytes' => $schemaBytes,
 		'time_us' => publicationRenderStats($time),
 		'peak_delta_bytes' => publicationRenderStats($memory),
 		'selects_per_render' => $selectBefore === null ? null : ($selectAfter - $selectBefore) / $iterations

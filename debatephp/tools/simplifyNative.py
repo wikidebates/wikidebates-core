@@ -72,4 +72,5 @@ def simplify(path: Path, argument: bool):
 	from nativeReadPass import optimize as optimize_read
 	from nativeMeasuredPass import optimize as optimize_measured
 	from retirePublicationDate import optimize as retire_publication_date
-	path.write_text(retire_publication_date(optimize_measured(optimize_read(optimize_further(optimize_php(optimize(source, argument), argument), argument), argument), argument), argument))
+	from nativeSchemaPass import optimize as optimize_schema
+	path.write_text(optimize_schema(retire_publication_date(optimize_measured(optimize_read(optimize_further(optimize_php(optimize(source, argument), argument), argument), argument), argument), argument), argument))

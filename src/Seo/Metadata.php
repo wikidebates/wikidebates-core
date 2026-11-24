@@ -3,6 +3,7 @@
 namespace MediaWiki\Extension\Wikidebates\Seo;
 
 use MediaWiki\Context\RequestContext;
+use MediaWiki\Extension\DebatePHP\NativeText;
 use MediaWiki\Html\Html;
 use MediaWiki\Output\OutputPage;
 use MediaWiki\Parser\ParserOutput;
@@ -70,7 +71,7 @@ final class Metadata {
 		// Without WikiSEO this is the sole full build.
 		$values = $hasWikiSEO
 			? [
-				'title' => self::plainText( (string)( $data['title'] ?? '' ) ),
+				'title' => NativeText::seoPlainText( (string)( $data['title'] ?? '' ) ),
 				'robots' => (string)( $data['robots'] ?? '' ),
 			]
 			: self::buildForPage( $out, $data );
@@ -128,7 +129,7 @@ final class Metadata {
 		if ( $data === [] ) {
 			return;
 		}
-		$out->setHTMLTitle( self::plainText( (string)( $data['title'] ?? '' ) ) );
+		$out->setHTMLTitle( NativeText::seoPlainText( (string)( $data['title'] ?? '' ) ) );
 		// Legacy page_props from an old ParserCache must not override a
 		// noindex policy that MediaWiki has already established.
 		unset( $metadata['robots'] );
@@ -245,14 +246,8 @@ final class Metadata {
 			return [];
 		}
 
-		$title = self::plainText( (string)( $data['title'] ?? '' ) );
-		$description = self::plainText( (string)( $data['description'] ?? '' ) );
-		if ( $kind === 'argument' ) {
-			$summary = self::plainText( (string)( $data['wd_summary'] ?? '' ) );
-			if ( $summary !== '' ) {
-				$description = $summary;
-			}
-		}
+		$title = NativeText::seoPlainText( (string)( $data['title'] ?? '' ) );
+		$description = self::description( $data );
 
 		$meta = [];
 		$openGraph = [];
@@ -277,7 +272,7 @@ final class Metadata {
 		if ( $image !== '' ) {
 			self::put( $openGraph, 'og:image', $image );
 			self::put( $meta, 'twitter:image', $image );
-			$alt = self::plainText( (string)( $data['image_alt'] ?? '' ) );
+			$alt = NativeText::seoPlainText( (string)( $data['image_alt'] ?? '' ) );
 			self::put( $openGraph, 'og:image:alt', $alt );
 			self::put( $meta, 'twitter:image:alt', $alt );
 			if ( str_starts_with( $image, 'https://' ) ) {
@@ -330,6 +325,37 @@ final class Metadata {
 		];
 	}
 
+	/** Use exactly the same description for head tags and structured data. */
+	public static function description( array $data ): string {
+		if ( ( $data['wd_kind'] ?? '' ) === 'argument' ) {
+			$summary = NativeText::seoPlainText( (string)( $data['wd_summary'] ?? '' ) );
+			if ( $summary !== '' ) {
+				return $summary;
+			}
+		}
+		return NativeText::seoPlainText( (string)( $data['description'] ?? '' ) );
+	}
+
+	private static function isPageNode( mixed $node ): bool {
+		return is_array( $node ) &&
+			( in_array( 'WebPage', (array)( $node['@type'] ?? [] ), true ) ||
+				in_array( 'QAPage', (array)( $node['@type'] ?? [] ), true ) ) &&
+			isset( $node['url'], $node['@id'] );
+	}
+
+	public static function withDescription( array $schema, array $payload ): array {
+		$description = self::description( $payload );
+		if ( $description === '' || !is_array( $schema['@graph'] ?? null ) ) {
+			return $schema;
+		}
+		foreach ( $schema['@graph'] as $index => $node ) {
+			if ( self::isPageNode( $node ) ) {
+				$schema['@graph'][$index]['description'] = $description;
+			}
+		}
+		return $schema;
+	}
+
 	/**
 	 * Complete the existing WebPage/QAPage graph rather than emitting a
 	 * second JSON-LD document. The timestamp belongs to the parsed revision.
@@ -340,11 +366,7 @@ final class Metadata {
 			return $schema;
 		}
 		foreach ( $schema['@graph'] as $index => $node ) {
-			if (
-				is_array( $node ) &&
-				in_array( $node['@type'] ?? null, [ 'WebPage', 'QAPage' ], true ) &&
-				isset( $node['url'], $node['@id'] )
-			) {
+			if ( self::isPageNode( $node ) ) {
 				$schema['@graph'][$index]['dateModified'] = $modified;
 			}
 		}
@@ -362,11 +384,7 @@ final class Metadata {
 		}
 		$claimIds = [];
 		foreach ( $schema['@graph'] as $index => $node ) {
-			if (
-				!is_array( $node ) ||
-				!in_array( $node['@type'] ?? null, [ 'WebPage', 'QAPage' ], true ) ||
-				!isset( $node['url'], $node['@id'] )
-			) {
+			if ( !self::isPageNode( $node ) ) {
 				continue;
 			}
 			unset( $schema['@graph'][$index]['datePublished'] );
@@ -408,15 +426,5 @@ final class Metadata {
 		return $date . 'T00:00:00Z';
 	}
 
-	/** Plain text for HTML attribute content, without expanding wikitext. */
-	private static function plainText( string $text ): string {
-		$text = preg_replace( '/<!--.*?-->/su', ' ', $text ) ?? $text;
-		$text = preg_replace( '/<ref\b[^>]*>.*?<\/ref>/isu', ' ', $text ) ?? $text;
-		$text = preg_replace( '/<ref\b[^>]*\/>/isu', ' ', $text ) ?? $text;
-		$text = preg_replace( '/\[\[(?:[^\]|]*\|)?([^\]]+)\]\]/u', '$1', $text ) ?? $text;
-		$text = preg_replace( '/\[https?:\/\/[^\s\]]+\s+([^\]]+)\]/u', '$1', $text ) ?? $text;
-		$text = str_replace( [ "'''", "''" ], '', $text );
-		$text = html_entity_decode( strip_tags( $text ), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
-		return trim( preg_replace( '/\s+/u', ' ', $text ) ?? $text );
-	}
+
 }
