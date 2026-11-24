@@ -45,6 +45,7 @@ namespace MediaWiki\Registration {
 }
 namespace MediaWiki\Parser {
 	class Parser {
+		const MARKER_PREFIX = "\x7f'\"`UNIQ-";
 		public function getOutput(): object {
 			return new class {
 				public function updateCacheExpiry(int $seconds): void {}
