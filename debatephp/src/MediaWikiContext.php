@@ -150,6 +150,12 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 	public function jsonLdData(array $data): string {
 		$started = $this->telemetry?->start();
 		try {
+			// Use the parsed revision's timestamp, which survives ParserCache.
+			// Never substitute the present time if a revision is unavailable.
+			$timestamp = $this->parser->getOutput()->getRevisionTimestamp();
+			$modified = is_string($timestamp) && preg_match('/^\d{14}$/D', $timestamp)
+				? wfTimestamp(TS_ISO_8601, $timestamp) : null;
+			$data = \MediaWiki\Extension\Wikidebates\Seo\Metadata::withModificationDate($data, $modified);
 			$json = FormatJson::encode(JsonData::value($data), false, FormatJson::ALL_OK);
 			if ($json === false) { throw new \RuntimeException('Unable to encode JSON-LD'); }
 		} finally { $this->telemetry?->finish('json', $started); }
