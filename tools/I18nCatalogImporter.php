@@ -68,6 +68,12 @@ final class I18nCatalogImporter {
 			if (is_string($value) && str_starts_with($value, '@')) { $entry['legacy_alias'] = $value; }
 			$map['entries'][$component][$section][$key] = $entry;
 		}
+		// Preserve the explicit correction when importing the frozen Lua catalog.
+		// Do not rewrite other URLs or administrator-provided custom images.
+		if (($catalogs['en']['wikidebates-debate-seo-image'] ?? null) ===
+			'https://en.wikidebates.org/w/resources/assets/logo-Wikidebates-Twitter.png') {
+			$catalogs['en']['wikidebates-debate-seo-image'] = 'https://en.wikidebates.org/w/resources/assets/logo-wikidebates-twitter.png';
+		}
 		$map['provenance'] = array_intersect_key($compiled, array_flip(['sha256', 'logic_sha256']));
 		$files = ['resources/i18n-map.json' => $map, 'resources/wiki-names.json' => $names];
 		foreach ($catalogs as $language => $catalog) { $files['i18n/' . $language . '.json'] = $catalog; }

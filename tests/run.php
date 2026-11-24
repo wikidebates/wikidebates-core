@@ -51,7 +51,11 @@ foreach (['Debate', 'Argument'] as $kind) {
 	check(!isset($compiled['data'][$kind]['categories']['creation_date_missing']), 'Native catalogue no longer contains obsolete category: ' . $kind);
 	unset($historical[$kind]['categories']['creation_date_missing']);
 }
-same($compiled['data'], $historical, 'Compiled translations match every non-retired Lua entry');
+same('https://en.wikidebates.org/w/resources/assets/logo-Wikidebates-Twitter.png',
+	$historical['Debate']['seo']['image']['en'], 'Immutable Lua oracle retains historical broken URL');
+$historical['Debate']['seo']['image']['en'] =
+	'https://en.wikidebates.org/w/resources/assets/logo-wikidebates-twitter.png';
+same($compiled['data'], $historical, 'Compiled translations match Lua except explicitly retired or corrected entries');
 $reference = I18n::bundled(false);
 $optimized = I18n::bundled(true);
 $messages = 0;

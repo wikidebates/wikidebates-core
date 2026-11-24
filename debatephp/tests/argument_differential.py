@@ -207,7 +207,12 @@ def cases():
 if __name__=='__main__':
 	corpus=cases(); expected=[]
 	for c in corpus:
-		expected.append(oracle(c))
+		result = oracle(c)
+		# Project only the known broken historical social image, not arbitrary URLs.
+		for tags in result['effects']['seo']:
+			if isinstance(tags, dict) and tags.get('image') == 'https://en.wikidebates.org/w/resources/assets/logo-Wikidebates-Twitter.png':
+				tags['image'] = 'https://en.wikidebates.org/w/resources/assets/logo-wikidebates-twitter.png'
+		expected.append(result)
 		# Model the same creation day as the historical fixture, explicitly as
 		# stored metadata. Missing/invalid editorial dates were treated as old.
 		day=str(c['args'].get('creation-date','')).strip()

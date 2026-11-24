@@ -395,6 +395,9 @@ foreach (['fr', 'en'] as $lang) {
 				check(!isset($tags['article:published_time']) && !isset($tags['article:modified_time']), 'No article dates on debate: ' . $label);
 			}
 			$image = trim((string)($payload['image'] ?? ''));
+			same($lang === 'en' ? 'https://en.wikidebates.org/w/resources/assets/logo-wikidebates-twitter.png' :
+				'https://fr.wikidebates.org/w/resources/assets/logo-Wikidebats-Twitter.png',
+				$image, 'Exact verified social image for the content language: ' . $label);
 			same($image !== '' ? [$image] : null, $tags['og:image'] ?? null, 'Only existing social image: ' . $label);
 			same($image !== '' ? [$image] : null, $tags['twitter:image'] ?? null, 'Same image on X: ' . $label);
 			same(['KEEP-VERIFICATION'], $tags['google-site-verification'] ?? null, 'Global verification untouched: ' . $label);

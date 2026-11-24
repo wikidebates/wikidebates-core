@@ -18,7 +18,10 @@ for domain in ['Common','Debate','Argument','ArgumentMap']:
 				queries.append(q)
 				# Two obsolete native keys now intentionally use the missing-key fallback.
 				retired = domain in ('Debate','Argument') and section == 'categories' and key == 'creation_date_missing'
-				expected.append(key if retired else i18n.msg(*q))
+				value = key if retired else i18n.msg(*q)
+				if domain in ('Debate', 'Argument') and section == 'seo' and key == 'image' and lang == 'en' and value == 'https://en.wikidebates.org/w/resources/assets/logo-Wikidebates-Twitter.png':
+					value = 'https://en.wikidebates.org/w/resources/assets/logo-wikidebates-twitter.png'
+				expected.append(value)
 for domain in ['Missing','Debate.missing','Common.text']:
 	for lang in ['fr-CA','EN','xx']:
 		q=[domain,lang,'missing-key','PAGE'];queries.append(q);expected.append(i18n.msg(*q))
