@@ -38,8 +38,8 @@ final class SchemaData {
 
 
 	/**
-	 * Normalize only a selected bibliographic reference, not the enclosing page.
-	 * Preserve the old selection and visible reference; never fetch a remote URL.
+	 * Normalize one documentary reference, not the enclosing page.
+	 * Preserve the reference's visible data; never fetch a remote URL.
 	 */
 	public static function reference(Table|array $node, ?Context $context = null): Table|array {
 		if ($context instanceof SeoTextContext) {

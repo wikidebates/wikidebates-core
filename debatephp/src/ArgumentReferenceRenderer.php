@@ -109,13 +109,19 @@ class ArgumentReferenceRenderer {
 		return ($this->decodedReferences ??= new DecodedReferences)->values($format, $raw);
 	}
 
-	protected function wkBuildSingleNodeFromNativeItems(array $items, callable $builder): Table {
+	protected function wkBuildNodesFromNativeItems(array $items, callable $builder): Table {
+		$out = [];
 		foreach ($items as $item) {
 			$node = $builder($item);
-			if (Lua::truth($node)) { return new Table([1 => SchemaData::reference($node, $this->context)]); }
-			break; // Argument uses the first item; Debate scans to the first valid node.
+			if ($node === null) {
+				continue;
+			}
+			$node = SchemaData::reference($node, $this->context);
+			if (trim((string)($node['name'] ?? '')) !== '') {
+				$out[count($out) + 1] = $node;
+			}
 		}
-		return new Table;
+		return new Table($out);
 	}
 
 	protected function csvValues(?string $text, ?string $separator = null): array {
@@ -2235,24 +2241,13 @@ class ArgumentReferenceRenderer {
 		return new Table($out);
 	}
 
-	protected function wkBuildSingleNodeFromFirstItem($items = null, $buildNode = null) {
-		if (((Lua::type($items) !== 'table') || !(Lua::truth($items[1])))) {
-			return new Table([]);
-		}
-		$node = $buildNode($items[1]);
-		if (Lua::truth($node)) {
-			return new Table([1 => $node]);
-		}
-		return new Table([]);
-	}
-
 	protected function wkBuildClaimCitationsFromQuotes($raw = null) {
 		$raw = Lua::trim(Lua::str((Lua::truth($v331 = $raw) ? $v331 : '')));
 		if (($raw === '')) {
 			return new Table([]);
 		}
 		$items = $this->nativeReferenceValues('quotes', $raw);
-		return $this->wkBuildSingleNodeFromNativeItems($items, function($item = null) {
+		return $this->wkBuildNodesFromNativeItems($items, function($item = null) {
 		$authors = $item['authors'];
 		$article = $item['article'];
 		$work = $item['work'];
@@ -2291,8 +2286,26 @@ class ArgumentReferenceRenderer {
 				}
 			}
 		}
-		if (!(Lua::truth($node))) {
-			return null;
+		if ($node === null) {
+			if ($article === '' && $work === '') {
+				return null;
+			}
+			$node = $this->jsonNode(['@type' => 'CreativeWork', 'name' => $article !== '' ? $article : $work]);
+			if ($article !== '' && $work !== '') {
+				$node['isPartOf'] = $this->jsonNode(['@type' => 'CreativeWork', 'name' => $work]);
+			}
+			// Preserve ambiguous volume/number as literal identifiers.
+			$identifiers = [];
+			foreach (['volume' => $volume, 'number' => $number] as $key => $value) {
+				if ($value !== '') {
+					$identifiers[count($identifiers) + 1] = $this->jsonNode([
+						'@type' => 'PropertyValue', 'propertyID' => $key, 'value' => $value
+					]);
+				}
+			}
+			if ($identifiers !== []) {
+				$node['identifier'] = new Table($identifiers);
+			}
 		}
 		$authorValue = $this->wkBuildQuoteAuthorValue($authors);
 		if (Lua::truth($authorValue)) {
@@ -2317,7 +2330,7 @@ class ArgumentReferenceRenderer {
 			return new Table([]);
 		}
 		$items = $this->nativeReferenceValues('bibliography', $raw);
-		return $this->wkBuildSingleNodeFromNativeItems($items, function($item = null) {
+		return $this->wkBuildNodesFromNativeItems($items, function($item = null) {
 		$authors = $item['authors'];
 		$article = $item['article'];
 		$work = $item['work'];
@@ -2356,8 +2369,26 @@ class ArgumentReferenceRenderer {
 				}
 			}
 		}
-		if (!(Lua::truth($node))) {
-			return null;
+		if ($node === null) {
+			if ($article === '' && $work === '') {
+				return null;
+			}
+			$node = $this->jsonNode(['@type' => 'CreativeWork', 'name' => $article !== '' ? $article : $work]);
+			if ($article !== '' && $work !== '') {
+				$node['isPartOf'] = $this->jsonNode(['@type' => 'CreativeWork', 'name' => $work]);
+			}
+			// Preserve ambiguous volume/number as literal identifiers.
+			$identifiers = [];
+			foreach (['volume' => $volume, 'number' => $number] as $key => $value) {
+				if ($value !== '') {
+					$identifiers[count($identifiers) + 1] = $this->jsonNode([
+						'@type' => 'PropertyValue', 'propertyID' => $key, 'value' => $value
+					]);
+				}
+			}
+			if ($identifiers !== []) {
+				$node['identifier'] = new Table($identifiers);
+			}
 		}
 		$authorValue = $this->wkBuildQuoteAuthorValue($authors);
 		if (Lua::truth($authorValue)) {
@@ -2382,16 +2413,19 @@ class ArgumentReferenceRenderer {
 			return new Table([]);
 		}
 		$items = $this->nativeReferenceValues('webliography', $raw);
-		return $this->wkBuildSingleNodeFromNativeItems($items, function($item = null) {
+		return $this->wkBuildNodesFromNativeItems($items, function($item = null) {
 		$page = $item['page'];
 		$site = $item['site'];
 		$link = $item['link'];
 		$date = $item['date'];
-		if ((($link === '') || ($page === ''))) {
+		if ($page === '' && $site === '') {
 			return null;
 		}
-		$node = $this->jsonNode(['@type' => 'WebPage', 'name' => $page, 'url' => $link]);
-		if (($site !== '')) {
+		$node = $this->jsonNode(['@type' => 'WebPage', 'name' => $page !== '' ? $page : $site]);
+		if ($link !== '') {
+			$node['url'] = $link;
+		}
+		if ($page !== '' && $site !== '') {
 			$node['isPartOf'] = $this->jsonNode(['@type' => 'WebSite', 'name' => $site]);
 		}
 		if (($date !== '')) {
@@ -2407,14 +2441,17 @@ class ArgumentReferenceRenderer {
 			return new Table([]);
 		}
 		$items = $this->nativeReferenceValues('videography', $raw);
-		return $this->wkBuildSingleNodeFromNativeItems($items, function($item = null) {
+		return $this->wkBuildNodesFromNativeItems($items, function($item = null) {
 		$title = $item['title'];
 		$link = $item['link'];
 		$authors = $item['authors'];
-		if ((($title === '') || ($link === ''))) {
+		if ($title === '') {
 			return null;
 		}
-		$node = $this->jsonNode(['@type' => 'VideoObject', 'name' => $title, 'url' => $link]);
+		$node = $this->jsonNode(['@type' => 'VideoObject', 'name' => $title]);
+		if ($link !== '') {
+			$node['url'] = $link;
+		}
 		$authorValue = $this->wkBuildQuoteAuthorValue($authors);
 		if (Lua::truth($authorValue)) {
 			$node['author'] = $authorValue;
@@ -2439,20 +2476,17 @@ class ArgumentReferenceRenderer {
 			$isPartOf = $this->wkBuildClaimIsPartOf($lang, $cache);
 			$parts = SchemaData::argumentParts($args, $maps, $pv['pageUrl'], $lang,
 				fn(string $title): string => $this->wkFullUrl($this->canonicalTitle($title)), $this->context);
-			$citations = new Table([]);
-			$q = $this->wkBuildClaimCitationsFromQuotes((Lua::truth($v358 = $args['_quotes_wikitext']) ? $v358 : ''));
-			if (Lua::truth($q[1])) {
-				$citations[(Lua::len($citations) + 1)] = $q[1];
+			$citations = new Table;
+			foreach ([
+				'wkBuildClaimCitationsFromQuotes' => '_quotes_wikitext',
+				'wkBuildClaimCitationsFromBibliography' => 'bibliography',
+				'wkBuildClaimCitationsFromWebliography' => 'webliography',
+				'wkBuildClaimCitationsFromVideography' => 'videography'
+			] as $builder => $field) {
+				foreach ($this->$builder((string)($args[$field] ?? ''))->sequence() as $node) {
+					$citations[count($citations) + 1] = $node;
+				}
 			}
-			$b = $this->wkBuildClaimCitationsFromBibliography((Lua::truth($v359 = $args['bibliography']) ? $v359 : ''));
-			if (Lua::truth($b[1])) {
-				$citations[(Lua::len($citations) + 1)] = $b[1];
-			}
-			$w = $this->wkBuildClaimCitationsFromWebliography((Lua::truth($v360 = $args['webliography']) ? $v360 : ''));
-			if (Lua::truth($w[1])) {
-				$citations[(Lua::len($citations) + 1)] = $w[1];
-			}
-			$subjectOf = $this->wkBuildClaimCitationsFromVideography((Lua::truth($v361 = $args['videography']) ? $v361 : ''));
 			$pageNode = [
 				'@type' => [1 => 'WebPage', 2 => 'LearningResource'],
 				'@id' => $pv['pageUrl'],
@@ -2501,9 +2535,6 @@ class ArgumentReferenceRenderer {
 			}
 			if ((Lua::len($citations) > 0)) {
 				$claimNode['citation'] = $citations;
-			}
-			if ((Lua::len($subjectOf) > 0)) {
-				$claimNode['subjectOf'] = $subjectOf;
 			}
 			$data = (['@context' => 'https://schema.org', '@graph' => ([1 => $websiteNode, 2 => $organizationNode, 3 => $breadcrumbNode, 4 => $pageNode, 5 => $claimNode])]);
 			if ($this->context instanceof NativeJsonContext) { return $this->context->jsonLdData($data); }
