@@ -13,12 +13,14 @@
 
 Wikidebates sérialise les paramètres SEO dans `ParserOutput::setExtensionData()`, et les transmet vers `OutputPage` via `OutputPageParserOutput`. `BeforePageDisplay` assemble alors les balises, sans nouvelle lecture SMW ni génération d'image.
 
-- Compatibilité : `<title>`, `description`, `keywords`, `googlebot`, `robots`, `og:title`, `og:description`, `og:url`, `og:image`, `og:image:alt`, `og:site_name`, `og:locale`, `article:author`, `article:section`, `article:tag`, `twitter:site`, `twitter:card`.
+- Compatibilité : `<title>`, `description`, `keywords`, `googlebot`, `robots`, `og:title`, `og:description`, `og:url`, `og:image`, `og:image:alt`, `og:site_name`, `og:locale`, `twitter:site`, `twitter:card`.
+- Types Open Graph approuvés : `og:type=website` pour les débats et `og:type=article` pour les arguments.
+- Champs réservés aux **arguments** : `article:section`, `article:published_time`, `article:modified_time` et `article:tag` (une balise distincte par mot-clé). `article:author` supprimé : une étiquette collective ne constitue pas l'URL de profil attendue pour un auteur Open Graph.
 - Compléments sociaux : `twitter:title`, `twitter:description`, `twitter:image`, `twitter:image:alt`, `og:image:secure_url` pour les URL HTTPS, `og:image:type` calculé depuis l'extension d'URL, et `og:image:width` / `og:image:height` uniquement si déjà renseignées (jamais devinées).
-- Dates corrigées : `article:published_time` depuis `creation-date` ; `article:modified_time` depuis la révision affichée.
-- Les graphes JSON-LD spécifiques Wikidebates déjà émis par ses moteurs PHP ne sont pas modifiés.
+- Dates corrigées : pour les arguments, `article:published_time` depuis `creation-date` ; `article:modified_time` depuis la révision affichée. Pour les débats, les dates sont portées par le graphe JSON-LD.
+- Graphes JSON-LD Wikidebates : les types spécialisés `QAPage`, `Question` et `Claim` sont conservés. L'entité page (`QAPage` pour Débat, `WebPage` pour Argument) reçoit `creditText` reprenant l'attribution collective localisée et `datePublished` depuis `creation-date`; `dateModified` provient de la révision réellement analysée par le parser si son horodatage est disponible. Le `publisher` pointe vers l'objet `Organization` Wikidebates déjà présent, sans prétendre attribuer les affirmations aux contributeurs.
 
-Les types n'évoluent **pas** sans accord : `og:type=article` pour les arguments, et absence de type explicite dans les paramètres historiques des débats. L'éventuel `og:type=website` sur les débats, ainsi que les changements du graphe `QAPage` / `Claim`, doivent être discutés séparément.
+Ces décisions sur les types et les crédits ont été approuvées le 24 novembre 2026. Le remplacement de `QAPage` et les autres évolutions sémantiques non approuvées restent hors périmètre.
 
 ## Bascule et compatibilité
 
@@ -39,9 +41,6 @@ Aucune étape de serveur, cache ou configuration n'est exécutée depuis cette P
 
 ## Décisions en attente de validation éditoriale
 
-- Activer explicitement `og:type=website` pour les débats, en conservant `article` pour les arguments ?
-- Souhaite-t-on conserver les champs `article:*` sur les débats qui n'ont pas `og:type=article`, ou les limiter aux arguments ? Cela touche aux dates sociales.
-- Faut-il convertir l'ancien `article:author` (chaîne de texte) en URL de profil Open Graph ou le supprimer ? Un compte social collectif ne représente pas automatiquement l'auteur intellectuel d'une affirmation.
 - Faut-il remplacer `QAPage` par `WebPage` + `Question` pour les débats ? Le JSON-LD natif existant n'est pas modifié.
 - Gestion des autres pages et de l'extension WikiSEO au niveau de la ferme avant de la désactiver.
 - Relations `hreflang`, `og:locale:alternate`, `fediverse:creator`, `twitter:creator` : ne pas ajouter sans une source de vérité ou une identité attestée.
