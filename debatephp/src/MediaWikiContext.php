@@ -150,6 +150,16 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 	public function jsonLdData(array $data): string {
 		$started = $this->telemetry?->start();
 		try {
+			// Use the parsed revision's timestamp, which survives ParserCache.
+			// Never substitute the present time if a revision is unavailable.
+			$parserOutput = $this->parser->getOutput();
+			$timestamp = method_exists($parserOutput, 'getRevisionTimestamp')
+				? $parserOutput->getRevisionTimestamp() : null;
+			$modified = is_string($timestamp) && preg_match('/^\d{14}$/D', $timestamp)
+				? wfTimestamp(TS_ISO_8601, $timestamp) : null;
+			if ($modified !== null) {
+				$data = \MediaWiki\Extension\Wikidebates\Seo\Metadata::withModificationDate($data, $modified);
+			}
 			$json = FormatJson::encode(JsonData::value($data), false, FormatJson::ALL_OK);
 			if ($json === false) { throw new \RuntimeException('Unable to encode JSON-LD'); }
 		} finally { $this->telemetry?->finish('json', $started); }
@@ -230,17 +240,28 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 		}
 	}
 	public function seoSet(Table $data): void {
-		if (!class_exists(\MediaWiki\Extension\WikiSEO\Validator::class)) { $this->telemetry?->problem('seo', 'service-unavailable'); return; }
 		$started = $this->telemetry?->start();
 		try {
-			$validated = \MediaWiki\Extension\WikiSEO\Validator::validateParams(Table::unwrap($data));
-			MediaWikiServices::getInstance()->getHookContainer()->run('WikiSEOLuaPreAddPageProps', [&$validated]);
-			foreach ($validated as $key => $v) { $this->parser->getOutput()->setPageProperty($key, $v); }
+			$values = Table::unwrap($data);
+			$args = $this->readArguments();
+			$values['wd_kind'] = $this->argumentMode ? 'argument' : 'debate';
+			$values['wd_creation_date'] = (string)( $args['creation-date'] ?? '' );
+			if ($this->argumentMode) {
+				$values['wd_summary'] = (string)( $args['summary'] ?? '' );
+			}
+
+			// ParserCache carries these values into the OutputPage. No WikiSEO
+			// Validator, page_props or legacy SEO hooks are required. WikiSEO
+			// remains free to manage every other page.
+			$this->parser->getOutput()->setExtensionData(
+				\MediaWiki\Extension\Wikidebates\Seo\Metadata::DATA_KEY, $values
+			);
 		} catch (\Throwable $e) {
 			DatabaseFailure::rethrow($e);
 			$this->telemetry?->problem('seo', 'exception', $e);
+		} finally {
+			$this->telemetry?->finish('seo', $started);
 		}
-		finally { $this->telemetry?->finish('seo', $started); }
 	}
 	public function smwAvailable(): bool { return class_exists(\SMW\Scribunto\LibraryFactory::class); }
 	public function profiledSmwAsk(Table $query, string $origin): ?Table {

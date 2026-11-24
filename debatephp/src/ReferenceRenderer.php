@@ -1632,7 +1632,12 @@ class ReferenceRenderer {
 			}
 			$subjectOf = $this->wkBuildClaimCitationsFromVideography($videographyRaw);
 			$qaNode = (['@type' => 'QAPage', '@id' => ($pv['pageUrl'] . '#qa'), 'url' => $pv['pageUrl'], 'name' => $pv['rawTitle'], 'inLanguage' => $lang, 'educationalUse' => ([1 => 'debate', 2 => 'critical thinking']), 'learningResourceType' => 'debate', 'audience' => (['@type' => 'EducationalAudience', 'educationalLevel' => ([1 => 'general public', 2 => 'secondary education'])]), 'isPartOf' => $isPartOf, 'breadcrumb' => (['@id' => ($pv['pageUrl'] . '#breadcrumb')]), 'discussionUrl' => $this->wkBuildDiscussionUrl($pv, $lang), 'publisher' => (['@id' => ($this->L($lang, 'urls', 'home') . '#organization')]), 'mainEntity' => (['@type' => 'Question', '@id' => ($pv['pageUrl'] . '#question'), 'name' => $pv['rawTitle'], 'text' => $questionText, 'answerCount' => Lua::len($suggestedAnswer), 'suggestedAnswer' => $suggestedAnswer])]);
+			// Credit the collective as an author of the page, not of its arguments.
+			$credit = $this->seoL($lang, 'author');
+			$qaNode['creditText'] = $credit;
+			$qaNode['author'] = $this->jsonNode(['@type' => 'Organization', 'name' => $credit]);
 			if ((Lua::truth($pageCreation) && ($pageCreation !== ''))) {
+				$qaNode['datePublished'] = $pageCreation;
 				$qaNode['mainEntity']['datePublished'] = $pageCreation;
 			}
 			if ((Lua::len($isRelatedTo) > 0)) {

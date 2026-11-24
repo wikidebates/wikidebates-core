@@ -31,14 +31,47 @@ foreach (['vector', 'vector-2022', 'minerva', 'minervaneue', 'minervaNeue'] as $
 	$expected = str_starts_with($skinName, 'vector') ? 'ext.wikidebates.boot.vector' : 'ext.wikidebates.boot.minerva';
 	same([$expected], $out->getModules(), 'Existing display hook: ' . $skinName);
 }
+// Parser-cache extension data is transferred to OutputPage independently of WikiSEO.
+$seoParserOutput = new \MediaWiki\Parser\ParserOutput();
+$seoData = [
+	'wd_kind' => 'argument',
+	'title' => 'An argument – Wikidebates',
+	'wd_creation_date' => '2024-05-01',
+	'wd_summary' => 'A useful summary.',
+];
+$seoParserOutput->setExtensionData(
+	\MediaWiki\Extension\Wikidebates\Seo\Metadata::DATA_KEY, $seoData
+);
+$seoPageOutput = new \MediaWiki\Output\OutputPage(new \MediaWiki\Context\RequestContext);
+\MediaWiki\Extension\Wikidebates\Seo\Metadata::onOutputPageParserOutput(
+	$seoPageOutput, $seoParserOutput
+);
+same( $seoData, $seoPageOutput->getProperty(\MediaWiki\Extension\Wikidebates\Seo\Metadata::DATA_KEY),
+	'Native SEO data survives the ParserOutput to OutputPage boundary' );
+if (!\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('WikiSEO')) {
+	$seoPageOutput->setTitle(Title::newFromText('Native SEO test'));
+	$seoPageOutput->setArticleFlag(true);
+	$seoPageOutput->setRevisionTimestamp('20261123094521');
+	\MediaWiki\Extension\Wikidebates\Seo\Metadata::beforePageDisplay($seoPageOutput);
+	same($seoData['title'], $seoPageOutput->getHTMLTitle(), 'Native SEO controls the browser title');
+	$seoMeta = array_column($seoPageOutput->getMetaTags(), 1, 0);
+	same('A useful summary.', $seoMeta['description'] ?? null, 'Native argument uses the summary');
+	same('A useful summary.', $seoMeta['twitter:description'] ?? null, 'Native X card uses the summary');
+	$seoHead = $seoPageOutput->getHeadItemsArray();
+	check(str_contains(implode("\n", $seoHead), 'article:modified_time'), 'Native Open Graph has revision date');
+	check(!str_contains(implode("\n", $seoHead), 'og:image'), 'No social image invented without an image');
+}
+
 foreach (array_keys((array)$extensionManifest->ResourceModules) as $module) {
 	check($services->getResourceLoader()->getModule($module) !== null, 'ResourceLoader module retained: ' . $module);
 }
+$legacySeoPagePropHooks = 0;
 if (\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('WikiSEO')) {
-	$services->getHookContainer()->register('WikiSEOLuaPreAddPageProps', static function(array &$params): bool {
-		$params['wikidebates-test'] = 'seen';
-		return true;
-	});
+	$services->getHookContainer()->register('WikiSEOLuaPreAddPageProps',
+		static function(array &$params) use (&$legacySeoPagePropHooks): bool {
+			$legacySeoPagePropHooks++;
+			return true;
+		});
 }
 $sourceReads = [];
 $sources = [
@@ -88,13 +121,61 @@ foreach ($fixtures as $name => $text) {
 	check(strlen($reference[0]) > 200, 'Substantial renderer output: ' . $name);
 	check(!str_contains($reference[0], '{{#debate:') && !str_contains($reference[0], '{{#argument:'), 'Functions registered: ' . $name);
 	check(str_contains($reference[0], 'application/ld+json'), 'JSON-LD retained: ' . $name);
+	if (preg_match('/^complete (debate|argument) (fr|en)$/D', $name, $parts)) {
+		$kind = $parts[1];
+		$lang = $parts[2];
+		$pageType = $kind === 'debate' ? 'QAPage' : 'WebPage';
+		$credit = $lang === 'fr' ? 'Contributeurs de Wikidébats' : 'Wikidebates contributors';
+		$matches = [];
+		preg_match_all('~<script\b[^>]*\btype="application/ld\+json"[^>]*>(.*?)</script>~is', $reference[0], $matches);
+		$pageNode = null;
+		$graph = [];
+		foreach ($matches[1] as $script) {
+			$data = json_decode($script, true);
+			if (!is_array($data) || !is_array($data['@graph'] ?? null)) {
+				continue;
+			}
+			foreach ($data['@graph'] as $node) {
+				if (is_array($node) && ($node['@type'] ?? null) === $pageType) {
+					$pageNode = $node;
+					$graph = $data['@graph'];
+					break 2;
+				}
+			}
+		}
+		check(is_array($pageNode), 'Specialized page exists in JSON-LD: ' . $name);
+		same($credit, $pageNode['creditText'] ?? null, 'Localized collective credit in JSON-LD: ' . $name);
+		same(
+			['@type' => 'Organization', 'name' => $credit],
+			$pageNode['author'] ?? null,
+			'Collective Organization author on the page only: ' . $name
+		);
+		$publisherId = $pageNode['publisher']['@id'] ?? null;
+		check(is_string($publisherId) && str_ends_with($publisherId, '#organization'),
+			'Publisher is a Wikidebates Organization reference: ' . $name);
+		$publisherNodes = array_filter($graph, static fn($node): bool =>
+			is_array($node) && ($node['@type'] ?? '') === 'Organization' && ($node['@id'] ?? '') === $publisherId
+		);
+		same(1, count($publisherNodes), 'Existing publisher node is reused: ' . $name);
+		same('2026-01-01T00:00:00Z', $pageNode['datePublished'] ?? null,
+			'Creation-date is attached to the page: ' . $name);
+		if ($kind === 'argument') {
+			foreach ($graph as $node) {
+				if (($node['@type'] ?? null) === 'Claim') {
+					check(!isset($node['author']), 'Claim is not assigned a collective intellectual author: ' . $name);
+				}
+			}
+		}
+	}
 	check(!array_filter($reference[3], static fn(array $dep): bool => str_starts_with($dep[0], '828:')), 'No artificial Lua dependencies: ' . $name);
 	if (\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('ShortDescription')
 		&& (str_contains($text, '#debate:') || str_contains($text, '{{Débat|'))) {
 		check(isset($reference[1]['shortdesc']), 'ShortDescription callback retained: ' . $name);
 	}
 	if (\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('WikiSEO')) {
-		same('seen', $reference[1]['wikidebates-test'] ?? null, 'WikiSEO validation, hook and page properties: ' . $name);
+		foreach (['wikidebates-test', 'title', 'keywords', 'description', 'image', 'author'] as $legacyKey) {
+			check(!isset($reference[1][$legacyKey]), 'No WikiSEO page property for native page: ' . $legacyKey . ' / ' . $name);
+		}
 	}
 	$count++;
 }
@@ -108,6 +189,10 @@ foreach (file($observationLog, FILE_IGNORE_NEW_LINES) as $line) {
 	$profileEvents[] = $event;
 }
 same(2 * $count, count($profileEvents), 'Each observed invocation emits one profile');
+if (\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('WikiSEO')) {
+	same(0, $legacySeoPagePropHooks, 'Native SEO never invokes the WikiSEO parser page-property hook');
+}
+
 $csvHits = 0; $csvBypassed = 0;
 foreach ($profileEvents as $event) {
 	check(isset($event['preparation']), 'Real hooks expose pure preprocessing observations');
@@ -183,5 +268,23 @@ check(!class_exists(\MediaWiki\Extension\DebatePHP\LiteralData::class, false), '
 require __DIR__ . '/mediawikiOperations.php';
 require __DIR__ . '/mediawikiRevisionVisibility.php';
 require __DIR__ . '/mediawikiParentCAS.php';
+
+// Ensure the JSON-LD graph uses the parsed revision rather than the current clock.
+$parser = $services->getParserFactory()->create();
+$parser->startExternalParse(Title::newFromText('Native SEO timestamps'), ParserOptions::newFromAnon(), $parser::OT_HTML);
+$parser->getOutput()->setRevisionTimestamp('20261123094521');
+$seoContext = new \MediaWiki\Extension\DebatePHP\MediaWikiContext(
+	$parser, $parser->getPreprocessor()->newFrame(), [], true
+);
+$seoSchema = [
+	'@context' => 'https://schema.org',
+	'@graph' => [
+		1 => [ '@type' => 'WebSite', '@id' => 'https://example.org/#website', 'url' => 'https://example.org/' ],
+		2 => [ '@type' => 'QAPage', '@id' => 'https://example.org/test#qa', 'url' => 'https://example.org/test' ],
+	],
+];
+$seoJson = $parser->getStripState()->unstripBoth($seoContext->jsonLdData($seoSchema));
+check(str_contains($seoJson, '2026-11-23T09:45:21Z'), 'Native JSON-LD receives the parsed revision timestamp');
+check(str_contains($seoJson, 'dateModified'), 'Native JSON-LD contains dateModified');
 
 echo "OK: MediaWiki " . MW_VERSION . ", $count render fixtures in both modes, single extension load, hooks, policy and no runtime Lua dependencies\n";

@@ -14,6 +14,8 @@ use MediaWiki\Extension\DebatePHP\TextEscaper;
 require __DIR__ . '/../src/Reading/SemanticCacheHooks.php';
 use MediaWiki\Extension\Wikidebates\Reading\SemanticCacheHooks;
 
+require __DIR__ . '/seo.php';
+
 $metadata = json_decode(file_get_contents(__DIR__ . '/../extension.json'), true, 512, JSON_THROW_ON_ERROR);
 // Results of embedded SMW queries are snapshots of the owning page.
 foreach ([

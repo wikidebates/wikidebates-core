@@ -48,6 +48,7 @@ namespace MediaWiki\Parser {
 		public function getOutput(): object {
 			return new class {
 				public function updateCacheExpiry(int $seconds): void {}
+				public function setExtensionData(string $key, array $data): void { \boundaryFailure(); }
 			};
 		}
 		public function getPreprocessor(): self { return $this; }
@@ -55,6 +56,7 @@ namespace MediaWiki\Parser {
 	}
 	class PPFrame {
 		public function expand($value): void { \boundaryFailure(); }
+		public function getArguments(): array { return []; }
 	}
 }
 namespace {
@@ -76,6 +78,9 @@ namespace {
 	$context = $reflection->newInstanceWithoutConstructor();
 	$parser = new Parser;
 	$reflection->getProperty('parser')->setValue($context, $parser);
+	$reflection->getProperty('caller')->setValue($context, new PPFrame);
+	$reflection->getProperty('module')->setValue($context, new PPFrame);
+	$reflection->getProperty('argumentMode')->setValue($context, true);
 	$events = [];
 	$telemetry = new Telemetry(true, true, [], static function($event) use (&$events): void { $events[] = $event; });
 	$reflection->getProperty('telemetry')->setValue($context, $telemetry);

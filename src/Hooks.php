@@ -17,6 +17,7 @@ class Hooks {
 		$out->addJsConfigVars( 'wgWikidebatesWikiNames', MessageCatalog::siteNames(
 			MediaWikiServices::getInstance()->getContentLanguage()->getCode()
 		) );
+		Seo\Metadata::beforePageDisplay( $out );
 		$skinName = $skin->getSkinName();
 
 		if ( in_array( $skinName, [ 'minerva', 'minervaneue', 'minervaNeue' ], true ) ) {

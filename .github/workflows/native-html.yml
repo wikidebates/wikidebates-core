@@ -92,6 +92,25 @@
 					"run": "php tests/mediawiki.php"
 				},
 				{
+					"name": "Pinned WikiSEO 2.7.0 checkout (PHP 8.4 only)",
+					"if": "${{ matrix.php == '8.4' }}",
+					"uses": "actions/checkout@v4",
+					"with": {
+						"repository": "wikimedia/mediawiki-extensions-WikiSEO",
+						"ref": "3b135415f9fe0eff4d23659b4143bd50009238ab",
+						"path": ".mw-lab/extensions/WikiSEO"
+					}
+				},
+				{
+					"name": "Selective SEO takeover with real WikiSEO (isolated)",
+					"if": "${{ matrix.php == '8.4' }}",
+					"env": {
+						"MW_INSTALL_PATH": "${{ github.workspace }}/.mw-lab",
+						"WD_TEST_EXTENSIONS": "WikiSEO"
+					},
+					"run": "php tests/seoCoexistence.php\nphp tests/mediawiki.php"
+				},
+				{
 					"name": "Read-only semantic purge queue inspection (isolated SQLite)",
 					"env": {
 						"MW_INSTALL_PATH": "${{ github.workspace }}/.mw-lab"
