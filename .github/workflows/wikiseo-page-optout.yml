@@ -1,0 +1,49 @@
+name: WikiSEO and Wikidebates page opt-out integration (MW 1.43)
+
+on:
+  pull_request:
+    paths:
+      - 'src/Seo/Metadata.php'
+      - 'extension.json'
+      - 'tests/seoCoexistence.php'
+      - 'docs/native-seo-migration.md'
+      - '.github/workflows/wikiseo-page-optout.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wikiseo-optout:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, intl, xml, pdo_sqlite, sqlite3
+          coverage: none
+          tools: composer
+      - name: MediaWiki 1.43.11
+        uses: actions/checkout@v4
+        with:
+          repository: wikimedia/mediawiki
+          ref: 1.43.11
+          path: .mw-lab
+      - name: Modernized WikiSEO feature branch
+        uses: actions/checkout@v4
+        with:
+          repository: wikidebates/WikiSEO
+          ref: feature/seo-modernization-mw143-20261124
+          path: .mw-lab/extensions/WikiSEO
+      - name: Install isolated MediaWiki vendor dependencies
+        working-directory: .mw-lab
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Real hooks, JSON-LD and page metadata coexistence
+        env:
+          MW_INSTALL_PATH: ${{ github.workspace }}/.mw-lab
+          WD_TEST_EXTENSIONS: WikiSEO
+        run: |
+          php -d display_errors=1 -d error_reporting=E_ALL tests/seoCoexistence.php
+          php -d display_errors=1 -d error_reporting=E_ALL tests/mediawiki.php
