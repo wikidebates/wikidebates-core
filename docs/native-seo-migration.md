@@ -11,7 +11,7 @@
 
 ## Données générées
 
-Wikidebates sérialise les paramètres SEO dans `ParserOutput::setExtensionData()`, et les transmet vers `OutputPage` via `OutputPageParserOutput`. `BeforePageDisplay` assemble alors les balises, sans nouvelle lecture SMW ni génération d'image.
+Wikidebates sérialise les paramètres SEO dans `ParserOutput::setExtensionData()`, et les transmet vers `OutputPage` via `OutputPageParserOutput`. `BeforePageDisplay` définit le titre et la politique d'indexation, sans nouvelle lecture SMW ni génération d'image. Si WikiSEO n'est pas installé, les balises natives sont émises directement. Si WikiSEO est chargé, le hook final `OutputPageAfterGetHeadLinksArray` remplace uniquement les balises SEO concurrentes de cette page, **sans toucher aux pages ordinaires**, aux balises de vérification de domaine, aux URL canoniques et aux liens `hreflang`. Le hook facultatif `WikiSEOPreAddMetadata` rétablit le titre natif si l'ordre des hooks de `BeforePageDisplay` est inversé.
 
 - Compatibilité : `<title>`, `description`, `keywords`, `googlebot`, `robots`, `og:title`, `og:description`, `og:url`, `og:image`, `og:image:alt`, `og:site_name`, `og:locale`, `twitter:site`, `twitter:card`.
 - Types Open Graph approuvés : `og:type=website` pour les débats et `og:type=article` pour les arguments.
@@ -25,29 +25,30 @@ Ces décisions sur les types et les crédits ont été approuvées le 24 novembr
 
 ## Bascule et compatibilité
 
-Tant que WikiSEO est chargé, les propriétés traditionnelles lui sont transmises et son générateur reste seul actif. Le PHP natif stocke déjà ses données mais **n'émet aucune balise en double**. Dès que WikiSEO n'est plus chargé, la génération PHP native prend automatiquement le relais pour Débat et Argument.
+WikiSEO **reste chargé et actif sur toutes les autres pages** : les modèles et balises `<seo>`, les pages de projet, les vérifications de domaine, les métadonnées globales, le comportement des images de secours et les règles de canonical/hreflang ne sont pas modifiés. Le cas particulier Débat/Argument est déterminé par un marqueur natif dans `ParserOutput`, et non par le titre de la page ou une liste d'espaces de noms.
 
-**Ne pas désactiver WikiSEO tant que les usages de l'extension sur les autres pages n'ont pas été recensés et validés par le propriétaire.** En particulier, les autres espaces, les formulaires `<seo>`, les vérifications de site, les réglages globaux et les liens canoniques/hreflang peuvent dépendre de WikiSEO ou de MediaWiki.
+Sur ces deux types de pages, Wikidebates est la source unique des balises SEO visibles. Son moteur n'appelle ni `WikiSEO\\Validator`, ni les hooks Lua de WikiSEO, ni les `page_props` SEO historiques. Les balises génériques que WikiSEO génère encore au niveau de la requête sont neutralisées dans le `<head>` final ; le JSON-LD spécialisé de Wikidebates, déjà inclus dans le HTML du contenu, reste intact. Les anciens fichiers ParserCache ne possédant pas le marqueur continuent provisoirement à fonctionner avec WikiSEO, jusqu'à leur reconstruction.
+
+**Limite volontaire de cette phase :** WikiSEO exécute encore ses hooks internes pendant l'affichage d'un débat, même si ses balises sont ensuite remplacées. Éviter cette exécution résiduelle demanderait un mécanisme d'exclusion explicite dans WikiSEO lui-même (développement séparé dans un fork) ; aucun patch sauvage du sous-module amont n'est proposé.
 
 L'activation nécessite une opération de déploiement distincte, à effectuer après approbation et vérification :
 
 1. Comparer le serveur à la branche `main` de la ferme et vérifier les modifications locales sans rien écraser.
 2. Fusionner la PR Wikidebates après CI, puis actualiser explicitement le gitlink `extensions/Wikidebates` de la ferme par une PR séparée. Ne pas mettre à jour tous les sous-modules.
-3. Dans un changement coordonné de configuration **après recensement des autres pages**, désactiver `wfLoadExtension( 'WikiSEO' )` tout en conservant la configuration nécessaire à MediaWiki et aux autres extensions.
-4. Purger le parser cache des pages Débat et Argument et les fichiers HTML Vector et Minerva concernés, puis reconstruire les caches via les procédures existantes, pour éviter de servir des en-têtes périmés.
-5. Comparer les `<head>` FR/EN avec le comportement antérieur : titres, images exactes, types, robots, dates, nombre de balises, cartes sociales, JSON-LD ; vérifier que les pages ordinaires restent couvertes selon la politique convenue.
-6. Conserver la possibilité de réactiver temporairement WikiSEO si nécessaire (l'ancien chemin de page props reste disponible tant que l'extension est chargée).
+3. **Conserver** `wfLoadExtension( 'WikiSEO' )` et sa configuration de production inchangés. Cette PR ne dépend pas du déploiement de la PR de modernisation indépendante de WikiSEO.
+4. Sur un environnement de validation avec WikiSEO réellement chargé, comparer une page Débat, une page Argument (avec et sans résumé / image), une page ordinaire, et une page avec `<seo>` manuel. Contrôler le `<title>`, Open Graph, X, JSON-LD, les URL canoniques, les liens `hreflang` et les balises de vérification, sans doublons.
+5. Après déploiement coordonné, invalider les sorties ParserCache et les caches HTML Vector et Minerva des pages Débat/Argument concernées, puis reconstruire selon les procédures existantes, sans vider arbitrairement toute la ferme.
+6. Comparer les en-têtes FR/EN servis aux anonymes sur le serveur et via Cloudflare. En cas de régression, revenir au commit et au gitlink précédents de Wikidebates et reconstruire les caches concernés ; WikiSEO reste installé pendant toute l'opération.
 
 Aucune étape de serveur, cache ou configuration n'est exécutée depuis cette PR.
 
 ## Décisions en attente de validation éditoriale
 
 - Faut-il remplacer `QAPage` par `WebPage` + `Question` pour les débats ? Le JSON-LD natif existant n'est pas modifié.
-- Gestion des autres pages et de l'extension WikiSEO au niveau de la ferme avant de la désactiver.
 - Relations `hreflang`, `og:locale:alternate`, `fediverse:creator`, `twitter:creator` : ne pas ajouter sans une source de vérité ou une identité attestée.
 
 ## Validation
 
 - `php tests/run.php` : inclut `tests/seo.php` sans installation MediaWiki.
 - `php tests/mediawiki.php` : transfert de données `ParserOutput` vers `OutputPage` sur MediaWiki 1.43.
-- La CI sur les PR contrôle PHP 8.4, MediaWiki 1.43, JavaScript et navigateur ; elle ne remplace pas la comparaison sur le serveur réel.
+- La CI sur les PR contrôle PHP 8.4, MediaWiki 1.43, JavaScript et navigateur. Un test supplémentaire sous PHP 8.4 charge le **vrai WikiSEO 2.7.0 épinglé**, vérifie le remplacement sélectif des balises et l'absence de régression sur les autres pages. Ces tests ne remplacent pas la comparaison sur le serveur réel.
