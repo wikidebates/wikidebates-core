@@ -165,6 +165,27 @@ final class Metadata {
 		];
 	}
 
+	/**
+	 * Complete the existing WebPage/QAPage graph rather than emitting a
+	 * second JSON-LD document. The timestamp belongs to the parsed revision.
+	 * Do not supply today's date or modify bibliographic references.
+	 */
+	public static function withModificationDate( array $schema, ?string $modified ): array {
+		if ( !$modified || !isset( $schema['@graph'] ) || !is_array( $schema['@graph'] ) ) {
+			return $schema;
+		}
+		foreach ( $schema['@graph'] as $index => $node ) {
+			if (
+				is_array( $node ) &&
+				in_array( $node['@type'] ?? null, [ 'WebPage', 'QAPage' ], true ) &&
+				isset( $node['url'], $node['@id'] )
+			) {
+				$schema['@graph'][$index]['dateModified'] = $modified;
+			}
+		}
+		return $schema;
+	}
+
 	private static function put( array &$tags, string $key, string $value ): void {
 		if ( $value !== '' ) {
 			$tags[$key] = $value;
