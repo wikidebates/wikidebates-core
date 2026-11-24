@@ -31,6 +31,24 @@ foreach (['vector', 'vector-2022', 'minerva', 'minervaneue', 'minervaNeue'] as $
 	$expected = str_starts_with($skinName, 'vector') ? 'ext.wikidebates.boot.vector' : 'ext.wikidebates.boot.minerva';
 	same([$expected], $out->getModules(), 'Existing display hook: ' . $skinName);
 }
+// Parser-cache extension data is transferred to OutputPage independently of WikiSEO.
+$seoParserOutput = new \MediaWiki\Parser\ParserOutput();
+$seoData = [
+	'wd_kind' => 'argument',
+	'title' => 'An argument – Wikidebates',
+	'wd_creation_date' => '2024-05-01',
+	'wd_summary' => 'A useful summary.',
+];
+$seoParserOutput->setExtensionData(
+	\MediaWiki\Extension\Wikidebates\Seo\Metadata::DATA_KEY, $seoData
+);
+$seoPageOutput = new \MediaWiki\Output\OutputPage(new \MediaWiki\Context\RequestContext);
+\MediaWiki\Extension\Wikidebates\Seo\Metadata::onOutputPageParserOutput(
+	$seoPageOutput, $seoParserOutput
+);
+same( $seoData, $seoPageOutput->getProperty(\MediaWiki\Extension\Wikidebates\Seo\Metadata::DATA_KEY),
+	'Native SEO data survives the ParserOutput to OutputPage boundary' );
+
 foreach (array_keys((array)$extensionManifest->ResourceModules) as $module) {
 	check($services->getResourceLoader()->getModule($module) !== null, 'ResourceLoader module retained: ' . $module);
 }
