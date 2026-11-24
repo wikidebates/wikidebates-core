@@ -315,3 +315,93 @@ if (class_exists(\MediaWiki\Extension\WikiSEO\PagePolicy::class)) {
 }
 
 echo "OK: selective WikiSEO coexistence, debate/argument native head, other pages unchanged\n";
+
+
+// Compare the actual native parser graph of saved revisions to the head
+// assembled by OutputPage with WikiSEO loaded. No synthetic payload here.
+$services = \MediaWiki\MediaWikiServices::getInstance();
+$user = \MediaWiki\User\User::newSystemUser('SEO end-to-end fixture', ['steal' => false]);
+check($user !== null, 'Saved SEO fixture user');
+foreach (['fr', 'en'] as $lang) {
+	foreach (['debate', 'argument'] as $kind) {
+		$title = Title::newFromText('SEO end-to-end ' . $kind . ' ' . $lang);
+		$revisions = [];
+		foreach (['20240512143725', '20250604102539'] as $i => $timestamp) {
+			try {
+				\MWTimestamp::setFakeTime($timestamp);
+				$page = $services->getWikiPageFactory()->newFromTitle($title);
+				$updater = $page->newPageUpdater($user);
+				$updater->setContent(\MediaWiki\Revision\SlotRecord::MAIN,
+					new \MediaWiki\Content\WikitextContent('{{#' . $kind . ':render|lang=' . $lang .
+						"|creation-date=2000-01-01|summary=Version " . $i . " avec ''emphase'' &amp; <nowiki>[[A|B]]</nowiki>}}"));
+				$updater->saveRevision(\MediaWiki\CommentStore\CommentStoreComment::newUnsavedComment('SEO head and graph'));
+				check($updater->wasSuccessful(), 'Saved SEO revision fixture');
+				$revisions[] = $updater->getNewRevision();
+				$services->getDBLoadBalancerFactory()->commitPrimaryChanges(__METHOD__);
+			} finally {
+				\MWTimestamp::setFakeTime(false);
+			}
+		}
+		foreach ($revisions as $i => $revision) {
+			$label = $lang . '/' . $kind . '/' . $i;
+			$parsed = $services->getRevisionRenderer()->getRenderedRevision($revision,
+				\MediaWiki\Parser\ParserOptions::newFromAnon())->getRevisionParserOutput();
+			$payload = $parsed->getExtensionData(Metadata::DATA_KEY);
+			same($kind, $payload['wd_kind'] ?? null, 'Actual native payload: ' . $label);
+			preg_match_all('~<script\b[^>]*\btype="application/ld\+json"[^>]*>(.*?)</script>~is',
+				$parsed->getText(), $matches);
+			same(1, count($matches[1]), 'One body graph: ' . $label);
+			$graph = json_decode($matches[1][0], true, 512, JSON_THROW_ON_ERROR)['@graph'];
+			$pages = array_values(array_filter($graph, static fn($node) =>
+				in_array('WebPage', (array)($node['@type'] ?? []), true)));
+			same(1, count($pages), 'One current page node: ' . $label);
+			$resource = $pages[0];
+			$out = seoLabOutput($title->getPrefixedText());
+			$out->setRevisionTimestamp($revision->getTimestamp());
+			Metadata::onOutputPageParserOutput($out, $parsed);
+			$out->setProperty('description', 'Stale WikiSEO description');
+			$out->addMeta('google-site-verification', 'KEEP-VERIFICATION');
+			$out->setIndexPolicy('noindex');
+			// Exercise both loading orders on the old and current revisions.
+			if (class_exists(\MediaWiki\Extension\WikiSEO\PagePolicy::class)) {
+				if ($i === 0) {
+					Metadata::beforePageDisplay($out);
+				}
+				$hook->onBeforePageDisplay($out, $skin);
+				if ($i !== 0) {
+					Metadata::beforePageDisplay($out);
+				}
+				$head = implode("\n", $out->getHeadLinksArray()) . "\n" . implode("\n", $out->getHeadItemsArray());
+				$htmlTitle = $out->getHTMLTitle();
+			} else {
+				[$head, $htmlTitle] = seoLabRender($out, $i === 0);
+			}
+			$tags = seoLabMeta($head);
+			same($lang, $resource['inLanguage'], 'Content language: ' . $label);
+			foreach (['description', 'og:description', 'twitter:description'] as $field) {
+				same([$resource['description']], $tags[$field] ?? null, 'Head and graph description: ' . $label . '/' . $field);
+			}
+			same([$htmlTitle], $tags['og:title'] ?? null, 'One native Open Graph title: ' . $label);
+			same([$htmlTitle], $tags['twitter:title'] ?? null, 'Same X title: ' . $label);
+			same([$resource['url']], $tags['og:url'] ?? null, 'Same page URL: ' . $label);
+			same([$lang === 'fr' ? 'fr_FR' : 'en_US'], $tags['og:locale'] ?? null, 'Content locale: ' . $label);
+			same([$kind === 'argument' ? 'article' : 'website'], $tags['og:type'] ?? null, 'Approved Open Graph type: ' . $label);
+			same('2024-05-12T14:37:25Z', $resource['datePublished'], 'Actual first saved date: ' . $label);
+			same(wfTimestamp(TS_ISO_8601, $revision->getTimestamp()), $resource['dateModified'], 'Actual displayed revision: ' . $label);
+			if ($kind === 'argument') {
+				same([$resource['datePublished']], $tags['article:published_time'] ?? null, 'Same publication date in head: ' . $label);
+				same([$resource['dateModified']], $tags['article:modified_time'] ?? null, 'Same modification date in head: ' . $label);
+			} else {
+				check(!isset($tags['article:published_time']) && !isset($tags['article:modified_time']), 'No article dates on debate: ' . $label);
+			}
+			$image = trim((string)($payload['image'] ?? ''));
+			same($image !== '' ? [$image] : null, $tags['og:image'] ?? null, 'Only existing social image: ' . $label);
+			same($image !== '' ? [$image] : null, $tags['twitter:image'] ?? null, 'Same image on X: ' . $label);
+			same(['KEEP-VERIFICATION'], $tags['google-site-verification'] ?? null, 'Global verification untouched: ' . $label);
+			same('noindex', $out->getIndexPolicy(), 'Stronger robots policy survives: ' . $label);
+			check(!str_contains($head, 'application/ld+json'), 'No competing head graph: ' . $label);
+			check(!str_contains($head, 'Stale WikiSEO description'), 'No stale competing description: ' . $label);
+		}
+	}
+}
+echo "OK: actual saved FR/EN debate and argument revisions have consistent head and JSON-LD metadata\n";

@@ -64,7 +64,7 @@
 					"uses": "actions/checkout@v7.0.1",
 					"with": {
 						"repository": "wikimedia/mediawiki",
-						"ref": "1.43.11",
+						"ref": "1.43.12",
 						"path": ".mw-lab"
 					}
 				},

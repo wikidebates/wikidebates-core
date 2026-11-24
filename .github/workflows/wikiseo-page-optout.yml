@@ -31,18 +31,18 @@ jobs:
           extensions: mbstring, intl, xml, pdo_sqlite, sqlite3
           coverage: none
           tools: composer
-      - name: MediaWiki 1.43.11
+      - name: MediaWiki 1.43.12
         uses: actions/checkout@v7.0.1
         with:
           repository: wikimedia/mediawiki
-          ref: 1.43.11
+          ref: 1.43.12
           path: .mw-lab
       - name: Modernized WikiSEO (production baseline)
         uses: actions/checkout@v7.0.1
         with:
           repository: wikidebates/WikiSEO
-          # Exact WikiSEO gitlink in farm main 953d3e24035 (2026-11-24).
-          ref: 3f52f9d7d196bcaed541201f4412f4bf1e6b71e1
+          # Exact WikiSEO gitlink in farm main 6f1300fd2802 (2026-11-24).
+          ref: ca976844f6a8c038080684cf566aaaa4093cef9c
           path: .mw-lab/extensions/WikiSEO
       - name: Install isolated MediaWiki vendor dependencies
         working-directory: .mw-lab

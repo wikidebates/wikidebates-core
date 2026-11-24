@@ -71,11 +71,11 @@
 					}
 				},
 				{
-					"name": "MediaWiki 1.43.11 checkout",
+					"name": "MediaWiki 1.43.12 checkout",
 					"uses": "actions/checkout@v7.0.1",
 					"with": {
 						"repository": "wikimedia/mediawiki",
-						"ref": "1.43.11",
+						"ref": "1.43.12",
 						"path": ".mw-lab"
 					}
 				},
