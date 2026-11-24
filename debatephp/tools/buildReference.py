@@ -26,7 +26,7 @@ def e(v,multi=False):
 		if v.id in funcs:return "[$this, "+quote(v.id)+"]"
 		if v.id=='wkParseBiblioMarkers' or v.id=='wkParseWeblioMarkers' or v.id=='wkParseVideoMarkers':return "[$this, "+quote(v.id)+"]"
 		return '$'+v.id
-	if isinstance(v,n.String):return quote(v.s.decode('utf8'))
+	if isinstance(v,n.String):return quote(v.s.decode('utf8') if isinstance(v.s, bytes) else v.s)
 	if isinstance(v,n.Number):return str(v.n)
 	if isinstance(v,n.Nil):return 'null'
 	if isinstance(v,n.TrueExpr):return 'true'
