@@ -150,13 +150,31 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 	public function jsonLdData(array $data): string {
 		$started = $this->telemetry?->start();
 		try {
-			// Use the parsed revision's timestamp, which survives ParserCache.
-			// Never substitute the present time if a revision is unavailable.
+			// ContentRenderer sets ParserOutput's revision timestamp only AFTER
+			// parsing. During a parser function, use the exact RevisionRecord.
+			// Parser::getRevisionTimestamp() is not suitable: it can fall back
+			// to the clock and returns a timestamp adjusted to the wiki timezone.
 			$parserOutput = $this->parser->getOutput();
 			$timestamp = method_exists($parserOutput, 'getRevisionTimestamp')
 				? $parserOutput->getRevisionTimestamp() : null;
+			if ($timestamp === null && method_exists($this->parser, 'getRevisionRecordObject')) {
+				$timestamp = $this->parser->getRevisionRecordObject()?->getTimestamp();
+			}
 			$modified = is_string($timestamp) && preg_match('/^\d{14}$/D', $timestamp)
 				? wfTimestamp(TS_ISO_8601, $timestamp) : null;
+			// Follow MediaWiki's revision-sensitive pre-save rendering contract.
+			// If the saved revision has a different timestamp, the prepared
+			// output must be parsed again instead of caching a speculative date.
+			if (method_exists($parserOutput, 'setRevisionTimestampUsed')) {
+				if ($modified !== null) {
+					$parserOutput->setRevisionTimestampUsed($timestamp);
+					$parserOutput->setOutputFlag(\MediaWiki\Parser\ParserOutputFlags::VARY_REVISION_TIMESTAMP);
+				} else {
+					// A preview with no known timestamp must not become the
+					// canonical saved output with dateModified still missing.
+					$parserOutput->setOutputFlag(\MediaWiki\Parser\ParserOutputFlags::VARY_REVISION);
+				}
+			}
 			if ($modified !== null) {
 				$data = \MediaWiki\Extension\Wikidebates\Seo\Metadata::withModificationDate($data, $modified);
 			}

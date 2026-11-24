@@ -287,4 +287,75 @@ $seoJson = $parser->getStripState()->unstripBoth($seoContext->jsonLdData($seoSch
 check(str_contains($seoJson, '2026-11-23T09:45:21Z'), 'Native JSON-LD receives the parsed revision timestamp');
 check(str_contains($seoJson, 'dateModified'), 'Native JSON-LD contains dateModified');
 
+// Reproduce the actual ContentRenderer ordering, not just an already-filled
+// ParserOutput. A real stored revision is rendered through MediaWiki's normal
+// RevisionRenderer, with the timestamp unavailable in ParserOutput until the
+// renderer finishes. Use two historical revision timestamps to detect any
+// accidental fallback to the current revision or the rendering clock.
+$seoTitle = Title::newFromText('SEO revision timestamp fixture');
+$seoUser = \MediaWiki\User\User::newSystemUser('Wikidebates SEO fixture', ['steal' => false]);
+check($seoUser !== null, 'SEO fixture user created');
+$seoRevisions = [];
+try {
+	foreach ([
+		['debate', '20241121091530'],
+		['argument', '20251122143542']
+	] as [$kind, $timestamp]) {
+		\MWTimestamp::setFakeTime($timestamp);
+		$seoWikiPage = $services->getWikiPageFactory()->newFromTitle($seoTitle);
+		$updater = $seoWikiPage->newPageUpdater($seoUser);
+		$updater->setContent(
+			\MediaWiki\Revision\SlotRecord::MAIN,
+			new \MediaWiki\Content\WikitextContent(
+				'{{#' . $kind . ':render|lang=en|creation-date=2020-05-01|summary=Revision fixture}}'
+			)
+		);
+		$updater->saveRevision(\MediaWiki\CommentStore\CommentStoreComment::newUnsavedComment('SEO date fixture'));
+		check($updater->wasSuccessful(), 'Stored SEO revision: ' . $kind);
+		$revision = $updater->getNewRevision();
+		same($timestamp, $revision->getTimestamp(), 'Real stored revision timestamp: ' . $kind);
+		$seoRevisions[] = [$kind, $revision];
+	}
+} finally {
+	\MWTimestamp::setFakeTime(false);
+}
+check($seoRevisions[0][1]->getId() !== $seoRevisions[1][1]->getId(), 'Distinct stored revisions');
+foreach ($seoRevisions as [$kind, $revision]) {
+	$rendered = $services->getRevisionRenderer()->getRenderedRevision(
+		$revision, ParserOptions::newFromAnon()
+	);
+	$output = $rendered->getRevisionParserOutput();
+	$expected = wfTimestamp(TS_ISO_8601, $revision->getTimestamp());
+	same($revision->getTimestamp(), $output->getRevisionTimestamp(),
+		'ContentRenderer finishes with the correct revision timestamp: ' . $kind);
+	check($output->getOutputFlag(\MediaWiki\Parser\ParserOutputFlags::VARY_REVISION_TIMESTAMP),
+		'Timestamp-dependent output is marked for reparse if a speculative timestamp changes: ' . $kind);
+	same($revision->getTimestamp(), $output->getRevisionTimestampUsed(),
+		'MediaWiki records the exact timestamp used by JSON-LD: ' . $kind);
+	$pageType = $kind === 'debate' ? 'QAPage' : 'WebPage';
+	$nodes = [];
+	preg_match_all('~<script\b[^>]*\btype="application/ld\+json"[^>]*>(.*?)</script>~is', $output->getText(), $matches);
+	foreach ($matches[1] as $script) {
+		$graph = json_decode($script, true, 512, JSON_THROW_ON_ERROR);
+		foreach (($graph['@graph'] ?? []) as $node) {
+			if (($node['@type'] ?? null) === $pageType) {
+				$nodes[] = $node;
+			}
+		}
+	}
+	same(1, count($nodes), 'Exactly one specialized JSON-LD page: ' . $kind);
+	same($expected, $nodes[0]['dateModified'] ?? null,
+		'JSON-LD uses the exact rendered revision, including an old revision: ' . $kind);
+	same('2020-05-01T00:00:00Z', $nodes[0]['datePublished'] ?? null,
+		'The editorial creation date is unchanged: ' . $kind);
+}
+// An ordinary parser preview must not invent a date from the clock or inherit
+// the existing page's latest revision when no revision is being rendered.
+$preview = $services->getParserFactory()->create()->parse(
+	'{{#debate:render|lang=en|creation-date=2020-05-01}}',
+	$seoTitle, ParserOptions::newFromAnon()
+);
+check(!str_contains($preview->getText(), '"dateModified"'), 'No fabricated modification date in preview');
+
+
 echo "OK: MediaWiki " . MW_VERSION . ", $count render fixtures in both modes, single extension load, hooks, policy and no runtime Lua dependencies\n";
