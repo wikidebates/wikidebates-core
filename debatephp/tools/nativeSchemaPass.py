@@ -27,5 +27,27 @@ def optimize(source, argument):
 		remove("wkBuildSuggestedAnswers")
 		replace("\t\t\t$suggestedAnswer = $this->wkBuildSuggestedAnswers($maps, $lang);\n", "")
 		replace("\t\t\t$qaNode = (['@type' => 'QAPage', '@id' => ($pv['pageUrl'] . '#qa'), 'url' => $pv['pageUrl'], 'name' => $pv['rawTitle'], 'inLanguage' => $lang, 'educationalUse' => ([1 => 'debate', 2 => 'critical thinking']), 'learningResourceType' => 'debate', 'audience' => (['@type' => 'EducationalAudience', 'educationalLevel' => ([1 => 'general public', 2 => 'secondary education'])]), 'isPartOf' => $isPartOf, 'breadcrumb' => (['@id' => ($pv['pageUrl'] . '#breadcrumb')]), 'discussionUrl' => $this->wkBuildDiscussionUrl($pv, $lang), 'publisher' => (['@id' => ($this->L($lang, 'urls', 'home') . '#organization')]), 'mainEntity' => (['@type' => 'Question', '@id' => ($pv['pageUrl'] . '#question'), 'name' => $pv['rawTitle'], 'text' => $questionText, 'answerCount' => Lua::len($suggestedAnswer), 'suggestedAnswer' => $suggestedAnswer])]);", "\t\t\t$pageNode = [\n\t\t\t\t'@type' => [1 => 'WebPage', 2 => 'LearningResource'],\n\t\t\t\t// Keep the existing graph identifier: related pages already reference it.\n\t\t\t\t'@id' => $pv['pageUrl'] . '#qa',\n\t\t\t\t'url' => $pv['pageUrl'],\n\t\t\t\t'name' => $pv['rawTitle'],\n\t\t\t\t'inLanguage' => $lang,\n\t\t\t\t'isPartOf' => $isPartOf,\n\t\t\t\t'breadcrumb' => ['@id' => $pv['pageUrl'] . '#breadcrumb'],\n\t\t\t\t'discussionUrl' => $this->wkBuildDiscussionUrl($pv, $lang),\n\t\t\t\t'publisher' => ['@id' => $this->L($lang, 'urls', 'home') . '#organization'],\n\t\t\t\t'mainEntity' => [\n\t\t\t\t\t'@type' => 'Question',\n\t\t\t\t\t'@id' => $pv['pageUrl'] . '#question',\n\t\t\t\t\t'name' => $pv['rawTitle'],\n\t\t\t\t\t'text' => NativeText::seoPlainText($questionText) ?: $pv['rawTitle']\n\t\t\t\t]\n\t\t\t] + SchemaData::education($lang, 'debate');\n\t\t\t$parts = SchemaData::sections($maps, ['pro' => 'pro', 'con' => 'con'],\n\t\t\t\t$pv['pageUrl'], $lang, fn(string $title): string => $this->wkFullUrl($title));\n\t\t\tif ($parts !== []) {\n\t\t\t\t$pageNode['hasPart'] = $parts;\n\t\t\t}")
+		# isRelatedTo is only for products/services; relatedLink takes URLs.
+		start = source.index('\tprotected function wkBuildIsRelatedTo(')
+		end = source.index('\n\tprotected function ', start + 1)
+		source = source[:start] + r'''	protected function wkBuildRelatedLinks($args = null) {
+		$out = new Table([]);
+		$raw = trim((string)($args['related-debates'] ?? ''));
+		foreach (explode($this->ITEM_SEP, $raw) as $part) {
+			// Related debates are rendered as wiki links, possibly with a label.
+			$title = trim(NativeText::splitOnce($part, '|')[0]);
+			if ($title === '') {
+				continue;
+			}
+			$url = $this->wkFullUrl($title);
+			if ($url !== '') {
+				$out[count($out) + 1] = $url;
+			}
+		}
+		return $out;
+	}
+''' + source[end:]
+		source = source.replace('wkBuildIsRelatedTo', 'wkBuildRelatedLinks')
+		source = source.replace('$isRelatedTo', '$relatedLinks').replace("'isRelatedTo'", "'relatedLink'")
 		source = source.replace('$qaNode', '$pageNode')
 	return source
