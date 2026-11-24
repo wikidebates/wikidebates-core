@@ -103,7 +103,9 @@ final class SchemaData {
 				'august' => 8, 'septembre' => 9, 'september' => 9, 'octobre' => 10, 'october' => 10,
 				'novembre' => 11, 'november' => 11, 'décembre' => 12, 'decembre' => 12, 'december' => 12
 			];
-			$value = mb_strtolower($value, 'UTF-8');
+			// Only these two accented capitals occur in the supported month names.
+			// Keep the pure renderer test executable under php -n as well.
+			$value = strtr(strtolower($value), ['É' => 'é', 'Û' => 'û']);
 			if (preg_match('/^(?:(\d{1,2})(?:er)?\s+)?(\p{L}+)\s+(\d{4})$/uD', $value, $m)) {
 				$day = $m[1] !== '' ? (int)$m[1] : null;
 				$month = $months[$m[2]] ?? null;

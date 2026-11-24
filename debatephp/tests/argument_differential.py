@@ -213,9 +213,14 @@ if __name__=='__main__':
 		day=str(c['args'].get('creation-date','')).strip()
 		c['publication_date']=(day if re.fullmatch(r'\d{4}-\d{2}-\d{2}',day) else '2025-01-01')+'T12:34:56Z'
 	proc=subprocess.run([sys.argv[1] if len(sys.argv)>1 else 'php','-n',str(ROOT/'tests/argument_context.php')],input=json.dumps(corpus),text=True,capture_output=True,check=True)
-	actual=json.loads(proc.stdout);bad=[]
+	actual=json.loads(proc.stdout);bad=[];tested=0
 	for c,want,modes in zip(corpus,expected,actual):
 		for mode,got in zip(['reference','optimized'],modes):
+			tested+=1
+			if 'error' in got:
+				bad.append((c['name'],mode))
+				print(c['name'], mode, got['error'])
+				break
 			old_graphs, new_graphs = [], []
 			old_text = normalize(want, historical=True, schemas=old_graphs)
 			new_text = normalize(got, schemas=new_graphs)
@@ -235,7 +240,7 @@ if __name__=='__main__':
 		if not bad and normalize(modes[0]) != normalize(modes[1]):
 			bad.append((c['name'],'native parity'))
 		if bad:break
-	report={'cases':len(corpus),'renderer_comparisons':len(corpus)*2,'passed':not bad,'failures':bad,'scope':'Lua 5.1 versus PHP, mocked MediaWiki boundary; not a live wiki benchmark'}
+	report={'cases':len(corpus),'renderer_comparisons':tested,'passed':not bad,'failures':bad,'scope':'Lua 5.1 versus PHP, mocked MediaWiki boundary; not a live wiki benchmark'}
 	if len(sys.argv) > 2:
 		pathlib.Path(sys.argv[2]).write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
 	print(json.dumps(report));sys.exit(bool(bad))
