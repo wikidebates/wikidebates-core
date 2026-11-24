@@ -119,6 +119,29 @@ foreach (['fr', 'en'] as $lang) {
 	same('Texte avec emphase et libellé.', $claim['abstract'], 'Plain summary');
 	same($claim['abstract'], $page['description'], 'Summary and description agree');
 
+
+	// Both renderers use the same reference normalization on decoded fields.
+	$record = 'Ada⟬Paper⟬Journal⟬IV⟬2⟬⟬⟬Publisher⟬Paris⟬23 janvier 2017⟬https://example.org/paper⟬⟭';
+	foreach (['debate', 'argument'] as $kind) {
+		foreach (['reference', 'optimized'] as $mode) {
+			$GLOBALS['wgDebatePHPMode'] = $mode;
+			[$resource, $nodes] = seoSchemaParse($kind, $lang, '|bibliography=' . $record);
+			$owner = $kind === 'debate' ? $resource : array_values(array_filter($nodes,
+				static fn($node) => ($node['@type'] ?? '') === 'Claim'))[0];
+			$ref = $owner['citation'][0];
+			same('Article', $ref['@type'], 'Article reference retained');
+			check(!isset($ref['issueNumber'], $ref['volumeNumber']), 'No issue/volume on Article');
+			same('PublicationIssue', $ref['isPartOf']['@type'], 'Issue container');
+			same('2', $ref['isPartOf']['issueNumber'], 'Issue number');
+			same('PublicationVolume', $ref['isPartOf']['isPartOf']['@type'], 'Volume container');
+			same('IV', $ref['isPartOf']['isPartOf']['volumeNumber'], 'Volume number');
+			same('Journal', $ref['isPartOf']['isPartOf']['isPartOf']['name'], 'Periodical identity');
+			same('2017-01-23', $ref['datePublished'], 'Normalized date');
+			same('https://example.org/paper', $ref['url'], 'URL retained');
+		}
+	}
+	$GLOBALS['wgDebatePHPMode'] = 'reference';
+
 	[$dedicated] = seoSchemaParse('argument', $lang, '|dedicated-debate=Dedicated debate fixture|justifications=' .
 		seoSchemaItems('Hidden fixture', 12));
 	same([['@id' => Title::newFromText('Dedicated debate fixture')->getFullURL() . '#qa']],

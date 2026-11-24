@@ -36,6 +36,104 @@ final class SchemaData {
 		];
 	}
 
+
+	/**
+	 * Normalize only a selected bibliographic reference, not the enclosing page.
+	 * Preserve the old selection and visible reference; never fetch a remote URL.
+	 */
+	public static function reference(Table|array $node): Table|array {
+		$type = $node['@type'];
+		$volume = $node['volumeNumber'] ?? '';
+		$number = $node['issueNumber'] ?? '';
+		unset($node['volumeNumber'], $node['issueNumber']);
+		$wrap = static fn(array $value) => $node instanceof Table ? Table::wrap($value) : $value;
+		if ($type === 'Article' && isset($node['isPartOf'])) {
+			$container = $node['isPartOf'];
+			if ($volume !== '') {
+				$container = $wrap(['@type' => 'PublicationVolume', 'volumeNumber' => $volume, 'isPartOf' => $container]);
+			}
+			if ($number !== '') {
+				$container = $wrap(['@type' => 'PublicationIssue', 'issueNumber' => $number, 'isPartOf' => $container]);
+			}
+			$node['isPartOf'] = $container;
+		} elseif ($type === 'Book') {
+			if ($volume !== '') {
+				$node['@type'] = $wrap([1 => 'Book', 2 => 'PublicationVolume']);
+				$node['volumeNumber'] = $volume;
+			}
+			if ($number !== '') {
+				// A book's number may identify its series or collection; do not
+				// assert that the book is an issue of a periodical.
+				$node['identifier'] = $wrap(['@type' => 'PropertyValue', 'propertyID' => 'number', 'value' => $number]);
+			}
+		}
+		if (isset($node['datePublished'])) {
+			$date = self::referenceDate((string)$node['datePublished']);
+			if ($date === null) { unset($node['datePublished']); }
+			else { $node['datePublished'] = $date; }
+		}
+		if (isset($node['url'])) {
+			$url = trim((string)$node['url']);
+			if (!self::referenceUrl($url)) { unset($node['url']); }
+			else { $node['url'] = $url; }
+		}
+		return $node;
+	}
+
+	/** No guessed day/month, no date for an approximate or invalid value. */
+	public static function referenceDate(string $value): ?string {
+		$value = trim($value);
+		$year = $month = $day = null;
+		if (preg_match('/^([0-9]{4})(?:[-\/]([0-9]{1,2})(?:[-\/]([0-9]{1,2}))?)?$/D', $value, $m)) {
+			$year = (int)$m[1];
+			$month = isset($m[2]) ? (int)$m[2] : null;
+			$day = isset($m[3]) ? (int)$m[3] : null;
+		} elseif (preg_match('/^([0-9]{1,2})[\/.-]([0-9]{1,2})[\/.-]([0-9]{4})$/D', $value, $m)) {
+			$a = (int)$m[1]; $b = (int)$m[2];
+			$year = (int)$m[3];
+			if ($a > 12 && $b <= 12) { $day = $a; $month = $b; }
+			elseif ($b > 12 && $a <= 12) { $day = $b; $month = $a; }
+			elseif ($a === $b) { $day = $a; $month = $b; }
+			else { return null; }
+		} else {
+			$months = [
+				'janvier' => 1, 'january' => 1, 'février' => 2, 'fevrier' => 2, 'february' => 2,
+				'mars' => 3, 'march' => 3, 'avril' => 4, 'april' => 4, 'mai' => 5, 'may' => 5,
+				'juin' => 6, 'june' => 6, 'juillet' => 7, 'july' => 7, 'août' => 8, 'aout' => 8,
+				'august' => 8, 'septembre' => 9, 'september' => 9, 'octobre' => 10, 'october' => 10,
+				'novembre' => 11, 'november' => 11, 'décembre' => 12, 'decembre' => 12, 'december' => 12
+			];
+			$value = mb_strtolower($value, 'UTF-8');
+			if (preg_match('/^(?:(\d{1,2})(?:er)?\s+)?(\p{L}+)\s+(\d{4})$/uD', $value, $m)) {
+				$day = $m[1] !== '' ? (int)$m[1] : null;
+				$month = $months[$m[2]] ?? null;
+				$year = (int)$m[3];
+			} elseif (preg_match('/^(\p{L}+)\s+(\d{1,2}),?\s+(\d{4})$/uD', $value, $m)) {
+				$day = (int)$m[2];
+				$month = $months[$m[1]] ?? null;
+				$year = (int)$m[3];
+			}
+			if ($month === null) { return null; }
+		}
+		if (!$year || ($month !== null && ($month < 1 || $month > 12)) ||
+			($day !== null && !checkdate($month ?? 0, $day, $year))) {
+			return null;
+		}
+		return sprintf('%04d', $year) . ($month === null ? '' : sprintf('-%02d', $month)) .
+			($day === null ? '' : sprintf('-%02d', $day));
+	}
+
+	/** Absolute HTTP(S) URL, not a wiki link, strip marker or executable scheme. */
+	public static function referenceUrl(string $url): bool {
+		if (!preg_match('~^https?://~i', $url) || preg_match('~[\x00-\x20\x7f<>"\\\\]~', $url) ||
+			preg_match('/%(?![0-9a-f]{2})/i', $url)) {
+			return false;
+		}
+		$parts = parse_url($url);
+		return is_array($parts) && !empty($parts['host']) && !isset($parts['user'], $parts['pass']) &&
+			filter_var($url, FILTER_VALIDATE_URL) !== false;
+	}
+
 	private static function pageUrl(string $url): string {
 		$url = explode('#', $url, 2)[0];
 		return preg_match('~^https?://[^/\s]+(?:/|$)~i', $url) ? $url : '';

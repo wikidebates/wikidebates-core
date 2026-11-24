@@ -1,7 +1,7 @@
 """Compare immutable Lua graphs with the intentional native SEO evolution.
 
 Only the specialized page, its Question/Claim and its explicitly superseded
-relations are projected. Other nodes, citations and unknown fields remain exact.
+relations are projected. References undergo only the explicit normalization below. Other nodes and unknown fields remain exact.
 The real-parser SEO tests separately check exhaustive lists against input data,
 head descriptions and actual stored timestamps. This is not a schema validator.
 """
@@ -108,6 +108,104 @@ def parts_ids(parts, page, debate):
 			ids.append(target['@id'])
 	return ids
 
+
+MONTHS = {}
+for i, names in enumerate(('janvier january','février fevrier february','mars march','avril april','mai may','juin june','juillet july','août aout august','septembre september','octobre october','novembre november','décembre decembre december'), 1):
+	MONTHS.update((name, i) for name in names.split())
+
+def reference_date(value):
+	from datetime import date
+	value = value.strip()
+	year = month = day = None
+	match = re.fullmatch(r'([0-9]{4})(?:[-/]([0-9]{1,2})(?:[-/]([0-9]{1,2}))?)?', value)
+	if match:
+		year, month, day = (int(x) if x is not None else None for x in match.groups())
+	else:
+		match = re.fullmatch(r'([0-9]{1,2})[/.-]([0-9]{1,2})[/.-]([0-9]{4})', value)
+		if match:
+			a, b, year = map(int, match.groups())
+			if a > 12 >= b or a == b:
+				day, month = a, b
+			elif b > 12 >= a:
+				day, month = b, a
+			else:
+				return None
+		else:
+			match = re.fullmatch(r'(?:(\d{1,2})(?:er)?\s+)?([^\W\d_]+)\s+(\d{4})', value.lower())
+			if match:
+				d, m, y = match.groups()
+			else:
+				match = re.fullmatch(r'([^\W\d_]+)\s+(\d{1,2}),?\s+(\d{4})', value.lower())
+				if not match:
+					return None
+				m, d, y = match.groups()
+			year, month, day = int(y), MONTHS.get(m), int(d) if d else None
+			if month is None:
+				return None
+	if not year or month is not None and not 1 <= month <= 12:
+		return None
+	if day is not None:
+		try:
+			date(year, month, day)
+		except ValueError:
+			return None
+	return f'{year:04}' + (f'-{month:02}' if month is not None else '') + (f'-{day:02}' if day is not None else '')
+
+def reference_url(value):
+	if re.search(r'[\x00-\x20\x7f<>"\\]|%(?![0-9a-fA-F]{2})', value):
+		return False
+	try:
+		p = urlsplit(value)
+		return p.scheme in ('http','https') and bool(p.hostname) and p.username is None and p.password is None and (p.port is None or 0 <= p.port <= 65535) and (p.hostname.isascii() and (':' in p.hostname or bool(re.fullmatch(r'[A-Za-z0-9.-]+', p.hostname)))) and value.isascii()
+	except ValueError:
+		return False
+
+def project_reference(old):
+	"""Independent expected reference shape; retain all untouched data."""
+	node = copy.deepcopy(old)
+	volume, number = node.pop('volumeNumber', ''), node.pop('issueNumber', '')
+	if node.get('@type') == 'Article' and 'isPartOf' in node:
+		parent = node['isPartOf']
+		if volume:
+			parent = {'@type':'PublicationVolume','volumeNumber':volume,'isPartOf':parent}
+		if number:
+			parent = {'@type':'PublicationIssue','issueNumber':number,'isPartOf':parent}
+		node['isPartOf'] = parent
+	elif node.get('@type') == 'Book':
+		if volume:
+			node['@type'] = ['Book','PublicationVolume']
+			node['volumeNumber'] = volume
+		if number:
+			node['identifier'] = {'@type':'PropertyValue','propertyID':'number','value':number}
+	if 'datePublished' in node:
+		d = reference_date(node['datePublished'])
+		if d is None:
+			node.pop('datePublished')
+		else:
+			node['datePublished'] = d
+	if 'url' in node:
+		# Legacy HTMLTags may have entity-escaped the URL. Validate the
+		# original spelling as well as its single HTML-decoded form.
+		u = node['url'].strip()
+		if not reference_url(u) and not reference_url(html.unescape(u)):
+			node.pop('url')
+		else:
+			node['url'] = u
+	return node
+
+def compare_references(old, new):
+	for field in ('citation', 'subjectOf'):
+		if field not in old and field not in new:
+			continue
+		a, b = old.pop(field), new.pop(field)
+		require(isinstance(a, list) == isinstance(b, list), 'Reference representation changed: ' + field)
+		a = a if isinstance(a, list) else [a]
+		b = b if isinstance(b, list) else [b]
+		require(len(a) == len(b), 'Lost or added selected reference: ' + field)
+		for before, after in zip(a,b):
+			projected = project_reference(before)
+			require(equal(projected, after), 'Reference normalization differs: ' + field + ' ' + repr((projected, after))[:600])
+
 def compare_documents(legacy, native):
 	"""Raise on unexpected differences; do not mutate either input."""
 	if equal(legacy, native):
@@ -152,6 +250,7 @@ def compare_documents(legacy, native):
 		require('datePublished' not in nq and 'answerCount' not in nq and 'suggestedAnswer' not in nq, 'Legacy Question properties on native graph')
 		oq.pop('datePublished', None)
 		require(text_matches(oq.pop('text'), nq.pop('text'), np['name']), 'Question text changed')
+		compare_references(op, np)
 		if 'relatedLink' in np:
 			links = np.pop('relatedLink')
 			require(isinstance(links, list) and all(url(item) for item in links), 'Invalid relatedLink URLs')
@@ -168,6 +267,7 @@ def compare_documents(legacy, native):
 			require(key not in nc, 'Legacy Claim field still present: ' + key)
 			oc.pop(key, None)
 		subsequence([item['@id'] for item in oc.pop('hasPart', [])], parts, 'argument relation references')
+		compare_references(oc, nc)
 		abstract = nc.pop('abstract', '')
 		require(text_matches(oc.pop('abstract', ''), abstract), 'Claim abstract changed')
 		if abstract and description is not None:
