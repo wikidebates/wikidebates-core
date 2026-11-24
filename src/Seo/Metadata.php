@@ -313,7 +313,12 @@ final class Metadata {
 			if ( $tags !== [] ) {
 				$openGraph['article:tag'] = $tags;
 			}
-			self::put( $openGraph, 'article:published_time', self::creationDate( $data['wd_creation_date'] ?? '' ) );
+			// Old ParserOutputs still contain an editorial date in their body.
+			// Never fall back to that date for a newly parsed, undated page.
+			$published = array_key_exists( 'wd_published_time', $data )
+				? (string)( $data['wd_published_time'] ?? '' )
+				: self::creationDate( $data['wd_creation_date'] ?? '' );
+			self::put( $openGraph, 'article:published_time', $published );
 			self::put( $openGraph, 'article:modified_time', (string)( $modified ?? '' ) );
 		}
 
@@ -341,6 +346,46 @@ final class Metadata {
 				isset( $node['url'], $node['@id'] )
 			) {
 				$schema['@graph'][$index]['dateModified'] = $modified;
+			}
+		}
+		return $schema;
+	}
+
+	/**
+	 * Replace only the editorial dates on the current page and its main
+	 * entity. A page's first stored revision is not the first publication
+	 * of an idea or a bibliographic source.
+	 */
+	public static function withPublicationDate( array $schema, ?string $published ): array {
+		if ( !isset( $schema['@graph'] ) || !is_array( $schema['@graph'] ) ) {
+			return $schema;
+		}
+		$claimIds = [];
+		foreach ( $schema['@graph'] as $index => $node ) {
+			if (
+				!is_array( $node ) ||
+				!in_array( $node['@type'] ?? null, [ 'WebPage', 'QAPage' ], true ) ||
+				!isset( $node['url'], $node['@id'] )
+			) {
+				continue;
+			}
+			unset( $schema['@graph'][$index]['datePublished'] );
+			if ( $published !== null ) {
+				$schema['@graph'][$index]['datePublished'] = $published;
+			}
+			$entity = $node['mainEntity'] ?? null;
+			if ( is_array( $entity ) ) {
+				if ( ( $entity['@type'] ?? null ) === 'Question' ) {
+					unset( $schema['@graph'][$index]['mainEntity']['datePublished'] );
+				} elseif ( isset( $entity['@id'] ) ) {
+					$claimIds[] = $entity['@id'];
+				}
+			}
+		}
+		foreach ( $schema['@graph'] as $index => $node ) {
+			if ( is_array( $node ) && ( $node['@type'] ?? null ) === 'Claim' &&
+				in_array( $node['@id'] ?? null, $claimIds, true ) ) {
+				unset( $schema['@graph'][$index]['datePublished'] );
 			}
 		}
 		return $schema;

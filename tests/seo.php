@@ -55,6 +55,14 @@ same( $argument['meta']['description'], $argument['open_graph']['og:description'
 same( $argument['meta']['description'], $argument['meta']['twitter:description'], 'X uses argument summary' );
 same( $argumentData['image'], $argument['meta']['twitter:image'], 'Original user image preserved for argument' );
 same( '2024-01-02T00:00:00Z', $argument['open_graph']['article:published_time'], 'Argument creation-date preserved' );
+$nativeDate = Metadata::build( $argumentData + [
+	'wd_published_time' => '2024-01-02T14:37:25Z'
+], 'https://fr.wikidebates.org/wiki/Argument', null );
+same( '2024-01-02T14:37:25Z', $nativeDate['open_graph']['article:published_time'],
+	'Native publication time wins over old editorial midnight' );
+$undated = Metadata::build( $argumentData + [ 'wd_published_time' => null ],
+	'https://fr.wikidebates.org/wiki/Argument', null );
+check( !isset( $undated['open_graph']['article:published_time'] ), 'New undated payload never falls back to editorial date' );
 $argumentData['keywords'] = 'philosophie, justice, philosophie,   débat';
 $tagged = Metadata::build( $argumentData, 'https://fr.wikidebates.org/wiki/Argument', null );
 same( [ 'philosophie', 'justice', 'débat' ], $tagged['open_graph']['article:tag'], 'Repeat Open Graph tags without duplicates' );
@@ -76,6 +84,24 @@ $argGraph = [ '@graph' => [ [ '@type' => 'WebPage', '@id' => 'https://example.or
 same( '2026-11-23T12:30:00Z',
 	Metadata::withModificationDate( $argGraph, '2026-11-23T12:30:00Z' )['@graph'][0]['dateModified'],
 	'WebPage has revision date' );
+
+$publicationGraph = [ '@graph' => [
+	[ '@type' => 'WebPage', '@id' => 'https://example.org/a', 'url' => 'https://example.org/a',
+		'datePublished' => '2000-01-01T00:00:00Z', 'mainEntity' => [ '@id' => 'https://example.org/a#claim' ] ],
+	[ '@type' => 'Claim', '@id' => 'https://example.org/a#claim', 'datePublished' => '2000-01-01T00:00:00Z',
+		'citation' => [ '@type' => 'Book', 'datePublished' => '1900' ] ],
+	[ '@type' => 'QAPage', '@id' => 'https://example.org/b#qa', 'url' => 'https://example.org/b',
+		'mainEntity' => [ '@type' => 'Question', 'datePublished' => '2000-01-01T00:00:00Z' ] ],
+] ];
+$publishedGraph = Metadata::withPublicationDate( $publicationGraph, '2024-01-02T14:37:25Z' )['@graph'];
+same( '2024-01-02T14:37:25Z', $publishedGraph[0]['datePublished'], 'Native page date overrides editorial date' );
+same( '2024-01-02T14:37:25Z', $publishedGraph[2]['datePublished'], 'Native debate date overrides editorial date' );
+check( !isset( $publishedGraph[1]['datePublished'], $publishedGraph[2]['mainEntity']['datePublished'] ) &&
+	!isset( $publishedGraph[1]['datePublished'] ) && !isset( $publishedGraph[2]['mainEntity']['datePublished'] ),
+	'Page creation must not date the claim or the question itself' );
+same( '1900', $publishedGraph[1]['citation']['datePublished'], 'Bibliographic dates remain intact' );
+$undatedGraph = Metadata::withPublicationDate( $publicationGraph, null )['@graph'];
+check( !isset( $undatedGraph[0]['datePublished'] ), 'No fallback publication date on a new undated graph' );
 
 $argumentData['wd_summary'] = '';
 $fallback = Metadata::build( $argumentData, 'https://fr.wikidebates.org/wiki/Argument', null );

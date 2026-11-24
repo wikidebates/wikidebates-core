@@ -347,8 +347,11 @@ foreach ($seoRevisions as [$kind, $revision]) {
 	same(1, count($nodes), 'Exactly one specialized JSON-LD page: ' . $kind);
 	same($expected, $nodes[0]['dateModified'] ?? null,
 		'JSON-LD uses the exact rendered revision, including an old revision: ' . $kind);
-	same('2020-05-01T00:00:00Z', $nodes[0]['datePublished'] ?? null,
-		'The editorial creation date is unchanged: ' . $kind);
+	same('2024-11-21T09:15:30Z', $nodes[0]['datePublished'] ?? null,
+		'The first stored revision supplies publication date: ' . $kind);
+	same('2024-11-21T09:15:30Z',
+		$output->getExtensionData(\MediaWiki\Extension\Wikidebates\Seo\Metadata::DATA_KEY)['wd_published_time'] ?? null,
+		'Same native publication date in parser metadata: ' . $kind);
 }
 // An ordinary parser preview must not invent a date from the clock or inherit
 // the existing page's latest revision when no revision is being rendered.
@@ -357,6 +360,7 @@ $preview = $services->getParserFactory()->create()->parse(
 	$seoTitle, ParserOptions::newFromAnon()
 );
 check(!str_contains($preview->getText(), '"dateModified"'), 'No fabricated modification date in preview');
+check(!str_contains($preview->getText(), '"datePublished"'), 'No fabricated publication date in preview');
 
 
 echo "OK: MediaWiki " . MW_VERSION . ", $count render fixtures in both modes, single extension load, hooks, policy and no runtime Lua dependencies\n";

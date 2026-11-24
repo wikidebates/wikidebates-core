@@ -1,6 +1,7 @@
 <?php
 namespace MediaWiki\Extension\DebatePHP;
 
+use MediaWiki\Extension\Wikidebates\Seo\PublicationDate;
 use MediaWiki\Json\FormatJson;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Parser\Parser;
@@ -178,6 +179,9 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 			if ($modified !== null) {
 				$data = \MediaWiki\Extension\Wikidebates\Seo\Metadata::withModificationDate($data, $modified);
 			}
+			$data = \MediaWiki\Extension\Wikidebates\Seo\Metadata::withPublicationDate(
+				$data, PublicationDate::forParser($this->parser)
+			);
 			$json = FormatJson::encode(JsonData::value($data), false, FormatJson::ALL_OK);
 			if ($json === false) { throw new \RuntimeException('Unable to encode JSON-LD'); }
 		} finally { $this->telemetry?->finish('json', $started); }
@@ -263,7 +267,7 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 			$values = Table::unwrap($data);
 			$args = $this->readArguments();
 			$values['wd_kind'] = $this->argumentMode ? 'argument' : 'debate';
-			$values['wd_creation_date'] = (string)( $args['creation-date'] ?? '' );
+			$values['wd_published_time'] = PublicationDate::forParser($this->parser);
 			if ($this->argumentMode) {
 				$values['wd_summary'] = (string)( $args['summary'] ?? '' );
 			}

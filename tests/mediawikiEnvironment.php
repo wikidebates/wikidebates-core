@@ -68,7 +68,7 @@ function wikidebatesTestConfig($settings): void {
 		'CacheDirectory' => $temporary,
 		'MainCacheType' => CACHE_NONE,
 		'MessageCacheType' => CACHE_NONE,
-		'ParserCacheType' => (getenv('WD_TEST_SEMANTIC_BASELINE') === '1' || getenv('WD_TEST_SEMANTIC_TRACKING') === '1') ? CACHE_DB : CACHE_NONE,
+		'ParserCacheType' => (defined('WD_TEST_SEO_PUBLICATION_CACHE') || getenv('WD_TEST_SEMANTIC_BASELINE') === '1' || getenv('WD_TEST_SEMANTIC_TRACKING') === '1') ? CACHE_DB : CACHE_NONE,
 		// Do not change the settings of existing integration suites.
 		...(defined('WD_TEST_PAGE_OWNED_CACHE') ? [
 			'UseFileCache' => true,

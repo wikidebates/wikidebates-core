@@ -7,7 +7,8 @@
 				"tests/mediawikiEnvironment.php",
 				"src/Seo/**",
 				"debatephp/src/MediaWikiContext.php",
-				".github/workflows/seo-creation-date.yml"
+				".github/workflows/seo-creation-date.yml",
+				"tests/seoPublicationDate.php"
 			]
 		},
 		"workflow_dispatch": {}
@@ -64,6 +65,13 @@
 						"MW_INSTALL_PATH": "${{ github.workspace }}/.mw-lab"
 					},
 					"run": "php -l tests/seoCreationDateBenchmark.php\nphp -d display_errors=1 -d error_reporting=E_ALL tests/seoCreationDateBenchmark.php"
+				},
+				{
+					"name": "Real stored revisions and ParserCache publication-date integration",
+					"env": {
+						"MW_INSTALL_PATH": "${{ github.workspace }}/.mw-lab"
+					},
+					"run": "php -d display_errors=1 -d error_reporting=E_ALL tests/seoPublicationDate.php"
 				},
 				{
 					"name": "Stop disposable MariaDB",
