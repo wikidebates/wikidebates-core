@@ -60,3 +60,18 @@ Ces contrôles ponctuels ne prouvent pas que tous les fichiers HTML historiques 
 - `php tests/run.php` : inclut `tests/seo.php` sans installation MediaWiki.
 - `php tests/mediawiki.php` : transfert de données `ParserOutput` vers `OutputPage` sur MediaWiki 1.43.
 - La CI sur les PR contrôle PHP 8.4, MediaWiki 1.43, JavaScript et navigateur. Un test supplémentaire sous PHP 8.4 charge le **vrai WikiSEO 2.7.0 épinglé**, vérifie le remplacement sélectif des balises et l'absence de régression sur les autres pages. Le workflow `wikiseo-page-optout.yml` utilise en outre le commit exact du fork WikiSEO déployé le 24 novembre 2026, indépendamment de toute branche de développement temporaire. Actualiser cette référence lors d'un changement du gitlink de production. Ces tests ne remplacent pas la comparaison sur le serveur réel.
+
+
+## Mesure du coût des hooks SEO
+
+`tests/seoBenchmark.php` réutilise le laboratoire MediaWiki 1.43 / PHP 8.4 et le fork WikiSEO épinglé. Il compare, à données identiques, deux modes : `full` (forcé uniquement pour un OutputPage de test, avec remplacement final natif) et `global-only` (bascule actuelle). Les propriétés de page historiques sont présentes dans les deux cas pour ne pas favoriser artificiellement le mode natif par une différence de données. Les deux modes produisent les mêmes métadonnées natives essentielles ; le test vérifie également que le générateur JSON-LD WikiSEO est effectivement exécuté dans le premier mode et évité dans le second.
+
+L'instrumentation mesure les hooks SEO avant affichage et l'assemblage des liens de head MediaWiki, après échauffement, en alternant l'ordre des modes. Les médianes et p95 sont exprimés en microsecondes. Ce n'est **ni une mesure HTTP, ni une mesure de la migration historique complète**, ni un test de performance SMW/ParserCache : elle isole le gain du mode `global-only` par rapport au mode complet du même fork. Les résultats sont informatifs et aucun seuil de vitesse fragile ne bloque la CI. Les assertions de comportement restent obligatoires.
+
+Le laboratoire utilise une base SQLite jetable et ne sollicite pas la ferme de production, Cloudflare ou les caches Vector/Minerva. Sur un HIT de cache HTML qui court-circuite les hooks, il n'y a pas de gain d'exécution PHP imputable à cette optimisation.
+
+Commande locale (sur une installation de test disposant de WikiSEO et des dépendances MediaWiki) :
+
+```sh
+MW_INSTALL_PATH=/chemin/mediawiki-test WD_TEST_EXTENSIONS=WikiSEO php tests/seoBenchmark.php
+```
