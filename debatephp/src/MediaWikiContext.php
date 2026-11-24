@@ -151,16 +151,13 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 	public function jsonLdData(array $data): string {
 		$started = $this->telemetry?->start();
 		try {
-			// ContentRenderer sets ParserOutput's revision timestamp only AFTER
-			// parsing. During a parser function, use the exact RevisionRecord.
-			// Parser::getRevisionTimestamp() is not suitable: it can fall back
-			// to the clock and returns a timestamp adjusted to the wiki timezone.
+			// Only the persisted revision is authoritative. ContentRenderer fills
+			// ParserOutput's timestamp after parsing, and some old extensions
+			// (e.g. SMW 6.0.1) used that field for the cache/rendering time.
+			// Do not use it or Parser::getRevisionTimestamp() as a fallback.
 			$parserOutput = $this->parser->getOutput();
-			$timestamp = method_exists($parserOutput, 'getRevisionTimestamp')
-				? $parserOutput->getRevisionTimestamp() : null;
-			if ($timestamp === null && $this->parser->getRevisionId() !== null) {
-				// A parser callback may supply a MutableRevisionRecord for unsaved
-				// content. Its timestamp is not a published revision's date.
+			$timestamp = null;
+			if ($this->parser->getRevisionId() !== null) {
 				$revision = $this->parser->getRevisionRecordObject();
 				if ($revision && $revision->getId() > 0) {
 					$timestamp = $revision->getTimestamp();
