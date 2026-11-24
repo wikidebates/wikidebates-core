@@ -34,6 +34,34 @@ class ProjectionTests(unittest.TestCase):
 		new['@graph'][1]['relatedLink'] = ['https://example.test/wiki/Related', 'https://example.test/wiki/Another']
 		compare_documents(old, new)
 
+	def test_bibliography_projection(self):
+		old, new = fixture()
+		old['@graph'][1]['citation'] = [{
+			'@type': 'Article', 'name': 'Paper', 'volumeNumber': 'IV', 'issueNumber': '2',
+			'isPartOf': {'@type': 'Periodical', 'name': 'Journal'}, 'datePublished': '23 janvier 2017',
+			'url': 'https://example.test/paper', 'author': {'@type': 'Person', 'name': 'Ada'}
+		}]
+		new['@graph'][1]['citation'] = [{
+			'@type': 'Article', 'name': 'Paper', 'isPartOf': {
+				'@type': 'PublicationIssue', 'issueNumber': '2', 'isPartOf': {
+					'@type': 'PublicationVolume', 'volumeNumber': 'IV',
+					'isPartOf': {'@type': 'Periodical', 'name': 'Journal'}
+				}
+			}, 'datePublished': '2017-01-23', 'url': 'https://example.test/paper',
+			'author': {'@type': 'Person', 'name': 'Ada'}
+		}]
+		compare_documents(old, new)
+		for key in ('url', 'datePublished', 'author'):
+			with self.subTest(key=key):
+				changed = copy.deepcopy(new)
+				del changed['@graph'][1]['citation'][0][key]
+				with self.assertRaises(ValueError):
+					compare_documents(old, changed)
+		changed = copy.deepcopy(new)
+		changed['@graph'][1]['citation'][0]['isPartOf']['issueNumber'] = '3'
+		with self.assertRaises(ValueError):
+			compare_documents(old, changed)
+
 	def test_mutations_rejected(self):
 		mutations = [
 			lambda p: p.update(name='Wrong page'),

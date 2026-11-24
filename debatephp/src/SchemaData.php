@@ -130,7 +130,7 @@ final class SchemaData {
 			return false;
 		}
 		$parts = parse_url($url);
-		return is_array($parts) && !empty($parts['host']) && !isset($parts['user'], $parts['pass']) &&
+		return is_array($parts) && !empty($parts['host']) && !isset($parts['user']) && !isset($parts['pass']) &&
 			filter_var($url, FILTER_VALIDATE_URL) !== false;
 	}
 

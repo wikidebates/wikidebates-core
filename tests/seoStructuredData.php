@@ -130,7 +130,7 @@ foreach (['fr', 'en'] as $lang) {
 				static fn($node) => ($node['@type'] ?? '') === 'Claim'))[0];
 			$ref = $owner['citation'][0];
 			same('Article', $ref['@type'], 'Article reference retained');
-			check(!isset($ref['issueNumber'], $ref['volumeNumber']), 'No issue/volume on Article');
+			check(!isset($ref['issueNumber']) && !isset($ref['volumeNumber']), 'No issue/volume on Article');
 			same('PublicationIssue', $ref['isPartOf']['@type'], 'Issue container');
 			same('2', $ref['isPartOf']['issueNumber'], 'Issue number');
 			same('PublicationVolume', $ref['isPartOf']['isPartOf']['@type'], 'Volume container');
