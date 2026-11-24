@@ -143,15 +143,6 @@ class ReferenceRenderer {
 		return $this->seoJoinList(new Table($items));
 	}
 
-	protected function getPageCreation($pv = null, $args = null) {
-		$v = (Lua::truth($v13 = $args) ? $args['creation-date'] : $v13);
-		$v = (Lua::truth($v14 = (Lua::truth($v15 = (Lua::type($v) === 'string')) ? Lua::trim($v) : $v15)) ? $v14 : '');
-		if (($v !== '')) {
-			return ($v . 'T00:00:00Z');
-		}
-		return null;
-	}
-
 	protected function renderFullSEO($args = null, $pv = null, $lang = null) {
 		$ck = $this->seoCacheKey($args, $pv, $lang);
 		if (Lua::truth($this->SEO_CACHE[$ck])) {
@@ -1561,7 +1552,6 @@ class ReferenceRenderer {
 			$suggestedAnswer = $this->wkBuildSuggestedAnswers($maps, $lang);
 			$isPartOf = $this->wkBuildIsPartOf($lang);
 			$isRelatedTo = $this->wkBuildIsRelatedTo($args);
-			$pageCreation = $this->getPageCreation($pv, $args);
 			$questionText = null;
 			if ((Lua::truth($args['expanded-topic']) && (Lua::trim($args['expanded-topic']) !== ''))) {
 				$questionText = Lua::format($this->L($lang, 'text', 'faq_q'), Lua::trim($args['expanded-topic']));
@@ -1636,10 +1626,6 @@ class ReferenceRenderer {
 			$credit = $this->seoL($lang, 'author');
 			$qaNode['creditText'] = $credit;
 			$qaNode['author'] = $this->jsonNode(['@type' => 'Organization', 'name' => $credit]);
-			if ((Lua::truth($pageCreation) && ($pageCreation !== ''))) {
-				$qaNode['datePublished'] = $pageCreation;
-				$qaNode['mainEntity']['datePublished'] = $pageCreation;
-			}
 			if ((Lua::len($isRelatedTo) > 0)) {
 				$qaNode['isRelatedTo'] = $isRelatedTo;
 			}
@@ -1816,9 +1802,6 @@ class ReferenceRenderer {
 		else {
 			Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'topic_complete_missing') . ']]'));
 			$pieces[] = $this->context->shortDescription($this->L($lang, 'text', 'shortdesc_plain'));
-		}
-		if ((!(Lua::truth($args['creation-date'])) || (Lua::trim($args['creation-date']) === ''))) {
-			Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'creation_date_missing') . ']]'));
 		}
 		$pieces[] = $this->renderArgumentMapTop($lang, $maps);
 		$pieces[] = $this->renderKeywords($args, $pv, $cats, $lang);

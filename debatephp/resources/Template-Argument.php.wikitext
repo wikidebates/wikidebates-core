@@ -18,5 +18,4 @@
   | sections = {{{rubriques|}}}
   | keywords = {{{mots-clés|}}}
   | interlanguage = {{{interlangue|}}}
-  | creation-date = {{{date-création|}}}
 }}</includeonly>

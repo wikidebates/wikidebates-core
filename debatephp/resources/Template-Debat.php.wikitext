@@ -22,7 +22,6 @@
 |rubriques
 |mots-clés
 |interlangue
-|date-création
 }}
 </noinclude><includeonly>{{#debate:render
   |topic={{{sujet|}}}
@@ -47,5 +46,4 @@
   |sections={{{rubriques|}}}
   |keywords={{{mots-clés|}}}
   |interlanguage={{{interlangue|}}}
-  |creation-date={{{date-création|}}}
 }}</includeonly>

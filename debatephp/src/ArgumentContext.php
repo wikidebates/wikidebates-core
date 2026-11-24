@@ -3,6 +3,7 @@ namespace MediaWiki\Extension\DebatePHP;
 
 interface ArgumentContext extends Context {
 	public function currentDate(): string;
+	public function publicationDate(): ?string;
 	public function autoEdit(Table $params): string;
 	public function expandQuotes(string $text): string;
 	public function smwAvailable(): bool;

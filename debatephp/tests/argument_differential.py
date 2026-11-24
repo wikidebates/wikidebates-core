@@ -117,10 +117,13 @@ mw={getCurrentFrame=function() return frame end,
 	effects['ask']=[{str(i+1):v for i,v in enumerate(q)} for q in effects['ask']]
 	return {'text':text,'effects':effects}
 
-def normalize(value):
-	if isinstance(value,dict):return {k:normalize(v) for k,v in value.items()}
-	if isinstance(value,list):return [normalize(v) for v in value]
+def normalize(value, historical=False):
+	if isinstance(value,dict):return {k:normalize(v, historical) for k,v in value.items()}
+	if isinstance(value,list):return [normalize(v, historical) for v in value]
 	if isinstance(value,str):
+		if historical:
+			# Only the retired maintenance category is removed from the old oracle.
+			value=value.replace('[[Category:Articles sans date de création]]','').replace('[[Category:Articles without creation date]]','')
 	# Query parameter order does not change link destinations (Lua pairs is unordered).
 		def canonical_url(m):
 			url=m.group(0); separator='&amp;' if '&amp;' in url else '&'
@@ -130,7 +133,13 @@ def normalize(value):
 		# Object order in Lua's JSON encoder is deliberately unspecified.
 		def schema(m):
 			raw=m.group(1).replace('&#124;','|').replace('&#61;','=')
-			return 'SCHEMA:'+json.dumps(json.loads(raw),ensure_ascii=False,sort_keys=True,separators=(',',':'))
+			graph=json.loads(raw)
+			if historical:
+				# Stored timestamps are verified in the real MediaWiki integration suite.
+				for node in graph.get('@graph', []):
+					if node.get('@type') in ('WebPage','Claim'):
+						node.pop('datePublished', None)
+			return 'SCHEMA:'+json.dumps(graph,ensure_ascii=False,sort_keys=True,separators=(',',':'))
 		return re.sub(r'\{\{#tag:htmltag\|(.*?)\|tagname=script.*?\}\}',schema,value,flags=re.S)
 	return value
 
@@ -197,15 +206,20 @@ def cases():
 
 if __name__=='__main__':
 	corpus=cases(); expected=[]
-	for c in corpus: expected.append(oracle(c))
+	for c in corpus:
+		expected.append(oracle(c))
+		# Model the same creation day as the historical fixture, explicitly as
+		# stored metadata. Missing/invalid editorial dates were treated as old.
+		day=str(c['args'].get('creation-date','')).strip()
+		c['publication_date']=(day if re.fullmatch(r'\d{4}-\d{2}-\d{2}',day) else '2025-01-01')+'T12:34:56Z'
 	proc=subprocess.run([sys.argv[1] if len(sys.argv)>1 else 'php','-n',str(ROOT/'tests/argument_context.php')],input=json.dumps(corpus),text=True,capture_output=True,check=True)
 	actual=json.loads(proc.stdout);bad=[]
 	for c,want,modes in zip(corpus,expected,actual):
 		for mode,got in zip(['reference','optimized'],modes):
-			if normalize(want)!=normalize(got):
+			if normalize(want, historical=True)!=normalize(got):
 				bad.append((c['name'],mode))
 				print(c['name'],mode)
-				print('\n'.join(list(difflib.unified_diff(json.dumps(normalize(want),ensure_ascii=False,indent=2).splitlines(),json.dumps(normalize(got),ensure_ascii=False,indent=2).splitlines()))[:25]))
+				print('\n'.join(list(difflib.unified_diff(json.dumps(normalize(want, historical=True),ensure_ascii=False,indent=2).splitlines(),json.dumps(normalize(got),ensure_ascii=False,indent=2).splitlines()))[:25]))
 				break
 		if bad:break
 	report={'cases':len(corpus),'renderer_comparisons':len(corpus)*2,'passed':not bad,'failures':bad,'scope':'Lua 5.1 versus PHP, mocked MediaWiki boundary; not a live wiki benchmark'}

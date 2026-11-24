@@ -628,15 +628,6 @@ class ArgumentReferenceRenderer {
 		return CacheKey::semantic($q);
 	}
 
-	protected function getPageCreation($pv = null, $args = null) {
-		$v = (Lua::truth($v103 = $args) ? $args['creation-date'] : $v103);
-		$v = (Lua::truth($v104 = (Lua::truth($v105 = (Lua::type($v) === 'string')) ? Lua::trim($v) : $v105)) ? $v104 : '');
-		if (($v !== '')) {
-			return ($v . 'T00:00:00Z');
-		}
-		return null;
-	}
-
 	protected function makeSMWCache() {
 		return new Table(['debatsPour' => null, 'debatsContre' => null, 'justifs' => null, 'objs' => null, 'debatsTousFinal' => null, 'debatCardsTous' => null, 'debatCardsPour' => null, 'debatCardsContre' => null, 'argCardsJustifs' => null, 'argCardsObjs' => null, 'breadcrumbChainsFinal' => null, 'parentDebatesFinal' => null]);
 	}
@@ -1279,9 +1270,9 @@ class ArgumentReferenceRenderer {
 		$orphanBanner = '';
 		$orphanBanner = (Lua::truth($v185 = $this->renderBannerByKey($pv, $lang, 'argument_orphan', $cats)) ? $v185 : '');
 		if (Lua::truth($hasInit)) {
-			$today = $this->context->currentDate();
-			$creationDate = Lua::trim(Lua::str((Lua::truth($v186 = $args['creation-date']) ? $v186 : '')));
-			if (($creationDate === $today)) {
+			// Keep the same-day initialization grace period, using the stored revision.
+			$publicationDate = $this->context->publicationDate();
+			if ($publicationDate === null || substr($publicationDate, 0, 10) === $this->context->currentDate()) {
 				return $orphanBanner;
 			}
 			Lua::insert($cats, ('[[Category:' . $PF['cat_uninitialized'] . ']]'));
@@ -2499,7 +2490,6 @@ class ArgumentReferenceRenderer {
 			$keywords = $this->wkBuildKeywords($args, $lang);
 			$isPartOf = $this->wkBuildClaimIsPartOf($lang, $cache);
 			$hasPart = $this->wkBuildHasPart($args, $maps, $lang);
-			$creationDate = $this->getPageCreation($pv, $args);
 			$citations = new Table([]);
 			$q = $this->wkBuildClaimCitationsFromQuotes((Lua::truth($v358 = $args['_quotes_wikitext']) ? $v358 : ''));
 			if (Lua::truth($q[1])) {
@@ -2520,9 +2510,6 @@ class ArgumentReferenceRenderer {
 			$pageNode['creditText'] = $credit;
 			$pageNode['author'] = $this->jsonNode(['@type' => 'Organization', 'name' => $credit]);
 			$pageNode['publisher'] = ['@id' => ($this->L($lang, 'urls', 'home') . '#organization')];
-			if (Lua::truth($creationDate)) {
-				$pageNode['datePublished'] = $creationDate;
-			}
 			$claimNode = (['@type' => 'Claim', '@id' => ($pv['pageUrl'] . '#claim'), 'url' => $pv['pageUrl'], 'name' => $pv['rawTitle'], 'inLanguage' => $lang, 'learningResourceType' => 'argument', 'educationalUse' => 'analysis', 'educationalLevel' => 'higher education', 'audience' => (['@type' => 'EducationalAudience', 'educationalRole' => 'student']), 'isPartOf' => $isPartOf, 'breadcrumb' => (['@id' => ($pv['pageUrl'] . '#breadcrumb')]), 'discussionUrl' => $this->wkBuildDiscussionUrl($pv, $lang), 'publisher' => (['@id' => ($this->L($lang, 'urls', 'home') . '#organization')])]);
 			if ((Lua::truth($args['established-name']) && (Lua::trim($args['established-name']) !== ''))) {
 				$claimNode['alternateName'] = $args['established-name'];
@@ -2532,9 +2519,6 @@ class ArgumentReferenceRenderer {
 				if (($summary !== '')) {
 					$claimNode['abstract'] = $summary;
 				}
-			}
-			if (Lua::truth($creationDate)) {
-				$claimNode['datePublished'] = $creationDate;
 			}
 			if ((Lua::len($about) > 0)) {
 				$claimNode['about'] = $about;
@@ -2904,9 +2888,6 @@ class ArgumentReferenceRenderer {
 		$pieces[] = $this->renderDebatesParentsBottom($pv, $lang, $cache, $PF);
 		if (Lua::truth($args['interlanguage'])) {
 			$pieces[] = $args['interlanguage'];
-		}
-		if ((!(Lua::truth($args['creation-date'])) || (Lua::trim($args['creation-date']) === ''))) {
-			Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'creation_date_missing') . ']]'));
 		}
 		$pieces[] = $this->renderRubriques($args, $cats, $lang, $PF);
 		if (((!(Lua::truth($hasResume)) && !(Lua::truth($hasQuotes))) && !(Lua::truth($hasRefs)))) {

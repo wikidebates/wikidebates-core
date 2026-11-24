@@ -9,7 +9,11 @@
 				"debatephp/src/MediaWikiContext.php",
 				".github/workflows/seo-creation-date.yml",
 				"tests/seoPublicationDate.php",
-				"tests/seoPublicationRenderBenchmark.php"
+				"tests/seoPublicationRenderBenchmark.php",
+				"debatephp/src/ArgumentContext.php",
+				"debatephp/src/ArgumentReferenceRenderer.php",
+				"debatephp/src/ReferenceRenderer.php",
+				"debatephp/tools/**"
 			]
 		},
 		"workflow_dispatch": {}
@@ -33,6 +37,11 @@
 			"steps": [
 				{
 					"uses": "actions/checkout@v4"
+				},
+				{
+					"name": "Verify native renderers regenerate from preserved Lua snapshots",
+					"if": "matrix.database == 'sqlite'",
+					"run": "python3 debatephp/tests/regenerate.py"
 				},
 				{
 					"uses": "shivammathur/setup-php@v2",

@@ -226,3 +226,40 @@ publicationLifecycleFlush();
 $restored = publicationLifecycleView($restore, '2018-01-02T13:14:15Z');
 same($latestOnly, $restored, 'Restoring old revision changes date without changing current revision');
 echo "OK: real delete, partial restore and earlier-history restore refresh current publication dates\n";
+
+
+// The obsolete field cannot influence rendering or the orphan grace period.
+foreach (['fr', 'en'] as $language) {
+	$title = Title::newFromText('SEO orphan publication day ' . $language);
+	$initialization = $language === 'fr' ? 'Argument pour' : 'Pro argument';
+	$category = $language === 'fr' ? 'Arguments sans paramètre d'initialisation' : 'Arguments without an initialization parameter';
+	$missingCategory = $language === 'fr' ? 'Articles sans date de création' : 'Articles without creation date';
+	$source = '{{#argument:render|lang=' . $language . '|initialization=' . $initialization .
+		'@42|creation-date=1990-01-01|summary=Native date initialization}}';
+	try {
+		\MWTimestamp::setFakeTime('20260510143725');
+		$page = $services->getWikiPageFactory()->newFromTitle($title);
+		$updater = $page->newPageUpdater($user);
+		$updater->setContent(SlotRecord::MAIN, new WikitextContent($source));
+		$updater->saveRevision(CommentStoreComment::newUnsavedComment('Orphan initialization fixture'));
+		check($updater->wasSuccessful(), 'Stored argument fixture');
+		$revision = $updater->getNewRevision();
+		publicationLifecycleFlush();
+		$render = static fn() => $services->getRevisionRenderer()->getRenderedRevision(
+			$revision, ParserOptions::newFromAnon()
+		)->getRevisionParserOutput();
+		$dayOne = $render();
+		$categories = $dayOne->getCategoryNames();
+		check(!in_array(str_replace(' ', '_', $category), $categories, true),
+			'Creation day grace period ignores false editorial date');
+		check(!in_array(str_replace(' ', '_', $missingCategory), $categories, true),
+			'No obsolete missing-date category');
+		\MWTimestamp::setFakeTime('20260511000100');
+		$dayTwo = $render();
+		check(in_array(str_replace(' ', '_', $category), $dayTwo->getCategoryNames(), true),
+			'Uninitialized category resumes after the native creation day');
+	} finally {
+		\MWTimestamp::setFakeTime(false);
+	}
+}
+echo "OK: native creation-day grace period and retired date category in both languages\n";

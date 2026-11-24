@@ -28,6 +28,7 @@ class ArgumentTestContext implements ArgumentContext {
 		$protected=str_replace('}}','} }',$protected);
 		return $this->htmlTag('script',$protected,new Table(['type'=>'application/ld+json','class'=>'navigation-not-searchable']));
 	}
+	public function publicationDate(): ?string { return $this->case['publication_date'] ?? null; }
 	public function currentDate(): string { return $this->preprocess('{{CURRENTYEAR}}-{{CURRENTMONTH}}-{{CURRENTDAY2}}'); }
 	public function expandQuotes(string $text): string { return $this->preprocess($text); }
 	public function autoEdit(Table $params): string {
