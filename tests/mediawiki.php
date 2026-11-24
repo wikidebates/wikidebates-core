@@ -263,6 +263,7 @@ rejects(static fn() => $context->htmlTag('a', 'body',
 	new \MediaWiki\Extension\DebatePHP\Table, false), 'Generic tag fallback disabled');
 
 rejects(static fn() => $parse('{{#debate:render}}', 'invalid'), 'Invalid mode rejected');
+$GLOBALS['wgDebatePHPMode'] = 'reference';
 same([], array_values(array_filter($sourceReads, static fn(string $name): bool => str_starts_with($name, 'Module:'))), 'No module source read in either mode');
 check(!class_exists(\MediaWiki\Extension\DebatePHP\LiteralData::class, false), 'Runtime never loads the offline Lua reader');
 require __DIR__ . '/mediawikiOperations.php';
