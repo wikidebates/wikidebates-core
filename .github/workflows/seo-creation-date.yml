@@ -7,7 +7,9 @@
 				"tests/mediawikiEnvironment.php",
 				"src/Seo/**",
 				"debatephp/src/MediaWikiContext.php",
-				".github/workflows/seo-creation-date.yml"
+				".github/workflows/seo-creation-date.yml",
+				"tests/seoPublicationDate.php",
+				"tests/seoPublicationRenderBenchmark.php"
 			]
 		},
 		"workflow_dispatch": {}
@@ -64,6 +66,21 @@
 						"MW_INSTALL_PATH": "${{ github.workspace }}/.mw-lab"
 					},
 					"run": "php -l tests/seoCreationDateBenchmark.php\nphp -d display_errors=1 -d error_reporting=E_ALL tests/seoCreationDateBenchmark.php"
+				},
+				{
+					"name": "Real stored revisions and ParserCache publication-date integration",
+					"env": {
+						"MW_INSTALL_PATH": "${{ github.workspace }}/.mw-lab"
+					},
+					"run": "php -d display_errors=1 -d error_reporting=E_ALL tests/seoPublicationDate.php"
+				},
+				{
+					"name": "Compare fresh stored-page renders on the same runner",
+					"if": "matrix.database == 'mariadb'",
+					"env": {
+						"MW_INSTALL_PATH": "${{ github.workspace }}/.mw-lab"
+					},
+					"run": "baseline=912857c47c73b627d09e505626bd59ba7167a028\ngit fetch --no-tags --depth=1 origin \"$baseline\"\nworktree=\"$RUNNER_TEMP/wd-seo-publication-before\"\ngit worktree add --detach \"$worktree\" \"$baseline\"\ntrap 'git worktree remove --force \"$worktree\"' EXIT\nWD_SEO_BENCHMARK_ROOT=\"$worktree\" WD_SEO_BENCHMARK_MODE=baseline php tests/seoPublicationRenderBenchmark.php\nWD_SEO_BENCHMARK_MODE=candidate php tests/seoPublicationRenderBenchmark.php"
 				},
 				{
 					"name": "Stop disposable MariaDB",
