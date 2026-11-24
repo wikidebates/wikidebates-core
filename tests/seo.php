@@ -1,0 +1,71 @@
+<?php
+
+use MediaWiki\Extension\Wikidebates\Seo\Metadata;
+
+require_once __DIR__ . '/../src/Seo/Metadata.php';
+
+$debateData = [
+	'wd_kind' => 'debate',
+	'wd_creation_date' => '2020-12-31',
+	'title' => 'Faut-il débattre ? Arguments pour et contre – Wikidébats',
+	'description' => 'Arguments pour et contre le débat : justifications et objections.',
+	'image' => 'https://fr.wikidebates.org/w/resources/assets/logo-Wikidebats-Twitter.png',
+	'image_alt' => 'Balance de la raison qui pèse les arguments pour et contre',
+	'site_name' => 'Wikidébats',
+	'locale' => 'fr_FR',
+	'twitter_site' => '@Wikidebats',
+	'author' => 'Contributeurs de Wikidébats',
+	'section' => 'Débat',
+	'keywords' => 'argument, débat',
+	'robots' => 'index,follow',
+	'googlebot' => 'index,follow',
+];
+
+$debate = Metadata::build( $debateData, 'https://fr.wikidebates.org/wiki/Test', '2026-11-23T12:30:00Z' );
+same( $debateData['title'], $debate['title'], 'Legacy debate title retained' );
+same( $debateData['description'], $debate['meta']['description'], 'Legacy debate description retained' );
+same( false, isset( $debate['open_graph']['og:type'] ), 'No unapproved change to debate Open Graph type' );
+same( $debateData['image'], $debate['open_graph']['og:image'], 'User-provided debate image retained exactly' );
+same( $debateData['image'], $debate['meta']['twitter:image'], 'Only original image reused on X' );
+same( 'image/png', $debate['open_graph']['og:image:type'], 'Image MIME type inferred without network access' );
+same( $debateData['image_alt'], $debate['meta']['twitter:image:alt'], 'New X image alt matches original' );
+same( $debateData['title'], $debate['meta']['twitter:title'], 'Dedicated X title exists' );
+same( $debateData['description'], $debate['meta']['twitter:description'], 'Dedicated X description exists' );
+same( '2020-12-31T00:00:00Z', $debate['open_graph']['article:published_time'], 'Creation-date is published_time' );
+same( '2026-11-23T12:30:00Z', $debate['open_graph']['article:modified_time'], 'Displayed revision is modified_time' );
+same( 'summary_large_image', $debate['meta']['twitter:card'], 'Existing X card retained' );
+same( 'index,follow', $debate['robots'], 'Existing robots policy retained' );
+
+$argumentData = [
+	'wd_kind' => 'argument',
+	'wd_creation_date' => '2024-01-02',
+	'wd_summary' => "'''La thèse''' [[Débat|défend]] l'idée <em>claire</em> &amp; fondée.",
+	'title' => 'Une thèse : arguments et objections – Wikidébats',
+	'description' => 'Arguments pour et contre : ancienne description.',
+	'type' => 'article',
+	'image' => $debateData['image'],
+	'image_alt' => $debateData['image_alt'],
+];
+$argument = Metadata::build( $argumentData, 'https://fr.wikidebates.org/wiki/Argument', '2026-01-05T00:00:00Z' );
+same( 'article', $argument['open_graph']['og:type'], 'No unapproved change to argument Open Graph type' );
+same( "La thèse défend l'idée claire & fondée.", $argument['meta']['description'], 'Argument summary converted to plain text' );
+same( $argument['meta']['description'], $argument['open_graph']['og:description'], 'Open Graph uses argument summary' );
+same( $argument['meta']['description'], $argument['meta']['twitter:description'], 'X uses argument summary' );
+same( $argumentData['image'], $argument['meta']['twitter:image'], 'Original user image preserved for argument' );
+same( '2024-01-02T00:00:00Z', $argument['open_graph']['article:published_time'], 'Argument creation-date preserved' );
+
+$argumentData['wd_summary'] = '';
+$fallback = Metadata::build( $argumentData, 'https://fr.wikidebates.org/wiki/Argument', null );
+same( $argumentData['description'], $fallback['meta']['description'], 'Missing summary uses exact legacy wording' );
+same( false, isset( $fallback['open_graph']['article:modified_time'] ), 'Unknown modification date not fabricated' );
+
+$argumentData['wd_creation_date'] = '2025-02-30';
+$argumentData['image'] = '';
+$withoutImage = Metadata::build( $argumentData, 'https://fr.wikidebates.org/wiki/Argument', null );
+same( false, isset( $withoutImage['open_graph']['og:image'] ), 'Never invent an image' );
+same( false, isset( $withoutImage['meta']['twitter:image'] ), 'Never add an image fallback on X' );
+same( false, isset( $withoutImage['open_graph']['article:published_time'] ), 'Invalid creation date not published' );
+same( [], Metadata::build( [ 'wd_kind' => 'other' ], 'https://fr.wikidebates.org/wiki/Other', null ),
+	'Ordinary pages are excluded from Wikidebates native SEO' );
+
+echo "OK: native debate/argument SEO, existing images, publication/modification dates and social metadata\n";
