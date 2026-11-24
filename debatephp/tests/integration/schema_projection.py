@@ -209,6 +209,16 @@ def project_reference(old):
 			node['url'] = u
 	return node
 
+def reference_equal(old, new):
+	# When resolving a nowiki marker, its original literal content no longer
+	# carries the legacy HTMLTags escaping. Other reference fields may still
+	# carry it. Check each leaf, retaining exact structure and list order.
+	if isinstance(old, dict) and isinstance(new, dict):
+		return old.keys() == new.keys() and all(reference_equal(old[k], new[k]) for k in old)
+	if isinstance(old, list) and isinstance(new, list):
+		return len(old) == len(new) and all(reference_equal(a,b) for a,b in zip(old,new))
+	return equal(old, new)
+
 def compare_references(old, new):
 	for field in ('citation', 'subjectOf'):
 		if field not in old and field not in new:
@@ -220,7 +230,7 @@ def compare_references(old, new):
 		require(len(a) == len(b), 'Lost or added selected reference: ' + field)
 		for before, after in zip(a,b):
 			projected = project_reference(before)
-			require(equal(projected, after), 'Reference normalization differs: ' + field + ' ' + repr((projected, after))[:600])
+			require(reference_equal(projected, after), 'Reference normalization differs: ' + field + ' ' + repr((projected, after))[:600])
 
 def compare_documents(legacy, native, markers=None):
 	"""Raise on unexpected differences; do not mutate either input."""

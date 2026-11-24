@@ -62,6 +62,20 @@ class ProjectionTests(unittest.TestCase):
 		with self.assertRaises(ValueError):
 			compare_documents(old, changed)
 
+	def test_resolved_literal_with_legacy_url_escaping(self):
+		old, new = fixture()
+		marker = "\x7f'\"\x60UNIQ--nowiki-00000001-QINU\x60\"'\x7f"
+		old['@graph'][1]['citation'] = [{'@type':'Book','name':'Book',
+			'description':'T ' + marker, 'url':'https://example.org?a&amp;#61;b'}]
+		new['@graph'][1]['citation'] = [{'@type':'Book','name':'Book',
+			'description':'T }}}', 'url':'https://example.org?a=b'}]
+		compare_documents(old, new, {marker:'}}}'})
+		for key in ('description', 'url'):
+			changed = copy.deepcopy(new)
+			changed['@graph'][1]['citation'][0][key] = 'Different value'
+			with self.assertRaises(ValueError):
+				compare_documents(old, changed, {marker:'}}}'})
+
 	def test_mutations_rejected(self):
 		mutations = [
 			lambda p: p.update(name='Wrong page'),
