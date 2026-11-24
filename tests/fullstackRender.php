@@ -47,7 +47,7 @@ foreach (['en', 'fr'] as $lang) {
 }
 fsFlush();
 
-function fsRender(string $title, string $source, string $mode, bool $profile = false, ?callable $parseObserver = null): array {
+function fsRender(string $title, string $source, string $mode, bool $profile = false, ?callable $parseObserver = null, ?int $seoRevision = null): array {
 	$GLOBALS['wgDebatePHPMode'] = str_ends_with($mode, 'optimized') ? 'optimized' : 'reference';
 	$parser = MediaWikiServices::getInstance()->getParserFactory()->create();
 	$events = [];
@@ -64,10 +64,11 @@ function fsRender(string $title, string $source, string $mode, bool $profile = f
 	});
 	$gcBefore = $parseObserver ? gc_status() : null;
 	$start = hrtime(true);
-	$out = $parser->parse(fsSource($source, $mode), Title::newFromText($title), $options, true, true);
+	$out = $parser->parse(fsSource($source, $mode), Title::newFromText($title), $options, true, true, $seoRevision);
 	$ms = (hrtime(true) - $start) / 1e6;
 	if ($parseObserver) { $parseObserver($gcBefore, gc_status()); }
-	check(!str_contains($out->getText(), 'scribunto-error'), 'Real Lua renderer succeeds: ' . $title);
+	check(!str_contains($out->getText(), 'scribunto-error'), 'Real Lua renderer succeeds: ' . $title . '/' . $mode
+		. (str_contains($out->getText(), 'scribunto-error') ? ' ' . substr(strip_tags($out->getText()), 0, 1200) : ''));
 	check(str_contains($out->getText(), 'application/ld+json'), 'Real renderer emits JSON-LD: ' . $title . '/' . $mode);
 	$data = $out->getExtensionData(\SMW\ParserData::DATA_ID);
 	check($data instanceof \SMW\SemanticData, 'Genuine SMW parser data: ' . $title . '/' . $mode);
@@ -86,7 +87,10 @@ function fsRender(string $title, string $source, string $mode, bool $profile = f
 		'links' => array_map(static fn($entry) => [$entry['link']->getNamespace(), $entry['link']->getDBkey(), $entry['pageid']], $out->getLinkList(ParserOutputLinkTypes::LOCAL)),
 		'externalLinks' => $out->getExternalLinks(), 'languageLinks' => $out->getLanguageLinks(),
 		'modules' => $out->getModules(), 'flags' => $out->getAllFlags(), 'expiry' => $out->getCacheExpiry(),
-		'semantic_snapshot' => fsSnapshot($data), 'variables' => $variables, 'profiles' => $events
+		'semantic_snapshot' => fsSnapshot($data), 'variables' => $variables, 'profiles' => $events,
+		...($seoRevision !== null ? [
+			'native_seo' => $out->getExtensionData(\MediaWiki\Extension\Wikidebates\Seo\Metadata::DATA_KEY)
+		] : [])
 	];
 }
 
@@ -121,13 +125,36 @@ $quote = '{{#argument:render|lang=en|quotes=Quote⟬⟬⟬Author⟬⟬⟬Article
 $cases[] = ['title' => 'WD FS repeated quotes', 'text' => $quote . $quote];
 $results = [];
 foreach ($cases as $case) {
+	$seoComparison = getenv('WD_FULLSTACK_LEGACY_HTMLTAGS') === '1';
+	$seoSameDay = $seoComparison && ($case['name'] ?? '') === 'argument init-today';
+	if ($seoSameDay) {
+		// The original fixture shares a title with many older arguments.
+		// Give only this case its own genuinely same-day stored page.
+		$case['title'] = 'WD FS same-day initialization';
+	}
 	$title = Title::newFromText($case['title']);
 	if (!$title) { throw new RuntimeException('Invalid render fixture: ' . $case['title']); }
-	if (!$title->exists()) { fsSave($case['title'], 'Stable page identity for the isolated render comparison'); fsFlush(); }
+	if (!$title->exists()) {
+		// A stable, genuine historical revision anchors the legacy and native
+		// orphan grace-period comparison; the ordinary suite is unchanged.
+		if ($seoComparison) { \MWTimestamp::setFakeTime($seoSameDay ? '20261018000000' : '20251018000000'); }
+		try { fsSave($case['title'], 'Stable page identity for the isolated render comparison'); fsFlush(); }
+		finally { if ($seoComparison) { \MWTimestamp::setFakeTime(false); } }
+	}
 	$row = ['title' => $case['title'], 'name' => $case['name'] ?? $case['title'], 'full_stack' => true, 'variants' => []];
 	$modes = getenv('WD_OPTIMIZATION_BASELINE') ? ['lua', 'reference', 'optimized', 'before-reference', 'before-optimized'] : ['lua', 'reference', 'optimized'];
+	$seoRevision = null;
+	if ($seoComparison) {
+		$record = $services->getWikiPageFactory()->newFromTitle($title)->getRevisionRecord();
+		check($record && $record->getId(), 'Stored fixture revision: ' . $row['name']);
+		$seoRevision = $record->getId();
+		$row['seo_fixture'] = [
+			'preview' => false,
+			'modified' => wfTimestamp(TS_ISO_8601, $record->getTimestamp())
+		];
+	}
 	foreach ($modes as $mode) {
-		$row['variants'][$mode] = fsRender($case['title'], $case['text'], $mode);
+		$row['variants'][$mode] = fsRender($case['title'], $case['text'], $mode, false, null, $seoRevision);
 	}
 	if (getenv('WD_OPTIMIZATION_BASELINE')) {
 		foreach (['reference', 'optimized'] as $mode) {

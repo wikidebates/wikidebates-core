@@ -101,6 +101,12 @@ function wikidebatesTestConfig($settings): void {
 			$GLOBALS['smwgQueryResultCacheType'] = 0;
 		}
 		$GLOBALS['wgScribuntoDefaultEngine'] = 'luastandalone';
+		// Test-only oracle: retained Lua snapshots still call HTML Tags.
+		// Native production renderers and default test configurations do not.
+		if (getenv('WD_FULLSTACK_LEGACY_HTMLTAGS') === '1') {
+			$GLOBALS['wgHTMLTagsAttributes'] = ['a' => ['href', 'data-href', 'class', 'title'],
+				'script' => ['class', 'type']];
+		}
 	}
 	foreach (array_filter(explode(',', getenv('WD_TEST_EXTENSIONS') ?: '')) as $extension) {
 		if (!in_array($extension, ['Scribunto', 'ParserFunctions', 'Cite', 'PageForms', 'ShortDescription', 'Variables', 'VariablesLua', 'WikiSEO', 'HTMLTags', 'SemanticMediaWiki', 'SemanticScribunto'], true)) {

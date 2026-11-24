@@ -270,7 +270,7 @@ require __DIR__ . '/mediawikiOperations.php';
 require __DIR__ . '/mediawikiRevisionVisibility.php';
 require __DIR__ . '/mediawikiParentCAS.php';
 
-// Ensure the JSON-LD graph uses the parsed revision rather than the current clock.
+// A timestamp supplied to ParserOutput alone is not proof of a stored revision.
 $parser = $services->getParserFactory()->create();
 $parser->startExternalParse(Title::newFromText('Native SEO timestamps'), ParserOptions::newFromAnon(), $parser::OT_HTML);
 $parser->getOutput()->setRevisionTimestamp('20261123094521');
@@ -285,8 +285,10 @@ $seoSchema = [
 	],
 ];
 $seoJson = $parser->getStripState()->unstripBoth($seoContext->jsonLdData($seoSchema));
-check(str_contains($seoJson, '2026-11-23T09:45:21Z'), 'Native JSON-LD receives the parsed revision timestamp');
-check(str_contains($seoJson, 'dateModified'), 'Native JSON-LD contains dateModified');
+check(!str_contains($seoJson, '2026-11-23T09:45:21Z'), 'ParserOutput-only timestamp is not published');
+check(!str_contains($seoJson, 'dateModified'), 'No stored revision means no dateModified');
+check($parser->getOutput()->getOutputFlag(\MediaWiki\Parser\ParserOutputFlags::VARY_REVISION),
+	'Unstored parse requires canonical reparse');
 
 // Reproduce the actual ContentRenderer ordering, not just an already-filled
 // ParserOutput. A real stored revision is rendered through MediaWiki's normal
@@ -351,6 +353,22 @@ foreach ($seoRevisions as [$kind, $revision]) {
 	same('2024-11-21T09:15:30Z',
 		$output->getExtensionData(\MediaWiki\Extension\Wikidebates\Seo\Metadata::DATA_KEY)['wd_published_time'] ?? null,
 		'Same native publication date in parser metadata: ' . $kind);
+}
+// Reproduce old SMW's ParserData::markParserOutput behavior: it writes
+// the current time into ParserOutput during parsing. The exact stored revision
+// must win even when the competing timestamp is already present.
+foreach ($seoRevisions as [$kind, $revision]) {
+	$parser = $services->getParserFactory()->create();
+	$parser->startExternalParse($seoTitle, ParserOptions::newFromAnon(), $parser::OT_HTML, true, $revision->getId());
+	$parser->getOutput()->setRevisionTimestamp('20261123094521');
+	$context = new \MediaWiki\Extension\DebatePHP\MediaWikiContext(
+		$parser, $parser->getPreprocessor()->newFrame(), [], true
+	);
+	$script = $parser->getStripState()->unstripBoth($context->jsonLdData($seoSchema));
+	check(str_contains($script, wfTimestamp(TS_ISO_8601, $revision->getTimestamp())), 'Stored revision wins over parser timestamp: ' . $kind);
+	check(!str_contains($script, '2026-11-23T09:45:21Z'), 'No competing render timestamp in JSON-LD: ' . $kind);
+	same($revision->getTimestamp(), $parser->getOutput()->getRevisionTimestampUsed(),
+		'Exact stored timestamp recorded for invalidation: ' . $kind);
 }
 // An ordinary parser preview must not invent a date from the clock or inherit
 // the existing page's latest revision when no revision is being rendered.
