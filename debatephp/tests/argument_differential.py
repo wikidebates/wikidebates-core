@@ -5,6 +5,8 @@ Requires Python lupa and PHP 8.1+. This is not a full MediaWiki integration test
 import json, re, sys, subprocess, hashlib, urllib.parse, pathlib, difflib, random
 from lupa.lua51 import LuaRuntime
 ROOT=pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT/'tests'/'integration'))
+from schema_projection import compare_documents
 
 def oracle(case):
 	lua=LuaRuntime(unpack_returned_tuples=True)
@@ -117,9 +119,9 @@ mw={getCurrentFrame=function() return frame end,
 	effects['ask']=[{str(i+1):v for i,v in enumerate(q)} for q in effects['ask']]
 	return {'text':text,'effects':effects}
 
-def normalize(value, historical=False):
-	if isinstance(value,dict):return {k:normalize(v, historical) for k,v in value.items()}
-	if isinstance(value,list):return [normalize(v, historical) for v in value]
+def normalize(value, historical=False, schemas=None):
+	if isinstance(value,dict):return {k:normalize(v, historical, schemas) for k,v in value.items()}
+	if isinstance(value,list):return [normalize(v, historical, schemas) for v in value]
 	if isinstance(value,str):
 		if historical:
 			# Only the retired maintenance category is removed from the old oracle.
@@ -134,11 +136,9 @@ def normalize(value, historical=False):
 		def schema(m):
 			raw=m.group(1).replace('&#124;','|').replace('&#61;','=')
 			graph=json.loads(raw)
-			if historical:
-				# Stored timestamps are verified in the real MediaWiki integration suite.
-				for node in graph.get('@graph', []):
-					if node.get('@type') in ('WebPage','Claim'):
-						node.pop('datePublished', None)
+			if schemas is not None:
+				schemas.append(graph)
+				return 'SCHEMA'
 			return 'SCHEMA:'+json.dumps(graph,ensure_ascii=False,sort_keys=True,separators=(',',':'))
 		return re.sub(r'\{\{#tag:htmltag\|(.*?)\|tagname=script.*?\}\}',schema,value,flags=re.S)
 	return value
@@ -216,9 +216,20 @@ if __name__=='__main__':
 	actual=json.loads(proc.stdout);bad=[]
 	for c,want,modes in zip(corpus,expected,actual):
 		for mode,got in zip(['reference','optimized'],modes):
-			if normalize(want, historical=True)!=normalize(got):
+			old_graphs, new_graphs = [], []
+			old_text = normalize(want, historical=True, schemas=old_graphs)
+			new_text = normalize(got, schemas=new_graphs)
+			schema_error = None
+			try:
+				if len(old_graphs) != len(new_graphs):
+					raise ValueError('JSON-LD count differs')
+				for old_graph, new_graph in zip(old_graphs, new_graphs):
+					compare_documents(old_graph, new_graph)
+			except (ValueError, KeyError, TypeError) as error:
+				schema_error = str(error)
+			if old_text != new_text or schema_error:
 				bad.append((c['name'],mode))
-				print(c['name'],mode)
+				print(c['name'],mode, schema_error or '')
 				print('\n'.join(list(difflib.unified_diff(json.dumps(normalize(want, historical=True),ensure_ascii=False,indent=2).splitlines(),json.dumps(normalize(got),ensure_ascii=False,indent=2).splitlines()))[:25]))
 				break
 		if bad:break

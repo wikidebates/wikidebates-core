@@ -1,0 +1,55 @@
+{
+	"name": "Legacy Lua SEO semantic projection",
+	"on": {
+		"pull_request": {
+			"paths": [
+				"debatephp/tests/integration/schema_projection.py",
+				"debatephp/tests/integration/test_schema_projection.py",
+				"debatephp/tests/integration/check_direct_jsonld.py",
+				"debatephp/tests/argument_differential.py",
+				".github/workflows/seo-legacy-projection.yml"
+			]
+		},
+		"workflow_dispatch": {}
+	},
+	"permissions": {
+		"contents": "read"
+	},
+	"jobs": {
+		"projection": {
+			"runs-on": "ubuntu-24.04",
+			"timeout-minutes": 10,
+			"steps": [
+				{
+					"uses": "actions/checkout@v4"
+				},
+				{
+					"uses": "shivammathur/setup-php@v2",
+					"with": {
+						"php-version": "8.4",
+						"extensions": "mbstring, intl, xml",
+						"coverage": "none"
+					}
+				},
+				{
+					"uses": "actions/setup-python@v5",
+					"with": {
+						"python-version": "3.12"
+					}
+				},
+				{
+					"name": "Projection mutation tests",
+					"run": "python3 debatephp/tests/integration/test_schema_projection.py"
+				},
+				{
+					"name": "Install Lua 5.1 Python bridge",
+					"run": "python3 -m pip install --disable-pip-version-check lupa==2.6"
+				},
+				{
+					"name": "Re-run original Argument Lua/PHP corpus",
+					"run": "python3 debatephp/tests/argument_differential.py php"
+				}
+			]
+		}
+	}
+}

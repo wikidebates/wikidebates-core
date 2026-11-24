@@ -3,6 +3,7 @@
 Only the legacy oracle's JSON string encoding is reproduced, not normalized away on both sides.
 """
 import json,re,sys,pathlib,importlib.util
+from schema_projection import compare_documents
 spec=importlib.util.spec_from_file_location('base',pathlib.Path(__file__).with_name('check_results.py'));base=importlib.util.module_from_spec(spec);spec.loader.exec_module(base)
 pattern=re.compile(r'(<script\b[^>]*\btype="application/ld\+json"[^>]*>)(.*?)(</script>)',re.S|re.I)
 def scripts(html):return [json.loads(m.group(2)) for m in pattern.finditer(html)]
@@ -12,7 +13,7 @@ def legacy_graph(x):
 	if isinstance(x,list):return [legacy_graph(v) for v in x]
 	if isinstance(x,str):return x.replace('|','&#124;').replace('=','&#61;').replace('}}','} }').replace('&','&amp;').replace('<','&lt;')
 	return x
-rows=json.loads(pathlib.Path(sys.argv[1]).read_text());bad=[];corrections=0;tested=0
+rows=json.loads(pathlib.Path(sys.argv[1]).read_text());bad=[];corrections=0;semantic_changes=0;tested=0
 for row in rows:
 	name=row.get('name',row['title']);want=row['variants']['lua']
 	if 'scribunto-error' in want['html'] or 'Lua error' in want['html']:bad.append([name,'lua','oracle error']);continue
@@ -23,7 +24,12 @@ for row in rows:
 			a,b=scripts(want['html']),scripts(got['html'])
 			if a!=b:
 				if a==legacy_graph(b):corrections+=1
-				else:dif.append('JSON-LD beyond expected legacy escaping')
+				else:
+					if len(a)!=len(b):dif.append('JSON-LD document count')
+					else:
+						for old,new in zip(a,b):
+							compare_documents(old,new)
+						semantic_changes+=1
 		except Exception as e:dif.append('Invalid JSON-LD: '+str(e))
 		for key in ['categories','properties','templates','links','externalLinks','languageLinks','modules','flags','expiry']:
 			a,b=want[key],got[key]
@@ -41,8 +47,8 @@ for row in rows:
 			if key in want or key in got:
 				if want.get(key)!=got.get(key):dif.append(key)
 		if dif:bad.append([name,mode,dif])
-report={'cases':len(rows),'comparisons':tested,'passed':not bad,'failures':bad,'jsonld_encoding_corrections':corrections,
-	'comparison':'Visible output and metadata unchanged except removal of obsolete Lua source dependencies; JSON nodes checked against Lua after reproducing its old escaping on the new raw values'}
+report={'cases':len(rows),'comparisons':tested,'passed':not bad,'failures':bad,'jsonld_encoding_corrections':corrections,'semantic_schema_changes':semantic_changes,
+	'comparison':'Visible output and metadata unchanged except removal of obsolete Lua source dependencies; JSON checked against Lua using exact legacy escaping or explicit semantic projection; other differences fail'}
 text=json.dumps(report,ensure_ascii=False,indent=2)+'\n';print(text)
 if len(sys.argv)>2:pathlib.Path(sys.argv[2]).write_text(text)
 sys.exit(bool(bad))
