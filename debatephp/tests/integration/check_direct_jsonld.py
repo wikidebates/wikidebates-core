@@ -13,6 +13,54 @@ def legacy_graph(x):
 	if isinstance(x,list):return [legacy_graph(v) for v in x]
 	if isinstance(x,str):return x.replace('|','&#124;').replace('=','&#61;').replace('}}','} }').replace('&','&amp;').replace('<','&lt;')
 	return x
+# Only these exact legacy page_props moved to the native extension payload.
+SEO_FIELDS = {'title', 'title_mode', 'title_separator', 'description', 'keywords',
+	'author', 'image', 'image_alt', 'type', 'section', 'site_name', 'twitter_site',
+	'locale', 'robots', 'googlebot'}
+RETIRED_CATEGORIES = {'Articles_sans_date_de_création', 'Articles_without_creation_date'}
+
+def compare_parser_metadata(key, a, b, row, got):
+	fixture = row.get('seo_fixture')
+	if fixture is not None:
+		if key == 'categories':
+			a = {k:v for k,v in (a or {}).items() if k not in RETIRED_CATEGORIES}
+		if key == 'properties':
+			a, b = dict(a or {}), dict(b or {})
+			payload = got.get('native_seo')
+			if not isinstance(payload, dict):
+				raise ValueError('Missing native SEO payload')
+			for field in SEO_FIELDS:
+				if field in a:
+					if field in b or payload.get(field) != a[field]:
+						raise ValueError('Native SEO value/persistence differs: ' + field)
+					del a[field]
+				elif field in payload:
+					raise ValueError('Unexpected native SEO field: ' + field)
+			if set(payload) - SEO_FIELDS - {'wd_kind','wd_published_time','wd_summary'}:
+				raise ValueError('Unexpected native SEO payload keys')
+			if 'wd_published_time' not in payload or payload.get('wd_kind') not in ('argument','debate'):
+				raise ValueError('Invalid native SEO payload')
+		if key == 'flags':
+			a = list(a)
+			required = 'vary-revision' if fixture['preview'] else 'vary-revision-timestamp'
+			if required not in a:
+				a.append(required)
+	return a,b
+
+def check_fixture_dates(row, got, documents):
+	fixture = row.get('seo_fixture')
+	if fixture is None:
+		return
+	payload = got.get('native_seo') or {}
+	for doc in documents:
+		pages = [n for n in doc['@graph'] if 'WebPage' in n.get('@type', [])]
+		if len(pages) != 1 or pages[0].get('dateModified') != fixture['modified']:
+			raise ValueError('Graph modification date does not match fixture revision')
+		if pages[0].get('datePublished') != payload.get('wd_published_time'):
+			raise ValueError('Graph publication date differs from native SEO payload')
+		if fixture['preview'] != (payload.get('wd_published_time') is None):
+			raise ValueError('Stored revision/preview publication date mismatch')
+
 rows=json.loads(pathlib.Path(sys.argv[1]).read_text());bad=[];corrections=0;semantic_changes=0;tested=0
 for row in rows:
 	name=row.get('name',row['title']);want=row['variants']['lua']
@@ -22,6 +70,7 @@ for row in rows:
 		if base.html_key(visible(want['html']))!=base.html_key(visible(got['html'])):dif.append('visible HTML')
 		try:
 			a,b=scripts(want['html']),scripts(got['html'])
+			check_fixture_dates(row, got, b)
 			if a!=b:
 				if a==legacy_graph(b):corrections+=1
 				else:
@@ -33,13 +82,20 @@ for row in rows:
 		except Exception as e:dif.append('Invalid JSON-LD: '+str(e))
 		for key in ['categories','properties','templates','links','externalLinks','languageLinks','modules','flags','expiry']:
 			a,b=want[key],got[key]
+			try:
+				a,b=compare_parser_metadata(key,a,b,row,got)
+			except (ValueError, TypeError) as e:
+				dif.append(key + ': ' + str(e));continue
 			if key=='templates':
 			# Only the obsolete source reads disappear. Keep every actual template dependency.
 				a,b=a or {},b or {}
 				a={ns:{k:v for k,v in pages.items() if not (str(ns)=='828' and k in ['Debate','Argument','WD/I18N','WD/I18N/Data'] and k not in b.get(ns,{}))} for ns,pages in a.items()}
 				a={ns:pages for ns,pages in a.items() if pages}
 			if key in ['languageLinks','modules','flags']:a,b=sorted(a),sorted(b)
-			if a!=b:dif.append(key)
+			if a!=b:
+				dif.append(key)
+				if key in ('categories','properties','flags','modules') and row.get('seo_fixture') is not None:
+					print('DIFF',name,mode,key,repr(a)[:1500],repr(b)[:1500],file=sys.stderr)
 		if 'semantic' in want:
 			from collections import Counter
 			if [Counter(x) for x in want['semantic']]!=[Counter(x) for x in got['semantic']]:dif.append('SMW values')
@@ -49,7 +105,7 @@ for row in rows:
 		if dif:bad.append([name,mode,dif])
 	# Both native modes must also match exactly, including newly added list entries.
 	left,right=row['variants']['reference'],row['variants']['optimized']
-	for key in ['html','categories','properties','templates','links','externalLinks','languageLinks','modules','flags','expiry','semantic_snapshot','variables','stored_semantics']:
+	for key in ['html','categories','properties','templates','links','externalLinks','languageLinks','modules','flags','expiry','semantic_snapshot','variables','stored_semantics','native_seo']:
 		if key=='html':
 			if base.html_key(left[key])!=base.html_key(right[key]):bad.append([name,'native parity',key])
 		elif left.get(key)!=right.get(key):bad.append([name,'native parity',key])
