@@ -119,8 +119,51 @@ foreach ($fixtures as $name => $text) {
 	check(strlen($reference[0]) > 200, 'Substantial renderer output: ' . $name);
 	check(!str_contains($reference[0], '{{#debate:') && !str_contains($reference[0], '{{#argument:'), 'Functions registered: ' . $name);
 	check(str_contains($reference[0], 'application/ld+json'), 'JSON-LD retained: ' . $name);
-	if (str_starts_with($name, 'complete debate ') || str_starts_with($name, 'complete argument ')) {
-		check(str_contains($reference[0], 'creditText'), 'Collective editorial credit retained in JSON-LD: ' . $name);
+	if (preg_match('/^complete (debate|argument) (fr|en)$/D', $name, $parts)) {
+		$kind = $parts[1];
+		$lang = $parts[2];
+		$pageType = $kind === 'debate' ? 'QAPage' : 'WebPage';
+		$credit = $lang === 'fr' ? 'Contributeurs de Wikidébats' : 'Wikidebates contributors';
+		$matches = [];
+		preg_match_all('~<script\b[^>]*\btype="application/ld\+json"[^>]*>(.*?)</script>~is', $reference[0], $matches);
+		$pageNode = null;
+		$graph = [];
+		foreach ($matches[1] as $script) {
+			$data = json_decode($script, true);
+			if (!is_array($data) || !is_array($data['@graph'] ?? null)) {
+				continue;
+			}
+			foreach ($data['@graph'] as $node) {
+				if (is_array($node) && ($node['@type'] ?? null) === $pageType) {
+					$pageNode = $node;
+					$graph = $data['@graph'];
+					break 2;
+				}
+			}
+		}
+		check(is_array($pageNode), 'Specialized page exists in JSON-LD: ' . $name);
+		same($credit, $pageNode['creditText'] ?? null, 'Localized collective credit in JSON-LD: ' . $name);
+		same(
+			['@type' => 'Organization', 'name' => $credit],
+			$pageNode['author'] ?? null,
+			'Collective Organization author on the page only: ' . $name
+		);
+		$publisherId = $pageNode['publisher']['@id'] ?? null;
+		check(is_string($publisherId) && str_ends_with($publisherId, '#organization'),
+			'Publisher is a Wikidebates Organization reference: ' . $name);
+		$publisherNodes = array_filter($graph, static fn($node): bool =>
+			is_array($node) && ($node['@type'] ?? '') === 'Organization' && ($node['@id'] ?? '') === $publisherId
+		);
+		same(1, count($publisherNodes), 'Existing publisher node is reused: ' . $name);
+		same('2026-01-01T00:00:00Z', $pageNode['datePublished'] ?? null,
+			'Creation-date is attached to the page: ' . $name);
+		if ($kind === 'argument') {
+			foreach ($graph as $node) {
+				if (($node['@type'] ?? null) === 'Claim') {
+					check(!isset($node['author']), 'Claim is not assigned a collective intellectual author: ' . $name);
+				}
+			}
+		}
 	}
 	check(!array_filter($reference[3], static fn(array $dep): bool => str_starts_with($dep[0], '828:')), 'No artificial Lua dependencies: ' . $name);
 	if (\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('ShortDescription')
