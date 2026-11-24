@@ -157,7 +157,9 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 				? $parserOutput->getRevisionTimestamp() : null;
 			$modified = is_string($timestamp) && preg_match('/^\d{14}$/D', $timestamp)
 				? wfTimestamp(TS_ISO_8601, $timestamp) : null;
-			$data = \MediaWiki\Extension\Wikidebates\Seo\Metadata::withModificationDate($data, $modified);
+			if ($modified !== null) {
+				$data = \MediaWiki\Extension\Wikidebates\Seo\Metadata::withModificationDate($data, $modified);
+			}
 			$json = FormatJson::encode(JsonData::value($data), false, FormatJson::ALL_OK);
 			if ($json === false) { throw new \RuntimeException('Unable to encode JSON-LD'); }
 		} finally { $this->telemetry?->finish('json', $started); }
