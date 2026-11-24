@@ -220,17 +220,39 @@ def reference_equal(old, new):
 	return equal(old, new)
 
 def compare_references(old, new):
-	for field in ('citation', 'subjectOf'):
-		if field not in old and field not in new:
+	# The immutable oracle selected at most one item per source kind.
+	# Its entries must remain an ordered subsequence of the exhaustive
+	# list, including VideoObject moved from subjectOf to citation.
+	# Exact counts/content of additional entries are independently tested
+	# in seoStructuredData.php against the authored multi-source fixtures.
+	require('subjectOf' not in new, 'Video bibliography is not a subjectOf relation')
+	before = old.pop('citation', [])
+	videos = old.pop('subjectOf', [])
+	if isinstance(videos, dict):
+		videos = [videos]
+	require(isinstance(before, list) and isinstance(videos, list), 'Unexpected historical citation shape')
+	after = new.pop('citation', [])
+	require(isinstance(after, list), 'Citations must be a list')
+	for ref in after:
+		require(isinstance(ref, dict) and ref.get('@type') in (
+			'CreativeWork', 'Book', ['Book','PublicationVolume'], 'Article', 'WebPage', 'VideoObject'),
+			'Unknown citation type')
+		require(isinstance(ref.get('name'), str) and bool(ref['name'].strip()), 'Empty citation name')
+		if 'url' in ref:
+			require(reference_url(ref['url']), 'Invalid citation URL')
+		if 'datePublished' in ref:
+			require(reference_date(ref['datePublished']) == ref['datePublished'], 'Invalid citation date')
+	index = 0
+	for previous in before + videos:
+		projected = project_reference(previous)
+		# A name consisting exclusively of removed parser markers is no
+		# longer an identifiable reference.
+		if not projected.get('name', '').strip():
 			continue
-		a, b = old.pop(field), new.pop(field)
-		require(isinstance(a, list) == isinstance(b, list), 'Reference representation changed: ' + field)
-		a = a if isinstance(a, list) else [a]
-		b = b if isinstance(b, list) else [b]
-		require(len(a) == len(b), 'Lost or added selected reference: ' + field)
-		for before, after in zip(a,b):
-			projected = project_reference(before)
-			require(reference_equal(projected, after), 'Reference normalization differs: ' + field + ' ' + repr((projected, after))[:600])
+		while index < len(after) and not reference_equal(projected, after[index]):
+			index += 1
+		require(index < len(after), 'Lost or changed historical citation: ' + repr(projected)[:500])
+		index += 1
 
 def compare_documents(legacy, native, markers=None):
 	"""Raise on unexpected differences; do not mutate either input."""

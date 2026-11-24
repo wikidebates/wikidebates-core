@@ -76,6 +76,29 @@ class ProjectionTests(unittest.TestCase):
 			with self.assertRaises(ValueError):
 				compare_documents(old, changed, {marker:'}}}'})
 
+	def test_exhaustive_citations_and_videos(self):
+		old, new = fixture()
+		old['@graph'][1]['subjectOf'] = {'@type':'VideoObject','name':'Film','url':'https://example.test/film'}
+		new['@graph'][1]['citation'] += [
+			{'@type':'CreativeWork','name':'Another reference'},
+			{'@type':'WebPage','name':'Website'},
+			{'@type':'VideoObject','name':'Film','url':'https://example.test/film'},
+			{'@type':'VideoObject','name':'Second film'}
+		]
+		compare_documents(old, new)
+		for mutate in (
+			lambda p: p['citation'].pop(3),
+			lambda p: p['citation'].reverse(),
+			lambda p: p['citation'][1].update(name=''),
+			lambda p: p['citation'][1].update(url='invalid'),
+			lambda p: p.update(subjectOf=p['citation'][3])
+		):
+			with self.subTest(mutation=mutate):
+				changed = copy.deepcopy(new)
+				mutate(changed['@graph'][1])
+				with self.assertRaises(ValueError):
+					compare_documents(old, changed)
+
 	def test_mutations_rejected(self):
 		mutations = [
 			lambda p: p.update(name='Wrong page'),

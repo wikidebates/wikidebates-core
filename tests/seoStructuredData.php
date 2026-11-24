@@ -187,3 +187,97 @@ $parser->getStripState()->addGeneral($marker, static function() use (&$called) {
 $context = new \MediaWiki\Extension\DebatePHP\MediaWikiContext($parser, $parser->getPreprocessor()->newFrame(), [], true);
 same('Before after', $context->resolveSeoMarkers('Before ' . $marker . ' after'), 'General marker removed');
 check(!$called, 'General marker callback never executed');
+
+/** Serialize the visible editor's record format without invoking extra parsing. */
+function seoReferenceFixture(array $records, bool $quotes = false): string {
+	$separator = $quotes ? '⟭⟭⟭' : '⟭';
+	$fieldSeparator = $quotes ? '⟬⟬⟬' : '⟬';
+	return implode($separator, array_map(static fn($record) => implode($fieldSeparator, $record), $records)) . $separator;
+}
+function seoReferenceBook(string $title, string $author = 'Ada', string $publisher = 'Publisher'): array {
+	return [$author, '', $title, '', '', '', '', $publisher, '', '2020', '', ''];
+}
+function seoReferenceOwner(string $kind, array $page, array $nodes): array {
+	return $kind === 'debate' ? $page : array_values(array_filter($nodes,
+		static fn($node) => ($node['@type'] ?? '') === 'Claim'))[0];
+}
+foreach (['fr', 'en'] as $lang) {
+	foreach (['reference', 'optimized'] as $mode) {
+		$GLOBALS['wgDebatePHPMode'] = $mode;
+		foreach (['argument', 'debate'] as $kind) {
+			$fields = '';
+			$expected = [];
+			$sides = $kind === 'debate' ? ['pro-', 'con-', ''] : [''];
+			if ($kind === 'argument') {
+				$quotes = [];
+				for ($i = 1; $i <= 5; $i++) {
+					$name = 'Quoted work ' . $i;
+					$quotes[] = ['Quoted passage ' . $i, ...seoReferenceBook($name)];
+					$expected[] = ['@type' => 'Book', 'name' => $name,
+						'author' => ['@type' => 'Person', 'name' => 'Ada'],
+						'publisher' => ['@type' => 'Organization', 'name' => 'Publisher'],
+						'datePublished' => '2020'];
+				}
+				$fields .= '|quotes=' . seoReferenceFixture($quotes, true);
+			}
+			foreach (['bibliography', 'webliography', 'videography'] as $format) {
+				foreach ($sides as $side) {
+					$records = [];
+					$prefix = $side . $format . ' ';
+					// A first record without a title is not a reference.
+					$records[] = match ($format) {
+						'bibliography' => seoReferenceBook(''),
+						'webliography' => ['', '', '', 'Ada', '', ''],
+						'videography' => ['', '', 'Ada', '']
+					};
+					for ($i = 1; $i <= 6; $i++) {
+						$name = $prefix . $i;
+						$url = 'https://example.org/' . $side . $format . '/' . $i;
+						if ($format === 'bibliography') {
+							$records[] = seoReferenceBook($name);
+							$expected[] = ['@type' => 'Book', 'name' => $name,
+								'author' => ['@type' => 'Person', 'name' => 'Ada'],
+								'publisher' => ['@type' => 'Organization', 'name' => 'Publisher'],
+								'datePublished' => '2020'];
+						} elseif ($format === 'webliography') {
+							$records[] = [$name, 'Website', $url, '', '2024', ''];
+							$expected[] = ['@type' => 'WebPage', 'name' => $name, 'url' => $url,
+								'isPartOf' => ['@type' => 'WebSite', 'name' => 'Website'], 'datePublished' => '2024'];
+						} else {
+							$records[] = [$name, $url, 'Ada', ''];
+							$expected[] = ['@type' => 'VideoObject', 'name' => $name, 'url' => $url,
+								'author' => ['@type' => 'Person', 'name' => 'Ada']];
+						}
+					}
+					$fields .= '|' . $side . $format . '=' . seoReferenceFixture($records);
+				}
+			}
+			[$page, $nodes, $output] = seoSchemaParse($kind, $lang, $fields);
+			$owner = seoReferenceOwner($kind, $page, $nodes);
+			check(!isset($owner['subjectOf']), 'Videos are citations, not claims of being about this entity');
+			same(count($expected), count($owner['citation'] ?? []), 'Every named reference represented');
+			// Do not count the JSON-LD script itself as visible source text.
+			$visible = preg_replace('~<script\b[^>]*>.*?</script>~is', '', $output->getText());
+			foreach ($expected as $index => $reference) {
+				// Object key order is not a semantic requirement.
+				$actual = $owner['citation'][$index];
+				check($reference == $actual, 'Exact documentary reference and editorial order: ' . $reference['name']);
+				check(str_contains($visible, htmlspecialchars($reference['name'], ENT_NOQUOTES)), 'Reference visible in rendered page: ' . $reference['name']);
+			}
+			[$page, $nodes] = seoSchemaParse($kind, $lang,
+				'|bibliography=' . seoReferenceFixture([seoReferenceBook('Undetermined work', 'Ada', '')]) .
+				'|webliography=' . seoReferenceFixture([['Named webpage', '', '', '', '', '']]) .
+				'|videography=' . seoReferenceFixture([['Named film', '', '', '']]));
+			$owner = seoReferenceOwner($kind, $page, $nodes);
+			same(['CreativeWork', 'WebPage', 'VideoObject'], array_column($owner['citation'], '@type'),
+				'Named works retained without guessing their publication type or URL');
+			same(['Undetermined work', 'Named webpage', 'Named film'], array_column($owner['citation'], 'name'),
+				'Identifiable references with incomplete metadata retained');
+			foreach ($owner['citation'] as $reference) {
+				check(!isset($reference['url']), 'No invented URL');
+			}
+		}
+	}
+}
+$GLOBALS['wgDebatePHPMode'] = 'reference';
+echo "OK: exhaustive bibliography, webliography, videography and quoted sources, FR/EN, both modes\n";

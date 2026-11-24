@@ -51,4 +51,5 @@ def optimize(source, argument):
 		source = source.replace('$isRelatedTo', '$relatedLinks').replace("'isRelatedTo'", "'relatedLink'")
 		source = source.replace('$qaNode', '$pageNode')
 	replace("if (Lua::truth($node)) { return new Table([1 => $node]); }", "if (Lua::truth($node)) { return new Table([1 => SchemaData::reference($node, $this->context)]); }")
-	return source
+	from exhaustiveCitations import optimize as exhaustive_citations
+	return exhaustive_citations(source, argument)
