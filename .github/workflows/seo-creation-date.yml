@@ -1,0 +1,76 @@
+{
+	"name": "SEO creation date lookup benchmark (MW 1.43)",
+	"on": {
+		"pull_request": {
+			"paths": [
+				"tests/seoCreationDateBenchmark.php",
+				"tests/mediawikiEnvironment.php",
+				"src/Seo/**",
+				"debatephp/src/MediaWikiContext.php",
+				".github/workflows/seo-creation-date.yml"
+			]
+		},
+		"workflow_dispatch": {}
+	},
+	"permissions": {
+		"contents": "read"
+	},
+	"jobs": {
+		"creation-date": {
+			"runs-on": "ubuntu-24.04",
+			"timeout-minutes": 15,
+			"strategy": {
+				"fail-fast": false,
+				"matrix": {
+					"database": [
+						"sqlite",
+						"mariadb"
+					]
+				}
+			},
+			"steps": [
+				{
+					"uses": "actions/checkout@v4"
+				},
+				{
+					"uses": "shivammathur/setup-php@v2",
+					"with": {
+						"php-version": "8.4",
+						"extensions": "mbstring, intl, xml, pdo_sqlite, sqlite3, mysqli, pdo_mysql",
+						"coverage": "none",
+						"tools": "composer"
+					}
+				},
+				{
+					"uses": "actions/checkout@v4",
+					"with": {
+						"repository": "wikimedia/mediawiki",
+						"ref": "1.43.11",
+						"path": ".mw-lab"
+					}
+				},
+				{
+					"name": "Install MediaWiki dependencies",
+					"run": "composer install --working-dir=.mw-lab --no-interaction --prefer-dist --no-progress"
+				},
+				{
+					"name": "Disposable MariaDB via private Unix socket",
+					"if": "matrix.database == 'mariadb'",
+					"run": "LAB=\"$(mktemp -d /tmp/wikidebates-lab-XXXXXXXX)\"\nchmod 777 \"$LAB\"\ncontainer=\"$(docker run -d --rm --name \"wd-seo-date-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}\" --network none -e MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1 -v \"$LAB:/run/mysqld\" mariadb:11.4 --skip-networking --socket=/run/mysqld/mariadb.sock)\"\nready=0\nfor i in $(seq 1 120); do\n\tif docker logs \"$container\" 2>&1 | grep -q 'MariaDB init process done' && [ -S \"$LAB/mariadb.sock\" ] && php -r 'mysqli_report(MYSQLI_REPORT_OFF); $m = @new mysqli(\"localhost\", \"root\", \"\", \"\", 0, $argv[1]); exit($m->connect_errno ? 1 : 0);' \"$LAB/mariadb.sock\"; then\n\t\tready=1\n\t\tbreak\n\tfi\n\tsleep 1\ndone\nif [ \"$ready\" -ne 1 ]; then docker logs \"$container\"; exit 1; fi\necho \"WD_TEST_MARIADB_SOCKET=$LAB/mariadb.sock\" >> \"$GITHUB_ENV\"\necho \"WD_TEST_DISPOSABLE_MARIADB=1\" >> \"$GITHUB_ENV\""
+				},
+				{
+					"name": "Benchmark actual first revision and indexed timestamp query",
+					"env": {
+						"MW_INSTALL_PATH": "${{ github.workspace }}/.mw-lab"
+					},
+					"run": "php -l tests/seoCreationDateBenchmark.php\nphp -d display_errors=1 -d error_reporting=E_ALL tests/seoCreationDateBenchmark.php"
+				},
+				{
+					"name": "Stop disposable MariaDB",
+					"if": "always() && matrix.database == 'mariadb'",
+					"run": "docker rm -f \"wd-seo-date-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}\" || true"
+				}
+			]
+		}
+	}
+}
