@@ -61,7 +61,10 @@ namespace MediaWiki\Extension\DebatePHP {
 	}
 }
 namespace MediaWiki\Parser {
-	final class ParserOutputFlags { const VARY_PAGE_ID = 'vary-page-id'; }
+	final class ParserOutputFlags {
+		const VARY_PAGE_ID = 'vary-page-id';
+		const VARY_REVISION = 'vary-revision';
+	}
 	final class PPFrame {
 		public int $depth = 1;
 		public int $reads = 0;
@@ -87,6 +90,9 @@ namespace MediaWiki\Parser {
 		private object $output;
 		public function __construct() { $this->variables = new \ExtVariables; $this->output = new class {
 			public array $flags = [];
+			private array $extensionData = [];
+			public function getExtensionData($key) { return $this->extensionData[$key] ?? null; }
+			public function setExtensionData($key, $value): void { $this->extensionData[$key] = $value; }
 			public function setOutputFlag($name) { $this->flags[] = $name; }
 			public function addLink($title) {}
 			public function setPageProperty($key, $value) {}
@@ -98,6 +104,7 @@ namespace MediaWiki\Parser {
 		public function getFunctionSynonyms() { return [['shortdesc'=>'MAG_SHORTDESC'],[]]; }
 		public function getTitle() { return \MediaWiki\Title\Title::newFromText('Argument de démonstration'); }
 		public function getOutput() { return $this->output; }
+		public function getRevisionId(): ?int { return null; }
 		public function fetchTemplateAndTitle($title) {
 			$name = $title->getPrefixedText(); $this->fetched[] = $name;
 			$file = match ($name) {
@@ -171,7 +178,14 @@ namespace {
 	$c3->preprocess('test'); $c3->preprocess('test'); $check($f3->child->expands === 2, 'Volatile expansion was cached');
 	foreach (['reference','optimized'] as $mode) {
 		\MediaWiki\MediaWikiServices::$mode = $mode;
-		$result = Hooks::argument(new Parser, new PPFrame, ['render', $node('summary', 'A=B|C')]);
+		$renderParser = new Parser;
+		$result = Hooks::argument($renderParser, new PPFrame, ['render', $node('summary', 'A=B|C')]);
+		$payload = $renderParser->getOutput()->getExtensionData(
+			\MediaWiki\Extension\Wikidebates\Seo\Metadata::DATA_KEY);
+		$check(is_array($payload) && array_key_exists('wd_published_time', $payload) &&
+			$payload['wd_published_time'] === null, 'No invented date for unsaved parser double');
+		$check(in_array('vary-revision', $renderParser->getOutput()->flags, true),
+			'Unsaved output must be revisited after save');
 		$check(str_contains($result[0], 'A=B|C'), 'Hook lost summary in '.$mode);
 		$check($result['noparse'] === true && $result['isHTML'] === false, 'Wrong parser return flags');
 	}

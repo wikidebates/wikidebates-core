@@ -48,6 +48,11 @@ namespace MediaWiki\Parser {
 		public function getOutput(): object {
 			return new class {
 				public function updateCacheExpiry(int $seconds): void {}
+				public function getExtensionData(string $key): ?array {
+					// The date was already computed; exercise the SEO write failure.
+					return $key === \MediaWiki\Extension\Wikidebates\Seo\PublicationDate::DATA_KEY
+						? ['timestamp' => null] : null;
+				}
 				public function setExtensionData(string $key, array $data): void { \boundaryFailure(); }
 			};
 		}
