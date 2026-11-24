@@ -3,7 +3,8 @@
 /** Genuine extension/store tests. Always creates a new SQLite wiki, never loads site settings. */
 define('WD_FULLSTACK_TEST', true);
 putenv('WD_TEST_LANGUAGE=en');
-putenv('WD_TEST_EXTENSIONS=Scribunto,ParserFunctions,Cite,SemanticMediaWiki,SemanticScribunto,Variables,VariablesLua,PageForms,ShortDescription,WikiSEO');
+putenv('WD_TEST_EXTENSIONS=Scribunto,ParserFunctions,Cite,SemanticMediaWiki,SemanticScribunto,Variables,VariablesLua,PageForms,ShortDescription,WikiSEO' .
+	(getenv('WD_FULLSTACK_LEGACY_HTMLTAGS') === '1' ? ',HTMLTags' : ''));
 require __DIR__ . '/mediawikiEnvironment.php';
 check(str_starts_with(MW_VERSION, '1.43.'), 'Full-stack tests target MediaWiki 1.43');
 

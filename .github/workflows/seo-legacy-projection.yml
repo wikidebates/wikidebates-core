@@ -1,0 +1,213 @@
+{
+	"name": "Legacy Lua SEO semantic projection",
+	"on": {
+		"pull_request": {
+			"paths": [
+				"debatephp/tests/integration/schema_projection.py",
+				"debatephp/tests/integration/test_schema_projection.py",
+				"debatephp/tests/integration/check_direct_jsonld.py",
+				"debatephp/tests/argument_differential.py",
+				".github/workflows/seo-legacy-projection.yml",
+				"tests/fullstack.php",
+				"tests/mediawikiEnvironment.php"
+			]
+		},
+		"workflow_dispatch": {}
+	},
+	"permissions": {
+		"contents": "read"
+	},
+	"jobs": {
+		"projection": {
+			"runs-on": "ubuntu-24.04",
+			"timeout-minutes": 10,
+			"steps": [
+				{
+					"uses": "actions/checkout@v4"
+				},
+				{
+					"uses": "shivammathur/setup-php@v2",
+					"with": {
+						"php-version": "8.4",
+						"extensions": "mbstring, intl, xml",
+						"coverage": "none"
+					}
+				},
+				{
+					"uses": "actions/setup-python@v5",
+					"with": {
+						"python-version": "3.12"
+					}
+				},
+				{
+					"name": "Projection mutation tests",
+					"run": "python3 debatephp/tests/integration/test_schema_projection.py"
+				},
+				{
+					"name": "Install Lua 5.1 Python bridge",
+					"run": "python3 -m pip install --disable-pip-version-check lupa==2.6"
+				},
+				{
+					"name": "Re-run original Argument Lua/PHP corpus",
+					"run": "python3 debatephp/tests/argument_differential.py php"
+				}
+			]
+		},
+		"fullstack": {
+			"runs-on": "ubuntu-24.04",
+			"timeout-minutes": 30,
+			"steps": [
+				{
+					"uses": "actions/checkout@v4"
+				},
+				{
+					"uses": "shivammathur/setup-php@v2",
+					"with": {
+						"php-version": "8.4",
+						"extensions": "mbstring, intl, xml, pdo_sqlite, sqlite3, curl",
+						"coverage": "none",
+						"tools": "composer"
+					}
+				},
+				{
+					"uses": "actions/checkout@v4",
+					"name": "MediaWiki 1.43.12",
+					"with": {
+						"repository": "wikimedia/mediawiki",
+						"ref": "1.43.12",
+						"path": ".seo-lab/mediawiki"
+					}
+				},
+				{
+					"uses": "actions/checkout@v4",
+					"name": "Pinned Scribunto",
+					"with": {
+						"repository": "wikimedia/mediawiki-extensions-Scribunto",
+						"ref": "0d1951dafab4b3dc7004f37ba420565b8fd3c871",
+						"path": ".seo-lab/mediawiki/extensions/Scribunto"
+					}
+				},
+				{
+					"uses": "actions/checkout@v4",
+					"name": "Pinned ParserFunctions",
+					"with": {
+						"repository": "wikimedia/mediawiki-extensions-ParserFunctions",
+						"ref": "f1a2626836e3b4448e5ceeb4eca20880e6357b87",
+						"path": ".seo-lab/mediawiki/extensions/ParserFunctions"
+					}
+				},
+				{
+					"uses": "actions/checkout@v4",
+					"name": "Pinned Cite",
+					"with": {
+						"repository": "wikimedia/mediawiki-extensions-Cite",
+						"ref": "77ddf98f9ea40e8baf57660ff5ae760831f6700a",
+						"path": ".seo-lab/mediawiki/extensions/Cite"
+					}
+				},
+				{
+					"uses": "actions/checkout@v4",
+					"name": "Pinned SemanticMediaWiki",
+					"with": {
+						"repository": "SemanticMediaWiki/SemanticMediaWiki",
+						"ref": "448a112ac897ff6a4b615cf0703cf60ed946907f",
+						"path": ".seo-lab/mediawiki/extensions/SemanticMediaWiki"
+					}
+				},
+				{
+					"uses": "actions/checkout@v4",
+					"name": "Pinned SemanticScribunto",
+					"with": {
+						"repository": "SemanticMediaWiki/SemanticScribunto",
+						"ref": "af2e61df59f4dca2384636345d182e2897067189",
+						"path": ".seo-lab/mediawiki/extensions/SemanticScribunto"
+					}
+				},
+				{
+					"uses": "actions/checkout@v4",
+					"name": "Pinned Variables",
+					"with": {
+						"repository": "wikimedia/mediawiki-extensions-Variables",
+						"ref": "12ad832a68e1a002c821f5d1c127b04ac047181e",
+						"path": ".seo-lab/mediawiki/extensions/Variables"
+					}
+				},
+				{
+					"uses": "actions/checkout@v4",
+					"name": "Pinned VariablesLua",
+					"with": {
+						"repository": "Liquipedia/VariablesLua",
+						"ref": "a56a46b0f1c655bc0739aa198f900c26e97be631",
+						"path": ".seo-lab/mediawiki/extensions/VariablesLua"
+					}
+				},
+				{
+					"uses": "actions/checkout@v4",
+					"name": "Pinned PageForms",
+					"with": {
+						"repository": "wikimedia/mediawiki-extensions-PageForms",
+						"ref": "619e233c9ec66a69dfc2c8d50d8d1ce4c6e84484",
+						"path": ".seo-lab/mediawiki/extensions/PageForms"
+					}
+				},
+				{
+					"uses": "actions/checkout@v4",
+					"name": "Pinned ShortDescription",
+					"with": {
+						"repository": "StarCitizenTools/mediawiki-extensions-ShortDescription",
+						"ref": "683dde18ac00fcfebde0fbfb59fe1552c171386c",
+						"path": ".seo-lab/mediawiki/extensions/ShortDescription"
+					}
+				},
+				{
+					"uses": "actions/checkout@v4",
+					"name": "Pinned WikiSEO",
+					"with": {
+						"repository": "wikidebates/WikiSEO",
+						"ref": "ca976844f6a8c038080684cf566aaaa4093cef9c",
+						"path": ".seo-lab/mediawiki/extensions/WikiSEO"
+					}
+				},
+				{
+					"uses": "actions/checkout@v4",
+					"name": "Pinned HTMLTags",
+					"with": {
+						"repository": "wikimedia/mediawiki-extensions-HTMLTags",
+						"ref": "2485ad9661c28a0dfa0f36836dc91a66793d6c94",
+						"path": ".seo-lab/mediawiki/extensions/HTMLTags"
+					}
+				},
+				{
+					"name": "Install the historical locked SMW dependencies in the disposable laboratory",
+					"run": "composer install --working-dir=.seo-lab/mediawiki --no-interaction --prefer-dist --no-progress\nmkdir -p .seo-lab/dependencies .seo-lab/results\ncp tests/fullstack-dependencies/composer.json tests/fullstack-dependencies/composer.lock .seo-lab/dependencies/\ncomposer --working-dir=.seo-lab/dependencies install --no-dev --no-interaction --no-plugins --no-scripts --prefer-dist --no-progress"
+				},
+				{
+					"name": "Render the complete corpus against actual MediaWiki, Lua and SMW",
+					"env": {
+						"MW_INSTALL_PATH": "${{ github.workspace }}/.seo-lab/mediawiki",
+						"WD_FULLSTACK_AUTOLOAD": "${{ github.workspace }}/.seo-lab/dependencies/vendor/autoload.php",
+						"WD_FULLSTACK_LEGACY_HTMLTAGS": "1",
+						"WD_FULLSTACK_OUTPUT": "${{ github.workspace }}/.seo-lab/results/summary.json",
+						"WD_FULLSTACK_RENDER_OUTPUT": "${{ github.workspace }}/.seo-lab/results/renders.json"
+					},
+					"run": "php -d memory_limit=768M tests/fullstack.php"
+				},
+				{
+					"name": "Compare complete native and historical renders",
+					"run": "python3 debatephp/tests/integration/check_direct_jsonld.py .seo-lab/results/renders.json .seo-lab/results/comparison.json"
+				},
+				{
+					"name": "Retain isolated diagnostics even on comparison failure",
+					"uses": "actions/upload-artifact@v4",
+					"if": "always()",
+					"with": {
+						"name": "seo-legacy-fullstack",
+						"path": ".seo-lab/results/*.json",
+						"if-no-files-found": "ignore",
+						"include-hidden-files": true
+					}
+				}
+			]
+		}
+	}
+}
