@@ -23,6 +23,10 @@ foreach ($files as $path => $data) {
 }
 foreach ([false, true] as $memoize) {
 	$messages = I18n::bundled($memoize);
+	foreach (['Debate', 'Argument'] as $kind) {
+		same('https://en.wikidebates.org/w/resources/assets/logo-wikidebates-twitter.png',
+			$messages->message($kind . '.seo', 'en', 'image'), 'Exact accessible EN social image');
+	}
 	same('Modifier', $messages->message('Common.labels', 'fr-ca', 'edit_label'), 'French regional rendering language');
 	same('Pro argument', $messages->message('Argument.props', 'en', 'arg_pro'), 'Stable technical property name');
 	same('Modifier', $messages->message('Argument.text', 'fr', 'edit_label'), 'Common message alias');
@@ -47,6 +51,9 @@ try {
 	$logic = file_get_contents($root . '/debatephp/resources/WD-I18N.reference.lua');
 	$candidate = I18nCompiler::prepare($source, $logic);
 	I18nCatalogImporter::write($temp, $candidate['compiled']);
+	$english = json_decode(file_get_contents($temp . '/i18n/en.json'), true, 512, JSON_THROW_ON_ERROR);
+	same('https://en.wikidebates.org/w/resources/assets/logo-wikidebates-twitter.png', $english['wikidebates-debate-seo-image'],
+		'Historical import cannot restore the broken image URL');
 	$updated = json_decode(file_get_contents($temp . '/i18n/fr.json'), true, 512, JSON_THROW_ON_ERROR);
 	same('Modifier importé', $updated['wikidebates-common-labels-edit-label'], 'Explicit import updates the canonical JSON');
 	same(0640, fileperms($temp . '/i18n/fr.json') & 0777, 'Atomic JSON import preserves file permissions');

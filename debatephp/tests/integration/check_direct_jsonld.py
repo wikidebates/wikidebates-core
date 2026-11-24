@@ -36,6 +36,8 @@ def compare_parser_metadata(key, a, b, row, got):
 			for field in SEO_FIELDS:
 				if field in a:
 					expected = a[field]
+					if field == 'image' and expected == 'https://en.wikidebates.org/w/resources/assets/logo-Wikidebates-Twitter.png':
+						expected = 'https://en.wikidebates.org/w/resources/assets/logo-wikidebates-twitter.png'
 					if isinstance(expected, str) and MARKER.search(expected):
 						if field in {'title','description','image_alt'}:
 							if field not in plain_fields:
