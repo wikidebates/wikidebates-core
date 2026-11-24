@@ -9,7 +9,7 @@ use MediaWiki\Parser\PPFrame;
 use MediaWiki\Title\Title;
 
 /** MediaWiki 1.43 legacy parser boundary. No recursive parse/reset of the current Parser. */
-final class MediaWikiContext implements ArgumentContext, SemanticProfilingContext, PreparationProfilingContext, NativeSemanticContext, NativeJsonContext {
+final class MediaWikiContext implements ArgumentContext, SemanticProfilingContext, PreparationProfilingContext, NativeSemanticContext, NativeJsonContext, SeoTextContext {
 	private Parser $parser;
 	private PPFrame $caller;
 	private PPFrame $module;
@@ -148,6 +148,21 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 			return $this->insertJson($json);
 		} finally { $this->telemetry?->finish('native_jsonld', $started); }
 	}
+	/** Resolve literal nowiki content but never run general extension-tag callbacks. */
+	public function resolveSeoMarkers(string $text): string {
+		if (!str_contains($text, Parser::MARKER_PREFIX)) {
+			return $text;
+		}
+		$strip = $this->parser->getStripState();
+		// Decode only recovered nowiki contents, not unrelated entities.
+		$text = $strip->replaceNoWikis($text, static function($value) use ($strip): string {
+			return html_entity_decode($strip->killMarkers($strip->unstripNoWiki($value)),
+				ENT_QUOTES | ENT_HTML5, 'UTF-8');
+		});
+		$text = $strip->killMarkers($text);
+		return trim(preg_replace('/\s+/u', ' ', $text) ?? $text);
+	}
+
 	public function jsonLdData(array $data): string {
 		$started = $this->telemetry?->start();
 		try {
@@ -188,7 +203,7 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 			if (is_array($payload)) {
 				$data = \MediaWiki\Extension\Wikidebates\Seo\Metadata::withDescription($data, $payload);
 			}
-			$json = FormatJson::encode(JsonData::value($data), false, FormatJson::ALL_OK);
+			$json = FormatJson::encode(JsonData::value($data, $this), false, FormatJson::ALL_OK);
 			if ($json === false) { throw new \RuntimeException('Unable to encode JSON-LD'); }
 		} finally { $this->telemetry?->finish('json', $started); }
 		$started = $this->telemetry?->start();
@@ -276,6 +291,25 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 			$values['wd_published_time'] = $this->publicationDate();
 			if ($this->argumentMode) {
 				$values['wd_summary'] = (string)( $args['summary'] ?? '' );
+			}
+
+			// StripState is only available at parse time. Persist clean values,
+			// not parser-local tokens. Mark already-plain fields so literal
+			// nowiki text is not interpreted as wiki syntax a second time.
+			$plainFields = [];
+			foreach ($values as $key => $value) {
+				if (!is_string($value) || !str_contains($value, Parser::MARKER_PREFIX)) {
+					continue;
+				}
+				if (in_array($key, ['title', 'description', 'image_alt', 'wd_summary'], true)) {
+					$values[$key] = NativeText::seoPlainText($value, $this);
+					$plainFields[] = $key;
+				} else {
+					$values[$key] = $this->resolveSeoMarkers($value);
+				}
+			}
+			if ($plainFields !== []) {
+				$values['wd_plain_fields'] = $plainFields;
 			}
 
 			// ParserCache carries these values into the OutputPage. No WikiSEO

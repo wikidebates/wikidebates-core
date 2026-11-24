@@ -71,7 +71,7 @@ final class Metadata {
 		// Without WikiSEO this is the sole full build.
 		$values = $hasWikiSEO
 			? [
-				'title' => NativeText::seoPlainText( (string)( $data['title'] ?? '' ) ),
+				'title' => self::plainText( $data, 'title' ),
 				'robots' => (string)( $data['robots'] ?? '' ),
 			]
 			: self::buildForPage( $out, $data );
@@ -129,7 +129,7 @@ final class Metadata {
 		if ( $data === [] ) {
 			return;
 		}
-		$out->setHTMLTitle( NativeText::seoPlainText( (string)( $data['title'] ?? '' ) ) );
+		$out->setHTMLTitle( self::plainText( $data, 'title' ) );
 		// Legacy page_props from an old ParserCache must not override a
 		// noindex policy that MediaWiki has already established.
 		unset( $metadata['robots'] );
@@ -246,7 +246,7 @@ final class Metadata {
 			return [];
 		}
 
-		$title = NativeText::seoPlainText( (string)( $data['title'] ?? '' ) );
+		$title = self::plainText( $data, 'title' );
 		$description = self::description( $data );
 
 		$meta = [];
@@ -272,7 +272,7 @@ final class Metadata {
 		if ( $image !== '' ) {
 			self::put( $openGraph, 'og:image', $image );
 			self::put( $meta, 'twitter:image', $image );
-			$alt = NativeText::seoPlainText( (string)( $data['image_alt'] ?? '' ) );
+			$alt = self::plainText( $data, 'image_alt' );
 			self::put( $openGraph, 'og:image:alt', $alt );
 			self::put( $meta, 'twitter:image:alt', $alt );
 			if ( str_starts_with( $image, 'https://' ) ) {
@@ -325,15 +325,21 @@ final class Metadata {
 		];
 	}
 
+	private static function plainText( array $data, string $field ): string {
+		$value = (string)( $data[$field] ?? '' );
+		return in_array( $field, (array)( $data['wd_plain_fields'] ?? [] ), true )
+			? $value : NativeText::seoPlainText( $value );
+	}
+
 	/** Use exactly the same description for head tags and structured data. */
 	public static function description( array $data ): string {
 		if ( ( $data['wd_kind'] ?? '' ) === 'argument' ) {
-			$summary = NativeText::seoPlainText( (string)( $data['wd_summary'] ?? '' ) );
+			$summary = self::plainText( $data, 'wd_summary' );
 			if ( $summary !== '' ) {
 				return $summary;
 			}
 		}
-		return NativeText::seoPlainText( (string)( $data['description'] ?? '' ) );
+		return self::plainText( $data, 'description' );
 	}
 
 	private static function isPageNode( mixed $node ): bool {

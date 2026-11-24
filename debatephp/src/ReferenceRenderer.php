@@ -65,7 +65,7 @@ class ReferenceRenderer {
 	protected function wkBuildSingleNodeFromNativeItems(array $items, callable $builder): Table {
 		foreach ($items as $item) {
 			$node = $builder($item);
-			if (Lua::truth($node)) { return new Table([1 => SchemaData::reference($node)]); }
+			if (Lua::truth($node)) { return new Table([1 => SchemaData::reference($node, $this->context)]); }
 		}
 		return new Table;
 	}
@@ -1560,11 +1560,11 @@ class ReferenceRenderer {
 					'@type' => 'Question',
 					'@id' => $pv['pageUrl'] . '#question',
 					'name' => $pv['rawTitle'],
-					'text' => NativeText::seoPlainText($questionText) ?: $pv['rawTitle']
+					'text' => NativeText::seoPlainText($questionText, $this->context) ?: $pv['rawTitle']
 				]
 			] + SchemaData::education($lang, 'debate');
 			$parts = SchemaData::sections($maps, ['pro' => 'pro', 'con' => 'con'],
-				$pv['pageUrl'], $lang, fn(string $title): string => $this->wkFullUrl($title));
+				$pv['pageUrl'], $lang, fn(string $title): string => $this->wkFullUrl($title), $this->context);
 			if ($parts !== []) {
 				$pageNode['hasPart'] = $parts;
 			}

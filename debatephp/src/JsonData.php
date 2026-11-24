@@ -3,12 +3,12 @@ namespace MediaWiki\Extension\DebatePHP;
 
 /** Explicit internal tree conversion; TextEscaper::jsonValue's external array contract is unchanged. */
 final class JsonData {
-	public static function value($value) {
+	public static function value($value, ?SeoTextContext $context = null) {
 		if ($value instanceof Table) { $value = $value->values; }
-		if (!is_array($value)) { return $value; }
+		if (!is_array($value)) { return is_string($value) && $context !== null ? $context->resolveSeoMarkers($value) : $value; }
 		$out = []; $sequence = true; $zeroKeys = true; $next = 1;
 		foreach ($value as $key => $item) {
-			$out[$key] = self::value($item);
+			$out[$key] = self::value($item, $context);
 			$sequence = $sequence && $key === $next++;
 			$zeroKeys = $zeroKeys && is_string($key) && (float)$key === 0.0;
 		}

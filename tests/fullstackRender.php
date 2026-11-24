@@ -47,6 +47,28 @@ foreach (['en', 'fr'] as $lang) {
 }
 fsFlush();
 
+/** Export only the old oracle's actual marker contents, not native results. */
+function fsSeoMarkerMap(\MediaWiki\Parser\Parser $parser, array $values): array {
+	$map = [];
+	$strip = $parser->getStripState();
+	$pattern = '/' . preg_quote($parser::MARKER_PREFIX, '/') . '[^\x7f<>&\'"]+' .
+		preg_quote($parser::MARKER_SUFFIX, '/') . '/';
+	$visit = static function($value) use (&$visit, &$map, $strip, $pattern): void {
+		if (is_array($value)) {
+			foreach ($value as $part) { $visit($part); }
+		} elseif (is_string($value) && preg_match_all($pattern, $value, $matches)) {
+			foreach ($matches[0] as $marker) {
+				if (!array_key_exists($marker, $map)) {
+					$map[$marker] = html_entity_decode($strip->killMarkers($strip->unstripNoWiki($marker)),
+						ENT_QUOTES | ENT_HTML5, 'UTF-8');
+				}
+			}
+		}
+	};
+	$visit($values);
+	return $map;
+}
+
 function fsRender(string $title, string $source, string $mode, bool $profile = false, ?callable $parseObserver = null, ?int $seoRevision = null): array {
 	$GLOBALS['wgDebatePHPMode'] = str_ends_with($mode, 'optimized') ? 'optimized' : 'reference';
 	$parser = MediaWikiServices::getInstance()->getParserFactory()->create();
@@ -81,7 +103,14 @@ function fsRender(string $title, string $source, string $mode, bool $profile = f
 	foreach (['MAX', 'AUTHORS', 'ARTICLES', 'WORKS', 'PUBLISHERS', 'PLACES'] as $key) {
 		$variables[$key] = $context->variableGet('WD_QUOTES_' . $key);
 	}
+	$markerMap = [];
+	if ($seoRevision !== null && $mode === 'lua') {
+		preg_match_all('~<script\b[^>]*\btype="application/ld\+json"[^>]*>(.*?)</script>~is', $out->getText(), $matches);
+		$graphs = array_map(static fn($json) => json_decode($json, true, 512, JSON_THROW_ON_ERROR), $matches[1]);
+		$markerMap = fsSeoMarkerMap($parser, [$graphs, $out->getPageProperties()]);
+	}
 	return [
+		'seo_marker_map' => $markerMap,
 		'milliseconds' => $ms, 'html' => $out->getText(), 'categories' => $out->getCategoryMap(),
 		'properties' => $out->getPageProperties(), 'templates' => $templates,
 		'links' => array_map(static fn($entry) => [$entry['link']->getNamespace(), $entry['link']->getDBkey(), $entry['pageid']], $out->getLinkList(ParserOutputLinkTypes::LOCAL)),

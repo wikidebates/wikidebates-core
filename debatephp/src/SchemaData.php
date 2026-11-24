@@ -41,7 +41,10 @@ final class SchemaData {
 	 * Normalize only a selected bibliographic reference, not the enclosing page.
 	 * Preserve the old selection and visible reference; never fetch a remote URL.
 	 */
-	public static function reference(Table|array $node): Table|array {
+	public static function reference(Table|array $node, ?Context $context = null): Table|array {
+		if ($context instanceof SeoTextContext) {
+			$node = self::resolveMarkerTree($node, $context);
+		}
 		$type = $node['@type'];
 		$volume = $node['volumeNumber'] ?? '';
 		$number = $node['issueNumber'] ?? '';
@@ -136,6 +139,20 @@ final class SchemaData {
 			filter_var($url, FILTER_VALIDATE_URL) !== false;
 	}
 
+	/** Copy only the selected reference; leave original renderer data intact. */
+	private static function resolveMarkerTree(mixed $value, SeoTextContext $context): mixed {
+		if (is_string($value)) {
+			return $context->resolveSeoMarkers($value);
+		}
+		if ($value instanceof Table) {
+			return new Table(array_map(static fn($item) => self::resolveMarkerTree($item, $context), $value->values));
+		}
+		if (is_array($value)) {
+			return array_map(static fn($item) => self::resolveMarkerTree($item, $context), $value);
+		}
+		return $value;
+	}
+
 	private static function pageUrl(string $url): string {
 		$url = explode('#', $url, 2)[0];
 		return preg_match('~^https?://[^/\s]+(?:/|$)~i', $url) ? $url : '';
@@ -147,7 +164,7 @@ final class SchemaData {
 	 * the referenced Claim, which has its own canonical name.
 	 */
 	public static function sections(
-		Table $maps, array $sides, string $pageUrl, string $lang, callable $urlForTitle
+		Table $maps, array $sides, string $pageUrl, string $lang, callable $urlForTitle, ?Context $context = null
 	): array {
 		$parts = [];
 		foreach ($sides as $side => $messageKey) {
@@ -165,7 +182,7 @@ final class SchemaData {
 				if ($url === '') {
 					continue;
 				}
-				$label = NativeText::seoPlainText((string)($item['title'] ?? ''));
+				$label = NativeText::seoPlainText((string)($item['title'] ?? ''), $context);
 				$position = count($elements) + 1;
 				$elements[$position] = [
 					'@type' => 'ListItem',
@@ -195,7 +212,7 @@ final class SchemaData {
 	}
 
 	public static function argumentParts(
-		Table $args, Table $maps, string $pageUrl, string $lang, callable $urlForTitle
+		Table $args, Table $maps, string $pageUrl, string $lang, callable $urlForTitle, ?Context $context = null
 	): array {
 		$dedicated = trim((string)($args['dedicated-debate'] ?? ''));
 		if ($dedicated !== '') {
@@ -205,6 +222,6 @@ final class SchemaData {
 			return $url === '' ? [] : [1 => ['@id' => $url . '#qa']];
 		}
 		return self::sections($maps, ['justif' => 'justifications', 'obj' => 'objections'],
-			$pageUrl, $lang, $urlForTitle);
+			$pageUrl, $lang, $urlForTitle, $context);
 	}
 }

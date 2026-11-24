@@ -131,3 +131,14 @@ same('2024-01-02T14:37:25Z', $resource['@graph'][1]['datePublished'], 'Multi-typ
 same('2026-11-23T12:30:00Z', $resource['@graph'][1]['dateModified'], 'Multi-type page modification date');
 same(Metadata::build($argumentData, 'https://example.org/resource', null)['meta']['description'],
 	$resource['@graph'][1]['description'], 'JSON-LD and HTML use identical native description');
+
+
+// Resolved nowiki syntax must not be interpreted a second time.
+$literalData = [
+	'wd_kind' => 'argument', 'title' => '[[A|B]] <b>',
+	'wd_summary' => 'Literal [[A|B]] <b> &amp;', 'description' => 'Fallback',
+	'wd_plain_fields' => ['title', 'wd_summary']
+];
+$literal = Metadata::build($literalData, 'https://example.org/page', null);
+same('[[A|B]] <b>', $literal['title'], 'Resolved literal title retained');
+same('Literal [[A|B]] <b> &amp;', $literal['meta']['description'], 'No repeated interpretation of plain summary');
