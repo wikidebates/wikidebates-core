@@ -65,11 +65,13 @@ if (!\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('WikiSEO
 foreach (array_keys((array)$extensionManifest->ResourceModules) as $module) {
 	check($services->getResourceLoader()->getModule($module) !== null, 'ResourceLoader module retained: ' . $module);
 }
+$legacySeoPagePropHooks = 0;
 if (\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('WikiSEO')) {
-	$services->getHookContainer()->register('WikiSEOLuaPreAddPageProps', static function(array &$params): bool {
-		$params['wikidebates-test'] = 'seen';
-		return true;
-	});
+	$services->getHookContainer()->register('WikiSEOLuaPreAddPageProps',
+		static function(array &$params) use (&$legacySeoPagePropHooks): bool {
+			$legacySeoPagePropHooks++;
+			return true;
+		});
 }
 $sourceReads = [];
 $sources = [
@@ -171,7 +173,9 @@ foreach ($fixtures as $name => $text) {
 		check(isset($reference[1]['shortdesc']), 'ShortDescription callback retained: ' . $name);
 	}
 	if (\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('WikiSEO')) {
-		same('seen', $reference[1]['wikidebates-test'] ?? null, 'WikiSEO validation, hook and page properties: ' . $name);
+		foreach (['wikidebates-test', 'title', 'keywords', 'description', 'image', 'author'] as $legacyKey) {
+			check(!isset($reference[1][$legacyKey]), 'No WikiSEO page property for native page: ' . $legacyKey . ' / ' . $name);
+		}
 	}
 	$count++;
 }
@@ -185,6 +189,10 @@ foreach (file($observationLog, FILE_IGNORE_NEW_LINES) as $line) {
 	$profileEvents[] = $event;
 }
 same(2 * $count, count($profileEvents), 'Each observed invocation emits one profile');
+if (\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('WikiSEO')) {
+	same(0, $legacySeoPagePropHooks, 'Native SEO never invokes the WikiSEO parser page-property hook');
+}
+
 $csvHits = 0; $csvBypassed = 0;
 foreach ($profileEvents as $event) {
 	check(isset($event['preparation']), 'Real hooks expose pure preprocessing observations');
