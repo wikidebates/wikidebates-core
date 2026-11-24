@@ -152,7 +152,9 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 		try {
 			// Use the parsed revision's timestamp, which survives ParserCache.
 			// Never substitute the present time if a revision is unavailable.
-			$timestamp = $this->parser->getOutput()->getRevisionTimestamp();
+			$parserOutput = $this->parser->getOutput();
+			$timestamp = method_exists($parserOutput, 'getRevisionTimestamp')
+				? $parserOutput->getRevisionTimestamp() : null;
 			$modified = is_string($timestamp) && preg_match('/^\d{14}$/D', $timestamp)
 				? wfTimestamp(TS_ISO_8601, $timestamp) : null;
 			$data = \MediaWiki\Extension\Wikidebates\Seo\Metadata::withModificationDate($data, $modified);
