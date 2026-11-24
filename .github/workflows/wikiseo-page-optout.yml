@@ -6,6 +6,7 @@ on:
       - 'src/Seo/Metadata.php'
       - 'extension.json'
       - 'tests/seoCoexistence.php'
+      - 'tests/seoCacheInvalidation.php'
       - 'docs/native-seo-migration.md'
       - '.github/workflows/wikiseo-page-optout.yml'
   workflow_dispatch:
@@ -46,4 +47,5 @@ jobs:
           WD_TEST_EXTENSIONS: WikiSEO
         run: |
           php -d display_errors=1 -d error_reporting=E_ALL tests/seoCoexistence.php
+          php -d display_errors=1 -d error_reporting=E_ALL tests/seoCacheInvalidation.php
           php -d display_errors=1 -d error_reporting=E_ALL tests/mediawiki.php
