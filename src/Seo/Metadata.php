@@ -2,6 +2,7 @@
 
 namespace MediaWiki\Extension\Wikidebates\Seo;
 
+use MediaWiki\Context\RequestContext;
 use MediaWiki\Html\Html;
 use MediaWiki\Output\OutputPage;
 use MediaWiki\Parser\ParserOutput;
@@ -12,7 +13,9 @@ use MediaWiki\Registration\ExtensionRegistry;
  *
  * Parser extension data travels with ParserCache; metadata is assembled when
  * the actual page is displayed, using the displayed revision's timestamp.
- * WikiSEO retains ownership while it is loaded, for a reversible cutover.
+ * When WikiSEO is loaded, its unrelated-page and verification metadata are
+ * preserved, while competing page SEO output is replaced at the final head
+ * assembly boundary. No patches to the upstream WikiSEO submodule are needed.
  */
 final class Metadata {
 	public const DATA_KEY = 'wikidebates-native-seo';
@@ -25,22 +28,7 @@ final class Metadata {
 	}
 
 	public static function beforePageDisplay( OutputPage $out ): void {
-		$data = $out->getProperty( self::DATA_KEY );
-		if ( !is_array( $data ) || !$out->isArticle() || $out->getTitle() === null ) {
-			return;
-		}
-
-		// Avoid conflicting titles, Open Graph tags and JSON-LD until WikiSEO
-		// has been disabled. The legacy path remains active in that interval.
-		if ( ExtensionRegistry::getInstance()->isLoaded( 'WikiSEO' ) ) {
-			return;
-		}
-
-		$revisionTimestamp = $out->getRevisionTimestamp();
-		$modified = $revisionTimestamp
-			? wfTimestamp( TS_ISO_8601, $revisionTimestamp )
-			: null;
-		$values = self::build( $data, $out->getTitle()->getFullURL(), $modified );
+		$values = self::valuesForPage( $out );
 		if ( $values === [] ) {
 			return;
 		}
@@ -48,12 +36,29 @@ final class Metadata {
 		$out->setHTMLTitle( $values['title'] );
 		if ( $values['robots'] !== '' ) {
 			$parts = array_map( 'trim', explode( ',', $values['robots'], 2 ) );
-			if ( in_array( $parts[0], [ 'index', 'noindex' ], true ) ) {
+			// Never override a noindex/nofollow restriction already imposed
+			// by MediaWiki, a visibility policy or another extension.
+			if (
+				in_array( $parts[0], [ 'index', 'noindex' ], true ) &&
+				( $parts[0] === 'noindex' || $out->getIndexPolicy() !== 'noindex' )
+			) {
 				$out->setIndexPolicy( $parts[0] );
 			}
-			if ( isset( $parts[1] ) && in_array( $parts[1], [ 'follow', 'nofollow' ], true ) ) {
+			if (
+				isset( $parts[1] ) &&
+				in_array( $parts[1], [ 'follow', 'nofollow' ], true ) &&
+				( $parts[1] === 'nofollow' || $out->getFollowPolicy() !== 'nofollow' )
+			) {
 				$out->setFollowPolicy( $parts[1] );
 			}
+		}
+
+		// Without WikiSEO the regular OutputPage APIs are all that is needed.
+		// When WikiSEO is loaded it still runs its site-wide hook; filtering
+		// conflicting tags here would depend on extension load order. Instead,
+		// perform the selective handoff in OutputPageAfterGetHeadLinksArray.
+		if ( ExtensionRegistry::getInstance()->isLoaded( 'WikiSEO' ) ) {
+			return;
 		}
 
 		$existingMeta = array_column( $out->getMetaTags(), 0 );
@@ -62,15 +67,124 @@ final class Metadata {
 				$out->addMeta( $name, $value );
 			}
 		}
-		foreach ( $values['open_graph'] as $name => $valuesForProperty ) {
-			// Open Graph article:tag is a repeatable property, not one CSV value.
-			foreach ( (array)$valuesForProperty as $index => $value ) {
+		self::addOpenGraph( $out, $values['open_graph'] );
+	}
+
+	/**
+	 * WikiSEO may set the HTML title after Wikidebates' BeforePageDisplay
+	 * handler, depending on extension registration order. Restore the title
+	 * at WikiSEO's own post-title hook. Never affect an ordinary wiki page.
+	 *
+	 * @param array &$metadata WikiSEO data (unmodified except obsolete robots)
+	 */
+	public static function onWikiSEOPreAddMetadata( array &$metadata ): void {
+		$out = RequestContext::getMain()->getOutput();
+		if ( !$out instanceof OutputPage ) {
+			return;
+		}
+		$values = self::valuesForPage( $out );
+		if ( $values === [] ) {
+			return;
+		}
+		$out->setHTMLTitle( $values['title'] );
+		// Legacy page_props from an old ParserCache must not override a
+		// noindex policy that MediaWiki has already established.
+		unset( $metadata['robots'] );
+	}
+
+	/**
+	 * Runs after all BeforePageDisplay handlers, irrespective of extension
+	 * loading order. The $tags array contains addMeta() tags while head
+	 * items (Open Graph and WikiSEO JSON-LD) are appended immediately after.
+	 */
+	public static function onOutputPageAfterGetHeadLinksArray( array &$tags, OutputPage $out ): void {
+		if ( !ExtensionRegistry::getInstance()->isLoaded( 'WikiSEO' ) ) {
+			return;
+		}
+		$values = self::valuesForPage( $out );
+		if ( $values !== [] ) {
+			self::replaceCompetingMetadata( $tags, $out, $values );
+		}
+	}
+
+	/**
+	 * @internal Public to permit deterministic MediaWiki integration tests
+	 * without relying on hook load order. Only specialized pages call this.
+	 */
+	public static function replaceCompetingMetadata( array &$tags, OutputPage $out, array $values ): void {
+		// WikiSEO and other generators may have added SEO meta tags under
+		// arbitrary keys, including duplicate name+value suffixes.
+		foreach ( $tags as $key => $html ) {
+			if ( is_string( $html ) && self::isManagedSeoTag( $html ) ) {
+				unset( $tags[$key] );
+			}
+		}
+
+		// Overwrite only conflicting head items by their own keys; a blank
+		// replacement is valid in OutputPage 1.43, which has no removeHeadItem.
+		// Leave site-verification, canonical, hreflang and other metadata alone.
+		foreach ( $out->getHeadItemsArray() as $key => $html ) {
+			if (
+				in_array( $key, [ 'jsonld-metadata', 'jsonld-metadata-citation' ], true ) ||
+				( is_string( $html ) && self::isManagedSeoTag( $html ) )
+			) {
+				$out->addHeadItem( $key, '' );
+			}
+		}
+
+		foreach ( $values['meta'] as $name => $value ) {
+			$tags['wikidebates-seo-meta-' . $name] = Html::element( 'meta', [
+				'name' => $name,
+				'content' => $value,
+			] );
+		}
+		self::addOpenGraph( $out, $values['open_graph'] );
+	}
+
+	private static function isManagedSeoTag( string $html ): bool {
+		if (
+			!preg_match(
+				'~<meta\b[^>]*\b(?:name|property)\s*=\s*([\'"])([^\'"]+)\1~i',
+				$html,
+				$matches
+			)
+		) {
+			return false;
+		}
+		$name = strtolower( $matches[2] );
+		return in_array( $name, [ 'description', 'keywords', 'googlebot' ], true ) ||
+			str_starts_with( $name, 'og:' ) ||
+			str_starts_with( $name, 'article:' ) ||
+			str_starts_with( $name, 'twitter:' );
+	}
+
+	private static function addOpenGraph( OutputPage $out, array $openGraph ): void {
+		foreach ( $openGraph as $name => $values ) {
+			foreach ( (array)$values as $index => $value ) {
 				$out->addHeadItem(
 					'wikidebates-seo-' . $name . '-' . $index,
 					Html::element( 'meta', [ 'property' => $name, 'content' => $value ] )
 				);
 			}
 		}
+	}
+
+	/** @return array{title:string,robots:string,meta:array,open_graph:array}|array */
+	private static function valuesForPage( OutputPage $out ): array {
+		$data = $out->getProperty( self::DATA_KEY );
+		if (
+			!is_array( $data ) ||
+			!in_array( $data['wd_kind'] ?? null, [ 'debate', 'argument' ], true ) ||
+			!$out->isArticle() ||
+			$out->getTitle() === null
+		) {
+			return [];
+		}
+		$revisionTimestamp = $out->getRevisionTimestamp();
+		$modified = $revisionTimestamp
+			? wfTimestamp( TS_ISO_8601, $revisionTimestamp )
+			: null;
+		return self::build( $data, $out->getTitle()->getFullURL(), $modified );
 	}
 
 	/**
