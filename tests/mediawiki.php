@@ -361,5 +361,28 @@ $preview = $services->getParserFactory()->create()->parse(
 check(!str_contains($preview->getText(), '"dateModified"'), 'No fabricated modification date in preview');
 check(!str_contains($preview->getText(), '"datePublished"'), 'No fabricated publication date in preview');
 
+// The real Parser also allows a revision callback to supply an unsaved
+// MutableRevisionRecord (e.g. an edit preview with self-transclusion).
+// A timestamp on that object must not be treated as a published modification.
+$unsaved = new \MediaWiki\Revision\MutableRevisionRecord($seoTitle->toPageIdentity());
+$unsaved->setTimestamp('20261020131415');
+$unsaved->setUser($seoUser);
+$unsaved->setContent(\MediaWiki\Revision\SlotRecord::MAIN,
+	new \MediaWiki\Content\WikitextContent('{{#debate:render|lang=en}}'));
+check(!$unsaved->getId(), 'Speculative revision has not been saved');
+$previewOptions = ParserOptions::newFromAnon();
+$previewOptions->setCurrentRevisionRecordCallback(static fn() => $unsaved);
+foreach (['debate', 'argument'] as $kind) {
+	$preview = $services->getParserFactory()->create()->parse(
+		'{{#' . $kind . ':render|lang=en|summary=Speculative content}}',
+		$seoTitle, $previewOptions
+	);
+	check(!str_contains($preview->getText(), '"dateModified"'), 'Unsaved revision callback does not publish dateModified: ' . $kind);
+	check(!str_contains($preview->getText(), '"datePublished"'), 'Unsaved revision callback does not publish datePublished: ' . $kind);
+	check($preview->getOutputFlag(\MediaWiki\Parser\ParserOutputFlags::VARY_REVISION),
+		'Unsaved revision requires canonical reparse: ' . $kind);
+}
+
+
 
 echo "OK: MediaWiki " . MW_VERSION . ", $count render fixtures in both modes, single extension load, hooks, policy and no runtime Lua dependencies\n";

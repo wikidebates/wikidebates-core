@@ -144,3 +144,8 @@ Le passage `nativeSchemaPass.py` reproduit les transformations sur les référen
 ### Correction de conformité : débats connexes
 
 La propriété historique [`isRelatedTo`](https://schema.org/isRelatedTo) s'applique aux produits et services, pas aux pages web. Les liens éditoriaux vers les débats connexes utilisent désormais [`relatedLink`](https://schema.org/relatedLink), dont la valeur est une URL. Les identifiants `#qa` des entités de débat restent inchangés ; seul le type de relation et la forme de sa valeur évoluent. Le générateur parcourt la liste déjà disponible, sans limite de cinq, et sépare le libellé éventuel de la destination d'un lien wiki. Aucun contenu cible n'est chargé. Les références Lua demeurent immuables. Les tests FR/EN couvrent plus de cinq liens, une destination avec libellé et l'absence de liens. Le comparateur historique strict reste à adapter à ces différences sémantiques.
+
+
+### Horodatage des rendus préparatoires
+
+Le callback de révision de MediaWiki peut fournir une `MutableRevisionRecord` non enregistrée pendant une prévisualisation. Son horodatage ne doit pas devenir `dateModified`. Le chemin de secours du JSON-LD exige donc une révision effectivement enregistrée et une demande de révision non nulle. Un horodatage explicitement renseigné dans ParserOutput reste pris en charge. Le drapeau de dépendance à la révision reste obligatoire pour un rendu sans date connue. Les tests exercent les deux moteurs de page avec un vrai callback de révision non enregistrée, en plus des révisions historiques existantes. Aucun changement de date éditoriale, de politique de cache ou de déploiement.
