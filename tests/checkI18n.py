@@ -30,6 +30,9 @@ names = read('resources/wiki-names.json')
 entries = {f'{component}.{section}.{key}': entry
 	for component, sections in mapping['entries'].items()
 	for section, items in sections.items() for key, entry in items.items()}
+for kind in ('Debate', 'Argument'):
+	retired = kind + '.categories.creation_date_missing'
+	assert retired not in entries and retired not in names['rendering'], 'Retired category: ' + retired
 unresolved = {}
 for path, entry in entries.items():
 	assert ('message' in entry) != ('wiki' in entry), path

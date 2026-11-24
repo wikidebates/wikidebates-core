@@ -149,3 +149,8 @@ La propriété historique [`isRelatedTo`](https://schema.org/isRelatedTo) s'appl
 ### Horodatage des rendus préparatoires
 
 Le callback de révision de MediaWiki peut fournir une `MutableRevisionRecord` non enregistrée pendant une prévisualisation. Son horodatage ne doit pas devenir `dateModified`. Le chemin de secours du JSON-LD exige donc une révision effectivement enregistrée et une demande de révision non nulle. Un horodatage explicitement renseigné dans ParserOutput reste pris en charge. Le drapeau de dépendance à la révision reste obligatoire pour un rendu sans date connue. Les tests exercent les deux moteurs de page avec un vrai callback de révision non enregistrée, en plus des révisions historiques existantes. Aucun changement de date éditoriale, de politique de cache ou de déploiement.
+
+
+### Retrait des derniers noms de catégorie du catalogue natif
+
+Les deux entrées techniques `Debate.categories.creation_date_missing` et `Argument.categories.creation_date_missing` disparaissent de la table de correspondance et des noms de wiki actifs. Aucun message ResourceLoader ni autre catégorie n'est supprimé. Les instantanés Lua, leurs empreintes et le corpus historique sont inchangés ; les tests comparent toutes les autres entrées, contrôlent explicitement le retrait des deux noms et vérifient que l'importeur des anciens catalogues ne peut pas les réintroduire. Les pages de catégorie et les paramètres présents dans les wikis FR/EN restent à inventorier séparément. Les anciens payloads ParserOutput restent compatibles jusqu'à la migration finale des caches.

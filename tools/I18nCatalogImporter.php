@@ -27,6 +27,8 @@ final class I18nCatalogImporter {
 				foreach ($entries as $key => $value) { $flat[$component . '.' . $section . '.' . $key] = $value; }
 			}
 		}
+		// A historical Lua import must not restore the retired editorial-date categories.
+		unset($flat['Debate.categories.creation_date_missing'], $flat['Argument.categories.creation_date_missing']);
 		$technical = static function(string $path): bool {
 			[$component, $section, $key] = explode('.', $path);
 			return in_array($section, ['props', 'params', 'forms', 'categories', 'urls', 'files', 'values'], true)
