@@ -37,6 +37,9 @@
 		"WikiSEOPageMetadataMode": "MediaWiki\\Extension\\Wikidebates\\Seo\\Metadata::onWikiSEOPageMetadataMode",
 		"WikiSEOPageRevisionMode": "MediaWiki\\Extension\\Wikidebates\\Seo\\Metadata::onWikiSEOPageRevisionMode",
 		"WikiSEOPreAddMetadata": "MediaWiki\\Extension\\Wikidebates\\Seo\\Metadata::onWikiSEOPreAddMetadata",
+		"AfterImportPage": "MediaWiki\\Extension\\Wikidebates\\Seo\\PublicationHistory::onAfterImportPage",
+		"ArticleMergeComplete": "MediaWiki\\Extension\\Wikidebates\\Seo\\PublicationHistory::onArticleMergeComplete",
+		"PageUndeleteComplete": "MediaWiki\\Extension\\Wikidebates\\Seo\\PublicationHistory::onPageUndeleteComplete",
 		"AfterFinalPageOutput": "MediaWiki\\Extension\\Wikidebates\\Reading\\ReadingHooks::onAfterFinalPageOutput"
 	},
 	"ResourceFileModulePaths": {
