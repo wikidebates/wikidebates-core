@@ -195,6 +195,43 @@ if (class_exists(\MediaWiki\Extension\WikiSEO\PagePolicy::class)) {
 	$hook->onBeforePageDisplay($projectOutput, $skin);
 	check(isset($projectOutput->getHeadItemsArray()['jsonld-metadata']),
 		'Ordinary page continues producing WikiSEO JSON-LD');
+
+	// A manually authored #seo parser function still works on ordinary pages.
+	$parser = $services->getParserFactory()->create();
+	$options = \MediaWiki\Parser\ParserOptions::newFromAnon();
+	$manualTitle = \MediaWiki\Title\Title::newFromText('SEO manual parser project');
+	$manualParserOutput = $parser->parse(
+		'{{#seo:|title=Manual project SEO title|description=Manual SEO description|og_type=website|schema_type=AboutPage}}',
+		$manualTitle,
+		$options
+	);
+	$props = $manualParserOutput->getPageProperties();
+	same('Manual project SEO title', $props['title'] ?? null, '#seo retains manually authored title');
+	same('Manual SEO description', $props['description'] ?? null, '#seo retains authored description');
+	$manual = seoLabOutput($manualTitle->getPrefixedText());
+	foreach ($props as $key => $value) {
+		$manual->setProperty($key, $value);
+	}
+	$hook->onBeforePageDisplay($manual, $skin);
+	$manualHead = $manual->getHeadItemsArray();
+	check(str_contains($manualHead['og:title'] ?? '', 'Manual project SEO title'),
+		'Manually chosen SEO title takes priority in Open Graph');
+	check(str_contains($manualHead['og:description'] ?? '', 'Manual SEO description'),
+		'Manually chosen SEO description is preserved in Open Graph');
+	check(str_contains($manualHead['jsonld-metadata'] ?? '', 'AboutPage'),
+		'Manually chosen Schema.org page type remains available');
+
+	// The old <seo> tag syntax must not disappear when a page is not opted out.
+	$tagTitle = \MediaWiki\Title\Title::newFromText('SEO manual tag project');
+	$tagParsed = $services->getParserFactory()->create()->parse(
+		'<seo title="Manual tag title" description="Manual tag description"></seo>',
+		$tagTitle,
+		$options
+	);
+	$tagProps = $tagParsed->getPageProperties();
+	same('Manual tag title', $tagProps['title'] ?? null, 'Old <seo> tag retains title support');
+	same('Manual tag description', $tagProps['description'] ?? null, 'Old <seo> tag retains description support');
+
 	check(isset($projectOutput->getHeadItemsArray()['og:title']),
 		'Ordinary page continues producing WikiSEO Open Graph');
 
