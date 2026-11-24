@@ -232,7 +232,7 @@ echo "OK: real delete, partial restore and earlier-history restore refresh curre
 foreach (['fr', 'en'] as $language) {
 	$title = Title::newFromText('SEO orphan publication day ' . $language);
 	$initialization = $language === 'fr' ? 'Argument pour' : 'Pro argument';
-	$category = $language === 'fr' ? 'Arguments sans paramètre d'initialisation' : 'Arguments without an initialization parameter';
+	$category = $language === 'fr' ? "Arguments sans paramètre d'initialisation" : 'Arguments without an initialization parameter';
 	$missingCategory = $language === 'fr' ? 'Articles sans date de création' : 'Articles without creation date';
 	$source = '{{#argument:render|lang=' . $language . '|initialization=' . $initialization .
 		'@42|creation-date=1990-01-01|summary=Native date initialization}}';
