@@ -144,3 +144,13 @@ Le passage `nativeSchemaPass.py` reproduit les transformations sur les référen
 ### Correction de conformité : débats connexes
 
 La propriété historique [`isRelatedTo`](https://schema.org/isRelatedTo) s'applique aux produits et services, pas aux pages web. Les liens éditoriaux vers les débats connexes utilisent désormais [`relatedLink`](https://schema.org/relatedLink), dont la valeur est une URL. Les identifiants `#qa` des entités de débat restent inchangés ; seul le type de relation et la forme de sa valeur évoluent. Le générateur parcourt la liste déjà disponible, sans limite de cinq, et sépare le libellé éventuel de la destination d'un lien wiki. Aucun contenu cible n'est chargé. Les références Lua demeurent immuables. Les tests FR/EN couvrent plus de cinq liens, une destination avec libellé et l'absence de liens. Le comparateur historique strict reste à adapter à ces différences sémantiques.
+
+
+### Horodatage des rendus préparatoires
+
+Le callback de révision de MediaWiki peut fournir une `MutableRevisionRecord` non enregistrée pendant une prévisualisation. Son horodatage ne doit pas devenir `dateModified`. Le chemin de secours du JSON-LD exige donc une révision effectivement enregistrée et une demande de révision non nulle. Un horodatage renseigné uniquement dans ParserOutput n'est pas une preuve de révision enregistrée : le RevisionRecord doit toujours primer. Le drapeau de dépendance à la révision reste obligatoire pour un rendu sans date connue. Les tests exercent les deux moteurs de page avec un vrai callback de révision non enregistrée, en plus des révisions historiques existantes. Aucun changement de date éditoriale, de politique de cache ou de déploiement.
+
+
+### Priorité du RevisionRecord face aux anciens hooks SMW
+
+Le corpus réel MediaWiki 1.43.12 / SMW 6.0.1 a révélé que `ParserData::markParserOutput()` renseigne `setTimestamp(wfTimestampNow())` lorsque `smwgSetParserCacheTimestamp` est actif. Les 144 cas avaient des dates de publication natives correctes, mais les 288 comparaisons JSON-LD échouaient sur la date de modification ; quelques rendus séparés d'une seconde divergeaient entre modes PHP. SMW 7.3.1 utilise `setCacheTime()` à cet endroit. Le moteur natif lit désormais exclusivement le RevisionRecord enregistré pour `dateModified` du JSON-LD, même si ParserOutput contient une autre valeur. Le même objet de révision est déjà mis en mémoire par le parseur pour la date de publication ; aucune requête supplémentaire n'est introduite sur un rendu stocké normal. Les tests injectent explicitement la valeur concurrente dans un vrai parseur, pour révision enregistrée et prévisualisation. Ne pas confondre les horodatages de cache et de révision.

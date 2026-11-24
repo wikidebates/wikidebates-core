@@ -270,7 +270,7 @@ require __DIR__ . '/mediawikiOperations.php';
 require __DIR__ . '/mediawikiRevisionVisibility.php';
 require __DIR__ . '/mediawikiParentCAS.php';
 
-// Ensure the JSON-LD graph uses the parsed revision rather than the current clock.
+// A timestamp supplied to ParserOutput alone is not proof of a stored revision.
 $parser = $services->getParserFactory()->create();
 $parser->startExternalParse(Title::newFromText('Native SEO timestamps'), ParserOptions::newFromAnon(), $parser::OT_HTML);
 $parser->getOutput()->setRevisionTimestamp('20261123094521');
@@ -285,8 +285,10 @@ $seoSchema = [
 	],
 ];
 $seoJson = $parser->getStripState()->unstripBoth($seoContext->jsonLdData($seoSchema));
-check(str_contains($seoJson, '2026-11-23T09:45:21Z'), 'Native JSON-LD receives the parsed revision timestamp');
-check(str_contains($seoJson, 'dateModified'), 'Native JSON-LD contains dateModified');
+check(!str_contains($seoJson, '2026-11-23T09:45:21Z'), 'ParserOutput-only timestamp is not published');
+check(!str_contains($seoJson, 'dateModified'), 'No stored revision means no dateModified');
+check($parser->getOutput()->getOutputFlag(\MediaWiki\Parser\ParserOutputFlags::VARY_REVISION),
+	'Unstored parse requires canonical reparse');
 
 // Reproduce the actual ContentRenderer ordering, not just an already-filled
 // ParserOutput. A real stored revision is rendered through MediaWiki's normal
@@ -352,6 +354,22 @@ foreach ($seoRevisions as [$kind, $revision]) {
 		$output->getExtensionData(\MediaWiki\Extension\Wikidebates\Seo\Metadata::DATA_KEY)['wd_published_time'] ?? null,
 		'Same native publication date in parser metadata: ' . $kind);
 }
+// Reproduce old SMW's ParserData::markParserOutput behavior: it writes
+// the current time into ParserOutput during parsing. The exact stored revision
+// must win even when the competing timestamp is already present.
+foreach ($seoRevisions as [$kind, $revision]) {
+	$parser = $services->getParserFactory()->create();
+	$parser->startExternalParse($seoTitle, ParserOptions::newFromAnon(), $parser::OT_HTML, true, $revision->getId());
+	$parser->getOutput()->setRevisionTimestamp('20261123094521');
+	$context = new \MediaWiki\Extension\DebatePHP\MediaWikiContext(
+		$parser, $parser->getPreprocessor()->newFrame(), [], true
+	);
+	$script = $parser->getStripState()->unstripBoth($context->jsonLdData($seoSchema));
+	check(str_contains($script, wfTimestamp(TS_ISO_8601, $revision->getTimestamp())), 'Stored revision wins over parser timestamp: ' . $kind);
+	check(!str_contains($script, '2026-11-23T09:45:21Z'), 'No competing render timestamp in JSON-LD: ' . $kind);
+	same($revision->getTimestamp(), $parser->getOutput()->getRevisionTimestampUsed(),
+		'Exact stored timestamp recorded for invalidation: ' . $kind);
+}
 // An ordinary parser preview must not invent a date from the clock or inherit
 // the existing page's latest revision when no revision is being rendered.
 $preview = $services->getParserFactory()->create()->parse(
@@ -360,6 +378,29 @@ $preview = $services->getParserFactory()->create()->parse(
 );
 check(!str_contains($preview->getText(), '"dateModified"'), 'No fabricated modification date in preview');
 check(!str_contains($preview->getText(), '"datePublished"'), 'No fabricated publication date in preview');
+
+// The real Parser also allows a revision callback to supply an unsaved
+// MutableRevisionRecord (e.g. an edit preview with self-transclusion).
+// A timestamp on that object must not be treated as a published modification.
+$unsaved = new \MediaWiki\Revision\MutableRevisionRecord($seoTitle->toPageIdentity());
+$unsaved->setTimestamp('20261020131415');
+$unsaved->setUser($seoUser);
+$unsaved->setContent(\MediaWiki\Revision\SlotRecord::MAIN,
+	new \MediaWiki\Content\WikitextContent('{{#debate:render|lang=en}}'));
+check(!$unsaved->getId(), 'Speculative revision has not been saved');
+$previewOptions = ParserOptions::newFromAnon();
+$previewOptions->setCurrentRevisionRecordCallback(static fn() => $unsaved);
+foreach (['debate', 'argument'] as $kind) {
+	$preview = $services->getParserFactory()->create()->parse(
+		'{{#' . $kind . ':render|lang=en|summary=Speculative content}}',
+		$seoTitle, $previewOptions
+	);
+	check(!str_contains($preview->getText(), '"dateModified"'), 'Unsaved revision callback does not publish dateModified: ' . $kind);
+	check(!str_contains($preview->getText(), '"datePublished"'), 'Unsaved revision callback does not publish datePublished: ' . $kind);
+	check($preview->getOutputFlag(\MediaWiki\Parser\ParserOutputFlags::VARY_REVISION),
+		'Unsaved revision requires canonical reparse: ' . $kind);
+}
+
 
 
 echo "OK: MediaWiki " . MW_VERSION . ", $count render fixtures in both modes, single extension load, hooks, policy and no runtime Lua dependencies\n";
