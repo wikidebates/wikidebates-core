@@ -119,6 +119,9 @@ foreach ($fixtures as $name => $text) {
 	check(strlen($reference[0]) > 200, 'Substantial renderer output: ' . $name);
 	check(!str_contains($reference[0], '{{#debate:') && !str_contains($reference[0], '{{#argument:'), 'Functions registered: ' . $name);
 	check(str_contains($reference[0], 'application/ld+json'), 'JSON-LD retained: ' . $name);
+	if (str_starts_with($name, 'complete debate ') || str_starts_with($name, 'complete argument ')) {
+		check(str_contains($reference[0], 'creditText'), 'Collective editorial credit retained in JSON-LD: ' . $name);
+	}
 	check(!array_filter($reference[3], static fn(array $dep): bool => str_starts_with($dep[0], '828:')), 'No artificial Lua dependencies: ' . $name);
 	if (\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('ShortDescription')
 		&& (str_contains($text, '#debate:') || str_contains($text, '{{Débat|'))) {
@@ -214,5 +217,23 @@ check(!class_exists(\MediaWiki\Extension\DebatePHP\LiteralData::class, false), '
 require __DIR__ . '/mediawikiOperations.php';
 require __DIR__ . '/mediawikiRevisionVisibility.php';
 require __DIR__ . '/mediawikiParentCAS.php';
+
+// Ensure the JSON-LD graph uses the parsed revision rather than the current clock.
+$parser = $services->getParserFactory()->create();
+$parser->startExternalParse(Title::newFromText('Native SEO timestamps'), ParserOptions::newFromAnon(), $parser::OT_HTML);
+$parser->getOutput()->setRevisionTimestamp('20261123094521');
+$seoContext = new \MediaWiki\Extension\DebatePHP\MediaWikiContext(
+	$parser, $parser->getPreprocessor()->newFrame(), [], true
+);
+$seoSchema = [
+	'@context' => 'https://schema.org',
+	'@graph' => [
+		1 => [ '@type' => 'WebSite', '@id' => 'https://example.org/#website', 'url' => 'https://example.org/' ],
+		2 => [ '@type' => 'QAPage', '@id' => 'https://example.org/test#qa', 'url' => 'https://example.org/test' ],
+	],
+];
+$seoJson = $parser->getStripState()->unstripBoth($seoContext->jsonLdData($seoSchema));
+check(str_contains($seoJson, '2026-11-23T09:45:21Z'), 'Native JSON-LD receives the parsed revision timestamp');
+check(str_contains($seoJson, 'dateModified'), 'Native JSON-LD contains dateModified');
 
 echo "OK: MediaWiki " . MW_VERSION . ", $count render fixtures in both modes, single extension load, hooks, policy and no runtime Lua dependencies\n";
