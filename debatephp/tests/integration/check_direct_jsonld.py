@@ -3,7 +3,7 @@
 Only the legacy oracle's JSON string encoding is reproduced, not normalized away on both sides.
 """
 import json,re,sys,pathlib,importlib.util
-from schema_projection import compare_documents
+from schema_projection import compare_documents, resolve_markers, plain, MARKER
 spec=importlib.util.spec_from_file_location('base',pathlib.Path(__file__).with_name('check_results.py'));base=importlib.util.module_from_spec(spec);spec.loader.exec_module(base)
 pattern=re.compile(r'(<script\b[^>]*\btype="application/ld\+json"[^>]*>)(.*?)(</script>)',re.S|re.I)
 def scripts(html):return [json.loads(m.group(2)) for m in pattern.finditer(html)]
@@ -29,14 +29,25 @@ def compare_parser_metadata(key, a, b, row, got):
 			payload = got.get('native_seo')
 			if not isinstance(payload, dict):
 				raise ValueError('Missing native SEO payload')
+			markers = row['variants']['lua'].get('seo_marker_map') or {}
+			plain_fields = set(payload.get('wd_plain_fields', []))
+			if plain_fields - {'title', 'description', 'image_alt', 'wd_summary'}:
+				raise ValueError('Unexpected pre-normalized SEO fields')
 			for field in SEO_FIELDS:
 				if field in a:
-					if field in b or payload.get(field) != a[field]:
+					expected = a[field]
+					if isinstance(expected, str) and MARKER.search(expected):
+						if field in {'title','description','image_alt'}:
+							if field not in plain_fields:
+								raise ValueError('Missing plain field marker: ' + field)
+							expected = plain(expected)
+						expected = resolve_markers(expected, markers)
+					if field in b or payload.get(field) != expected:
 						raise ValueError('Native SEO value/persistence differs: ' + field)
 					del a[field]
 				elif field in payload:
 					raise ValueError('Unexpected native SEO field: ' + field)
-			if set(payload) - SEO_FIELDS - {'wd_kind','wd_published_time','wd_summary'}:
+			if set(payload) - SEO_FIELDS - {'wd_kind','wd_published_time','wd_summary','wd_plain_fields'}:
 				raise ValueError('Unexpected native SEO payload keys')
 			if 'wd_published_time' not in payload or payload.get('wd_kind') not in ('argument','debate'):
 				raise ValueError('Invalid native SEO payload')
@@ -61,6 +72,16 @@ def check_fixture_dates(row, got, documents):
 		if fixture['preview'] != (payload.get('wd_published_time') is None):
 			raise ValueError('Stored revision/preview publication date mismatch')
 
+def walk_strings(value):
+	if isinstance(value, str):
+		yield value
+	elif isinstance(value, dict):
+		for item in value.values():
+			yield from walk_strings(item)
+	elif isinstance(value, list):
+		for item in value:
+			yield from walk_strings(item)
+
 rows=json.loads(pathlib.Path(sys.argv[1]).read_text());bad=[];corrections=0;semantic_changes=0;tested=0
 for row in rows:
 	name=row.get('name',row['title']);want=row['variants']['lua']
@@ -70,6 +91,8 @@ for row in rows:
 		if base.html_key(visible(want['html']))!=base.html_key(visible(got['html'])):dif.append('visible HTML')
 		try:
 			a,b=scripts(want['html']),scripts(got['html'])
+			if any(MARKER.search(v) for v in walk_strings(b)) or any(MARKER.search(v) for v in walk_strings(got.get('native_seo'))):
+				raise ValueError('Unresolved native SEO marker')
 			check_fixture_dates(row, got, b)
 			if a!=b:
 				if a==legacy_graph(b):corrections+=1
@@ -77,7 +100,7 @@ for row in rows:
 					if len(a)!=len(b):dif.append('JSON-LD document count')
 					else:
 						for old,new in zip(a,b):
-							compare_documents(old,new)
+							compare_documents(old,new,want.get('seo_marker_map') or {})
 						semantic_changes+=1
 		except Exception as e:dif.append('Invalid JSON-LD: '+str(e))
 		for key in ['categories','properties','templates','links','externalLinks','languageLinks','modules','flags','expiry']:

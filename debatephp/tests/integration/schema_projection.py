@@ -34,12 +34,28 @@ def plain(text):
 	text = html.unescape(re.sub(r'<[^>]*>', '', text))
 	return re.sub(r'\s+', ' ', text).strip()
 
-def text_matches(old, new, fallback=''):
+MARKER = re.compile(r"\x7f'\"\x60UNIQ-[^\x7f<>&'\"]+-QINU\x60\"'\x7f")
+
+def resolve_markers(value, markers):
+	if isinstance(value, str):
+		if not MARKER.search(value):
+			return value
+		def replace(match):
+			token = match.group()
+			require(token in markers, 'Missing marker in historical oracle')
+			return markers[token]
+		return re.sub(r'\s+', ' ', MARKER.sub(replace, value)).strip()
+	if isinstance(value, dict):
+		return {k: resolve_markers(v, markers) for k, v in value.items()}
+	if isinstance(value, list):
+		return [resolve_markers(v, markers) for v in value]
+	return value
+
+def text_matches(old, new, fallback='', markers=None):
 	# HTMLTags escaped the serialized Lua string, before the native parser
 	# began emitting JSON directly. Try only these explicit text forms.
-	return any(equal(old_text, new) for old_text in (
-		plain(old) or fallback, plain(html.unescape(old)) or fallback,
-		plain(html.unescape(html.unescape(old))) or fallback))
+	return any(equal(resolve_markers(plain(value), markers or {}) or fallback, new) for value in (
+		old, html.unescape(old), html.unescape(html.unescape(old))))
 
 def url(value):
 	if not isinstance(value, str):
@@ -193,6 +209,16 @@ def project_reference(old):
 			node['url'] = u
 	return node
 
+def reference_equal(old, new):
+	# When resolving a nowiki marker, its original literal content no longer
+	# carries the legacy HTMLTags escaping. Other reference fields may still
+	# carry it. Check each leaf, retaining exact structure and list order.
+	if isinstance(old, dict) and isinstance(new, dict):
+		return old.keys() == new.keys() and all(reference_equal(old[k], new[k]) for k in old)
+	if isinstance(old, list) and isinstance(new, list):
+		return len(old) == len(new) and all(reference_equal(a,b) for a,b in zip(old,new))
+	return equal(old, new)
+
 def compare_references(old, new):
 	for field in ('citation', 'subjectOf'):
 		if field not in old and field not in new:
@@ -204,13 +230,21 @@ def compare_references(old, new):
 		require(len(a) == len(b), 'Lost or added selected reference: ' + field)
 		for before, after in zip(a,b):
 			projected = project_reference(before)
-			require(equal(projected, after), 'Reference normalization differs: ' + field + ' ' + repr((projected, after))[:600])
+			require(reference_equal(projected, after), 'Reference normalization differs: ' + field + ' ' + repr((projected, after))[:600])
 
-def compare_documents(legacy, native):
+def compare_documents(legacy, native, markers=None):
 	"""Raise on unexpected differences; do not mutate either input."""
 	if equal(legacy, native):
 		return
+	markers = markers or {}
 	old, new = copy.deepcopy(legacy), copy.deepcopy(native)
+	# Preserve pre-resolution Question/Claim text for the plain-text check.
+	# Other old fields are projected using only the old parser's map.
+	original = old
+	if markers:
+		old = resolve_markers(old, markers)
+	else:
+		original = copy.deepcopy(old)
 	require(old.get('@context') == new.get('@context') == 'https://schema.org', 'Unexpected context')
 	a, b = old.get('@graph'), new.get('@graph')
 	require(isinstance(a, list) and isinstance(b, list) and len(a) == len(b), 'Graph node count')
@@ -249,7 +283,8 @@ def compare_documents(legacy, native):
 		subsequence([answer['about']['@id'] for answer in answers], parts, 'debate argument references')
 		require('datePublished' not in nq and 'answerCount' not in nq and 'suggestedAnswer' not in nq, 'Legacy Question properties on native graph')
 		oq.pop('datePublished', None)
-		require(text_matches(oq.pop('text'), nq.pop('text'), np['name']), 'Question text changed')
+		oq.pop('text')
+		require(text_matches(original['@graph'][index]['mainEntity']['text'], nq.pop('text'), np['name'], markers), 'Question text changed')
 		compare_references(op, np)
 		if 'relatedLink' in np:
 			links = np.pop('relatedLink')
@@ -269,7 +304,8 @@ def compare_documents(legacy, native):
 		subsequence([item['@id'] for item in oc.pop('hasPart', [])], parts, 'argument relation references')
 		compare_references(oc, nc)
 		abstract = nc.pop('abstract', '')
-		require(text_matches(oc.pop('abstract', ''), abstract), 'Claim abstract changed')
+		oc.pop('abstract', None)
+		require(text_matches(original['@graph'][claims[0]].get('abstract', ''), abstract, markers=markers), 'Claim abstract changed')
 		if abstract and description is not None:
 			require(abstract == description, 'Claim abstract and page description disagree')
 	require(equal(old, new), 'Unapproved graph difference (identity, citation, relation or other property)')

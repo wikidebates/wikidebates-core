@@ -84,6 +84,7 @@ namespace MediaWiki\Parser {
 		public function setVolatile() { $this->volatile = true; }
 	}
 	final class Parser {
+		const MARKER_PREFIX = "\x7f'\"`UNIQ-";
 		const SFH_OBJECT_ARGS = 2; const PTD_FOR_INCLUSION = 1;
 		public array $hooks = []; public array $fetched = []; public ?string $changed = null;
 		public \ExtVariables $variables;

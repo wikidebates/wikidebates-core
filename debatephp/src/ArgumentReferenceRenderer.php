@@ -112,7 +112,7 @@ class ArgumentReferenceRenderer {
 	protected function wkBuildSingleNodeFromNativeItems(array $items, callable $builder): Table {
 		foreach ($items as $item) {
 			$node = $builder($item);
-			if (Lua::truth($node)) { return new Table([1 => SchemaData::reference($node)]); }
+			if (Lua::truth($node)) { return new Table([1 => SchemaData::reference($node, $this->context)]); }
 			break; // Argument uses the first item; Debate scans to the first valid node.
 		}
 		return new Table;
@@ -2438,7 +2438,7 @@ class ArgumentReferenceRenderer {
 			$keywords = $this->wkBuildKeywords($args, $lang);
 			$isPartOf = $this->wkBuildClaimIsPartOf($lang, $cache);
 			$parts = SchemaData::argumentParts($args, $maps, $pv['pageUrl'], $lang,
-				fn(string $title): string => $this->wkFullUrl($this->canonicalTitle($title)));
+				fn(string $title): string => $this->wkFullUrl($this->canonicalTitle($title)), $this->context);
 			$citations = new Table([]);
 			$q = $this->wkBuildClaimCitationsFromQuotes((Lua::truth($v358 = $args['_quotes_wikitext']) ? $v358 : ''));
 			if (Lua::truth($q[1])) {
@@ -2485,7 +2485,7 @@ class ArgumentReferenceRenderer {
 				$claimNode['alternateName'] = $args['established-name'];
 			}
 			{
-				$summary = NativeText::seoPlainText((string)($args['summary'] ?? ''));
+				$summary = NativeText::seoPlainText((string)($args['summary'] ?? ''), $this->context);
 				if (($summary !== '')) {
 					$claimNode['abstract'] = $summary;
 				}

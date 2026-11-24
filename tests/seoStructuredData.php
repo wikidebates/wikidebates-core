@@ -35,6 +35,8 @@ function seoSchemaParse(string $kind, string $lang, string $fields): array {
 	same($description, $page['description'] ?? '', 'Identical JSON-LD and head description');
 	check(!str_contains($matches[1][0], '"QAPage"') && !str_contains($matches[1][0], '"suggestedAnswer"') &&
 		!str_contains($matches[1][0], '"answerCount"'), 'No legacy Q&A semantics');
+	check(!str_contains($matches[1][0], 'UNIQ-'), 'No parser strip marker in native JSON-LD');
+	check(!str_contains(json_encode($payload, JSON_THROW_ON_ERROR), 'UNIQ-'), 'No parser strip marker in native SEO payload');
 	return [$page, $schema['@graph'], $output];
 }
 
@@ -142,9 +144,46 @@ foreach (['fr', 'en'] as $lang) {
 	}
 	$GLOBALS['wgDebatePHPMode'] = 'reference';
 
+	// Literal nowiki syntax must survive both graph encoding and the later head build.
+	foreach (['reference', 'optimized'] as $mode) {
+		$GLOBALS['wgDebatePHPMode'] = $mode;
+		$literal = '<nowiki>[[Literal|label]] &lt;b&gt; A &amp; B</nowiki>';
+		$expected = '[[Literal|label]] <b> A & B';
+		[$withLiteral, $nodes, $out] = seoSchemaParse('argument', $lang,
+			'|summary=Before ' . $literal . ' after.|justifications=Target fixture⟬' . $literal . '⟬⟭');
+		$claim = array_values(array_filter($nodes, static fn($node) => ($node['@type'] ?? '') === 'Claim'))[0];
+		same('Before ' . $expected . ' after.', $claim['abstract'], 'Nowiki summary remains literal');
+		same($claim['abstract'], $withLiteral['description'], 'Head and graph use the same literal summary');
+		same($expected, $withLiteral['hasPart'][0]['mainEntity']['itemListElement'][0]['name'], 'Nowiki list label');
+		$payload = $out->getExtensionData(Metadata::DATA_KEY);
+		check(in_array('wd_summary', $payload['wd_plain_fields'] ?? [], true), 'Plain summary explicitly marked');
+		$record = 'Ada⟬Paper ' . $literal . '⟬Journal⟬IV⟬2⟬⟬⟬Publisher⟬Paris⟬<nowiki>23 janvier 2017</nowiki>⟬<nowiki>https://example.org/paper</nowiki>⟬⟭';
+		[$resource] = seoSchemaParse('debate', $lang, '|bibliography=' . $record . '|expanded-topic=' . $literal);
+		$ref = $resource['citation'][0];
+		same('Paper ' . $expected, $ref['name'], 'Nowiki citation name');
+		same('2017-01-23', $ref['datePublished'], 'Restore nowiki before date validation');
+		same('https://example.org/paper', $ref['url'], 'Restore nowiki before URL validation');
+		check(str_contains($resource['mainEntity']['text'], $expected), 'Literal question text');
+	}
+	$GLOBALS['wgDebatePHPMode'] = 'reference';
+
 	[$dedicated] = seoSchemaParse('argument', $lang, '|dedicated-debate=Dedicated debate fixture|justifications=' .
 		seoSchemaItems('Hidden fixture', 12));
 	same([['@id' => Title::newFromText('Dedicated debate fixture')->getFullURL() . '#qa']],
 		$dedicated['hasPart'], 'Dedicated debate replaces hidden local lists');
 }
 echo "OK: exhaustive native FR/EN lists, localized educational resources, stable IDs, plain text and dedicated debate\n";
+
+
+// A general strip item must be discarded without running its callback.
+$parser = $services->getParserFactory()->create();
+$parser->startExternalParse(Title::newFromText('SEO marker fixture'), ParserOptions::newFromAnon(), $parser::OT_HTML);
+$marker = $parser::MARKER_PREFIX . '-ref-00000123' . $parser::MARKER_SUFFIX;
+$called = false;
+$parser->getStripState()->addGeneral($marker, static function() use (&$called) {
+	$called = true;
+	return '<sup>Reference</sup>';
+});
+$context = new \MediaWiki\Extension\DebatePHP\MediaWikiContext($parser, $parser->getPreprocessor()->newFrame(), [], true);
+same('Before after', $context->resolveSeoMarkers('Before ' . $marker . ' after'), 'General marker removed');
+check(!$called, 'General marker callback never executed');
