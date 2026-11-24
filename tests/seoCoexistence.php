@@ -197,6 +197,26 @@ if (class_exists(\MediaWiki\Extension\WikiSEO\PagePolicy::class)) {
 		'Ordinary page continues producing WikiSEO JSON-LD');
 	check(isset($projectOutput->getHeadItemsArray()['og:title']),
 		'Ordinary page continues producing WikiSEO Open Graph');
+
+	// Any other extension or site administrator can opt out a single ordinary
+	// page without disabling WikiSEO globally or changing neighboring pages.
+	$services = \MediaWiki\MediaWikiServices::getInstance();
+	$services->getHookContainer()->register('WikiSEOPageMetadataMode',
+		static function($out, &$mode): void {
+			if ($out->getTitle()?->getPrefixedText() === 'SEO explicitly disabled page') {
+				$mode = 'off';
+			}
+		}
+	);
+	$off = seoLabOutput('SEO explicitly disabled page');
+	same('off', $policy::forOutput($off), 'A custom extension may disable WikiSEO on one ordinary page');
+	$hook->onBeforePageDisplay($off, $skin);
+	check(!isset($off->getHeadItemsArray()['og:title']), 'Off mode does not produce Open Graph');
+	check(!isset($off->getHeadItemsArray()['jsonld-metadata']), 'Off mode does not produce JSON-LD');
+	$headLinks = [];
+	$hook->onOutputPageAfterGetHeadLinksArray($headLinks, $off);
+	same([], $headLinks, 'Off mode does not rewrite the canonical URL');
+
 }
 
 echo "OK: selective WikiSEO coexistence, debate/argument native head, other pages unchanged\n";
