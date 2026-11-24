@@ -2515,6 +2515,12 @@ class ArgumentReferenceRenderer {
 			}
 			$subjectOf = $this->wkBuildClaimCitationsFromVideography((Lua::truth($v361 = $args['videography']) ? $v361 : ''));
 			$pageNode = (['@type' => 'WebPage', '@id' => $pv['pageUrl'], 'url' => $pv['pageUrl'], 'name' => $pv['rawTitle'], 'inLanguage' => $lang, 'isPartOf' => (['@id' => ($this->L($lang, 'urls', 'home') . '#website')]), 'breadcrumb' => (['@id' => ($pv['pageUrl'] . '#breadcrumb')]), 'mainEntity' => (['@id' => ($pv['pageUrl'] . '#claim')])]);
+			// A collective credit belongs to the WebPage, not to the Claim's author.
+			$pageNode['creditText'] = $this->seoL($lang, 'author');
+			$pageNode['publisher'] = ['@id' => ($this->L($lang, 'urls', 'home') . '#organization')];
+			if (Lua::truth($creationDate)) {
+				$pageNode['datePublished'] = $creationDate;
+			}
 			$claimNode = (['@type' => 'Claim', '@id' => ($pv['pageUrl'] . '#claim'), 'url' => $pv['pageUrl'], 'name' => $pv['rawTitle'], 'inLanguage' => $lang, 'learningResourceType' => 'argument', 'educationalUse' => 'analysis', 'educationalLevel' => 'higher education', 'audience' => (['@type' => 'EducationalAudience', 'educationalRole' => 'student']), 'isPartOf' => $isPartOf, 'breadcrumb' => (['@id' => ($pv['pageUrl'] . '#breadcrumb')]), 'discussionUrl' => $this->wkBuildDiscussionUrl($pv, $lang), 'publisher' => (['@id' => ($this->L($lang, 'urls', 'home') . '#organization')])]);
 			if ((Lua::truth($args['established-name']) && (Lua::trim($args['established-name']) !== ''))) {
 				$claimNode['alternateName'] = $args['established-name'];
