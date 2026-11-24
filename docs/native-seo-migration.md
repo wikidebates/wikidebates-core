@@ -29,7 +29,11 @@ WikiSEO **reste chargé et actif sur toutes les autres pages** : les modèles et
 
 Sur ces deux types de pages, Wikidebates est la source unique des balises SEO visibles. Son moteur n'appelle ni `WikiSEO\\Validator`, ni les hooks Lua de WikiSEO, ni les `page_props` SEO historiques. Les balises génériques que WikiSEO génère encore au niveau de la requête sont neutralisées dans le `<head>` final ; le JSON-LD spécialisé de Wikidebates, déjà inclus dans le HTML du contenu, reste intact. Les anciens fichiers ParserCache ne possédant pas le marqueur continuent provisoirement à fonctionner avec WikiSEO, jusqu'à leur reconstruction.
 
-**Limite volontaire de cette phase :** WikiSEO exécute encore ses hooks internes pendant l'affichage d'un débat, même si ses balises sont ensuite remplacées. Éviter cette exécution résiduelle demanderait un mécanisme d'exclusion explicite dans WikiSEO lui-même (développement séparé dans un fork) ; aucun patch sauvage du sous-module amont n'est proposé.
+**Limite de la version installée actuellement :** WikiSEO exécute encore ses hooks internes pendant l'affichage d'un débat, même si ses balises sont ensuite remplacées. La modernisation du fork WikiSEO ajoute les hooks facultatifs `WikiSEOPageMetadataMode` et `WikiSEOPageRevisionMode`. Lorsqu'ils seront déployés, Wikidebates leur indiquera `global-only` pour les pages possédant le marqueur natif `wikidebates-native-seo` (`wd_kind=debate` ou `wd_kind=argument`).
+
+Ce mode arrête les générateurs de métadonnées de page de WikiSEO **avant leur exécution** (Open Graph, X/Twitter, JSON-LD, titre, canonical spécifique et champs SEO persistés), tout en conservant les balises techniques globales non concurrentes (vérification de domaine, hreflang configuré et protections robots). Les autres pages conservent automatiquement le mode `full`. Le fork permet aussi `off` pour couper absolument tout WikiSEO sur une page.
+
+**Compatibilité descendante :** si l'ancienne version de WikiSEO est encore installée, ces hooks ne sont simplement pas appelés et le remplacement sélectif du `<head>` final continue de fonctionner comme auparavant. Aucune modification automatique de la ferme ni du sous-module WikiSEO dans cette PR.
 
 L'activation nécessite une opération de déploiement distincte, à effectuer après approbation et vérification :
 
