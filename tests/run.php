@@ -6,6 +6,7 @@ use MediaWiki\Extension\DebatePHP\HtmlBuilder;
 use MediaWiki\Extension\DebatePHP\I18n;
 use MediaWiki\Extension\DebatePHP\LiteralData;
 use MediaWiki\Extension\DebatePHP\NativeTags;
+use MediaWiki\Extension\DebatePHP\NativeText;
 use MediaWiki\Extension\DebatePHP\Lua;
 use MediaWiki\Extension\DebatePHP\Table;
 use MediaWiki\Extension\DebatePHP\Telemetry;
@@ -78,6 +79,13 @@ same($compiled['sha256'], hash('sha256', $data), 'Offline snapshot data hash');
 same($compiled['logic_sha256'], hash('sha256', rtrim($logic, "\r\n")), 'Offline snapshot logic hash');
 rejects(static fn() => (new LiteralData)->read('return os.execute("false")'), 'Never execute Lua');
 
+// Native wiki field conversions must not adopt PHP's falsey-zero semantics.
+foreach ([[null, ''], [false, ''], [true, 'true'], [0, '0'], [0.0, '0'], [1.25, '1.25'],
+	['0', '0'], ['', ''], ["\0é\0", "\0é\0"], ["\vA\f", "\vA\f"]] as [$value, $expected]) {
+	same($expected, NativeText::field($value), 'Native text field preserves explicit scalar contract');
+}
+same("\0A\0", trim(" \t\v\0A\0\f\r\n", NativeText::ASCII_WHITESPACE), 'ASCII trim preserves NUL');
+same(" A ", trim(" \t A \n", NativeText::ASCII_WHITESPACE), 'ASCII trim preserves NBSP');
 same(true, Lua::truth('0'), 'Lua zero string is truthy');
 same(true, Lua::truth(new Table), 'Lua empty table is truthy');
 same('string', Lua::type('trim'), 'Callable names remain Lua strings');
