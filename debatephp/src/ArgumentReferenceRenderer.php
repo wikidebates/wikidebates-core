@@ -2404,7 +2404,8 @@ class ArgumentReferenceRenderer {
 		}
 		$s = trim($s, NativeText::ASCII_WHITESPACE);
 		$title = $this->titleNewCached($s);
-		return $title['prefixedText'] ?? $s;
+		$value = $title['prefixedText'] ?? null;
+		return $value === null || $value === false ? $s : $value;
 	}
 
 	protected function computeArgumentMapsFromData($args = null): array {
