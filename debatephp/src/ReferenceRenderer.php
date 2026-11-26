@@ -1056,7 +1056,7 @@ class ReferenceRenderer {
 			$rendered = [];
 			foreach ($sides as $side => $_) {
 				$field = $side === 'neutral' ? $format : $side . '-' . $format;
-				$raw = NativeText::field($args[$field]);
+				$raw = (string)($args[$field] ?? '');
 				$refRaw[$format][$side] = $raw === '' ? '' : $this->context->expandField($raw, 'debate.' . $format . '.' . $side);
 				if ($raw === '') {
 					$rendered[$side] = '';
