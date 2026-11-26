@@ -4,11 +4,11 @@ namespace MediaWiki\Extension\DebatePHP;
 /** Shared text rules used by both renderers, expressed with native PHP operations. */
 final class NativeText {
 	private static function text($value): string {
-		return $value === null || $value === false ? '' : Lua::str($value);
+		return $value === null || $value === false ? '' : ($value === true ? 'true' : (string)$value);
 	}
 	public static function anchorId($value): string {
 		$text = str_replace(['&#039;', '&#39;', '&apos;'], "'", self::text($value));
-		$text = Lua::trim(preg_replace('/[\x09-\x0d ]+/', ' ', $text));
+		$text = trim(preg_replace('/[\x09-\x0d ]+/', ' ', $text), " \t\r\n\v\f");
 		return str_replace(['[', ']', '{', '}', '|', '#', '<', '>', '"'], '', str_replace(' ', '_', $text));
 	}
 	public static function tooltip($value): string {
