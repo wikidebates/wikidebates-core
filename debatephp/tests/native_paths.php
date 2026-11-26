@@ -127,7 +127,7 @@ $checks += 12;
 trait NativeBannerProbe {
 	public function __construct() { $this->REFERENCE_WARNING_BANNER_KEYS = ['dead_link']; }
 	protected function buildSummaryLabelLookup($lang = null, array $keys = []): array { return ['dead_link' => 'dead_link']; }
-	protected function renderSubsectionBanner($pv = null, $lang = null, $key = null, $opts = null, ?array &$cats = null) {
+	protected function renderSubsectionBanner($pv = null, $lang = null, $key = null, ?array $opts = null, ?array &$cats = null) {
 		$cats[] = 'category effect';
 		return '<banner>';
 	}
