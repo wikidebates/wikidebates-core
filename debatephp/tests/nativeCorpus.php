@@ -4,9 +4,9 @@
  * The same driver can load the production source of a pinned checkout.
  * No MediaWiki installation, network or live semantic database is used.
  */
-use MediaWiki\Extension\DebatePHP\{ArgumentReferenceRenderer, ArgumentRenderer, ReferenceRenderer, Renderer, Table};
+use MediaWiki\Extension\DebatePHP\{ArgumentReferenceRenderer, ArgumentRenderer, JsonData, NativeJsonContext, NativeSemanticContext, ReferenceRenderer, Renderer, SemanticReadResult, Table};
 
-$options = getopt('', ['root:', 'repeats:', 'warmup:']);
+$options = getopt('', ['root:', 'repeats:', 'warmup:', 'context:']);
 $root = realpath($options['root'] ?? dirname(__DIR__, 2));
 if ($root === false) {
 	throw new InvalidArgumentException('Unknown source checkout');
@@ -15,6 +15,10 @@ $repeats = filter_var($options['repeats'] ?? '0', FILTER_VALIDATE_INT, ['options
 $warmup = filter_var($options['warmup'] ?? '3', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0, 'max_range' => 100]]);
 if ($repeats === false || $warmup === false) {
 	throw new InvalidArgumentException('Invalid repetition or warmup count');
+}
+$contextMode = $options['context'] ?? 'legacy';
+if (!in_array($contextMode, ['legacy', 'native-json', 'native', 'native-schema'], true)) {
+	throw new InvalidArgumentException('Unknown benchmark context');
 }
 require $root . '/debatephp/tests/argument_context.php';
 set_error_handler(static function($severity, $message, $file, $line) {
@@ -41,6 +45,10 @@ class NativeCorpusContext extends ArgumentTestContext {
 	}
 
 	public function smwAsk(Table $query): ?Table {
+		return self::rows($this->fixtureRows($query));
+	}
+
+	protected function fixtureRows(Table $query): array {
 		$this->effects['ask'][] = $query->values;
 		if ($this->fixture['ask_error'] ?? false) {
 			throw new RuntimeException('fixture query failed');
@@ -64,7 +72,44 @@ class NativeCorpusContext extends ArgumentTestContext {
 				}
 			}
 		}
-		return self::rows($rows);
+		return $rows;
+	}
+}
+
+// Keep the historical trace encoder unchanged. The optional contexts isolate
+// the native array boundary and, separately, the native semantic read path.
+// Define them only on request so the pinned historical driver still works.
+if ($contextMode !== 'legacy') {
+	class NativeCorpusJsonContext extends NativeCorpusContext implements NativeJsonContext {
+		public function jsonLdData(array $data): string {
+			return $this->jsonLd(json_encode(JsonData::value($data), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+		}
+	}
+
+	class NativeCorpusReadContext extends NativeCorpusJsonContext implements NativeSemanticContext {
+		private static function nativeRows(array $rows): array {
+			$out = [];
+			foreach ($rows as $key => $item) {
+				$out[is_int($key) ? $key + 1 : $key] = is_array($item) ? self::nativeRows($item) : $item;
+			}
+			return $out;
+		}
+
+		public function readSemantic(Table $query, string $origin): SemanticReadResult {
+			return new SemanticReadResult(self::nativeRows($this->fixtureRows($query)));
+		}
+
+		public function skipEmptyParentFallback(string $origin): void {
+			throw new LogicException('Mock rows cannot certify a complete empty semantic union');
+		}
+	}
+
+	class NativeCorpusSchemaContext extends NativeCorpusReadContext {
+		public function jsonLdData(array $data): string {
+			// Production schema filtering, without parser-specific revision or
+			// description enrichment, FormatJson or script-strip insertion.
+			return $this->jsonLd(json_encode(JsonData::schemaValue($data), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+		}
 	}
 }
 
@@ -106,8 +151,13 @@ function nativeCorpus(): array {
 	return $cases;
 }
 
-function nativeRender(array $case, string $class): array {
-	$context = new NativeCorpusContext($case);
+function nativeRender(array $case, string $class, string $contextMode = 'legacy'): array {
+	$context = match ($contextMode) {
+		'legacy' => new NativeCorpusContext($case),
+		'native-json' => new NativeCorpusJsonContext($case),
+		'native' => new NativeCorpusReadContext($case),
+		'native-schema' => new NativeCorpusSchemaContext($case),
+	};
 	try {
 		$text = (new $class($context))->render();
 		$result = ['text' => $text];
@@ -128,13 +178,13 @@ function cpuMicroseconds(): int {
 		+ $usage['ru_utime.tv_usec'] + $usage['ru_stime.tv_usec'];
 }
 
-function measureNativeRender(array $case, string $class): array {
+function measureNativeRender(array $case, string $class, string $contextMode = 'legacy'): array {
 	gc_collect_cycles();
 	memory_reset_peak_usage();
 	$memory = memory_get_usage();
 	$cpu = cpuMicroseconds();
 	$start = hrtime(true);
-	$result = nativeRender($case, $class);
+	$result = nativeRender($case, $class, $contextMode);
 	$elapsed = hrtime(true) - $start;
 	$cpu = cpuMicroseconds() - $cpu;
 	$peak = max(0, memory_get_peak_usage() - $memory);
@@ -154,7 +204,7 @@ foreach ($cases as $case) {
 	$row = [];
 	foreach ($classes as $mode => $class) {
 		try {
-			$result = nativeRender($case, $class);
+			$result = nativeRender($case, $class, $contextMode);
 			$hashes = [];
 			foreach ($result as $key => $value) {
 				$hashes[$key] = hash('sha256', serialize($value));
@@ -163,11 +213,11 @@ foreach ($cases as $case) {
 			unset($result);
 			if ($repeats) {
 				for ($i = 0; $i < $warmup; $i++) {
-					nativeRender($case, $class);
+					nativeRender($case, $class, $contextMode);
 				}
 				$samples = [];
 				for ($i = 0; $i < $repeats; $i++) {
-					$samples[] = measureNativeRender($case, $class);
+					$samples[] = measureNativeRender($case, $class, $contextMode);
 				}
 				$row[$mode]['samples'] = $samples;
 			}
@@ -185,7 +235,7 @@ if ($repeats) {
 	$output = [
 		'environment' => ['php' => PHP_VERSION, 'os' => PHP_OS_FAMILY, 'opcache_cli' => ini_get('opcache.enable_cli'),
 			'opcache_status' => function_exists('opcache_get_status') && opcache_get_status(false) !== false,
-			'cases' => count($cases), 'warmup' => $warmup, 'repeats' => $repeats],
+			'cases' => count($cases), 'warmup' => $warmup, 'repeats' => $repeats, 'context' => $contextMode],
 		'cases' => $output,
 	];
 }
