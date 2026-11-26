@@ -93,9 +93,40 @@ $hinted = new RenderData(1, 6000, 6000); $hinted->csv('seed'); $hinted->expectRe
 same(1, $hinted->statistics()['entries'], 'Known large keyword/section reuse admits immediately');
 $checks += 4;
 
+// The shared lookup retains message order, last-label wins, and the different
+// fallback policies of page-level and subsection warnings.
+$warningProbe = new class {
+	use \MediaWiki\Extension\DebatePHP\WarningLabels;
+	public array $calls = [];
+	protected function subMsg($lang, $key): string {
+		$this->calls[] = [$lang, $key];
+		return ['first_label' => " \tMême\f", 'second_label' => 'Même', 'zero_label' => '0'][$key] ?? '';
+	}
+	protected function bannerMsg($lang, $key): string { return $this->subMsg($lang, $key); }
+	public function labels($lang, $keys): array { return $this->buildSummaryLabelLookup($lang, $keys); }
+	public function banners($lang, $keys): array { return $this->buildBannerLabelLookup($lang, $keys); }
+	public function resolve($raw, $lookup, $allowed, $aliases): string { return $this->resolveKeyFromLookup($raw, $lookup, $allowed, $aliases); }
+	public function resolveBanner($raw, $lookup): string { return $this->resolveBannerKeyFromLookup($raw, $lookup); }
+};
+$keys = ['first', 'missing', 'second', 'zero'];
+$lookup = $warningProbe->labels('fr', $keys);
+same(['Même' => 'second', 0 => 'zero'], $lookup, 'Localized labels are trimmed, including literal zero');
+same(array_map(static fn($k) => ['fr', $k . '_label'], $keys), $warningProbe->calls, 'Message order and count remain unchanged');
+same($lookup, $warningProbe->banners('fr', $keys), 'Banner and subsection label construction agree');
+same('second', $warningProbe->resolve(' Même ', $lookup, $keys, ['Même' => 'first']), 'Localized label takes priority over alias');
+same('first', $warningProbe->resolve('alias', $lookup, $keys, ['alias' => 'first']), 'Explicit alias');
+same('second', $warningProbe->resolve('second', $lookup, $keys, []), 'Canonical subsection key');
+same('', $warningProbe->resolveBanner('second', $lookup), 'No canonical-key fallback for page banners');
+same('zero', $warningProbe->resolveBanner('0', $lookup), 'Zero is a valid localized label');
+same('', $warningProbe->resolve(null, $lookup, $keys, []), 'Missing warning');
+same('', $warningProbe->resolve(false, $lookup, $keys, []), 'False warning');
+same('', $warningProbe->resolve('unknown', $lookup, $keys, []), 'Unknown warning');
+same('', $warningProbe->resolveBanner('', ['' => 'second']), 'Empty labels are never resolved');
+$checks += 12;
+
 trait NativeBannerProbe {
-	public function __construct() { $this->REFERENCE_WARNING_BANNER_KEYS = new Table([1 => 'dead_link']); }
-	protected function buildSummaryLabelLookup($lang = null, $keys = null) { return new Table(['dead_link' => 'dead_link']); }
+	public function __construct() { $this->REFERENCE_WARNING_BANNER_KEYS = ['dead_link']; }
+	protected function buildSummaryLabelLookup($lang = null, array $keys = []): array { return ['dead_link' => 'dead_link']; }
 	protected function renderSubsectionBanner($pv = null, $lang = null, $key = null, $opts = null, $cats = null) {
 		Lua::insert($cats, 'category effect');
 		return '<banner>';
