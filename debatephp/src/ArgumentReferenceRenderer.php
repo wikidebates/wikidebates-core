@@ -1072,7 +1072,7 @@ class ArgumentReferenceRenderer {
 		$debateKey = function($d = null) {
 		return $this->canonicalTitle($d);
 		};
-		$linked = new Table([]);
+		$linked = [];
 		foreach (((Lua::truth($v141 = $cache['debatsPour']) ? $v141 : new Table([])))->sequence() as $_ => $d) {
 			$k = $debateKey($d);
 			if (($k !== '')) {
@@ -1085,21 +1085,21 @@ class ArgumentReferenceRenderer {
 				$linked[$k] = true;
 			}
 		}
-		$cardsTous = new Table([]);
+		$cardsTous = [];
 		foreach (((Lua::truth($v143 = $cache['parentDebatesFinal']) ? $v143 : new Table([])))->sequence() as $_ => $d) {
 			$k = $debateKey($d);
-			$typeDebate = (Lua::truth($v144 = (Lua::truth($v145 = (Lua::truth($v146 = ($k !== '')) ? $linked[$k] : $v146)) ? 'debate' : $v145)) ? $v144 : '');
-			Lua::insert($cardsTous, $this->cardDebateRendered($d, $argTitle, $typeDebate));
+			$typeDebate = ($k !== '' && isset($linked[$k]) ? 'debate' : '');
+			$cardsTous[] = $this->cardDebateRendered($d, $argTitle, $typeDebate);
 		}
 		$cache['debatCardsTous'] = $cardsTous;
-		$cardsPour = new Table([]);
+		$cardsPour = [];
 		foreach (((Lua::truth($v147 = $cache['debatsPour']) ? $v147 : new Table([])))->sequence() as $_ => $d) {
-			Lua::insert($cardsPour, $this->cardDebateRendered($d, $argTitle, 'debate'));
+			$cardsPour[] = $this->cardDebateRendered($d, $argTitle, 'debate');
 		}
 		$cache['debatCardsPour'] = $cardsPour;
-		$cardsContre = new Table([]);
+		$cardsContre = [];
 		foreach (((Lua::truth($v148 = $cache['debatsContre']) ? $v148 : new Table([])))->sequence() as $_ => $d) {
-			Lua::insert($cardsContre, $this->cardDebateRendered($d, $argTitle, 'debate'));
+			$cardsContre[] = $this->cardDebateRendered($d, $argTitle, 'debate');
 		}
 		$cache['debatCardsContre'] = $cardsContre;
 	}
@@ -1111,14 +1111,14 @@ class ArgumentReferenceRenderer {
 		$this->ensureArgumentParents($pv, $cache, $PF);
 		$argTitle = $pv['rawTitle'];
 		$typeArgument = 'argument';
-		$cj = new Table([]);
+		$cj = [];
 		foreach (((Lua::truth($v149 = $cache['justifs']) ? $v149 : new Table([])))->sequence() as $_ => $a) {
-			Lua::insert($cj, $this->cardArgumentRendered($a, $argTitle, $typeArgument));
+			$cj[] = $this->cardArgumentRendered($a, $argTitle, $typeArgument);
 		}
 		$cache['argCardsJustifs'] = $cj;
-		$co = new Table([]);
+		$co = [];
 		foreach (((Lua::truth($v150 = $cache['objs']) ? $v150 : new Table([])))->sequence() as $_ => $a) {
-			Lua::insert($co, $this->cardArgumentRendered($a, $argTitle, $typeArgument));
+			$co[] = $this->cardArgumentRendered($a, $argTitle, $typeArgument);
 		}
 		$cache['argCardsObjs'] = $co;
 	}
@@ -1191,32 +1191,25 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function renderBannersFromArgList($rawList = null, $lookup = null, $pv = null, $lang = null, $cats = null) {
-		$html = new Table([]);
+		$html = [];
 		foreach ($this->csvValues($rawList, ',') as $_ => $x) {
 			$key = $this->resolveBannerKeyFromLookup($x, $lookup);
 			if (($key !== '')) {
-				Lua::insert($html, $this->renderBannerByKey($pv, $lang, $key, $cats));
+				$html[] = $this->renderBannerByKey($pv, $lang, $key, $cats);
 			}
 		}
-		return Lua::concat($html);
+		return implode('', $html);
 	}
 
-	protected function joinCards($cards = null, $lang = null) {
-		$n = (Lua::truth($v162 = (Lua::truth($v163 = $cards) ? Lua::len($cards) : $v163)) ? $v162 : 0);
-		if (($n === 0)) {
-			return '';
+	/** Join dense, zero-based rendered parent cards without repeating the final link. */
+	protected function joinCards(?array $cards = null, $lang = null): string {
+		$cards ??= [];
+		if (count($cards) < 2) {
+			return $cards[0] ?? '';
 		}
-		if (($n === 1)) {
-			return (Lua::truth($v164 = $cards[1]) ? $v164 : '');
-		}
-		$conj = $this->L($lang, 'text', 'list_conjunction_text');
-		$conj = Lua::str((Lua::truth($v165 = $conj) ? $v165 : ' et '));
-		$conj = Lua::gsub($conj, '%s+', '&#32;');
-		if (($n === 2)) {
-			return ((Lua::truth($v166 = $cards[1]) ? $v166 : '') . $conj . (Lua::truth($v167 = $cards[2]) ? $v167 : ''));
-		}
-		$head = Lua::concat($cards, ', ', 1, ($n - 1));
-		return ($head . $conj . (Lua::truth($v168 = $cards[$n]) ? $v168 : ''));
+		$conjunction = preg_replace('/[\x09-\x0d ]+/', '&#32;', $this->L($lang, 'text', 'list_conjunction_text'));
+		$last = array_pop($cards);
+		return implode(', ', $cards) . $conjunction . $last;
 	}
 
 	protected function renderDebateParentsBoxes($pv = null, $cats = null, $lang = null, $cache = null, $PF = null) {
@@ -1225,24 +1218,24 @@ class ArgumentReferenceRenderer {
 		}
 		$this->ensureDebateParents($pv, $cache, $PF);
 		$this->ensureDebateCards($pv, $cache, $lang, $PF);
-		$out = new Table([]);
+		$out = [];
 		$nTous = Lua::len((Lua::truth($v169 = $cache['parentDebatesFinal']) ? $v169 : new Table([])));
 		if (($nTous > 0)) {
 			$msgKey = (($nTous === 1) ? 'parent_used_in_debate_1' : 'parent_used_in_debate_n');
 			$texte = sprintf($this->L($lang, 'text', $msgKey), (': ' . $this->joinCards($cache['debatCardsTous'], $lang)));
-			Lua::insert($out, $this->renderParentBanner('wk-icon-parent', $texte));
+			$out[] = $this->renderParentBanner('wk-icon-parent', $texte);
 		}
 		if ((Lua::truth($cache['debatsPour']) && (Lua::len($cache['debatsPour']) > 0))) {
 			$msgKey = (Lua::truth($v172 = (Lua::truth($v173 = (Lua::len($cache['debatsPour']) === 1)) ? 'parent_is_pro_in_1' : $v173)) ? $v172 : 'parent_is_pro_in_n');
 			$texte = sprintf($this->L($lang, 'text', $msgKey), (': ' . $this->joinCards($cache['debatCardsPour'], $lang)));
-			Lua::insert($out, $this->renderParentBanner('wk-icon-argument is-pro', $texte));
+			$out[] = $this->renderParentBanner('wk-icon-argument is-pro', $texte);
 		}
 		if ((Lua::truth($cache['debatsContre']) && (Lua::len($cache['debatsContre']) > 0))) {
 			$msgKey = (Lua::truth($v174 = (Lua::truth($v175 = (Lua::len($cache['debatsContre']) === 1)) ? 'parent_is_con_in_1' : $v175)) ? $v174 : 'parent_is_con_in_n');
 			$texte = sprintf($this->L($lang, 'text', $msgKey), (': ' . $this->joinCards($cache['debatCardsContre'], $lang)));
-			Lua::insert($out, $this->renderParentBanner('wk-icon-argument is-against', $texte));
+			$out[] = $this->renderParentBanner('wk-icon-argument is-against', $texte);
 		}
-		return Lua::concat($out);
+		return implode('', $out);
 	}
 
 	protected function renderArgumentParentsBoxes($pv = null, $cats = null, $lang = null, $cache = null, $PF = null) {
@@ -1251,16 +1244,16 @@ class ArgumentReferenceRenderer {
 		}
 		$this->ensureArgumentParents($pv, $cache, $PF);
 		$this->ensureArgumentCards($pv, $cache, $PF);
-		$out = new Table([]);
+		$out = [];
 		if ((Lua::truth($cache['justifs']) && (Lua::len($cache['justifs']) > 0))) {
 			$texte = sprintf($PF['parent_is_justification_of'], (': ' . $this->joinCards($cache['argCardsJustifs'], $lang)));
-			Lua::insert($out, $this->renderParentBanner('wk-icon-argument is-pro', $texte));
+			$out[] = $this->renderParentBanner('wk-icon-argument is-pro', $texte);
 		}
 		if ((Lua::truth($cache['objs']) && (Lua::len($cache['objs']) > 0))) {
 			$texte = sprintf($PF['parent_is_objection_to'], (': ' . $this->joinCards($cache['argCardsObjs'], $lang)));
-			Lua::insert($out, $this->renderParentBanner('wk-icon-argument is-against', $texte));
+			$out[] = $this->renderParentBanner('wk-icon-argument is-against', $texte);
 		}
-		return Lua::concat($out);
+		return implode('', $out);
 	}
 
 	protected function renderDebatesParentsBottom($pv = null, $lang = null, $cache = null, $PF = null) {
@@ -1273,11 +1266,11 @@ class ArgumentReferenceRenderer {
 			return '<h2 id="Parent_debates" style="display:none;"></h2>';
 		}
 		$title = (Lua::truth($v177 = (Lua::truth($v178 = ($n === 1)) ? $PF['parent_debates_title_1'] : $v178)) ? $v177 : $PF['parent_debates_title_n']);
-		$lis = new Table([]);
-		foreach (((Lua::truth($v179 = $cache['debatCardsTous']) ? $v179 : new Table([])))->sequence() as $_ => $card) {
-			Lua::insert($lis, ('<li style="position: relative;">' . $card . '</li>'));
+		$lis = [];
+		foreach ($cache['debatCardsTous'] ?? [] as $card) {
+			$lis[] = ('<li style="position: relative;">' . $card . '</li>');
 		}
-		return ('<h2 id="Parent_debates" class="wk-icon-before wk-icon-parent">' . $title . '</h2>' . '<ul class="hover-top navigation-not-searchable">' . Lua::concat($lis) . '</ul>');
+		return ('<h2 id="Parent_debates" class="wk-icon-before wk-icon-parent">' . $title . '</h2>' . '<ul class="hover-top navigation-not-searchable">' . implode('', $lis) . '</ul>');
 	}
 
 	protected function renderInitializationBlock($args = null, $pv = null, $cats = null, $lang = null, $cache = null, $PF = null) {
@@ -1539,23 +1532,26 @@ class ArgumentReferenceRenderer {
 		return new Table(['items' => $items, 'list' => $listText, 'argsVar' => $argsVar, 'mapHover' => $mapHoverHtml]);
 	}
 
-	protected function renderArgumentItemBanners($itemWarnings = null, $pv = null, $lang = null, $cats = null, $out = null) {
+	protected function renderArgumentItemBanners($itemWarnings = null, $pv = null, $lang = null, $cats = null): array {
 		$warnsArg = trim(NativeText::field($itemWarnings), NativeText::ASCII_WHITESPACE);
 		if (($warnsArg === '')) {
-			return null;
+			return [];
 		}
 		$lookup = $this->buildSummaryLabelLookup($lang, $this->DISPLAYED_TITLE_WARNING_BANNER_KEYS);
 		$hasBanner = false;
+		$out = [];
 		foreach ($this->csvValues($warnsArg, ',') as $_ => $x) {
 			$key = $this->resolveKeyFromLookup($x, $lookup, $this->DISPLAYED_TITLE_WARNING_BANNER_KEYS);
 			if (($key !== '')) {
-				Lua::insert($out, $this->renderSubsectionBanner($pv, $lang, $key, null, null));
+				$fragment = $this->renderSubsectionBanner($pv, $lang, $key, null, null);
+				if ($fragment !== null) { $out[] = $fragment; }
 				$hasBanner = true;
 			}
 		}
 		if (($hasBanner && Lua::truth($cats))) {
 			Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'displayed_titles_to_review') . ']]'));
 		}
+		return $out;
 	}
 
 	protected function wkRenderArgumentLi($pv = null, $lang = null, $it = null, $kind = null, $idx = null, $cats = null) {
@@ -1568,9 +1564,8 @@ class ArgumentReferenceRenderer {
 		}
 		$aId = $this->anchorId($titleShown);
 		$warnings = NativeText::field($it['warnings']);
-		$banners = new Table([]);
-		$this->renderArgumentItemBanners($warnings, $pv, $lang, $cats, $banners);
-		return ('<li id="' . $idPrefix . Lua::str($idx) . '" class="argument level-1">' . '<div id="' . $this->escapeAttr($aId) . '" class="argument-title wk-icon-before wk-icon-argument wk-icon-after wk-carret">' . '[[' . $page . '|' . $titleShown . ']]' . (Lua::truth($v226 = (Lua::truth($v227 = (Lua::len($banners) > 0)) ? Lua::concat($banners) : $v227)) ? $v226 : '') . '</div>' . '</li>');
+		$banners = $this->renderArgumentItemBanners($warnings, $pv, $lang, $cats);
+		return ('<li id="' . $idPrefix . Lua::str($idx) . '" class="argument level-1">' . '<div id="' . $this->escapeAttr($aId) . '" class="argument-title wk-icon-before wk-icon-argument wk-icon-after wk-carret">' . '[[' . $page . '|' . $titleShown . ']]' . implode('', $banners) . '</div>' . '</li>');
 	}
 
 	protected function renderKeywords($args = null, $pv = null, $cats = null, $lang = null, $PF = null) {
@@ -1615,8 +1610,8 @@ class ArgumentReferenceRenderer {
 
 	protected function renderSummary($args = null, $pv = null, $cats = null, $lang = null, $PF = null, $summaryId = null) {
 		$edit = $this->addDataEditLink($PF['form_edit_summary'], $pv['rawTitle'], '&nbsp;', $PF['edit_summary_tooltip']);
-		$out = new Table([]);
-		Lua::insert($out, ('<h2' . $summaryId . ' class="section-modifiable wk-icon-before wk-icon-summary">' . $PF['summary'] . $edit . '</h2>'));
+		$out = [];
+		$out[] = ('<h2' . $summaryId . ' class="section-modifiable wk-icon-before wk-icon-summary">' . $PF['summary'] . $edit . '</h2>');
 		{
 			$raw = $args['summary-warnings'];
 			$raw = (Lua::truth($v229 = (Lua::truth($v230 = (is_string($raw))) ? trim($raw, NativeText::ASCII_WHITESPACE) : $v230)) ? $v229 : '');
@@ -1631,36 +1626,36 @@ class ArgumentReferenceRenderer {
 				foreach ($this->csvValues($raw, ',') as $_ => $x) {
 					$key = $this->resolveKeyFromLookup($x, $lookup, $this->SUMMARY_WARNING_BANNER_KEYS, $aliases);
 					if (($key !== '')) {
-						Lua::insert($out, $this->renderSubsectionBanner($pv, $lang, $key, null, $cats));
+						$out[] = $this->renderSubsectionBanner($pv, $lang, $key, null, $cats);
 					}
 				}
 			}
 		}
 		if ((Lua::truth($args['summary']) && ($args['summary'] !== ''))) {
-			Lua::insert($out, ('<div class=\'argument-summary\'>
-' . $args['summary'] . '</div>'));
+			$out[] = ('<div class=\'argument-summary\'>
+' . $args['summary'] . '</div>');
 		}
 		else {
-			Lua::insert($out, ('<div class="aucun-contenu navigation-not-searchable">' . $PF['no_summary'] . '</div>'));
+			$out[] = ('<div class="aucun-contenu navigation-not-searchable">' . $PF['no_summary'] . '</div>');
 			Lua::insert($cats, ('[[Category:' . $PF['cat_no_summary'] . ']]'));
 		}
-		return Lua::concat($out);
+		return implode('', $out);
 	}
 
 	protected function renderQuotes($args = null, $pv = null, $cats = null, $lang = null, $PF = null) {
 		$edit = $this->addDataEditLink($PF['form_edit_quotes'], $pv['rawTitle'], '&nbsp;', $PF['edit_quotes_tooltip']);
-		$out = new Table([]);
+		$out = [];
 		$idAttr = '';
-		Lua::insert($out, ('<h2 class="section-modifiable wk-icon-before wk-icon-quote"' . $idAttr . '>' . $PF['quotes'] . $edit . '</h2>'));
+		$out[] = ('<h2 class="section-modifiable wk-icon-before wk-icon-quote"' . $idAttr . '>' . $PF['quotes'] . $edit . '</h2>');
 		$q = $args['quotes'];
 		if ((Lua::truth($q) && ($q !== ''))) {
-			Lua::insert($out, $q);
+			$out[] = $q;
 		}
 		else {
-			Lua::insert($out, ('<div class="aucun-contenu navigation-not-searchable">' . $PF['no_quotes'] . '</div>'));
+			$out[] = ('<div class="aucun-contenu navigation-not-searchable">' . $PF['no_quotes'] . '</div>');
 			Lua::insert($cats, ('[[Category:' . $PF['cat_no_quotes'] . ']]'));
 		}
-		return Lua::concat($out);
+		return implode('', $out);
 	}
 
 	protected function renderDebateDetailed($args = null, $pv = null, $cats = null, $lang = null, $PF = null) {
@@ -2767,12 +2762,12 @@ class ArgumentReferenceRenderer {
 		{
 			$titleLookup = $this->buildBannerLabelLookup($lang, $this->TITLE_WARNING_BANNER_KEYS);
 			$argLookup = $this->buildBannerLabelLookup($lang, $this->ARGUMENT_WARNING_BANNER_KEYS);
-			$out = new Table([]);
+			$out = [];
 			if (Lua::truth($args['title-warnings'])) {
-				Lua::insert($out, $this->renderBannersFromArgList($args['title-warnings'], $titleLookup, $pv, $lang, $cats));
+				$out[] = $this->renderBannersFromArgList($args['title-warnings'], $titleLookup, $pv, $lang, $cats);
 			}
-			if ((Lua::len($out) > 0)) {
-				$pieces[] = Lua::concat($out);
+			if ((count($out) > 0)) {
+				$pieces[] = implode('', $out);
 			}
 		}
 		$maps = $this->computeArgumentMapsFromData($args);
@@ -2783,11 +2778,11 @@ class ArgumentReferenceRenderer {
 		$pieces[] = $this->renderKeywords($args, $pv, $cats, $lang, $PF);
 		if (Lua::truth($args['argument-warnings'])) {
 			$argLookup = $this->buildBannerLabelLookup($lang, $this->ARGUMENT_WARNING_BANNER_KEYS);
-			$out = new Table([]);
+			$out = [];
 			$btnForm = $this->addDataLink($this->L($lang, 'forms', 'banners_edit_title'), $pv['rawTitle'], '', $this->L($lang, 'text', 'argument_banners_edit_tt'), new Table(['editButton' => true]));
-			Lua::insert($out, ('<h2 id="Summary" class="section-modifiable wk-icon-before wk-icon-flag">' . $this->L($lang, 'text', 'warnings_title') . $btnForm . '</h2>'));
-			Lua::insert($out, $this->renderBannersFromArgList($args['argument-warnings'], $argLookup, $pv, $lang, $cats));
-			$pieces[] = Lua::concat($out);
+			$out[] = ('<h2 id="Summary" class="section-modifiable wk-icon-before wk-icon-flag">' . $this->L($lang, 'text', 'warnings_title') . $btnForm . '</h2>');
+			$out[] = $this->renderBannersFromArgList($args['argument-warnings'], $argLookup, $pv, $lang, $cats);
+			$pieces[] = implode('', $out);
 		}
 		$summaryId = ' id="Summary"';
 		if ((Lua::truth($args['argument-warnings']) && (Lua::str($args['argument-warnings']) !== ''))) {
@@ -2800,23 +2795,23 @@ class ArgumentReferenceRenderer {
 			$pieces[] = $detailed;
 		}
 		else {
-			$out = new Table([]);
+			$out = [];
 			$editRefs = $this->addDataEditLink($PF['form_edit_references'], $pv['rawTitle'], '&nbsp;', $PF['edit_references_tooltip']);
-			Lua::insert($out, ('<h2 class="section-modifiable wk-icon-before wk-icon-bibliography">' . $PF['references'] . $editRefs . '</h2>'));
+			$out[] = ('<h2 class="section-modifiable wk-icon-before wk-icon-bibliography">' . $PF['references'] . $editRefs . '</h2>');
 			{
 				$refsHtml = $this->wkRenderReferencesFromRaw($rawB, $rawW, $rawV, $pv, $lang, $cats, $PF, null, $args);
 				if (($refsHtml !== '')) {
-					Lua::insert($out, ('<ul class="references-argument">' . $refsHtml . '</ul>'));
+					$out[] = ('<ul class="references-argument">' . $refsHtml . '</ul>');
 				}
 				else {
-					Lua::insert($out, ('<div class="aucun-contenu navigation-not-searchable">' . $PF['no_references'] . '</div>'));
+					$out[] = ('<div class="aucun-contenu navigation-not-searchable">' . $PF['no_references'] . '</div>');
 					Lua::insert($cats, ('[[Category:' . $PF['cat_no_references'] . ']]'));
 				}
 			}
 			$justifItems = (Lua::truth($v375 = (Lua::truth($v376 = $maps['justif']) ? $maps['justif']['items'] : $v376)) ? $v375 : new Table([]));
 			$objItems = (Lua::truth($v377 = (Lua::truth($v378 = $maps['obj']) ? $maps['obj']['items'] : $v378)) ? $v377 : new Table([]));
 			$editJust = $this->addDataEditLink($PF['form_edit_justifications'], $pv['rawTitle'], '&nbsp;', $PF['edit_justifications_tooltip']);
-			Lua::insert($out, ('<h2 class="section-modifiable wk-icon-before wk-icon-argument is-pro">' . $PF['justifications'] . $editJust . '</h2>'));
+			$out[] = ('<h2 class="section-modifiable wk-icon-before wk-icon-argument is-pro">' . $PF['justifications'] . $editJust . '</h2>');
 			{
 				$raw = $args['justification-warnings'];
 				$raw = (Lua::truth($v379 = (Lua::truth($v380 = (is_string($raw))) ? trim($raw, NativeText::ASCII_WHITESPACE) : $v380)) ? $v379 : '');
@@ -2825,23 +2820,22 @@ class ArgumentReferenceRenderer {
 					foreach ($this->csvValues($raw, ',') as $_ => $x) {
 						$key = $this->resolveKeyFromLookup($x, $lookup, $this->JUSTIFICATION_WARNING_BANNER_KEYS);
 						if (($key !== '')) {
-							Lua::insert($out, $this->renderSubsectionBanner($pv, $lang, $key, new Table(['reorg' => true, 'form' => $PF['form_edit_justifications'], 'tooltip' => $PF['edit_justifications_tooltip']]), $cats));
+							$out[] = $this->renderSubsectionBanner($pv, $lang, $key, new Table(['reorg' => true, 'form' => $PF['form_edit_justifications'], 'tooltip' => $PF['edit_justifications_tooltip']]), $cats);
 						}
 					}
 				}
 			}
 			if ((Lua::len($justifItems) > 0)) {
 				$ulJ = (HtmlBuilder::create('ul'))->addClass('argument-list is-pro');
-				$lis = new Table([]);
+				$lis = [];
 				foreach (($justifItems)->sequence() as $i => $it) {
-					Lua::insert($lis, $this->wkRenderArgumentLi($pv, $lang, $it, 'justif', $i, $cats));
+					$lis[] = $this->wkRenderArgumentLi($pv, $lang, $it, 'justif', $i, $cats);
 				}
-				($ulJ)->wikitext(Lua::concat($lis, '
-'));
-				Lua::insert($out, Lua::str($ulJ));
+				($ulJ)->wikitext(implode("\n", $lis));
+				$out[] = Lua::str($ulJ);
 			}
 			else {
-				Lua::insert($out, ('<div class="aucun-argument navigation-not-searchable">' . $PF['no_justifications'] . '</div>'));
+				$out[] = ('<div class="aucun-argument navigation-not-searchable">' . $PF['no_justifications'] . '</div>');
 				Lua::insert($cats, ('[[Category:' . $PF['cat_no_justifications'] . ']]'));
 			}
 			{
@@ -2854,10 +2848,10 @@ class ArgumentReferenceRenderer {
 				$rqQuery[($baseField . '[type]')] = NativeText::field($PF['type_justification']);
 				$rqQuery[($baseField . '[ID]')] = NativeText::field($pv['pageId']);
 				$rqQuery['_run'] = '1';
-				Lua::insert($out, ('<div class="bouton-ajouter wk-btn mw-ui-button navigation-not-searchable noprint">' . $this->wkRunQueryHtmlTagButton($rqForm, $label, $tooltip, $rqQuery) . '</div>'));
+				$out[] = ('<div class="bouton-ajouter wk-btn mw-ui-button navigation-not-searchable noprint">' . $this->wkRunQueryHtmlTagButton($rqForm, $label, $tooltip, $rqQuery) . '</div>');
 			}
 			$editObj = $this->addDataEditLink($PF['form_edit_objections'], $pv['rawTitle'], '&nbsp;', $PF['edit_objections_tooltip']);
-			Lua::insert($out, ($this->listBreaker() . '<h2 class="section-modifiable wk-icon-before wk-icon-argument is-con">' . $PF['objections'] . $editObj . '</h2>'));
+			$out[] = ($this->listBreaker() . '<h2 class="section-modifiable wk-icon-before wk-icon-argument is-con">' . $PF['objections'] . $editObj . '</h2>');
 			{
 				$raw = $args['objection-warnings'];
 				$raw = (Lua::truth($v387 = (Lua::truth($v388 = (is_string($raw))) ? trim($raw, NativeText::ASCII_WHITESPACE) : $v388)) ? $v387 : '');
@@ -2866,23 +2860,22 @@ class ArgumentReferenceRenderer {
 					foreach ($this->csvValues($raw, ',') as $_ => $x) {
 						$key = $this->resolveKeyFromLookup($x, $lookup, $this->OBJECTION_WARNING_BANNER_KEYS);
 						if (($key !== '')) {
-							Lua::insert($out, $this->renderSubsectionBanner($pv, $lang, $key, new Table(['reorg' => true, 'form' => $PF['form_edit_objections'], 'tooltip' => $PF['edit_objections_tooltip']]), $cats));
+							$out[] = $this->renderSubsectionBanner($pv, $lang, $key, new Table(['reorg' => true, 'form' => $PF['form_edit_objections'], 'tooltip' => $PF['edit_objections_tooltip']]), $cats);
 						}
 					}
 				}
 			}
 			if ((Lua::len($objItems) > 0)) {
 				$ulO = (HtmlBuilder::create('ul'))->addClass('argument-list is-con');
-				$lis = new Table([]);
+				$lis = [];
 				foreach (($objItems)->sequence() as $i => $it) {
-					Lua::insert($lis, $this->wkRenderArgumentLi($pv, $lang, $it, 'obj', $i, $cats));
+					$lis[] = $this->wkRenderArgumentLi($pv, $lang, $it, 'obj', $i, $cats);
 				}
-				($ulO)->wikitext(Lua::concat($lis, '
-'));
-				Lua::insert($out, Lua::str($ulO));
+				($ulO)->wikitext(implode("\n", $lis));
+				$out[] = Lua::str($ulO);
 			}
 			else {
-				Lua::insert($out, ('<div class="aucun-argument navigation-not-searchable">' . $PF['no_objections'] . '</div>'));
+				$out[] = ('<div class="aucun-argument navigation-not-searchable">' . $PF['no_objections'] . '</div>');
 				Lua::insert($cats, ('[[Category:' . $PF['cat_no_objections'] . ']]'));
 			}
 			{
@@ -2894,9 +2887,9 @@ class ArgumentReferenceRenderer {
 				$rqQuery[($baseField . '[type]')] = NativeText::field($PF['type_objection']);
 				$rqQuery[($baseField . '[ID]')] = NativeText::field($pv['pageId']);
 				$rqQuery['_run'] = '1';
-				Lua::insert($out, ('<div class="bouton-ajouter wk-btn mw-ui-button navigation-not-searchable noprint">' . $this->wkRunQueryHtmlTagButton($rqForm, $label, $tooltip, $rqQuery) . '</div>'));
+				$out[] = ('<div class="bouton-ajouter wk-btn mw-ui-button navigation-not-searchable noprint">' . $this->wkRunQueryHtmlTagButton($rqForm, $label, $tooltip, $rqQuery) . '</div>');
 			}
-			$pieces[] = Lua::concat($out);
+			$pieces[] = implode('', $out);
 		}
 		$pieces[] = $this->renderDebatesParentsBottom($pv, $lang, $cache, $PF);
 		if (Lua::truth($args['interlanguage'])) {

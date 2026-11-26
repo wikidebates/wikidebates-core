@@ -89,7 +89,22 @@ foreach ([
 	'A, B&#32;et&#32;C' => [1 => 'A', 2 => 'B', 3 => 'C'],
 	'A, B, C&#32;et&#32;D' => [1 => 'A', 2 => 'B', 3 => 'C', 4 => 'D']
 ] as $expected => $cards) {
-	$equal($expected, $join->invoke($joinRenderer, new Table($cards), 'fr'), 'French list with ' . count($cards) . ' cards');
+	$equal($expected, $join->invoke($joinRenderer, array_values($cards), 'fr'), 'French list with ' . count($cards) . ' cards');
+}
+
+// Native list joins use zero-based arrays and never mutate their caller.
+$cards = ['0', 'A', 'A', 'B'];
+$equal('0, A, A&#32;and&#32;B', $join->invoke($joinRenderer, $cards, 'en'), 'English conjunction and zero');
+$equal(['0', 'A', 'A', 'B'], $cards, 'Joining does not change caller list');
+$equal('', $join->invoke($joinRenderer, null, 'fr'), 'No cached cards');
+$equal('0', $join->invoke($joinRenderer, ['0'], 'fr'), 'Single zero card');
+$articles = new ReflectionMethod(\MediaWiki\Extension\DebatePHP\ReferenceRenderer::class, 'joinArticles');
+$debate = new \MediaWiki\Extension\DebatePHP\ReferenceRenderer(new ArgumentTestContext(['title' => 'Question ?', 'args' => []]));
+foreach (['fr' => ' et ', 'en' => ' and '] as $language => $conjunction) {
+	$equal('', $articles->invoke($debate, [], $language), 'Empty article list');
+	$equal('0', $articles->invoke($debate, ['0'], $language), 'Single zero article');
+	$equal('A' . $conjunction . 'B', $articles->invoke($debate, ['A', 'B'], $language), 'Two articles');
+	$equal('A, B, C' . $conjunction . 'D', $articles->invoke($debate, ['A', 'B', 'C', 'D'], $language), 'Four articles, no repeated last link');
 }
 
 // Equivalent raw SMW forms must produce one link per relation, preserving order.
