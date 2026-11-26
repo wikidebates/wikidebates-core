@@ -67,4 +67,52 @@ $probe = new ReflectionMethod($renderer, 'containsTitle');
 foreach ([['label' => 'Target'], [1 => 'no', 3 => 'Target'], [1 => null, 2 => 'Target'], ['fulltext' => 'Target'], [1 => false, 2 => 'Target']] as $value) {
 	$equal($probe->invoke($renderer, Table::wrap($value), 'Target'), $probe->invoke($renderer, $value, 'Target'), 'Native title lookup matches legacy table');
 }
+
+// Equivalent raw SMW forms must produce one link per relation, preserving order.
+$parentContext = new class(['title' => 'Child', 'args' => ['lang' => 'en']]) extends ArgumentTestContext {
+	public function smwAsk(Table $query): ?Table {
+		$fields = implode("\n", $query->values);
+		if (str_contains($fields, '=pro')) {
+			return Table::wrap([
+				1 => ['fulltext' => 'Debate A', 'pro' => 'Child', 'con' => 'Child'],
+				2 => ['fulltext' => 'Debate_A', 'pro' => 'Child'],
+				3 => ['fulltext' => 'Debate B', 'pro' => 'Child']
+			]);
+		}
+		if (str_contains($fields, '=justif')) {
+			return Table::wrap([
+				1 => ['fulltext' => 'Parent &amp; A', 'justif' => 'Child', 'obj' => 'Child'],
+				2 => ['fulltext' => 'Parent & A', 'justif' => 'Child'],
+				3 => ['fulltext' => 'Parent B', 'justif' => 'Child']
+			]);
+		}
+		if (str_contains($fields, '=chain')) {
+			return Table::wrap([
+				1 => ['chain' => 'Debate A⟭Parent A'],
+				2 => ['chain' => 'Debate_A⟭Parent B'],
+				3 => ['chain' => 'Debate &amp; B⟭Parent A'],
+				4 => ['chain' => 'Debate & B⟭Parent B']
+			]);
+		}
+		return null;
+	}
+};
+foreach ([ArgumentReferenceRenderer::class, \MediaWiki\Extension\DebatePHP\ArgumentRenderer::class] as $class) {
+	$rendered = (new $class($parentContext))->render();
+	preg_match_all('~<div class="bandeau-en-tete searchaux wk-icon-before [^"]+">.*?</div>~s', $rendered, $matches);
+	$parentBanners = array_values(array_filter($matches[0], static fn($banner) => str_contains($banner, 'class="hover-map"')));
+	$equal(5, count($parentBanners), 'All five parent relation banners remain present');
+	$expected = [
+		['Debate A', 'Debate & B'],
+		['Debate A', 'Debate B'],
+		['Debate A'],
+		['Parent & A', 'Parent B'],
+		['Parent & A']
+	];
+	foreach ($parentBanners as $i => $banner) {
+		preg_match_all('~\[\[([^\]]+)\]\]~', $banner, $links);
+		$equal($expected[$i], $links[1], 'Unique ordered parent links in banner ' . $i);
+	}
+}
+
 echo "$assertions native-read assertions: semantic indexing, JSON bytes, CSV isolation, optional adapters and certified fallback/cache lifetimes\n";
