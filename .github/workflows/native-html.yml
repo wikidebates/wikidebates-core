@@ -44,6 +44,10 @@
 					"run": "php tests/run.php"
 				},
 				{
+					"name": "Native PHP contract against corrected pre-migration baseline",
+					"run": "git fetch --no-tags --depth=1 origin 2439e0749bcdc9ab81aeb20a902f8b6845a744e4\ngit worktree add --detach \"$RUNNER_TEMP/native-php-baseline\" FETCH_HEAD\nphp debatephp/tests/nativeCorpus.php --root=\"$RUNNER_TEMP/native-php-baseline\" > \"$RUNNER_TEMP/native-before.json\"\nphp debatephp/tests/nativeCorpus.php > \"$RUNNER_TEMP/native-after.json\"\ndiff -u \"$RUNNER_TEMP/native-before.json\" \"$RUNNER_TEMP/native-after.json\"\nfor snapshot in Module-Argument.reference.lua Module-Debate.reference.lua WD-I18N.reference.lua WD-I18N-Data.snapshot.lua; do\n\tcmp \"debatephp/resources/$snapshot\" \"$RUNNER_TEMP/native-php-baseline/debatephp/resources/$snapshot\"\ndone\n"
+				},
+				{
 					"name": "Reading prewarm safety runner smoke tests",
 					"run": "bash tests/readingFragments/runnerSmoke.sh"
 				},
