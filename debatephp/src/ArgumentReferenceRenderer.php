@@ -705,7 +705,7 @@ class ArgumentReferenceRenderer {
 	}
 
 	/** Extract the first non-nil/non-false title field, including an explicit empty string. */
-	private function semanticRowTitle(array $row): mixed {
+	private function semanticRowTitle(mixed $row): mixed {
 		foreach (['fulltext', 'page', 1] as $key) {
 			$value = $row[$key] ?? null;
 			if ($value !== null && $value !== false) {
@@ -1324,7 +1324,9 @@ class ArgumentReferenceRenderer {
 		if (!$this->hasSMW()) {
 			return;
 		}
-		$lang ??= 'fr';
+		if ($lang === null || $lang === false) {
+			$lang = 'fr';
+		}
 		$title = $this->smwSafeTitle($pv['rawTitle']);
 		$propBreadcrumb = NativeText::field($PF['prop_breadcrumb']);
 		$propDebateName = NativeText::field($PF['prop_debate_name']);

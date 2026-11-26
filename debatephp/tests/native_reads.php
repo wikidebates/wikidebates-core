@@ -158,7 +158,7 @@ foreach ([ArgumentReferenceRenderer::class, \MediaWiki\Extension\DebatePHP\Argum
 }
 
 // The native state distinguishes a not-yet-loaded relation from a known empty list.
-$relations = new \\MediaWiki\\Extension\\DebatePHP\\ParentRelations;
+$relations = new \MediaWiki\Extension\DebatePHP\ParentRelations;
 $equal(null, $relations->proDebates, 'Unloaded parent relation');
 $relations->proDebates = [];
 $equal([], $relations->proDebates, 'Loaded empty parent relation');
@@ -171,7 +171,7 @@ $parentFields = new Table([
 	'prop_breadcrumb' => 'Chain', 'prop_debate_name' => 'Debate'
 ]);
 $pv = $parentContext->pageVars();
-$relations = new \\MediaWiki\\Extension\\DebatePHP\\ParentRelations;
+$relations = new \MediaWiki\Extension\DebatePHP\ParentRelations;
 (new ReflectionMethod($parentRenderer, 'ensureDebateParents'))->invoke($parentRenderer, $pv, $relations, $parentFields);
 $equal(['Debate A', 'Debate B', 'Debate C'], $relations->proDebates, 'Native direct-parent list preserves canonical order');
 $equal(['Debate A'], $relations->conDebates, 'Parent relation sets remain distinct');
@@ -190,6 +190,17 @@ foreach ([
 	[[1 => ['name' => 'Target']], true]
 ] as [$input, $expected]) {
 	$equal($expected, $lookup->invoke($parentRenderer, $input, 'Target'), 'Title field priority and sparse semantic lists');
+}
+
+$rowTitle = new ReflectionMethod($parentRenderer, 'semanticRowTitle');
+foreach ([
+	[['fulltext' => '', 'page' => 'Target'], ''],
+	[['fulltext' => false, 'page' => 'Target'], 'Target'],
+	[['fulltext' => null, 'page' => false, 1 => 'Target'], 'Target'],
+	[['fulltext' => '0', 'page' => 'Target'], '0'],
+	[[], null]
+] as [$row, $expected]) {
+	$equal($expected, $rowTitle->invoke($parentRenderer, $row), 'Preserve semantic title field precedence');
 }
 
 echo "$assertions native-read assertions: semantic indexing, JSON bytes, CSV isolation, optional adapters and certified fallback/cache lifetimes\n";
