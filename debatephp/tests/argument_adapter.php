@@ -41,7 +41,7 @@ namespace UtfNormal { final class Validator { public static function cleanUp($te
 namespace MediaWiki\Title {
 	final class Title {
 		public function __construct(private string $text) {}
-		public static function newFromText($text) { return $text === '[' ? null : new self(str_replace('_', ' ', $text)); }
+		public static function newFromText($text) { return str_contains($text, '[') ? null : new self(str_replace('_', ' ', $text)); }
 		public static function newFromURL($text) { return self::newFromText($text); }
 		public static function makeTitle($ns, $key) { return new self($key); }
 		public function hasContentModel($model) { return true; }
@@ -56,8 +56,9 @@ namespace MediaWiki\Title {
 }
 namespace MediaWiki\Extension\DebatePHP {
 	final class NativeTags {
+		public static array $lastAttributes = [];
 	public static function observe($telemetry, $operation): string { return $operation(); }
-	public static function renderLink($parser, $frame, $content, $attrs): string { return '<a>'.$content.'</a>'; }
+	public static function renderLink($parser, $frame, $content, $attrs): string { self::$lastAttributes = $attrs; return '<a>'.$content.'</a>'; }
 	}
 }
 namespace MediaWiki\Parser {
@@ -158,6 +159,13 @@ namespace {
 	$check($c->arguments()['keywords'] === 'mot', 'Parent arguments missing');
 	$check($c->arguments()['creation-date'] === ' 2025-01-01 ', 'Argument-specific trimming changed');
 	$check($c->message('Argument.text', 'fr', 'summary_title') === 'Résumé', 'Argument translations missing');
+	$debateContext = new MediaWikiContext(new Parser, new PPFrame(['topic' => "\v\t0\f", 'intro' => "\0A\0", 'blank' => "\r\n"]), [], true, false, null, 'Debate');
+	$check($debateContext->arguments()['topic'] === '0' && $debateContext->arguments()['intro'] === "\0A\0"
+		&& $debateContext->arguments()['blank'] === null, 'Debate trims ASCII whitespace, retains zero and NUL');
+	$check($c->dbKey("[ A\tB\r\n\v\f C") === '[_A_B____ C', 'Invalid-title fallback replaces each ASCII whitespace byte');
+	$c->htmlTag('a', 'native attribute conversion', new Table(['title' => true, 'class' => false, 'href' => '0', 'data-href' => 0, 'other' => null]), true);
+	$check(\MediaWiki\Extension\DebatePHP\NativeTags::$lastAttributes === ['title' => 'true', 'class' => 'false', 'href' => '0', 'data-href' => '0', 'other' => 'nil'], 'Native link attributes preserve legacy scalar text');
+
 	$c->preprocess('test'); $c->preprocess('test');
 	$check($f->child->expands === 1 && $f->child->reads >= 2, 'Expansion cache did not force frame arguments');
 	$rows = $c->smwAsk(new Table([1=>'[[A]]', 2=>'?P=pro']));
