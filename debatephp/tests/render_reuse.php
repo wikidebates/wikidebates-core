@@ -82,7 +82,7 @@ foreach ([\MediaWiki\Extension\DebatePHP\ReferenceRenderer::class, \MediaWiki\Ex
 	$markers = new ReflectionMethod($renderer, 'wkParseWikipediaMarkers');
 	foreach ([
 		['Single page', []], ['⟭', []], ['⟭ 0 ⟭⟭ A ⟭ A ⟭', ['0', 'A', 'A']],
-		["⟭\\vA\\f⟭ B ⟭", ['A', ' B ']]
+		["⟭\vA\f⟭ B ⟭", ['A', ' B ']]
 	] as [$input, $expected]) {
 		same($expected, $markers->invoke($renderer, $input), 'Native Wikipedia marker list preserves grammar and duplicates');
 		$checks++;
