@@ -94,6 +94,39 @@ database snapshots and content, separately record warm/cold conditions and
 real SQL statements, and distinguish rendering from deferred writes.
 Do not change the production caches or extension dependencies during this phase.
 
+## Adjacent-revision native-boundary comparison
+
+The historical benchmark above still defaults to the compatibility context.
+Use the same current driver against two adjacent PHP revisions to isolate a
+specific refactor (for example, the JSON graph construction change in #144):
+
+```sh
+git worktree add --detach /tmp/wd-native-base 11eb47b4e1ee8cb2269b6d6848cf16c672a2de6e
+python3 debatephp/tests/benchmarkNativeContexts.py --base-root=/tmp/wd-native-base --output=/tmp/wd-native-context-benchmarks
+```
+
+The candidate defaults to the current checkout. The four contexts are
+`legacy` (compatibility Table API and trace encoder), `native-json` (native
+JSON interface with the same trace), `native` (also supplies array-backed
+semantic results), and `native-schema` (also uses production schema filtering).
+The last context intentionally has a different encoder contract; compare it
+only across revisions. The synthetic semantic provider cannot certify complete
+empty unions and does not represent SQL latency. All four still use the
+historical test context for remaining adapters, output tracing and fixtures;
+the schema variant excludes revision and description enrichment, marker
+resolution, FormatJson and actual strip insertion.
+
+The paired benchmark checks exact per-mode HTML and effects, with no historical
+query projection, and verifies legacy/native trace parity except for schema
+filtering. Its workflow compares the PR base SHA and head SHA on the same runner
+with PHP 8.4, both OPcache settings, alternating checkout order, and raw samples
+for all four contexts. The summary separates generated cases of 1, 4 and 24
+elements, empty debates and the full module corpus. The benchmark reports sums
+of per-case medians, not the peak of a production request. The shared mock
+fixture reader has been factored out; earlier absolute timings are not an
+exact measurement of this revised driver. The pinned historical reference,
+oracle and permitted historical query projection are unchanged.
+
 ## Next gates
 
 1. Native contract validated on PHP 8.3 and 8.4 in PR #130. Retire the
