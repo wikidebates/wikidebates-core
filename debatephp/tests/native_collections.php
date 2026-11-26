@@ -62,11 +62,12 @@ foreach ([0, 1, -1] as $limit) {
 same([1 => 'A', 2 => 'B', 3 => 'C'], SerializedData::split('A|B|C', '|', 2)->values, 'Split limit counts separators');
 same([1 => ''], SerializedData::split(null, '|')->values, 'Empty input keeps its single empty field');
 same([1 => 'A|B'], SerializedData::split('A|B', '')->values, 'Empty separator retains original text');
-same(['page' => '0', 'title' => '0', 'warnings' => "W⟬extra"], SerializedData::argumentItems("⟭\t0\f⟬\v⟬W⟬extra", true)[1]->values, 'Argument defaults its title and preserves warning delimiters');
-same([], SerializedData::argumentItems('A⟬B', true)->values, 'Required item separator');
+same(['page' => '0', 'title' => '0', 'warnings' => "W⟬extra"], SerializedData::argumentItems("⟭\t0\f⟬\v⟬W⟬extra", true)[0], 'Argument defaults its title and preserves warning delimiters');
+same([], SerializedData::argumentItems('A⟬B', true), 'Required item separator');
 same(['a' => '0', 'b' => "\0B\0", 'c' => ''], SerializedData::recordValues("\v0\f|\0B\0", '|', ['a', 'b', 'c']), 'Record missing fields and byte-exact trim');
 same([], SerializedData::quotes('not a serialized quote')->values, 'Quotes require their field separator');
-$checks += 13;
+same([['page' => 'A', 'title' => 'B', 'warnings' => '']], SerializedData::argumentItems('A⟬B', false), 'Debate permits a single field-delimited record');
+$checks += 14;
 
 $prepared = new RenderData;
 foreach ([null, '', '0', 'a, b,,a', "\0a\0,\v b\f, c ", 'é⟬0⟬é'] as $raw) {

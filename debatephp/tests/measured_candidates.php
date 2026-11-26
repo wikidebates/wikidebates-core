@@ -11,24 +11,28 @@ $equal = static function($a, $b, string $message) use (&$checks): void { same($a
 $context = new ArgumentTestContext(['title' => 'Measured regressions', 'smw' => false, 'args' => []]);
 foreach ([ReferenceRenderer::class, ArgumentReferenceRenderer::class] as $class) {
 	$r = new $class($context); $method = new ReflectionMethod($r, 'wkBuildArgumentData');
-	$first = new Table(['page' => 'Page', 'title' => 'Shown', 'warnings' => '']);
-	$second = new Table(['page' => 'Same', 'title' => 'Same', 'warnings' => '']);
-	$items = new Table([1 => $first, 2 => $second, 4 => new Table(['page' => 'Hidden', 'title' => 'Hidden'])]);
+	$items = SerializedData::argumentItems('Page⟬Shown⟬⟭⟭Same⟬Same⟬⟭⟬Ignored⟭', true);
+	$equal(true, array_is_list($items), 'Argument parser produces a dense zero-based list');
+	$equal(2, count($items), 'Empty records and missing page names are discarded');
 	$d = $method->invoke($r, $items, 'en', 'pro');
-	$equal(true, $d['items'] === $items, 'Argument map retains shared outer identity');
-	$equal(true, $d['items'][1] === $first, 'Argument map retains shared row identity');
-	$equal("* Shown\n* Same", $d['list'], 'Sequence stops at first missing index');
+	$equal($items, $d['items'], 'Argument map retains all decoded records');
+	$equal("* Shown\n* Same", $d['list'], 'Exact list bytes');
 	$separator = $class === ReferenceRenderer::class ? ' -;- ' : '⟭';
 	$equal('Page⟬Shown' . $separator . 'Same', $d['argsVar'], 'Historical argument-variable separators');
 	$equal('<div class="argument-title--map wk-icon-before wk-icon-argument">[[Page|Shown]]</div>' . "\n" . '<div class="argument-title--map wk-icon-before wk-icon-argument">[[Same|Same]]</div>', $d['mapHover'], 'Exact hover bytes and newline');
 	if ($class === ReferenceRenderer::class) {
 		$equal('<div  id="Pro_argument_1_map" class="argument-title--map wk-icon-before wk-icon-argument">Shown</div>' . "\n" . '<div  id="Pro_argument_2_map" class="argument-title--map wk-icon-before wk-icon-argument">Same</div>', $d['map'], 'Historical double space and one-based map IDs');
+		$negative = $method->invoke($r, $items, 'en', 'con');
+		$equal(str_replace('Pro_argument_', 'Con_argument_', $d['map']), $negative['map'], 'Counterargument public IDs');
 	}
-	$first['title'] = 'Changed';
-	$equal('Changed', $d['items'][1]['title'], 'Legacy row mutation remains visible');
-	$nil = new Table([1 => new Table, 2 => $second]);
-	$equal('Same', $method->invoke($r, $nil, 'en', 'pro')['argsVar'], 'Nil fields do not add an argument-variable separator');
-	$equal('', $method->invoke($r, new Table, 'en', 'pro')['list'], 'Empty argument map');
+	$items[0]['title'] = 'Changed';
+	$equal('Shown', $d['items'][0]['title'], 'Caller mutation cannot alter prepared map');
+	$d['items'][1]['title'] = 'Changed in map';
+	$equal('Same', $items[1]['title'], 'Map mutation cannot alter caller records');
+	$empty = SerializedData::argumentItems('⟭⟬No page⟭', true);
+	$equal('', $method->invoke($r, $empty, 'en', 'pro')['argsVar'], 'Missing pages do not add argument separators');
+	$equal('', $method->invoke($r, [], 'en', 'pro')['list'], 'Empty argument map');
+
 }
 
 $r = new ArgumentReferenceRenderer($context); $normalize = new ReflectionMethod($r, 'normalizeTitleForCard');
@@ -99,7 +103,7 @@ $legacyTitle = static function($s): string {
 for ($i = 0; $i < 800; $i++) {
 	$raw = '';
 	for ($j = 0, $n = mt_rand(0, 30); $j < $n; $j++) { $raw .= $parts[mt_rand(0, count($parts) - 1)]; }
-	foreach ([false, true] as $required) { $equal(Table::unwrap(SerializedData::argumentItems($raw, $required)), NativeCandidatePrototypes::arguments($raw, $required), 'Experimental native argument decoder preserves marker grammar'); }
+	foreach ([false, true] as $required) { $equal(array_values(NativeCandidatePrototypes::arguments($raw, $required)), SerializedData::argumentItems($raw, $required), 'Native argument decoder preserves the independently retained marker grammar'); }
 	$equal(Table::unwrap(SerializedData::records($raw, '⟭⟭⟭', '⟬⟬⟬', ['title', 'content', 'warnings'], true)), NativeCandidatePrototypes::introductions($raw), 'Experimental native intro decoder preserves marker grammar');
 	$title = '';
 	for ($j = 0, $n = mt_rand(0, 30); $j < $n; $j++) { $title .= $titleParts[mt_rand(0, count($titleParts) - 1)]; }
@@ -107,4 +111,4 @@ for ($i = 0; $i < 800; $i++) {
 		$equal($legacyTitle($text), $normalize->invoke($r, $text), 'Native title decoding against frozen compatibility algorithm');
 	}
 }
-echo "$checks measured-candidate assertions: map identity/bytes, title decoding, reference-cache reuse and experimental record views\n";
+echo "$checks measured-candidate assertions: map isolation/bytes, title decoding, reference-cache reuse and experimental record views\n";

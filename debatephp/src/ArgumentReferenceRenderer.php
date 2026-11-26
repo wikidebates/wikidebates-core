@@ -1455,31 +1455,24 @@ class ArgumentReferenceRenderer {
 		$cache['parentDebatesFinal'] = $this->uniqueParentTitles($debates);
 	}
 
-	protected function wkBuildArgumentData($items = null) {
-		$items = (Lua::truth($v214 = $items) ? $v214 : new Table([]));
+	/** @param list<array{page:string,title:string,warnings:string}> $items */
+	protected function wkBuildArgumentData(array $items = []): array {
 		$listLines = [];
 		$argsVarParts = [];
 		$hoverLines = [];
-		foreach (($items)->sequence() as $i => $it) {
-			$listLines[] = ('* ' . NativeText::field($it['title']));
-			$page = trim(NativeText::field($it['page']), NativeText::ASCII_WHITESPACE);
-			if (($page !== '')) {
-				$title = trim(NativeText::field($it['title']), NativeText::ASCII_WHITESPACE);
-				if ((($title === '') || ($title === $page))) {
-					$argsVarParts[] = $page;
-				}
-				else {
-					$argsVarParts[] = ($page . $this->FIELD_SEP . $title);
-				}
-			}
-			$hoverLines[] = ('<div class="argument-title--map wk-icon-before wk-icon-argument">' . '[[' . NativeText::field($it['page']) . '|' . NativeText::field($it['title']) . ']]' . '</div>');
+		foreach ($items as $item) {
+			$page = $item['page'];
+			$title = $item['title'];
+			$listLines[] = '* ' . $title;
+			$argsVarParts[] = $page === $title ? $page : $page . $this->FIELD_SEP . $title;
+			$hoverLines[] = '<div class="argument-title--map wk-icon-before wk-icon-argument">[[' . $page . '|' . $title . ']]</div>';
 		}
-		$listText = implode('
-', $listLines);
-		$argsVar = implode($this->ITEM_SEP, $argsVarParts);
-		$mapHoverHtml = implode('
-', $hoverLines);
-		return new Table(['items' => $items, 'list' => $listText, 'argsVar' => $argsVar, 'mapHover' => $mapHoverHtml]);
+		return [
+			'items' => $items,
+			'list' => implode("\n", $listLines),
+			'argsVar' => implode($this->ITEM_SEP, $argsVarParts),
+			'mapHover' => implode("\n", $hoverLines)
+		];
 	}
 
 	protected function renderArgumentItemBanners($itemWarnings = null, $pv = null, $lang = null, $cats = null): array {
@@ -1862,13 +1855,12 @@ class ArgumentReferenceRenderer {
 				}
 			}
 		}
-		$maps = (Lua::truth($v273 = $maps) ? $v273 : new Table([]));
-		$justif = (Lua::truth($v274 = $maps['justif']) ? $v274 : new Table([]));
-		$obj = (Lua::truth($v275 = $maps['obj']) ? $v275 : new Table([]));
+		$justif = $maps['justif'] ?? [];
+		$obj = $maps['obj'] ?? [];
 		{
 			$lst = new Table([]);
-			foreach (((Lua::truth($v276 = $justif['items']) ? $v276 : new Table([])))->sequence() as $_ => $it) {
-				$t = $this->canonicalTitle((Lua::truth($v277 = $it['page']) ? $v277 : ''));
+			foreach ($justif['items'] ?? [] as $it) {
+				$t = $this->canonicalTitle($it['page']);
 				if (($t !== '')) {
 					Lua::insert($lst, $t);
 				}
@@ -1880,8 +1872,8 @@ class ArgumentReferenceRenderer {
 		}
 		{
 			$lst = new Table([]);
-			foreach (((Lua::truth($v278 = $obj['items']) ? $v278 : new Table([])))->sequence() as $_ => $it) {
-				$t = $this->canonicalTitle((Lua::truth($v279 = $it['page']) ? $v279 : ''));
+			foreach ($obj['items'] ?? [] as $it) {
+				$t = $this->canonicalTitle($it['page']);
 				if (($t !== '')) {
 					Lua::insert($lst, $t);
 				}
@@ -1891,8 +1883,8 @@ class ArgumentReferenceRenderer {
 				$props[$PF['prop_obj']] = $lst;
 			}
 		}
-		$justifSurvol = trim((Lua::truth($v280 = $justif['mapHover']) ? $v280 : ''), NativeText::ASCII_WHITESPACE);
-		$objSurvol = trim((Lua::truth($v281 = $obj['mapHover']) ? $v281 : ''), NativeText::ASCII_WHITESPACE);
+		$justifSurvol = trim($justif['mapHover'] ?? '', NativeText::ASCII_WHITESPACE);
+		$objSurvol = trim($obj['mapHover'] ?? '', NativeText::ASCII_WHITESPACE);
 		if (($justifSurvol === '')) {
 			$justifSurvol = ('<div class="argument-title--map carte-vide">' . $PF['no_justifications_short'] . '</div>');
 		}
@@ -1903,13 +1895,13 @@ class ArgumentReferenceRenderer {
 			$props[$PF['prop_argument_map']] = ('<div class="wk-arg-map navigation-not-searchable">' . '<div class="wk-arg-map__col is-pro">' . '<div class="wk-arg-map__th">' . $PF['justifications'] . '</div>' . '<div class="wk-arg-map__td">' . $justifSurvol . '</div>' . '</div>' . '<div class="wk-arg-map__col is-con">' . '<div class="wk-arg-map__th">' . $PF['objections'] . '</div>' . '<div class="wk-arg-map__td">' . $objSurvol . '</div>' . '</div>' . '</div>');
 		}
 		{
-			$lst = trim((Lua::truth($v282 = $justif['argsVar']) ? $v282 : ''), NativeText::ASCII_WHITESPACE);
+			$lst = trim($justif['argsVar'] ?? '', NativeText::ASCII_WHITESPACE);
 			if (((($lst !== '') && Lua::truth($PF['prop_justif_list'])) && ($PF['prop_justif_list'] !== ''))) {
 				$props[$PF['prop_justif_list']] = $lst;
 			}
 		}
 		{
-			$lst = trim((Lua::truth($v283 = $obj['argsVar']) ? $v283 : ''), NativeText::ASCII_WHITESPACE);
+			$lst = trim($obj['argsVar'] ?? '', NativeText::ASCII_WHITESPACE);
 			if (((($lst !== '') && Lua::truth($PF['prop_obj_list'])) && ($PF['prop_obj_list'] !== ''))) {
 				$props[$PF['prop_obj_list']] = $lst;
 			}
@@ -2516,12 +2508,13 @@ class ArgumentReferenceRenderer {
 		return (Lua::truth($v366 = (Lua::truth($v367 = $t) ? $t['prefixedText'] : $v367)) ? $v366 : $s);
 	}
 
-	protected function computeArgumentMapsFromData($args = null) {
-		$rawJ = (Lua::truth($v368 = $args['justifications']) ? $v368 : '');
-		$rawO = (Lua::truth($v369 = $args['objections']) ? $v369 : '');
-		$justifItems = $this->wkExtractItemsFromSerializedData($rawJ);
-		$objItems = $this->wkExtractItemsFromSerializedData($rawO);
-		return new Table(['justif' => $this->wkBuildArgumentData($justifItems), 'obj' => $this->wkBuildArgumentData($objItems)]);
+	protected function computeArgumentMapsFromData($args = null): array {
+		$justifications = $this->wkExtractItemsFromSerializedData(NativeText::field($args['justifications']));
+		$objections = $this->wkExtractItemsFromSerializedData(NativeText::field($args['objections']));
+		return [
+			'justif' => $this->wkBuildArgumentData($justifications),
+			'obj' => $this->wkBuildArgumentData($objections)
+		];
 	}
 
 	public function render($frame = null) {
@@ -2758,8 +2751,8 @@ class ArgumentReferenceRenderer {
 					Lua::insert($cats, ('[[Category:' . $PF['cat_no_references'] . ']]'));
 				}
 			}
-			$justifItems = (Lua::truth($v375 = (Lua::truth($v376 = $maps['justif']) ? $maps['justif']['items'] : $v376)) ? $v375 : new Table([]));
-			$objItems = (Lua::truth($v377 = (Lua::truth($v378 = $maps['obj']) ? $maps['obj']['items'] : $v378)) ? $v377 : new Table([]));
+			$justifItems = $maps['justif']['items'];
+			$objItems = $maps['obj']['items'];
 			$editJust = $this->addDataEditLink($PF['form_edit_justifications'], $pv['rawTitle'], '&nbsp;', $PF['edit_justifications_tooltip']);
 			$out[] = ('<h2 class="section-modifiable wk-icon-before wk-icon-argument is-pro">' . $PF['justifications'] . $editJust . '</h2>');
 			{
@@ -2775,11 +2768,11 @@ class ArgumentReferenceRenderer {
 					}
 				}
 			}
-			if ((Lua::len($justifItems) > 0)) {
+			if ($justifItems !== []) {
 				$ulJ = (HtmlBuilder::create('ul'))->addClass('argument-list is-pro');
 				$lis = [];
-				foreach (($justifItems)->sequence() as $i => $it) {
-					$lis[] = $this->wkRenderArgumentLi($pv, $lang, $it, 'justif', $i, $cats);
+				foreach ($justifItems as $i => $it) {
+					$lis[] = $this->wkRenderArgumentLi($pv, $lang, $it, 'justif', $i + 1, $cats);
 				}
 				($ulJ)->wikitext(implode("\n", $lis));
 				$out[] = Lua::str($ulJ);
@@ -2815,11 +2808,11 @@ class ArgumentReferenceRenderer {
 					}
 				}
 			}
-			if ((Lua::len($objItems) > 0)) {
+			if ($objItems !== []) {
 				$ulO = (HtmlBuilder::create('ul'))->addClass('argument-list is-con');
 				$lis = [];
-				foreach (($objItems)->sequence() as $i => $it) {
-					$lis[] = $this->wkRenderArgumentLi($pv, $lang, $it, 'obj', $i, $cats);
+				foreach ($objItems as $i => $it) {
+					$lis[] = $this->wkRenderArgumentLi($pv, $lang, $it, 'obj', $i + 1, $cats);
 				}
 				($ulO)->wikitext(implode("\n", $lis));
 				$out[] = Lua::str($ulO);

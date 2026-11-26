@@ -115,7 +115,18 @@ $cpu = static function(): float {
 };
 mt_srand(805);
 foreach ($operations as $name => $modes) {
-	same($plain($modes['before']()), $plain($modes['after']()), 'Exact helper equivalence: ' . $name);
+	$before = $plain($modes['before']());
+	$after = $plain($modes['after']());
+	// The argument map's internal list index is no longer part of its contract;
+	// compare every record in order, and all rendered/serialized fields exactly.
+	if (str_starts_with($name, 'argument-data-')) {
+		$before['items'] = array_values($before['items']);
+		$after['items'] = array_values($after['items']);
+	} elseif (str_starts_with($name, 'prototype-arguments-')) {
+		$before = array_values($before);
+		$after = array_values($after);
+	}
+	same($before, $after, 'Exact helper equivalence: ' . $name);
 	foreach ($modes as $mode => $operation) {
 		$memory = memory_get_usage(); memory_reset_peak_usage(); $operation();
 		$report['scenarios'][$name]['peak_extra_bytes'][$mode] = memory_get_peak_usage() - $memory;

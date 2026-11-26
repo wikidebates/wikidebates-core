@@ -23,19 +23,20 @@ final class SerializedData {
 			: explode($separator, $text, $maxSplits !== null && $maxSplits !== false ? max(2, $maxSplits + 1) : PHP_INT_MAX);
 		return new Table(array_combine(range(1, count($parts)), $parts));
 	}
-	public static function argumentItems(?string $text, bool $requireItemSeparator): Table {
+	/** @return list<array{page:string,title:string,warnings:string}> */
+	public static function argumentItems(?string $text, bool $requireItemSeparator): array {
 		$text = trim($text ?? '', self::WHITESPACE); $out = [];
 		if ($text === '' || ($requireItemSeparator ? !str_contains($text, '⟭')
-			: (!str_contains($text, '⟭') && !str_contains($text, '⟬')))) { return new Table; }
+			: (!str_contains($text, '⟭') && !str_contains($text, '⟬')))) { return []; }
 		foreach (explode('⟭', $text) as $block) {
 			$block = trim($block, self::WHITESPACE); if ($block === '') { continue; }
 			$fields = explode('⟬', $block, 3);
 			$page = trim($fields[0], self::WHITESPACE); if ($page === '') { continue; }
 			$title = trim($fields[1] ?? '', self::WHITESPACE);
-			$out[count($out) + 1] = new Table(['page' => $page, 'title' => $title === '' ? $page : $title,
-				'warnings' => trim($fields[2] ?? '', self::WHITESPACE)]);
+			$out[] = ['page' => $page, 'title' => $title === '' ? $page : $title,
+				'warnings' => trim($fields[2] ?? '', self::WHITESPACE)];
 		}
-		return new Table($out);
+		return $out;
 	}
 	public static function record(string $block, string $fieldSeparator, array $fields): Table {
 		return new Table(self::recordValues($block, $fieldSeparator, $fields));

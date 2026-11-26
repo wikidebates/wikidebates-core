@@ -164,16 +164,16 @@ final class SchemaData {
 	 * the referenced Claim, which has its own canonical name.
 	 */
 	public static function sections(
-		Table $maps, array $sides, string $pageUrl, string $lang, callable $urlForTitle, ?Context $context = null
+		array $maps, array $sides, string $pageUrl, string $lang, callable $urlForTitle, ?Context $context = null
 	): array {
 		$parts = [];
 		foreach ($sides as $side => $messageKey) {
-			$items = $maps[$side]['items'] ?? null;
-			if (!$items instanceof Table || count($items) === 0) {
+			$items = $maps[$side]['items'] ?? [];
+			if ($items === []) {
 				continue;
 			}
 			$elements = [];
-			foreach ($items->sequence() as $item) {
+			foreach ($items as $item) {
 				$title = trim((string)($item['page'] ?? ''));
 				if ($title === '') {
 					continue;
@@ -212,7 +212,7 @@ final class SchemaData {
 	}
 
 	public static function argumentParts(
-		Table $args, Table $maps, string $pageUrl, string $lang, callable $urlForTitle, ?Context $context = null
+		Table $args, array $maps, string $pageUrl, string $lang, callable $urlForTitle, ?Context $context = null
 	): array {
 		$dedicated = trim((string)($args['dedicated-debate'] ?? ''));
 		if ($dedicated !== '') {
