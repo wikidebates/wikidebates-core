@@ -745,18 +745,12 @@ class ArgumentReferenceRenderer {
 
 	protected function smwSafeTitle($s = null) {
 		$s = $this->canonicalTitle($s);
-		if (($s === '')) {
+		if ($s === '') {
 			return '';
 		}
-		$s = Lua::gsub($s, '#.*$', '');
-		$s = trim($s, NativeText::ASCII_WHITESPACE);
-		if (($s === '')) {
-			return '';
-		}
-		if (Lua::truth(Lua::find($s, '[%[%]{}|<>]'))) {
-			return '';
-		}
-		return $s;
+		// Retain the existing fragment and forbidden-character policy exactly.
+		$s = trim(preg_replace('/#[^\n]*$/D', '', $s), NativeText::ASCII_WHITESPACE);
+		return strpbrk($s, '[]{}|<>') === false ? $s : '';
 	}
 
 	protected function containsTitle($val = null, $target = null): bool {
@@ -939,7 +933,7 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function normalizeTitleForCard($s = null) {
-		$s = trim(Lua::str($s === null || $s === false ? '' : $s), " \t\r\n\v\f");
+		$s = trim(NativeText::field($s), NativeText::ASCII_WHITESPACE);
 		if ($s === '' || ($s[0] !== ':' && strpbrk($s, '[<&') === false)) { return $s; }
 		$key = $s;
 		$cache = $this->cardTitleCache ??= new FifoCache(200);
@@ -1195,124 +1189,93 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function renderInitializationBlock($args = null, $pv = null, $cats = null, $lang = null, ?ParentRelations $cache = null, $PF = null) {
-		$hasParents = (((count($cache->breadcrumbDebates ?? []) > 0) || (count($cache->justificationParents ?? []) > 0)) || (count($cache->objectionParents ?? []) > 0));
-		if ($hasParents) {
+		if (!empty($cache->breadcrumbDebates) || !empty($cache->justificationParents) || !empty($cache->objectionParents)) {
 			return '';
 		}
 		$initRaw = $args['initialization'];
-		$initRaw = (Lua::truth($v183 = (Lua::truth($v184 = (is_string($initRaw))) ? trim($initRaw, NativeText::ASCII_WHITESPACE) : $v184)) ? $v183 : '');
-		$hasInit = ($initRaw !== '');
-		$orphanBanner = '';
-		$orphanBanner = (Lua::truth($v185 = $this->renderBannerByKey($pv, $lang, 'argument_orphan', $cats)) ? $v185 : '');
-		if ($hasInit) {
-			// Keep the same-day initialization grace period, using the stored revision.
-			$publicationDate = $this->context->publicationDate();
-			if ($publicationDate === null || substr($publicationDate, 0, 10) === $this->context->currentDate()) {
-				return $orphanBanner;
+		$initRaw = is_string($initRaw) ? trim($initRaw, NativeText::ASCII_WHITESPACE) : '';
+		$orphanBanner = $this->renderBannerByKey($pv, $lang, 'argument_orphan', $cats);
+		if ($initRaw === '') {
+			return $orphanBanner;
+		}
+		// Keep the same-day initialization grace period, using the stored revision.
+		$publicationDate = $this->context->publicationDate();
+		if ($publicationDate === null || substr($publicationDate, 0, 10) === $this->context->currentDate()) {
+			return $orphanBanner;
+		}
+		$cats[count($cats) + 1] = '[[Category:' . $PF['cat_uninitialized'] . ']]';
+		$parts = explode('@', $initRaw, 3);
+		$initType = trim($parts[0], NativeText::ASCII_WHITESPACE);
+		$parentId = trim($parts[1] ?? '', NativeText::ASCII_WHITESPACE);
+		$parentPage = '';
+		if (preg_match('/([0-9]+)/', $parentId, $matches) && $this->context->smwAvailable()) {
+			$parentId = $matches[1];
+			$PF['prop_debate_number'] = $this->L($lang, 'props', 'debate_number');
+			$query = new Table([1 => '[[' . $PF['prop_debate_number'] . '::' . $parentId . ']] OR [[' . $PF['prop_arg_number'] . '::' . $parentId . ']]',
+				2 => 'limit=1', 3 => 'link=none']);
+			try {
+				$result = $this->smwAskUncached($query, 'initialization');
+			} catch (\Throwable $error) {
+				DatabaseFailure::rethrow($error);
+				$result = null;
 			}
-			Lua::insert($cats, ('[[Category:' . $PF['cat_uninitialized'] . ']]'));
-			$parts = $this->splitByLiteral($initRaw, '@', 2);
-			$initType = trim((Lua::truth($v187 = $parts[1]) ? $v187 : ''), NativeText::ASCII_WHITESPACE);
-			$parentId = trim((Lua::truth($v188 = $parts[2]) ? $v188 : ''), NativeText::ASCII_WHITESPACE);
-			$parentPage = '';
-			{
-				$parentId = NativeText::field($parentId);
-				$parentId = trim($parentId, NativeText::ASCII_WHITESPACE);
-				$parentId = (Lua::truth($v190 = Lua::match($parentId, '(%d+)')) ? $v190 : '');
-				if ((((($parentId !== '') && Lua::truth(true)) && Lua::truth($this->context->smwAvailable())) && (Lua::type(($this->context->smwAvailable() ? function($query) { return $this->context->smwAsk($query); } : null)) === 'function'))) {
-					$PF['prop_debate_number'] = $this->L($lang, 'props', 'debate_number');
-					[$ok, $res] = Lua::pcall(function($query) { return $this->smwAskUncached($query, 'initialization'); }, new Table([1 => ('[[' . $PF['prop_debate_number'] . '::' . $parentId . ']] OR [[' . $PF['prop_arg_number'] . '::' . $parentId . ']]'), 2 => 'limit=1', 3 => 'link=none']));
-					if (((Lua::truth($ok) && (($res instanceof Table))) && Lua::truth($res[1]))) {
-						$row = $res[1];
-						$ft = (Lua::truth($v191 = (Lua::truth($v192 = $row['fulltext']) ? $v192 : $row['page'])) ? $v191 : $row[1]);
-						if ((is_string($ft))) {
-							$ft = trim($ft, NativeText::ASCII_WHITESPACE);
-							if (($ft !== '')) {
-								$parentPage = $ft;
-							}
-						}
-					}
+			if ($result !== null && $result[1] !== null && $result[1] !== false) {
+				$title = $this->semanticRowTitle($result[1]);
+				if (is_string($title)) {
+					$parentPage = trim($title, NativeText::ASCII_WHITESPACE);
 				}
 			}
-			$parentPage = $this->canonicalTitle($parentPage);
-			$title = $pv['rawTitle'];
-			$t_arg_pro = $this->L($lang, 'forms', 'arg_pro');
-			$t_arg_con = $this->L($lang, 'forms', 'arg_con');
-			$t_justification = $this->L($lang, 'params', 'justification_type_label');
-			$t_objection = $this->L($lang, 'params', 'objection_type_label');
-			$formName = null;
-			if (($initType === $t_arg_pro)) {
-				$formName = $this->L($lang, 'forms', 'edit_args_pro');
-			}
-			else {
-				if (($initType === $t_arg_con)) {
-					$formName = $this->L($lang, 'forms', 'edit_args_con');
-				}
-				else {
-					if (($initType === $t_justification)) {
-						$formName = $this->L($lang, 'forms', 'justifications');
-					}
-					else {
-						if (($initType === $t_objection)) {
-							$formName = $this->L($lang, 'forms', 'objections');
-						}
-					}
-				}
-			}
-			if ((((!(Lua::truth($formName)) || ($formName === '')) || !(Lua::truth($initType))) || ($initType === ''))) {
-				return $orphanBanner;
-			}
-			$idx = 99;
-			$prefix = ($initType . '[' . Lua::str($idx) . ']');
-			$qsParts = new Table([1 => ($prefix . '[' . $this->L($lang, 'params', 'page') . ']=' . $title)]);
-			$displayedTitleParam = trim($this->L($lang, 'params', 'displayed_title'), NativeText::ASCII_WHITESPACE);
-			if (($displayedTitleParam !== '')) {
-				Lua::insert($qsParts, ($prefix . '[' . $displayedTitleParam . ']=' . $title));
-			}
-			$qs = Lua::concat($qsParts, '&');
-			$warnTitle = sprintf((Lua::truth($v194 = $PF['init_warning_title']) ? $v194 : '%s'), $formName);
-			$warnIntro = $PF['init_warning_intro'];
-			$yesText = (Lua::truth($v195 = (Lua::truth($v196 = $PF['init_yes_finish_label']) ? $v196 : $PF['edit'])) ? $v195 : '');
-			$yesTooltip = sprintf((Lua::truth($v197 = $PF['init_yes_tt']) ? $v197 : '%s'), $parentPage);
-			$okText = sprintf((Lua::truth($v198 = $PF['init_ok_text']) ? $v198 : '%s'), $parentPage);
-			$summary = null;
-			if (($initType === $t_arg_pro)) {
-				$summary = $PF['init_summary_pro'];
-			}
-			else {
-				if (($initType === $t_arg_con)) {
-					$summary = $PF['init_summary_con'];
-				}
-				else {
-					if (($initType === $t_justification)) {
-						$summary = $PF['init_summary_justif'];
-					}
-					else {
-						if (($initType === $t_objection)) {
-							$summary = $PF['init_summary_obj'];
-						}
-						else {
-							$summary = '';
-						}
-					}
-				}
-			}
-			if (($summary !== '')) {
-				$summary = ($summary . ' : « ' . $title . ' »');
-			}
-			$params = new Table(['form' => $formName, 'target' => $parentPage, 'query string' => $qs,
-				'link text' => $yesText, 'link type' => 'button', 'tooltip' => $yesTooltip, 'ok text' => $okText]);
-			if ($summary !== '') { $params['summary'] = $summary; }
-			$params['reload'] = true;
-			[$ok, $r] = Lua::pcall(function() use ($params) { return $this->context->autoEdit($params); });
-			$auto = $ok && Lua::truth($r) ? $r : '';
+		}
+		$parentPage = $this->canonicalTitle($parentPage);
+		$title = $pv['rawTitle'];
+		$proLabel = $this->L($lang, 'forms', 'arg_pro');
+		$conLabel = $this->L($lang, 'forms', 'arg_con');
+		$justificationLabel = $this->L($lang, 'params', 'justification_type_label');
+		$objectionLabel = $this->L($lang, 'params', 'objection_type_label');
+		[$formKey, $summaryKey] = match ($initType) {
+			$proLabel => ['edit_args_pro', 'init_summary_pro'],
+			$conLabel => ['edit_args_con', 'init_summary_con'],
+			$justificationLabel => ['justifications', 'init_summary_justif'],
+			$objectionLabel => ['objections', 'init_summary_obj'],
+			default => [null, null]
+		};
+		$formName = $formKey === null ? '' : $this->L($lang, 'forms', $formKey);
+		if ($formName === '' || $initType === '') {
+			return $orphanBanner;
+		}
+		$prefix = $initType . '[99]';
+		$queryParts = [$prefix . '[' . $this->L($lang, 'params', 'page') . ']=' . $title];
+		$displayedTitleParam = trim($this->L($lang, 'params', 'displayed_title'), NativeText::ASCII_WHITESPACE);
+		if ($displayedTitleParam !== '') {
+			$queryParts[] = $prefix . '[' . $displayedTitleParam . ']=' . $title;
+		}
+		$qs = implode('&', $queryParts);
+		$warnTitle = sprintf($PF['init_warning_title'] ?? '%s', $formName);
+		$warnIntro = $PF['init_warning_intro'];
+		$yesText = $PF['init_yes_finish_label'] ?? $PF['edit'] ?? '';
+		$yesTooltip = sprintf($PF['init_yes_tt'] ?? '%s', $parentPage);
+		$okText = sprintf($PF['init_ok_text'] ?? '%s', $parentPage);
+		$summary = $PF[$summaryKey];
+		if ($summary !== '') {
+			$summary .= ' : « ' . $title . ' »';
+		}
+		$params = new Table(['form' => $formName, 'target' => $parentPage, 'query string' => $qs,
+			'link text' => $yesText, 'link type' => 'button', 'tooltip' => $yesTooltip, 'ok text' => $okText]);
+		if ($summary !== '') {
+			$params['summary'] = $summary;
+		}
+		$params['reload'] = true;
+		try {
+			$auto = $this->context->autoEdit($params);
+		} catch (\Throwable $error) {
+			DatabaseFailure::rethrow($error);
+			$auto = '';
+		}
 
-			return ($orphanBanner . '<div class="warningbox cdx-message cdx-message--block cdx-message--warning navigation-not-searchable">\'\'\'' . $warnTitle . ' [[' . $parentPage . ']].' . '\'\'\'
+		return ($orphanBanner . '<div class="warningbox cdx-message cdx-message--block cdx-message--warning navigation-not-searchable">\'\'\'' . $warnTitle . ' [[' . $parentPage . ']].' . '\'\'\'
 
 ' . $warnIntro . '
 ' . $auto . '</div><!-- Fin de warningbox -->');
-		}
-		return $orphanBanner;
 	}
 
 	protected function ensureBreadcrumbSelection($pv = null, ?ParentRelations $cache = null, $cats = null, $lang = null, $PF = null): void {
@@ -1982,14 +1945,15 @@ class ArgumentReferenceRenderer {
 
 	protected function wkFullUrl($titleText = null) {
 		$titleText = trim(NativeText::field($titleText), NativeText::ASCII_WHITESPACE);
-		if (($titleText === '')) {
+		if ($titleText === '') {
 			return '';
 		}
-		[$ok, $u] = Lua::pcall([$this->context, 'fullUrl'], $titleText);
-		if ((Lua::truth($ok) && Lua::truth($u))) {
-			return Lua::str($u);
+		try {
+			return $this->context->fullUrl($titleText) ?? '';
+		} catch (\Throwable $error) {
+			DatabaseFailure::rethrow($error);
+			return '';
 		}
-		return '';
 	}
 
 	protected function wkBuildWebsiteNode($lang = null) {
@@ -2429,15 +2393,19 @@ class ArgumentReferenceRenderer {
 
 	protected function canonicalTitle($s = null) {
 		$s = trim(NativeText::field($s), NativeText::ASCII_WHITESPACE);
-		if (($s === '')) {
+		if ($s === '') {
 			return '';
 		}
-		$s = Lua::gsub($s, '^:%s*', '');
-		$s = Lua::gsub(Lua::gsub($s, '^%[%[%s*', ''), '%s*%]%]$', '');
-		$s = (Lua::truth($v365 = Lua::match($s, '^([^%]|]+)%|')) ? $v365 : $s);
+		$s = preg_replace('/^:[\x09-\x0d ]*/', '', $s);
+		$s = preg_replace('/^\[\[[\x09-\x0d ]*/', '', $s);
+		$s = preg_replace('/[\x09-\x0d ]*\]\]$/D', '', $s);
+		if (preg_match('/^([^\]|]+)\|/', $s, $match)) {
+			$s = $match[1];
+		}
 		$s = trim($s, NativeText::ASCII_WHITESPACE);
-		$t = $this->titleNewCached($s);
-		return (Lua::truth($v366 = (Lua::truth($v367 = $t) ? $t['prefixedText'] : $v367)) ? $v366 : $s);
+		$title = $this->titleNewCached($s);
+		$value = $title['prefixedText'] ?? null;
+		return $value === null || $value === false ? $s : $value;
 	}
 
 	protected function computeArgumentMapsFromData($args = null): array {
