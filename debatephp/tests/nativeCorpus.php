@@ -159,7 +159,7 @@ foreach ($cases as $case) {
 			foreach ($result as $key => $value) {
 				$hashes[$key] = hash('sha256', serialize($value));
 			}
-			$row[$mode] = ['sha256' => $hashes];
+			$row[$mode] = ['sha256' => $hashes, 'ask_queries' => $result['ask']];
 			unset($result);
 			if ($repeats) {
 				for ($i = 0; $i < $warmup; $i++) {
