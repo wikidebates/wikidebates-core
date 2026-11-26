@@ -160,13 +160,12 @@ class ArgumentReferenceRenderer {
 		return ('Special:AddData/' . $form . '/' . $page);
 	}
 
-	protected function addDataLink($formName = null, $pageTitle = null, $linktext = null, $tooltip = null, $opts = null) {
+	protected function addDataLink($formName = null, $pageTitle = null, $linktext = null, $tooltip = null, bool $editButton = false) {
 		$formName = NativeText::field($formName);
 		$pageTitle = NativeText::field($pageTitle);
 		if ((($formName === '') || ($pageTitle === ''))) {
 			return '';
 		}
-		$opts = (Lua::truth($v15 = (Lua::truth($v16 = (($opts instanceof Table))) ? $opts : $v16)) ? $v15 : new Table([]));
 		$target = $this->wkAddDataPath($formName, $pageTitle);
 		$lt = $linktext;
 		if ((($lt === null) || ($lt === ''))) {
@@ -174,7 +173,7 @@ class ArgumentReferenceRenderer {
 		}
 		$tt = NativeText::field($tooltip);
 		$classes = 'wk-adddata-link navigation-not-searchable noprint';
-		if (($opts['editButton'] === true)) {
+		if ($editButton) {
 			$classes = ($classes . ' bouton-modifier');
 		}
 		if (($tt !== '')) {
@@ -184,7 +183,7 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function addDataEditLink($formName = null, $pageTitle = null, $linktext = null, $tooltip = null) {
-		return $this->addDataLink($formName, $pageTitle, $linktext, $tooltip, new Table(['editButton' => true]));
+		return $this->addDataLink($formName, $pageTitle, $linktext, $tooltip, true);
 	}
 
 	protected function wkRunQueryPath($formName = null) {
@@ -192,38 +191,36 @@ class ArgumentReferenceRenderer {
 		return ('Special:RunQuery/' . $form);
 	}
 
-	protected function wkRunQueryHtmlTagButton($formName = null, $label = null, $tooltip = null, $query = null) {
+	protected function wkRunQueryHtmlTagButton($formName = null, $label = null, $tooltip = null, ?array $query = null) {
 		$formName = Lua::str($formName ?? '');
 		if ($formName === '') { return ''; }
 		$tooltip = $this->normalizeTooltipText(Lua::str($tooltip ?? ''));
-		$query = $query instanceof Table ? $query : new Table;
-		$href = Lua::str($this->context->localUrl($this->wkRunQueryPath($formName), $query));
+		$href = Lua::str($this->context->localUrl($this->wkRunQueryPath($formName), new Table($query ?? [])));
 		$attributes = new Table(['href' => 'javascript:void(0)', 'data-href' => $this->escapeAttr($href), 'class' => 'wk-btn__a wk-js-nav']);
 		if ($tooltip !== '') { $attributes['title'] = $this->escapeAttr($tooltip); }
 		return $this->context->htmlTag('a', '＋ ' . Lua::str($label ?? ''), $attributes, true);
 	}
 
-	protected function runQueryLink($opts = null) {
-		$opts = (Lua::truth($v25 = $opts) ? $v25 : new Table([]));
-		$formName = NativeText::field($opts['form']);
-		$fieldName = NativeText::field($opts['field']);
-		$value = NativeText::field($opts['value']);
+	protected function runQueryLink(array $opts = []) {
+		$formName = NativeText::field($opts['form'] ?? null);
+		$fieldName = NativeText::field($opts['field'] ?? null);
+		$value = NativeText::field($opts['value'] ?? null);
 		if (((($formName === '') || ($fieldName === '')) || ($value === ''))) {
 			return '';
 		}
-		$title = NativeText::field($opts['_title']);
+		$title = NativeText::field($opts['_title'] ?? null);
 		if (($title === '')) {
 			$title = $this->wkRunQueryPath($formName);
 		}
-		$q = new Table([]);
-		$qkey = NativeText::field($opts['_qkey']);
+		$q = [];
+		$qkey = NativeText::field($opts['_qkey'] ?? null);
 		if (($qkey === '')) {
 			$qkey = ($formName . '[' . $fieldName . ']');
 		}
 		$q[$qkey] = $value;
-		$extra = $opts['extra'];
-		if ((($extra instanceof Table))) {
-			foreach (Lua::pairs($extra) as $k => $v) {
+		$extra = $opts['extra'] ?? [];
+		if (is_array($extra)) {
+			foreach ($extra as $k => $v) {
 				$kk = NativeText::field($k);
 				if ((($kk !== '') && ($v !== null))) {
 					$vv = Lua::str($v);
@@ -239,9 +236,10 @@ class ArgumentReferenceRenderer {
 			}
 		}
 		$q['_run'] = '1';
-		$url = $this->absUrlFromTitle($title, $q);
-		$label = Lua::str((Lua::truth($v32 = $opts['label']) ? $v32 : $value));
-		$tt = $this->normalizeTooltipText(NativeText::field($opts['tooltip']));
+		$url = $this->absUrlFromTitle($title, new Table($q));
+		$label = $opts['label'] ?? $value;
+		$label = Lua::str($label === false ? $value : $label);
+		$tt = $this->normalizeTooltipText(NativeText::field($opts['tooltip'] ?? null));
 		$link = ('[' . $url . ' ' . $label . ']');
 		if (($tt !== '')) {
 			return sprintf('<span class="wk-adddata-link masquer-externe" data-wk-tooltip="%s">%s</span>', $this->escapeAttr($tt), $link);
@@ -304,21 +302,19 @@ class ArgumentReferenceRenderer {
 		return $a;
 	}
 
-	protected function renderSubsectionBanner($pv = null, $lang = null, $key = null, $opts = null, ?array &$cats = null) {
+	protected function renderSubsectionBanner($pv = null, $lang = null, $key = null, ?array $opts = null, ?array &$cats = null) {
 		$key = NativeText::field($key);
 		if (($key === '')) {
 			return '';
 		}
-		$opts = (Lua::truth($v48 = $opts) ? $v48 : new Table([]));
-		$isReorg = ($opts['reorg'] === true);
-		$icon = NativeText::field($opts['icon']);
+		$isReorg = (($opts['reorg'] ?? false) === true);
 		$linkHtml = '';
 		$title = '';
 		$text = '';
 		if ($isReorg) {
-			$formName = NativeText::field($opts['form']);
-			$tooltip = NativeText::field($opts['tooltip']);
-			$linkLabel = NativeText::field($opts['link_label']);
+			$formName = NativeText::field($opts['form'] ?? null);
+			$tooltip = NativeText::field($opts['tooltip'] ?? null);
+			$linkLabel = NativeText::field($opts['link_label'] ?? null);
 			if (($linkLabel === '')) {
 				$linkLabel = $this->L($lang, 'text', 'reorganize_link_label');
 			}
@@ -345,7 +341,7 @@ class ArgumentReferenceRenderer {
 		}
 		$html = ('<div class="bandeau-avertissement wk-icon-before wk-icon-sensible">' . $title . '<span class="smw-highlighter smwttinline wk-icon-before wk-icon-help mw-no-invert" data-state="inline">' . '<div class="smwttcontent">' . $text . '</div>' . '</span>' . '</div>');
 		$cat = $this->subMsg($lang, ($key . '_category'));
-		if (((($cats !== null) && Lua::truth($cat)) && ($cat !== ''))) {
+		if ($cats !== null && $cat !== '') {
 			$cats[] = ('[[Category:' . $cat . ']]');
 		}
 		return $html;
@@ -926,11 +922,11 @@ class ArgumentReferenceRenderer {
 		return $this->context->message('Argument.banners', $lang, $key, ...$rest);
 	}
 
-	protected function renderMetaWarningHtml($params = null) {
-		$color = NativeText::field($params['color']);
-		$icon = NativeText::field($params['icon']);
-		$title = NativeText::field($params['title']);
-		$text = NativeText::field($params['text']);
+	protected function renderMetaWarningHtml(array $params = []) {
+		$color = NativeText::field($params['color'] ?? null);
+		$icon = NativeText::field($params['icon'] ?? null);
+		$title = NativeText::field($params['title'] ?? null);
+		$text = NativeText::field($params['text'] ?? null);
 		return ('<div class="bandeau bandeau-' . $color . ' wk-icon-before ' . $icon . ' navigation-not-searchable">' . '<div class="bandeau-titre>' . $title . '</div>' . '<div class="bandeau-texte">' . $text . '</div>' . '</div>');
 	}
 
@@ -946,7 +942,7 @@ class ArgumentReferenceRenderer {
 		if ((((($color === '') && ($icon === '')) && ($title === '')) && ($text === ''))) {
 			return '';
 		}
-		$html = $this->renderMetaWarningHtml(new Table(['color' => $color, 'icon' => $icon, 'title' => $title, 'text' => $text]));
+		$html = $this->renderMetaWarningHtml(['color' => $color, 'icon' => $icon, 'title' => $title, 'text' => $text]);
 		$cat = $this->bannerMsg($lang, ($key . '_category'));
 		if (((($cats !== null) && Lua::truth($cat)) && ($cat !== ''))) {
 			$cats[] = ('[[Category:' . $cat . ']]');
@@ -1267,7 +1263,7 @@ class ArgumentReferenceRenderer {
 		if ((Lua::truth($raw) && ($raw !== ''))) {
 			$extra = null;
 			if ((($PF['search_type_field'] !== '') && ($PF['search_type_value'] !== ''))) {
-				$extra = new Table([$PF['search_type_field'] => $PF['search_type_value']]);
+				$extra = [$PF['search_type_field'] => $PF['search_type_value']];
 			}
 			$rq_title = $this->wkRunQueryPath($PF['form_search_by_keywords']);
 			$rq_qkey = ($PF['form_search_by_keywords'] . '[' . $PF['keywords_field'] . ']');
@@ -1275,7 +1271,7 @@ class ArgumentReferenceRenderer {
 			foreach ($this->csvValues($raw, ',') as $_ => $k) {
 				$k = trim(NativeText::field($k), NativeText::ASCII_WHITESPACE);
 				if (($k !== '')) {
-					$chip = $this->runQueryLink(new Table(['form' => $PF['form_search_by_keywords'], 'field' => $PF['keywords_field'], 'value' => $k, 'label' => $k, 'tooltip' => $PF['search_by_keyword_tt'], 'extra' => $extra, '_title' => $rq_title, '_qkey' => $rq_qkey]));
+					$chip = $this->runQueryLink(['form' => $PF['form_search_by_keywords'], 'field' => $PF['keywords_field'], 'value' => $k, 'label' => $k, 'tooltip' => $PF['search_by_keyword_tt'], 'extra' => $extra, '_title' => $rq_title, '_qkey' => $rq_qkey]);
 					if ((Lua::truth($chip) && ($chip !== ''))) {
 						$rendered[count($rendered) + 1] = $chip;
 					}
@@ -2442,7 +2438,7 @@ class ArgumentReferenceRenderer {
 		if (Lua::truth($args['argument-warnings'])) {
 			$argLookup = $this->buildBannerLabelLookup($lang, $this->ARGUMENT_WARNING_BANNER_KEYS);
 			$out = [];
-			$btnForm = $this->addDataLink($this->L($lang, 'forms', 'banners_edit_title'), $pv['rawTitle'], '', $this->L($lang, 'text', 'argument_banners_edit_tt'), new Table(['editButton' => true]));
+			$btnForm = $this->addDataLink($this->L($lang, 'forms', 'banners_edit_title'), $pv['rawTitle'], '', $this->L($lang, 'text', 'argument_banners_edit_tt'), true);
 			$out[] = ('<h2 id="Summary" class="section-modifiable wk-icon-before wk-icon-flag">' . $this->L($lang, 'text', 'warnings_title') . $btnForm . '</h2>');
 			$out[] = $this->renderBannersFromArgList($args['argument-warnings'], $argLookup, $pv, $lang, $cats);
 			$pieces[] = implode('', $out);
@@ -2483,7 +2479,7 @@ class ArgumentReferenceRenderer {
 					foreach ($this->csvValues($raw, ',') as $_ => $x) {
 						$key = $this->resolveKeyFromLookup($x, $lookup, $this->JUSTIFICATION_WARNING_BANNER_KEYS);
 						if (($key !== '')) {
-							$out[] = $this->renderSubsectionBanner($pv, $lang, $key, new Table(['reorg' => true, 'form' => $PF['form_edit_justifications'], 'tooltip' => $PF['edit_justifications_tooltip']]), $cats);
+							$out[] = $this->renderSubsectionBanner($pv, $lang, $key, ['reorg' => true, 'form' => $PF['form_edit_justifications'], 'tooltip' => $PF['edit_justifications_tooltip']], $cats);
 						}
 					}
 				}
@@ -2507,7 +2503,7 @@ class ArgumentReferenceRenderer {
 				$label = NativeText::field($PF['justification_add_label']);
 				$tooltip = sprintf($PF['justification_add_tt'], $pv['rawTitle']);
 				$rqForm = NativeText::field($PF['form_new_arg_title']);
-				$rqQuery = new Table([]);
+				$rqQuery = [];
 				$rqQuery[($baseField . '[type]')] = NativeText::field($PF['type_justification']);
 				$rqQuery[($baseField . '[ID]')] = NativeText::field($pv['pageId']);
 				$rqQuery['_run'] = '1';
@@ -2523,7 +2519,7 @@ class ArgumentReferenceRenderer {
 					foreach ($this->csvValues($raw, ',') as $_ => $x) {
 						$key = $this->resolveKeyFromLookup($x, $lookup, $this->OBJECTION_WARNING_BANNER_KEYS);
 						if (($key !== '')) {
-							$out[] = $this->renderSubsectionBanner($pv, $lang, $key, new Table(['reorg' => true, 'form' => $PF['form_edit_objections'], 'tooltip' => $PF['edit_objections_tooltip']]), $cats);
+							$out[] = $this->renderSubsectionBanner($pv, $lang, $key, ['reorg' => true, 'form' => $PF['form_edit_objections'], 'tooltip' => $PF['edit_objections_tooltip']], $cats);
 						}
 					}
 				}
@@ -2546,7 +2542,7 @@ class ArgumentReferenceRenderer {
 				$label = NativeText::field($PF['objection_add_label']);
 				$tooltip = sprintf($PF['objection_add_tt'], $pv['rawTitle']);
 				$rqForm = NativeText::field($PF['form_new_arg_title']);
-				$rqQuery = new Table([]);
+				$rqQuery = [];
 				$rqQuery[($baseField . '[type]')] = NativeText::field($PF['type_objection']);
 				$rqQuery[($baseField . '[ID]')] = NativeText::field($pv['pageId']);
 				$rqQuery['_run'] = '1';
