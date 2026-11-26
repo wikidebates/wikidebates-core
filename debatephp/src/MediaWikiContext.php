@@ -39,7 +39,7 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 	private function readArguments(): Table {
 		$a = new Table;
 		foreach ([$this->caller, $this->module] as $frame) {
-			foreach ($frame->getArguments() as $k => $v) { $v = $this->argumentMode ? (string)$v : Lua::trim((string)$v); if ($v !== '') { $a[$k] = $v; } }
+			foreach ($frame->getArguments() as $k => $v) { $v = $this->argumentMode ? (string)$v : trim((string)$v, " \t\r\n\v\f"); if ($v !== '') { $a[$k] = $v; } }
 		} return $a;
 	}
 	public function language(Table $args): string { return $this->i18n->language($args, MediaWikiServices::getInstance()->getContentLanguage()->getCode()); }
@@ -56,7 +56,7 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 	public function dbKey(string $page): string {
 		$t = Title::newFromText($page);
 		if ($t && $t->getNamespace() === NS_SPECIAL && !$t->equals($this->parser->getTitle())) { $this->parser->getOutput()->addLink($t); }
-		return $t ? str_replace(' ', '_', $t->getPrefixedText()) : Lua::gsub($page, '%s', '_');
+		return $t ? str_replace(' ', '_', $t->getPrefixedText()) : strtr($page, " \t\r\n\v\f", "______");
 	}
 	public function preprocess(string $text): string {
 		$started = $this->telemetry?->start();
@@ -133,7 +133,15 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 		$started = $this->telemetry?->start();
 		try {
 			$attrs = [];
-			foreach ($attributes as $key => $value) { $attrs[Lua::str($key)] = Lua::str($value); }
+			foreach ($attributes as $key => $value) {
+				// Preserve the textual attribute contract (including non-string legacy values).
+				$attrs[(string)$key] = match ($value) {
+					null => 'nil',
+					false => 'false',
+					true => 'true',
+					default => (string)$value
+				};
+			}
 			$key = 'native-link:' . hash('sha256', serialize([$content, $attrs]));
 			return $this->nativeOperation($key, fn() => NativeTags::observe($this->telemetry,
 				fn() => NativeTags::renderLink($this->parser, $this->module, $content, $attrs)),
