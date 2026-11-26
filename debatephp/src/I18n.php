@@ -17,7 +17,7 @@ final class I18n {
 		return $instance;
 	}
 	public static function normalize(string $code): string {
-		$code = Lua::trim($code); preg_match('/^[a-zA-Z]+/', $code, $m); return strtolower($m[0] ?? $code);
+		$code = trim($code, " \t\r\n\v\f"); preg_match('/^[a-zA-Z]+/', $code, $m); return strtolower($m[0] ?? $code);
 	}
 	public function language(Table $args, string $contentLanguage): string {
 		$param = self::normalize($args['lang'] ?? $args['language'] ?? '');
@@ -52,6 +52,6 @@ final class I18n {
 			if ($this->memoize) { $this->messages[$cacheKey] = $text; }
 		}
 		if ($this->catalog) { return $args ? MessageCatalog::substitute($text, $args) : MessageCatalog::legacyTemplate($text); }
-		return $args ? Lua::format($text, ...$args) : $text;
+		return $args ? sprintf($text, ...$args) : $text;
 	}
 }
