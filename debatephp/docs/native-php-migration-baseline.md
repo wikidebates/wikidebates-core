@@ -39,6 +39,17 @@ tests. A deliberate behaviour change needs its own review and explicit
 regression assertion; never silence unexplained differences by moving the
 baseline. The baseline checkout is immutable by commit SHA.
 
+The unused `allDebates` computation has been removed. The only allowed
+behaviour difference is one exact historical SMW read in each of the four
+fixtures `parents`, `inherited`, `fallback-parents` and `both-parent-types`,
+in each renderer mode. `nativeContract.py` enumerates the exact requests,
+checks that each occurs once in the pinned baseline, and compares the remaining
+ordered read trace and every other effect. Candidate reads and timed read
+counts are recorded without filtering. The live breadcrumb selection, direct
+parent reads, semantic writes, HTML and JSON-LD remain in the strict contract.
+This removes a query and its failure opportunity; it is not a change to the
+error propagation policy for the remaining queries.
+
 The 87 existing argument fixtures and 42 generated debate/argument fixtures
 cover small and large inputs, language parameters, serialised references,
 parent queries and empty pages. The isolated context implements historical
@@ -53,7 +64,7 @@ From a Git checkout of the extension (fetch the baseline commit if absent):
 git worktree add --detach /tmp/wd-native-baseline 2439e0749bcdc9ab81aeb20a902f8b6845a744e4
 php debatephp/tests/nativeCorpus.php --root=/tmp/wd-native-baseline > /tmp/wd-native-before.json
 php debatephp/tests/nativeCorpus.php > /tmp/wd-native-after.json
-diff -u /tmp/wd-native-before.json /tmp/wd-native-after.json
+python3 debatephp/tests/regenerate.py --baseline-root=/tmp/wd-native-baseline
 ```
 
 ## Isolated benchmark protocol
