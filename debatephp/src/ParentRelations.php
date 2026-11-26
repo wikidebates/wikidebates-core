@@ -12,8 +12,6 @@ final class ParentRelations {
 	/** @var list<string>|null */
 	public ?array $objectionParents = null;
 	/** @var list<string>|null */
-	public ?array $allDebates = null;
-	/** @var list<string>|null */
 	public ?array $allDebateCards = null;
 	/** @var list<string>|null */
 	public ?array $proDebateCards = null;

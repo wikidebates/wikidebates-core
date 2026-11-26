@@ -7,6 +7,7 @@ from lupa.lua51 import LuaRuntime
 ROOT=pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT/'tests'/'integration'))
 from schema_projection import compare_documents
+from nativeContract import project_retired_reads
 
 def oracle(case):
 	lua=LuaRuntime(unpack_returned_tuples=True)
@@ -208,6 +209,9 @@ if __name__=='__main__':
 	corpus=cases(); expected=[]
 	for c in corpus:
 		result = oracle(c)
+		# Keep the original Lua answers for the PHP harness, but compare the
+		# historical trace after the single explicitly reviewed query retirement.
+		result['effects']['ask'] = project_retired_reads('Argument/' + c['name'], result['effects']['ask'])
 		# Project only the known broken historical social image, not arbitrary URLs.
 		for tags in result['effects']['seo']:
 			if isinstance(tags, dict) and tags.get('image') == 'https://en.wikidebates.org/w/resources/assets/logo-Wikidebates-Twitter.png':

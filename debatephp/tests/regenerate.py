@@ -6,9 +6,12 @@ This command compares exact behaviour against the corrected native baseline.
 """
 import argparse
 import difflib
+import json
 from pathlib import Path
 import subprocess
 import tempfile
+
+from nativeContract import compare_corpora
 
 ROOT = Path(__file__).resolve().parents[2]
 BASELINE = '2439e0749bcdc9ab81aeb20a902f8b6845a744e4'
@@ -28,18 +31,20 @@ def git(*args):
 def compare(php, baseline):
 	expected = subprocess.check_output([php, str(DRIVER), '--root=' + str(baseline)])
 	actual = subprocess.check_output([php, str(DRIVER)])
-	if expected != actual:
+	try:
+		compare_corpora(json.loads(expected), json.loads(actual))
+	except ValueError as error:
 		for line in difflib.unified_diff(
 			expected.decode().splitlines(), actual.decode().splitlines(),
 			fromfile='baseline', tofile='current', n=2
 		):
 			print(line)
-		raise SystemExit('Native renderer behaviour differs from baseline')
+		raise SystemExit(f'Native renderer behaviour differs from baseline: {error}')
 	for name in SNAPSHOTS:
 		path = Path('debatephp/resources') / name
 		if (baseline / path).read_bytes() != (ROOT / path).read_bytes():
 			raise SystemExit('Historical oracle changed: ' + name)
-	print('Native renderer behaviour and historical Lua snapshots match the pinned baseline')
+	print('Native renderer behaviour and historical Lua snapshots match the pinned baseline (except the four explicitly retired parent queries per mode)')
 
 
 def main():
