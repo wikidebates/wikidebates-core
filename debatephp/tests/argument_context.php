@@ -66,6 +66,19 @@ class ArgumentTestContext implements ArgumentContext {
 }
 
 if (realpath($_SERVER['SCRIPT_FILENAME']) !== __FILE__) { return; }
+// Parent lists must deduplicate equivalent SMW title representations before rendering.
+$parentProbe = new class(new ArgumentTestContext(['args' => [], 'title' => 'Child'])) extends ArgumentReferenceRenderer {
+	public function uniqueTitles(Table $titles): array {
+		return array_values($this->uniqueParentTitles($titles)->values);
+	}
+};
+$actual = $parentProbe->uniqueTitles(new Table([
+	1 => 'Parent A', 2 => 'Parent_A', 3 => '[[Parent A|label]]',
+	4 => 'Parent &amp; B', 5 => 'Parent & B', 6 => 'Parent C', 7 => ''
+]));
+if ($actual !== ['Parent A', 'Parent & B', 'Parent C']) {
+	throw new LogicException('Parent title deduplication failed: ' . json_encode($actual));
+}
 set_error_handler(static function($severity, $message, $file, $line) { throw new ErrorException($message, 0, $severity, $file, $line); });
 $cases = json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR); $out = [];
 foreach ($cases as $case) {
