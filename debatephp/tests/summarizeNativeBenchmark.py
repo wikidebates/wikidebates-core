@@ -5,6 +5,8 @@ from pathlib import Path
 from statistics import median
 import sys
 
+from nativeContract import compare_corpora, check_sample_counts
+
 METRICS = (
 	('wall_ns', 1e6, 'wall ms'),
 	('cpu_us', 1e3, 'CPU ms'),
@@ -52,10 +54,11 @@ def main(root):
 		other = after['cases']
 		if rows.keys() != other.keys() or len(rows) != env['cases']:
 			raise ValueError('Benchmark corpora differ')
+		compare_corpora(rows, other)
 		for name in rows:
 			for mode in ('reference', 'optimized'):
-				if rows[name][mode]['sha256'] != other[name][mode]['sha256']:
-					raise ValueError(f'Behaviour mismatch in timed run: {name}/{mode}')
+				check_sample_counts(rows[name][mode])
+				check_sample_counts(other[name][mode])
 		print(f"\nPHP {env['php']} {env['os']}; CLI OPcache requested={opcache}, active={env['opcache_status']}; "
 			f"cases={env['cases']}; repetitions={env['repeats']}; warmup={env['warmup']}")
 		if bool(env['opcache_status']) != bool(opcache):
