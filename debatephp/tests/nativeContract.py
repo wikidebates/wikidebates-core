@@ -22,17 +22,24 @@ def retired_query(parent):
 	}
 
 
+def project_retired_reads(name, queries):
+	"""Project only the exact reviewed request in the historical oracle."""
+	queries = list(queries)
+	if name in RETIRED_PARENT_QUERIES:
+		query = retired_query(RETIRED_PARENT_QUERIES[name])
+		if queries.count(query) != 1:
+			raise ValueError(f'{name}: expected exactly one retired request in historical oracle')
+		queries.remove(query)
+	return queries
+
+
 def compare_case(name, mode, before, after):
 	label = f'{name}/{mode}'
 	old_hashes = dict(before['sha256'])
 	new_hashes = dict(after['sha256'])
-	old_queries = list(before['ask_queries'])
+	old_queries = project_retired_reads(name, before['ask_queries'])
 	new_queries = after['ask_queries']
 	if name in RETIRED_PARENT_QUERIES:
-		query = retired_query(RETIRED_PARENT_QUERIES[name])
-		if old_queries.count(query) != 1:
-			raise ValueError(f'{label}: expected exactly one retired request in pinned baseline')
-		old_queries.remove(query)
 		# The full ordered ask trace is checked below, not just its count.
 		del old_hashes['ask']
 		del new_hashes['ask']
