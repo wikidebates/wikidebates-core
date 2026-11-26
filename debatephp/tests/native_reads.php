@@ -61,8 +61,8 @@ $equal($beforeCalls, count($native->effects['ask']) - $beforeCalls, 'Native sema
 $native->failJson = true;
 try { $renderer->render(); throw new LogicException('Expected JSON failure'); }
 catch (RuntimeException $e) { $equal('Synthetic JSON insertion failure', $e->getMessage(), 'JSON failures propagate'); }
-$equal(false, (new ReflectionProperty($renderer, 'nativeJson'))->getValue($renderer), 'Native JSON construction mode is restored even after failure');
 $native->failJson = false;
+$equal((new ArgumentReferenceRenderer(new ArgumentTestContext($case)))->render(), $renderer->render(), 'Native JSON render recovers without retained construction state');
 $probe = new ReflectionMethod($renderer, 'containsTitle');
 foreach ([['label' => 'Target'], [1 => 'no', 3 => 'Target'], [1 => null, 2 => 'Target'], ['fulltext' => 'Target'], [1 => false, 2 => 'Target']] as $value) {
 	$equal($probe->invoke($renderer, Table::wrap($value), 'Target'), $probe->invoke($renderer, $value, 'Target'), 'Native title lookup matches legacy table');
@@ -395,5 +395,48 @@ foreach ([$argumentForm, $debateForm] as $renderer) {
 $edit = new ReflectionMethod($argumentForm, 'addDataLink');
 $equal(true, str_contains($edit->invoke($argumentForm, 'Edit', 'Child', '', '', true), 'bouton-modifier'), 'Native edit flag enables modifier class');
 $equal(false, str_contains($edit->invoke($argumentForm, 'Edit', 'Child', '', ''), 'bouton-modifier'), 'Default link does not get modifier class');
+
+
+// Native JSON context receives a recursively native graph, including documentary references.
+$graphIsNative = static function($value) use (&$graphIsNative): bool {
+	if (is_object($value)) {
+		return false;
+	}
+	if (is_array($value)) {
+		foreach ($value as $child) {
+			if (!$graphIsNative($child)) {
+				return false;
+			}
+		}
+	}
+	return true;
+};
+foreach ([ArgumentReferenceRenderer::class, \MediaWiki\Extension\DebatePHP\ReferenceRenderer::class] as $class) {
+	$isArgument = $class === ArgumentReferenceRenderer::class;
+	$fixture = ['title' => $isArgument ? 'An argument with references' : 'A debate with references?',
+		'args' => ['lang' => 'en', 'keywords' => '0,First,Second,Third', 'sections' => 'One,Two',
+			'expanded-topic' => 'the issue', 'summary' => 'Summary',
+			'bibliography' => '⟭Alice, Bob⟬Article⟬Journal⟬2⟬5⟬Section⟬12⟬Publisher⟬Paris⟬2020⟬https://example.org/a⟬',
+			'pro-bibliography' => '⟭Alice, Bob⟬Article⟬Journal⟬2⟬5⟬Section⟬12⟬Publisher⟬Paris⟬2020⟬https://example.org/a⟬']];
+	$context = new class($fixture) extends NativeReadTestContext {
+		public array $graph = [];
+		public function jsonLdData(array $data): string {
+			$this->graph = $data;
+			return parent::jsonLdData($data);
+		}
+	};
+	$legacy = new ArgumentTestContext($fixture);
+	$equal((new $class($legacy))->render(), (new $class($context))->render(), 'Native graph and compatibility context render identical bytes');
+	$equal($legacy->effects, $context->effects, 'Native graph preserves all renderer effects');
+	$equal(true, $graphIsNative($context->graph), 'Entire JSON graph consists of native arrays and scalar values');
+	$equal($isArgument ? 5 : 4, count($context->graph['@graph']), 'Graph retains all top-level nodes');
+	$node = $context->graph['@graph'][$isArgument ? 5 : 4];
+	$equal('0', $node['about'][1]['name'], 'Literal zero retained in about metadata');
+	$equal($isArgument ? [1] : [1, 2], array_keys($node['citation']), 'Native reference sequence retains one-based order and repeated entries');
+	$equal('Article', $node['citation'][1]['@type'], 'Documentary reference retains schema type');
+	$equal('PublicationIssue', $node['citation'][1]['isPartOf']['@type'], 'Article retains issue metadata');
+	$equal('PublicationVolume', $node['citation'][1]['isPartOf']['isPartOf']['@type'], 'Article retains volume metadata');
+	$equal(['Alice', 'Bob'], array_values(array_column($node['citation'][1]['author'], 'name')), 'Reference author sequence remains ordered');
+}
 
 echo "$assertions native-read assertions: semantic indexing, JSON bytes, CSV isolation, optional adapters and certified fallback/cache lifetimes\n";

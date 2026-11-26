@@ -1,0 +1,60 @@
+{
+	"name": "Native PHP boundary benchmarks (PHP 8.4)",
+	"on": {
+		"pull_request": {
+			"paths": [
+				"debatephp/src/**",
+				"debatephp/tests/nativeCorpus.php",
+				"debatephp/tests/benchmarkNativeContexts.py",
+				"debatephp/tests/nativeContract.py",
+				"debatephp/tests/summarizeNativeBenchmark.py",
+				"debatephp/tests/fixtures/**",
+				".github/workflows/native-context-benchmarks.yml"
+			]
+		}
+	},
+	"permissions": {
+		"contents": "read"
+	},
+	"jobs": {
+		"native-context-benchmarks": {
+			"runs-on": "ubuntu-24.04",
+			"timeout-minutes": 15,
+			"steps": [
+				{
+					"uses": "actions/checkout@v7.0.1",
+					"with": {
+						"ref": "${{ github.event.pull_request.head.sha }}",
+						"fetch-depth": 0,
+						"persist-credentials": false
+					}
+				},
+				{
+					"uses": "shivammathur/setup-php@v2",
+					"with": {
+						"php-version": "8.4",
+						"extensions": "mbstring, intl, opcache",
+						"coverage": "none"
+					}
+				},
+				{
+					"name": "Compare the pinned PR base and candidate",
+					"env": {
+						"BASE_SHA": "${{ github.event.pull_request.base.sha }}"
+					},
+					"shell": "bash",
+					"run": "git worktree add --detach \"$RUNNER_TEMP/native-context-base\" \"$BASE_SHA\"\nmkdir -p \"$RUNNER_TEMP/native-context-benchmarks\"\ngit rev-parse HEAD > \"$RUNNER_TEMP/native-context-benchmarks/candidate-sha.txt\"\ngit -C \"$RUNNER_TEMP/native-context-base\" rev-parse HEAD > \"$RUNNER_TEMP/native-context-benchmarks/base-sha.txt\"\npython3 debatephp/tests/benchmarkNativeContexts.py --base-root=\"$RUNNER_TEMP/native-context-base\" --output=\"$RUNNER_TEMP/native-context-benchmarks\" | tee \"$RUNNER_TEMP/native-context-benchmarks/summary.txt\"\n"
+				},
+				{
+					"uses": "actions/upload-artifact@v7.0.2",
+					"if": "always()",
+					"with": {
+						"name": "native-context-benchmarks",
+						"path": "${{ runner.temp }}/native-context-benchmarks",
+						"if-no-files-found": "error"
+					}
+				}
+			]
+		}
+	}
+}
