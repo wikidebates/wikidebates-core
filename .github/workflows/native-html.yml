@@ -48,6 +48,21 @@
 					"run": "git fetch --no-tags --depth=1 origin 2439e0749bcdc9ab81aeb20a902f8b6845a744e4\ngit worktree add --detach \"$RUNNER_TEMP/native-php-baseline\" FETCH_HEAD\nphp debatephp/tests/nativeCorpus.php --root=\"$RUNNER_TEMP/native-php-baseline\" > \"$RUNNER_TEMP/native-before.json\"\nphp debatephp/tests/nativeCorpus.php > \"$RUNNER_TEMP/native-after.json\"\ndiff -u \"$RUNNER_TEMP/native-before.json\" \"$RUNNER_TEMP/native-after.json\"\nfor snapshot in Module-Argument.reference.lua Module-Debate.reference.lua WD-I18N.reference.lua WD-I18N-Data.snapshot.lua; do\n\tcmp \"debatephp/resources/$snapshot\" \"$RUNNER_TEMP/native-php-baseline/debatephp/resources/$snapshot\"\ndone\n"
 				},
 				{
+					"name": "Isolated PHP 8.4 benchmark, with and without CLI OPcache",
+					"if": "${{ matrix.php == '8.4' }}",
+					"run": "mkdir -p \"$RUNNER_TEMP/native-php-benchmarks\"\nfor opcache in 0 1; do\n\tphp -d opcache.enable_cli=$opcache debatephp/tests/nativeCorpus.php --root=\"$RUNNER_TEMP/native-php-baseline\" --repeats=10 --warmup=3 > \"$RUNNER_TEMP/native-php-benchmarks/before-opcache-$opcache.json\"\n\tphp -d opcache.enable_cli=$opcache debatephp/tests/nativeCorpus.php --repeats=10 --warmup=3 > \"$RUNNER_TEMP/native-php-benchmarks/after-opcache-$opcache.json\"\ndone\n"
+				},
+				{
+					"name": "Archive isolated benchmark samples",
+					"if": "${{ matrix.php == '8.4' }}",
+					"uses": "actions/upload-artifact@v7.0.2",
+					"with": {
+						"name": "native-php-8.4-benchmarks",
+						"path": "${{ runner.temp }}/native-php-benchmarks",
+						"if-no-files-found": "error"
+					}
+				},
+				{
 					"name": "Reading prewarm safety runner smoke tests",
 					"run": "bash tests/readingFragments/runnerSmoke.sh"
 				},
