@@ -213,8 +213,8 @@ namespace {
 	$ask->invoke($renderer, new Table([1 => '[[SECRET]]']), 'debate-parents');
 	$ask->invoke($renderer, new Table([1 => '[[SECRET]]']), 'argument-parents');
 	$titles = $reflection->getMethod('smwAskTitles');
-	$titles->invoke($renderer, new Table([1 => '[[SECRET2]]']), 200, 'breadcrumb');
-	$titles->invoke($renderer, new Table([1 => '[[SECRET2]]']), 200, 'breadcrumb');
+	$titles->invoke($renderer, '[[SECRET2]]', 'breadcrumb');
+	$titles->invoke($renderer, '[[SECRET2]]', 'breadcrumb');
 	LibraryFactory::$fail = true;
 	$ask->invoke($renderer, new Table([1 => '[[SECRET3]]']), 'cards');
 	$ask->invoke($renderer, new Table([1 => '[[SECRET3]]']), 'cards');
