@@ -69,7 +69,7 @@ if (realpath($_SERVER['SCRIPT_FILENAME']) !== __FILE__) { return; }
 // Parent lists must deduplicate equivalent SMW title representations before rendering.
 $parentProbe = new class(new ArgumentTestContext(['args' => [], 'title' => 'Child'])) extends ArgumentReferenceRenderer {
 	public function uniqueTitles(Table $titles): array {
-		return array_values($this->uniqueParentTitles($titles)->values);
+		return $this->uniqueParentTitles(array_values($titles->values));
 	}
 };
 $actual = $parentProbe->uniqueTitles(new Table([
