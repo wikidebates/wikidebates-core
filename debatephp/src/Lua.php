@@ -27,7 +27,22 @@ final class Lua {
 		// Lua string.format ignores surplus arguments; PHP sprintf does too.
 		return sprintf($s, ...$args);
 	}
-	public static function concat(Table $t, string $sep = ''): string { return implode($sep, $t->values); }
+	/** Lua table.concat uses one-based inclusive bounds. */
+	public static function concat(Table $t, string $sep = '', int $start = 1, ?int $end = null): string {
+		if ($start === 1 && $end === null) {
+			return implode($sep, $t->values);
+		}
+		$end ??= count($t);
+		$parts = [];
+		for ($i = $start; $i <= $end; $i++) {
+			$value = $t[$i];
+			if (!is_string($value) && !is_int($value) && !is_float($value)) {
+				throw new \LogicException('Invalid Lua concat value at index ' . $i);
+			}
+			$parts[] = $value;
+		}
+		return implode($sep, $parts);
+	}
 	public static function insert(Table $t, $value): void { $t[count($t) + 1] = $value; }
 	public static function sort(Table $t): void {
 		$v = array_values($t->values); sort($v, $v && is_int($v[0]) ? SORT_NUMERIC : SORT_STRING);
