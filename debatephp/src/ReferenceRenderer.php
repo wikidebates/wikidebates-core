@@ -6,6 +6,8 @@ namespace MediaWiki\Extension\DebatePHP;
  * See docs/native-php-migration-baseline.md for the behavioural contract.
  */
 class ReferenceRenderer {
+	use WarningLabels;
+
 	private ?DecodedReferences $decodedReferences = null;
 	private ?RenderData $renderData = null;
 	private bool $nativeJson = false;
@@ -13,15 +15,15 @@ class ReferenceRenderer {
 	protected $ITEM_SEP;
 	protected $FIELD_SEP;
 	protected $SEO_CACHE;
-	protected $ARGUMENT_WARNING_BANNER_KEYS;
-	protected $ARGUMENT_WARNING_LOOKUPS;
-	protected $PROGRESS_BANNER_KEYS;
-	protected $TITLE_WARNING_BANNER_KEYS;
-	protected $DEBATE_WARNING_BANNER_KEYS;
+	protected array $ARGUMENT_WARNING_BANNER_KEYS;
+	protected array $ARGUMENT_WARNING_LOOKUPS;
+	protected array $PROGRESS_BANNER_KEYS;
+	protected array $TITLE_WARNING_BANNER_KEYS;
+	protected array $DEBATE_WARNING_BANNER_KEYS;
 	protected $INTRO_SUB_SEP;
 	protected $INTRO_FIELD_SEP;
-	protected $INTRO_SUB_WARNING_KEYS;
-	protected $REFERENCE_WARNING_BANNER_KEYS;
+	protected array $INTRO_SUB_WARNING_KEYS;
+	protected array $REFERENCE_WARNING_BANNER_KEYS;
 	protected $REF_SEP;
 	protected $REF_FIELD_SEP;
 	public function __construct(Context $context) {
@@ -29,15 +31,15 @@ class ReferenceRenderer {
 		$this->ITEM_SEP = '⟭';
 		$this->FIELD_SEP = '⟬';
 		$this->SEO_CACHE = new Table([]);
-		$this->ARGUMENT_WARNING_BANNER_KEYS = new Table([1 => 'displayed_title_too_long', 2 => 'displayed_title_unclear', 3 => 'displayed_title_disadvantageous']);
-		$this->ARGUMENT_WARNING_LOOKUPS = new Table([]);
-		$this->PROGRESS_BANNER_KEYS = new Table([1 => 'progress_under_construction', 2 => 'progress_draft']);
-		$this->TITLE_WARNING_BANNER_KEYS = new Table([1 => 'title_non_standard', 2 => 'title_to_explain', 3 => 'title_to_simplify']);
-		$this->DEBATE_WARNING_BANNER_KEYS = new Table([1 => 'debate_unbalanced', 2 => 'debate_redundant', 3 => 'debate_fanciful', 4 => 'debate_sensitive', 5 => 'outline_to_improve', 6 => 'debate_generated_by_ai']);
+		$this->ARGUMENT_WARNING_BANNER_KEYS = ['displayed_title_too_long', 'displayed_title_unclear', 'displayed_title_disadvantageous'];
+		$this->ARGUMENT_WARNING_LOOKUPS = [];
+		$this->PROGRESS_BANNER_KEYS = ['progress_under_construction', 'progress_draft'];
+		$this->TITLE_WARNING_BANNER_KEYS = ['title_non_standard', 'title_to_explain', 'title_to_simplify'];
+		$this->DEBATE_WARNING_BANNER_KEYS = ['debate_unbalanced', 'debate_redundant', 'debate_fanciful', 'debate_sensitive', 'outline_to_improve', 'debate_generated_by_ai'];
 		$this->INTRO_SUB_SEP = '⟭⟭⟭';
 		$this->INTRO_FIELD_SEP = '⟬⟬⟬';
-		$this->INTRO_SUB_WARNING_KEYS = new Table([1 => 'too_long', 2 => 'to_develop', 3 => 'unclear', 4 => 'biased', 5 => 'refs_missing', 6 => 'style_to_review']);
-		$this->REFERENCE_WARNING_BANNER_KEYS = new Table([1 => 'reference_quality_insufficient', 2 => 'reference_incomplete', 3 => 'dead_link']);
+		$this->INTRO_SUB_WARNING_KEYS = ['too_long', 'to_develop', 'unclear', 'biased', 'refs_missing', 'style_to_review'];
+		$this->REFERENCE_WARNING_BANNER_KEYS = ['reference_quality_insufficient', 'reference_incomplete', 'dead_link'];
 		$this->REF_SEP = '⟭';
 		$this->REF_FIELD_SEP = '⟬';
 	}
@@ -123,7 +125,7 @@ class ReferenceRenderer {
 	}
 
 	protected function seoL($lang = null, $key = null, ...$rest) {
-		return (Lua::truth($v10 = $this->context->message('Debate.seo', $lang, $key, ...$rest)) ? $v10 : '');
+		return $this->context->message('Debate.seo', $lang, $key, ...$rest);
 	}
 
 	protected function seoJoinList($items = null) {
@@ -166,7 +168,7 @@ class ReferenceRenderer {
 	}
 
 	protected function subMsg($lang = null, $key = null, ...$rest) {
-		return (Lua::truth($v18 = $this->context->message('Debate.subsections', $lang, $key, ...$rest)) ? $v18 : '');
+		return $this->context->message('Debate.subsections', $lang, $key, ...$rest);
 	}
 
 	protected function renderSubsectionBanner($pv = null, $lang = null, $key = null, $opts = null, $cats = null) {
@@ -426,45 +428,12 @@ class ReferenceRenderer {
 <!--__WD_LIST_BREAK__-->';
 	}
 
-	protected function buildSummaryLabelLookup($lang = null, $keys = null) {
-		$lookup = [];
-		foreach (((Lua::truth($v59 = $keys) ? $v59 : new Table([])))->sequence() as $_ => $key) {
-			$lab = trim($this->subMsg($lang, ($key . '_label')), NativeText::ASCII_WHITESPACE);
-			if (($lab !== '')) {
-				$lookup[$lab] = $key;
-			}
-		}
-		return new Table($lookup);
-	}
-
-	protected function getArgumentWarningLookup($lang = null) {
+	protected function getArgumentWarningLookup($lang = null): array {
 		$lang = NativeText::field($lang);
-		if (!(Lua::truth($this->ARGUMENT_WARNING_LOOKUPS[$lang]))) {
+		if (!isset($this->ARGUMENT_WARNING_LOOKUPS[$lang])) {
 			$this->ARGUMENT_WARNING_LOOKUPS[$lang] = $this->buildSummaryLabelLookup($lang, $this->ARGUMENT_WARNING_BANNER_KEYS);
 		}
 		return $this->ARGUMENT_WARNING_LOOKUPS[$lang];
-	}
-
-	protected function resolveKeyFromLookup($raw = null, $lookup = null, $allowedKeys = null, $aliases = null) {
-		$raw = trim(NativeText::field($raw), NativeText::ASCII_WHITESPACE);
-		if (($raw === '')) {
-			return '';
-		}
-		$k = (Lua::truth($v62 = (Lua::truth($v63 = $lookup) ? $lookup[$raw] : $v63)) ? $v62 : '');
-		if (($k !== '')) {
-			return $k;
-		}
-		if ((Lua::truth($aliases) && Lua::truth($aliases[$raw]))) {
-			return $aliases[$raw];
-		}
-		if (Lua::truth($allowedKeys)) {
-			foreach (($allowedKeys)->sequence() as $_ => $kk) {
-				if (($raw === $kk)) {
-					return $kk;
-				}
-			}
-		}
-		return '';
 	}
 
 	protected function renderArgumentItemBanners($itemWarnings = null, $pv = null, $lang = null, $cats = null): array {
@@ -575,7 +544,7 @@ class ReferenceRenderer {
 	}
 
 	protected function bannerMsg($lang = null, $key = null, ...$rest) {
-		return (Lua::truth($v84 = $this->context->message('Debate.banners', $lang, $key, ...$rest)) ? $v84 : '');
+		return $this->context->message('Debate.banners', $lang, $key, ...$rest);
 	}
 
 	protected function renderBannerByKey($pv = null, $lang = null, $key = null, $cats = null) {
@@ -596,25 +565,6 @@ class ReferenceRenderer {
 			Lua::insert($cats, ('[[Category:' . $cat . ']]'));
 		}
 		return $html;
-	}
-
-	protected function buildBannerLabelLookup($lang = null, $keys = null) {
-		$lookup = new Table([]);
-		foreach (((Lua::truth($v86 = $keys) ? $v86 : new Table([])))->sequence() as $_ => $key) {
-			$lab = trim($this->bannerMsg($lang, ($key . '_label')), NativeText::ASCII_WHITESPACE);
-			if (($lab !== '')) {
-				$lookup[$lab] = $key;
-			}
-		}
-		return $lookup;
-	}
-
-	protected function resolveBannerKeyFromLookup($raw = null, $lookup = null) {
-		$raw = trim(NativeText::field($raw), NativeText::ASCII_WHITESPACE);
-		if (($raw === '')) {
-			return '';
-		}
-		return (Lua::truth($v88 = (Lua::truth($v89 = $lookup) ? $lookup[$raw] : $v89)) ? $v88 : '');
 	}
 
 	protected function renderWarningBanners($args = null, $pv = null, $cats = null, $lang = null) {
@@ -679,9 +629,9 @@ class ReferenceRenderer {
 		return SerializedData::records($raw, '⟭⟭⟭', '⟬⟬⟬', ['title', 'content', 'warnings'], true);
 	}
 
-	protected function buildIntroSubWarningLookup($lang = null) {
-		$lookup = new Table([]);
-		foreach (($this->INTRO_SUB_WARNING_KEYS)->sequence() as $_ => $k) {
+	protected function buildIntroSubWarningLookup($lang = null): array {
+		$lookup = [];
+		foreach ($this->INTRO_SUB_WARNING_KEYS as $k) {
 			$lab = trim($this->subMsg($lang, ('intro_subbanner_' . $k . '_label')), NativeText::ASCII_WHITESPACE);
 			if (($lab !== '')) {
 				$lookup[$lab] = ('intro_subbanner_' . $k);
@@ -706,7 +656,7 @@ class ReferenceRenderer {
 			foreach (explode(',', $avert) as $lab) {
 				$lab = trim($lab, NativeText::ASCII_WHITESPACE);
 				if (($lab !== '')) {
-					$k = (Lua::truth($v104 = $lookup[$lab]) ? $v104 : '');
+					$k = ($lookup[$lab] ?? '');
 					if (($k !== '')) {
 						$h = $this->renderSubsectionBanner($pv, $lang, $k, new Table([]), $cats);
 						if ((Lua::truth($h) && ($h !== ''))) {
