@@ -68,6 +68,30 @@ foreach ([['label' => 'Target'], [1 => 'no', 3 => 'Target'], [1 => null, 2 => 'T
 	$equal($probe->invoke($renderer, Table::wrap($value), 'Target'), $probe->invoke($renderer, $value, 'Target'), 'Native title lookup matches legacy table');
 }
 
+// The Lua bridge must respect one-based inclusive bounds, including an empty range.
+$concatValues = new Table([1 => 'A', 2 => 'B', 3 => 'C', 4 => 'D']);
+$concat = \MediaWiki\Extension\DebatePHP\Lua::class;
+$equal('A, B, C, D', $concat::concat($concatValues, ', '), 'Unbounded concatenation');
+$equal('A, B', $concat::concat($concatValues, ', ', 1, 2), 'Exclude trailing values');
+$equal('B, C', $concat::concat($concatValues, ', ', 2, 3), 'Inclusive range');
+$equal('C, D', $concat::concat($concatValues, ', ', 3), 'Default end');
+$equal('', $concat::concat($concatValues, ', ', 3, 2), 'Empty range');
+$equal('D', $concat::concat($concatValues, ', ', 4, 4), 'Single value range');
+$equal('A, B, C, D', $concat::concat($concatValues, ', '), 'Input table remains unchanged');
+
+// Check the final join, independently of title deduplication, for zero to four cards.
+$join = new ReflectionMethod(ArgumentReferenceRenderer::class, 'joinCards');
+$joinRenderer = new ArgumentReferenceRenderer(new ArgumentTestContext(['title' => 'Child', 'args' => ['lang' => 'fr']]));
+foreach ([
+	'' => [],
+	'A' => [1 => 'A'],
+	'A&#32;et&#32;B' => [1 => 'A', 2 => 'B'],
+	'A, B&#32;et&#32;C' => [1 => 'A', 2 => 'B', 3 => 'C'],
+	'A, B, C&#32;et&#32;D' => [1 => 'A', 2 => 'B', 3 => 'C', 4 => 'D']
+] as $expected => $cards) {
+	$equal($expected, $join->invoke($joinRenderer, new Table($cards), 'fr'), 'French list with ' . count($cards) . ' cards');
+}
+
 // Equivalent raw SMW forms must produce one link per relation, preserving order.
 $parentContext = new class(['title' => 'Child', 'args' => ['lang' => 'en']]) extends ArgumentTestContext {
 	public function smwAsk(Table $query): ?Table {
@@ -76,14 +100,16 @@ $parentContext = new class(['title' => 'Child', 'args' => ['lang' => 'en']]) ext
 			return Table::wrap([
 				1 => ['fulltext' => 'Debate A', 'pro' => 'Child', 'con' => 'Child'],
 				2 => ['fulltext' => 'Debate_A', 'pro' => 'Child'],
-				3 => ['fulltext' => 'Debate B', 'pro' => 'Child']
+				3 => ['fulltext' => 'Debate B', 'pro' => 'Child'],
+				4 => ['fulltext' => 'Debate C', 'pro' => 'Child']
 			]);
 		}
 		if (str_contains($fields, '=justif')) {
 			return Table::wrap([
 				1 => ['fulltext' => 'Parent &amp; A', 'justif' => 'Child', 'obj' => 'Child'],
 				2 => ['fulltext' => 'Parent & A', 'justif' => 'Child'],
-				3 => ['fulltext' => 'Parent B', 'justif' => 'Child']
+				3 => ['fulltext' => 'Parent B', 'justif' => 'Child'],
+				4 => ['fulltext' => 'Parent C', 'justif' => 'Child']
 			]);
 		}
 		if (str_contains($fields, '=chain')) {
@@ -91,7 +117,8 @@ $parentContext = new class(['title' => 'Child', 'args' => ['lang' => 'en']]) ext
 				1 => ['chain' => 'Debate A⟭Parent A'],
 				2 => ['chain' => 'Debate_A⟭Parent B'],
 				3 => ['chain' => 'Debate &amp; B⟭Parent A'],
-				4 => ['chain' => 'Debate & B⟭Parent B']
+				4 => ['chain' => 'Debate & B⟭Parent B'],
+				5 => ['chain' => 'Debate C⟭Parent C']
 			]);
 		}
 		return null;
@@ -103,10 +130,10 @@ foreach ([ArgumentReferenceRenderer::class, \MediaWiki\Extension\DebatePHP\Argum
 	$parentBanners = array_values(array_filter($matches[0], static fn($banner) => str_contains($banner, 'class="hover-map"')));
 	$equal(5, count($parentBanners), 'All five parent relation banners remain present');
 	$expected = [
-		['Debate A', 'Debate & B'],
-		['Debate A', 'Debate B'],
+		['Debate A', 'Debate & B', 'Debate C'],
+		['Debate A', 'Debate B', 'Debate C'],
 		['Debate A'],
-		['Parent & A', 'Parent B'],
+		['Parent & A', 'Parent B', 'Parent C'],
 		['Parent & A']
 	];
 	foreach ($parentBanners as $i => $banner) {
