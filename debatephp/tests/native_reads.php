@@ -177,7 +177,8 @@ $equal(['Debate A', 'Debate B', 'Debate C'], $relations->proDebates, 'Native dir
 $equal(['Debate A'], $relations->conDebates, 'Parent relation sets remain distinct');
 (new ReflectionMethod($parentRenderer, 'ensureArgumentParents'))->invoke($parentRenderer, $pv, $relations, $parentFields);
 $equal(['Parent & A', 'Parent B', 'Parent C'], $relations->justificationParents, 'Canonical native argument-parent order');
-(new ReflectionMethod($parentRenderer, 'ensureBreadcrumbSelection'))->invoke($parentRenderer, $pv, $relations, new Table, 'en', $parentFields);
+$breadcrumbCategories = [];
+(new ReflectionMethod($parentRenderer, 'ensureBreadcrumbSelection'))->invokeArgs($parentRenderer, [$pv, $relations, &$breadcrumbCategories, 'en', $parentFields]);
 $equal(['Debate A', 'Debate & B', 'Debate C'], $relations->breadcrumbDebates, 'Breadcrumb roots deduplicate equivalent titles');
 $equal(true, array_is_list($relations->breadcrumbChains), 'Native breadcrumb chains are dense zero-based lists');
 
@@ -317,5 +318,25 @@ $equal('scalar', $properties['new'], 'Single-valued writes replace previous list
 $semantic::add($properties, 'new', '0', true);
 $equal(['scalar', '0'], $properties['new'], 'A later multi-value write retains the previous scalar');
 $equal(['empty' => []], TextEscaper::jsonValue($semantic::toLegacyTable(['empty' => [], 'missing' => null])), 'Empty list and missing property remain distinct');
+
+
+// A missing category sink suppresses only category collection, not the banner.
+$categoryContext = new ArgumentTestContext(['title' => 'Category probe', 'args' => ['lang' => 'en']]);
+foreach ([ArgumentReferenceRenderer::class, \\MediaWiki\\Extension\\DebatePHP\\ReferenceRenderer::class] as $class) {
+	$renderer = new $class($categoryContext);
+	$banner = new ReflectionMethod($renderer, 'renderSubsectionBanner');
+	$category = new ReflectionMethod($renderer, 'subMsg');
+	$key = 'reference_incomplete';
+	$expected = '[[Category:' . $category->invoke($renderer, 'en', $key . '_category') . ']]';
+	$categories = [];
+	$html = $banner->invokeArgs($renderer, [$categoryContext->pageVars(), 'en', $key, null, &$categories]);
+	$equal(true, $html !== '', 'Known reference warning renders a banner');
+	$equal([$expected], $categories, 'An initially empty native category sink accepts a warning');
+	$without = $banner->invoke($renderer, $categoryContext->pageVars(), 'en', $key);
+	$equal($html, $without, 'Suppressing category collection leaves banner bytes unchanged');
+	$banner->invokeArgs($renderer, [$categoryContext->pageVars(), 'en', $key, null, &$categories]);
+	$equal([$expected, $expected], $categories, 'Category collection preserves repeated entries and order');
+	$equal(true, array_is_list($categories), 'Collected categories are a zero-based list');
+}
 
 echo "$assertions native-read assertions: semantic indexing, JSON bytes, CSV isolation, optional adapters and certified fallback/cache lifetimes\n";
