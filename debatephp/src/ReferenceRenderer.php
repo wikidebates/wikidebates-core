@@ -83,7 +83,7 @@ class ReferenceRenderer {
 		$out = [];
 		foreach ($this->nativeReferenceValues($format, $raw) as $item) {
 			$li = $builder($item);
-			if (Lua::truth($li) && $li !== '') { $out[] = $li; }
+			if ($li !== null && $li !== false && $li !== '') { $out[] = $li; }
 		}
 		return implode("\n", $out);
 	}
@@ -100,20 +100,17 @@ class ReferenceRenderer {
 		return ($this->renderData ??= new RenderData)->csv($s, $sep);
 	}
 
-	protected function wkParseWikipediaMarkers($raw = null) {
-		$raw = NativeText::field($raw);
-		$raw = trim($raw, NativeText::ASCII_WHITESPACE);
-		if (($raw === '')) {
-			return new Table([]);
+	/** @return list<string> */
+	protected function wkParseWikipediaMarkers($raw = null): array {
+		$raw = trim(NativeText::field($raw), NativeText::ASCII_WHITESPACE);
+		if (!str_contains($raw, $this->ITEM_SEP)) {
+			return [];
 		}
-		if (!(str_contains($raw, $this->ITEM_SEP))) {
-			return new Table([]);
-		}
-		$pages = new Table([]);
-		foreach (Lua::split($raw, $this->ITEM_SEP, true) as $part) {
+		$pages = [];
+		foreach (explode($this->ITEM_SEP, $raw) as $part) {
 			$part = trim($part, NativeText::ASCII_WHITESPACE);
-			if (($part !== '')) {
-				$pages[(Lua::len($pages) + 1)] = $part;
+			if ($part !== '') {
+				$pages[] = $part;
 			}
 		}
 		return $pages;
@@ -310,11 +307,11 @@ class ReferenceRenderer {
 	}
 
 	protected function wkWikipediaUrl($page = null, $lang = null) {
-		if ((!(Lua::truth($page)) || ($page === ''))) {
+		if (($page === null || $page === false || $page === '')) {
 			return '';
 		}
 		$base = $this->L($lang, 'urls', 'wikipedia');
-		if ((!(Lua::truth($base)) || ($base === ''))) {
+		if (($base === '')) {
 			return '';
 		}
 		return ($base . $this->context->uriEncode($page, 'WIKI'));
@@ -709,16 +706,16 @@ class ReferenceRenderer {
 
 	protected function renderWikipediaLinks($args = null, $pv = null, $lang = null) {
 		$raw = $args['wikipedia-articles'];
-		$raw = (Lua::truth($v108 = (Lua::truth($v109 = (is_string($raw))) ? trim($raw, NativeText::ASCII_WHITESPACE) : $v109)) ? $v108 : '');
+		$raw = is_string($raw) ? trim($raw, NativeText::ASCII_WHITESPACE) : '';
 		$wrap = (HtmlBuilder::create('div'))->addClass('bandeau-section wk-icon-before wk-icon-wikipedia hover-top navigation-not-searchable');
 		$hasPages = false;
 		if (($raw !== '')) {
 			$expanded = $this->context->expandField($raw, 'debate.wikipedia');
 			$pages = $this->wkParseWikipediaMarkers($expanded);
-			if ((Lua::len($pages) > 0)) {
+			if ($pages !== []) {
 				$hasPages = true;
 				$items = [];
-				foreach (($pages)->sequence() as $_ => $page) {
+				foreach ($pages as $page) {
 					$url = $this->wkWikipediaUrl($page, $lang);
 					$items[] = ('<span class="hover-wikipedia">[' . $url . ' ' . $page . ']</span>');
 				}
@@ -733,9 +730,9 @@ class ReferenceRenderer {
 		}
 		($wrap)->wikitext($this->addDataLink($this->L($lang, 'forms', 'wiki_seealso_edit_title'), $pv['rawTitle'], $this->L($lang, 'text', 'edit_label'), $this->L($lang, 'text', 'wikipedia_edit_tt')));
 		if ((($raw === '') || !($hasPages))) {
-			return (Lua::str($wrap) . '[[Category:' . $this->L($lang, 'categories', 'wikipedia_missing') . ']]');
+			return ((string)$wrap . '[[Category:' . $this->L($lang, 'categories', 'wikipedia_missing') . ']]');
 		}
-		return Lua::str($wrap);
+		return (string)$wrap;
 	}
 
 	protected function renderQuestionsFAQ($sujetComplet = null, $sens = null, $lang = null) {
@@ -1026,7 +1023,7 @@ class ReferenceRenderer {
 	protected function renderRefBlock($pageVars = null, $lang = null, $iconClass = null, $titleText = null, $formKey = null, $value = null) {
 		$out = [];
 		$out[] = ('<h4 class="titre-references wk-icon-before ' . $iconClass . ' navigation-not-searchable">' . $titleText . $this->addDataLink($this->L($lang, 'forms', $formKey), $pageVars['rawTitle'], $this->L($lang, 'text', 'edit_label'), $this->L($lang, 'text', 'section_edit_tt')) . '</h4>');
-		if ((Lua::truth($value) && (trim($value, NativeText::ASCII_WHITESPACE) !== ''))) {
+		if (($value !== null && $value !== false && trim($value, NativeText::ASCII_WHITESPACE) !== '')) {
 			$out[] = ('<ul>' . $value . '</ul>');
 		}
 		else {
@@ -1035,110 +1032,49 @@ class ReferenceRenderer {
 		return implode('', $out);
 	}
 
-	protected function renderReferences($args = null, $pageVars = null, $lang = null, $categories = null, $smwPending = null, $refRaw = null) {
-		$wrap = [];
-		$refRaw = (Lua::truth($v174 = $refRaw) ? $v174 : new Table([]));
-		$refRaw['bibliography'] = (Lua::truth($v175 = $refRaw['bibliography']) ? $v175 : new Table([]));
-		$refRaw['webliography'] = (Lua::truth($v176 = $refRaw['webliography']) ? $v176 : new Table([]));
-		$refRaw['videography'] = (Lua::truth($v177 = $refRaw['videography']) ? $v177 : new Table([]));
-		$wrap[] = ('<h2 class="wk-icon-before wk-icon-further">' . $this->L($lang, 'text', 'further_reading_title') . '</h2>');
-		{
-			$h3 = ('<h3 id="Bibliography" class="fr-collapsible-toggle wk-icon-before wk-carret wk-icon-after wk-icon-bibliography">' . $this->L($lang, 'text', 'bibliography_title') . '</h3>');
+	/**
+	 * Render each reference section and retain its expanded input for JSON-LD.
+	 * Expansion and rendering order must remain bibliography/web/video, pro/con/neutral.
+	 * @return array{string,array<string,array<string,string>>}
+	 */
+	protected function renderReferences($args = null, $pageVars = null, $lang = null, $categories = null, $smwPending = null): array {
+		$wrap = ['<h2 class="wk-icon-before wk-icon-further">' . $this->L($lang, 'text', 'further_reading_title') . '</h2>'];
+		$refRaw = [];
+		$formats = [
+			'bibliography' => ['Bibliography', 'biblio', 'wkRenderBiblioListFromArg'],
+			'webliography' => ['Webliography', 'weblio', 'wkRenderWeblioListFromArg'],
+			'videography' => ['Videography', 'video', 'wkRenderVideoListFromArg']
+		];
+		$sides = [
+			'pro' => ['wk-icon-argument is-pro', 'side_pro_title'],
+			'con' => ['wk-icon-argument is-con', 'side_con_title'],
+			'neutral' => ['wk-icon-neutral mw-no-invert', 'side_neutral_title']
+		];
+		foreach ($formats as $format => [$id, $formPrefix, $builder]) {
+			$h3 = '<h3 id="' . $id . '" class="fr-collapsible-toggle wk-icon-before wk-carret wk-icon-after wk-icon-' . $format . '">' .
+				$this->L($lang, 'text', $format . '_title') . '</h3>';
+			$rendered = [];
+			foreach ($sides as $side => $_) {
+				$field = $side === 'neutral' ? $format : $side . '-' . $format;
+				$raw = NativeText::field($args[$field]);
+				$refRaw[$format][$side] = $raw === '' ? '' : $this->context->expandField($raw, 'debate.' . $format . '.' . $side);
+				if ($raw === '') {
+					$rendered[$side] = '';
+				} elseif ($format === 'webliography') {
+					$rendered[$side] = $this->$builder($refRaw[$format][$side], $pageVars, $lang, $categories, $smwPending, $side);
+				} else {
+					$rendered[$side] = $this->$builder($refRaw[$format][$side], $pageVars, $lang, $categories, $smwPending);
+				}
+			}
 			$content = [];
-			$proRaw = (Lua::truth($v178 = $args['pro-bibliography']) ? $v178 : '');
-			if (($proRaw !== '')) {
-				$refRaw['bibliography']['pro'] = $this->context->expandField($proRaw, 'debate.bibliography.pro');
-				$proRaw = $this->wkRenderBiblioListFromArg($refRaw['bibliography']['pro'], $pageVars, $lang, $categories, $smwPending);
+			foreach ($sides as $side => [$icon, $titleKey]) {
+				$content[] = $this->renderRefBlock($pageVars, $lang, $icon, $this->L($lang, 'text', $titleKey),
+					$formPrefix . '_' . $side . '_title', $rendered[$side]);
 			}
-			else {
-				$refRaw['bibliography']['pro'] = '';
-			}
-			$conRaw = (Lua::truth($v179 = $args['con-bibliography']) ? $v179 : '');
-			if (($conRaw !== '')) {
-				$refRaw['bibliography']['con'] = $this->context->expandField($conRaw, 'debate.bibliography.con');
-				$conRaw = $this->wkRenderBiblioListFromArg($refRaw['bibliography']['con'], $pageVars, $lang, $categories, $smwPending);
-			}
-			else {
-				$refRaw['bibliography']['con'] = '';
-			}
-			$neuRaw = (Lua::truth($v180 = $args['bibliography']) ? $v180 : '');
-			if (($neuRaw !== '')) {
-				$refRaw['bibliography']['neutral'] = $this->context->expandField($neuRaw, 'debate.bibliography.neutral');
-				$neuRaw = $this->wkRenderBiblioListFromArg($refRaw['bibliography']['neutral'], $pageVars, $lang, $categories, $smwPending);
-			}
-			else {
-				$refRaw['bibliography']['neutral'] = '';
-			}
-			$content[] = $this->renderRefBlock($pageVars, $lang, 'wk-icon-argument is-pro', $this->L($lang, 'text', 'side_pro_title'), 'biblio_pro_title', $proRaw);
-			$content[] = $this->renderRefBlock($pageVars, $lang, 'wk-icon-argument is-con', $this->L($lang, 'text', 'side_con_title'), 'biblio_con_title', $conRaw);
-			$content[] = $this->renderRefBlock($pageVars, $lang, 'wk-icon-neutral mw-no-invert', $this->L($lang, 'text', 'side_neutral_title'), 'biblio_neutral_title', $neuRaw);
-			$wrap[] = ('<div class="fr-collapsible fr-collapsed">' . $h3 . '<div class="fr-collapsible-content contenu-references">' . implode('', $content) . '</div></div>');
+			$wrap[] = '<div class="fr-collapsible fr-collapsed">' . $h3 .
+				'<div class="fr-collapsible-content contenu-references">' . implode('', $content) . '</div></div>';
 		}
-		{
-			$h3 = ('<h3 id="Webliography" class="fr-collapsible-toggle wk-icon-before wk-carret wk-icon-after wk-icon-webliography">' . $this->L($lang, 'text', 'webliography_title') . '</h3>');
-			$content = [];
-			$proRaw = (Lua::truth($v181 = $args['pro-webliography']) ? $v181 : '');
-			if (($proRaw !== '')) {
-				$refRaw['webliography']['pro'] = $this->context->expandField($proRaw, 'debate.webliography.pro');
-				$proRaw = $this->wkRenderWeblioListFromArg($refRaw['webliography']['pro'], $pageVars, $lang, $categories, $smwPending, 'pro');
-			}
-			else {
-				$refRaw['webliography']['pro'] = '';
-			}
-			$conRaw = (Lua::truth($v182 = $args['con-webliography']) ? $v182 : '');
-			if (($conRaw !== '')) {
-				$refRaw['webliography']['con'] = $this->context->expandField($conRaw, 'debate.webliography.con');
-				$conRaw = $this->wkRenderWeblioListFromArg($refRaw['webliography']['con'], $pageVars, $lang, $categories, $smwPending, 'con');
-			}
-			else {
-				$refRaw['webliography']['con'] = '';
-			}
-			$neuRaw = (Lua::truth($v183 = $args['webliography']) ? $v183 : '');
-			if (($neuRaw !== '')) {
-				$refRaw['webliography']['neutral'] = $this->context->expandField($neuRaw, 'debate.webliography.neutral');
-				$neuRaw = $this->wkRenderWeblioListFromArg($refRaw['webliography']['neutral'], $pageVars, $lang, $categories, $smwPending, 'neutral');
-			}
-			else {
-				$refRaw['webliography']['neutral'] = '';
-			}
-			$content[] = $this->renderRefBlock($pageVars, $lang, 'wk-icon-argument is-pro', $this->L($lang, 'text', 'side_pro_title'), 'webliography_pro_title', $proRaw);
-			$content[] = $this->renderRefBlock($pageVars, $lang, 'wk-icon-argument is-con', $this->L($lang, 'text', 'side_con_title'), 'webliography_con_title', $conRaw);
-			$content[] = $this->renderRefBlock($pageVars, $lang, 'wk-icon-neutral mw-no-invert', $this->L($lang, 'text', 'side_neutral_title'), 'webliography_neutral_title', $neuRaw);
-			$wrap[] = ('<div class="fr-collapsible fr-collapsed">' . $h3 . '<div class="fr-collapsible-content contenu-references">' . implode('', $content) . '</div></div>');
-		}
-		{
-			$h3 = ('<h3 id="Videography" class="fr-collapsible-toggle wk-icon-before wk-carret wk-icon-after wk-icon-videography">' . $this->L($lang, 'text', 'videography_title') . '</h3>');
-			$content = [];
-			$proRaw = (Lua::truth($v184 = $args['pro-videography']) ? $v184 : '');
-			if (($proRaw !== '')) {
-				$refRaw['videography']['pro'] = $this->context->expandField($proRaw, 'debate.videography.pro');
-				$proRaw = $this->wkRenderVideoListFromArg($refRaw['videography']['pro'], $pageVars, $lang, $categories, $smwPending);
-			}
-			else {
-				$refRaw['videography']['pro'] = '';
-			}
-			$conRaw = (Lua::truth($v185 = $args['con-videography']) ? $v185 : '');
-			if (($conRaw !== '')) {
-				$refRaw['videography']['con'] = $this->context->expandField($conRaw, 'debate.videography.con');
-				$conRaw = $this->wkRenderVideoListFromArg($refRaw['videography']['con'], $pageVars, $lang, $categories, $smwPending);
-			}
-			else {
-				$refRaw['videography']['con'] = '';
-			}
-			$neuRaw = (Lua::truth($v186 = $args['videography']) ? $v186 : '');
-			if (($neuRaw !== '')) {
-				$refRaw['videography']['neutral'] = $this->context->expandField($neuRaw, 'debate.videography.neutral');
-				$neuRaw = $this->wkRenderVideoListFromArg($refRaw['videography']['neutral'], $pageVars, $lang, $categories, $smwPending);
-			}
-			else {
-				$refRaw['videography']['neutral'] = '';
-			}
-			$content[] = $this->renderRefBlock($pageVars, $lang, 'wk-icon-argument is-pro', $this->L($lang, 'text', 'side_pro_title'), 'videography_pro_title', $proRaw);
-			$content[] = $this->renderRefBlock($pageVars, $lang, 'wk-icon-argument is-con', $this->L($lang, 'text', 'side_con_title'), 'videography_con_title', $conRaw);
-			$content[] = $this->renderRefBlock($pageVars, $lang, 'wk-icon-neutral mw-no-invert', $this->L($lang, 'text', 'side_neutral_title'), 'videography_neutral_title', $neuRaw);
-			$wrap[] = ('<div class="fr-collapsible fr-collapsed">' . $h3 . '<div class="fr-collapsible-content contenu-references">' . implode('', $content) . '</div></div>');
-		}
-		return implode('', $wrap);
+		return [implode('', $wrap), $refRaw];
 	}
 
 	protected function wkBuildWikiUrl($lang = null, $prefixKey = null, $labelKey = null) {
@@ -1406,7 +1342,7 @@ class ReferenceRenderer {
 		});
 	}
 
-	protected function renderDebateSchemaJSONLD($pv = null, $lang = null, $args = null, $maps = null, $refRaw = null) {
+	protected function renderDebateSchemaJSONLD($pv = null, $lang = null, $args = null, $maps = null, array $refRaw = []) {
 		$previousNativeJson = $this->nativeJson;
 		$this->nativeJson = $this->context instanceof NativeJsonContext;
 		try {
@@ -1621,7 +1557,6 @@ class ReferenceRenderer {
 		$pv = $this->computePageVars();
 		[$pieces, $cats] = [[], new Table([])];
 		$smwPending = new Table([]);
-		$refRaw = new Table(['bibliography' => new Table([]), 'webliography' => new Table([]), 'videography' => new Table([])]);
 		$this->smwQueueAddFromCSV($smwPending, $this->smwProp($lang, 'keyword'), $args['keywords']);
 		$maps = $this->computeArgumentMapsFromArgs($args, $lang);
 		Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'debates') . ']]'));
@@ -1658,7 +1593,8 @@ class ReferenceRenderer {
 			$box[] = ('<div class="boite-info navigation-not-searchable noprint">' . $this->L($lang, 'text', 'self_eval_blurb') . $startBtn . '</div>');
 			$pieces[] = implode('', $box);
 		}
-		$pieces[] = $this->renderReferences($args, $pv, $lang, $cats, $smwPending, $refRaw);
+		[$references, $refRaw] = $this->renderReferences($args, $pv, $lang, $cats, $smwPending);
+		$pieces[] = $references;
 		$pieces[] = $this->renderConnexes($args, $pv, $cats, $lang);
 		$pieces[] = ('<h2 class="latest-changes-button navigation-not-searchable noprint wk-icon-before wk-icon-refresh">' . $this->L($lang, 'text', 'latest_changes_title') . '</h2>' . '<div class="latest-changes navigation-not-searchable noprint">' . '<div class="latest-changes-button wk-btn mw-ui-button"' . ' title="' . $this->L($lang, 'text', 'latest_changes_show_tt') . '"' . ' data-page="' . $this->context->nowiki($pv['rawTitle']) . '">' . $this->L($lang, 'text', 'latest_changes_show_label') . '</div>' . '<div class="latest-changes-wrapper"></div>' . '</div>');
 		$pieces[] = $this->renderRubriques($args, $cats, $lang);
