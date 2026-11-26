@@ -2831,7 +2831,7 @@ class ArgumentReferenceRenderer {
 				foreach (($justifItems)->sequence() as $i => $it) {
 					$lis[] = $this->wkRenderArgumentLi($pv, $lang, $it, 'justif', $i, $cats);
 				}
-				($ulJ)->wikitext(implode('\n', $lis));
+				($ulJ)->wikitext(implode("\n", $lis));
 				$out[] = Lua::str($ulJ);
 			}
 			else {
@@ -2871,7 +2871,7 @@ class ArgumentReferenceRenderer {
 				foreach (($objItems)->sequence() as $i => $it) {
 					$lis[] = $this->wkRenderArgumentLi($pv, $lang, $it, 'obj', $i, $cats);
 				}
-				($ulO)->wikitext(implode('\n', $lis));
+				($ulO)->wikitext(implode("\n", $lis));
 				$out[] = Lua::str($ulO);
 			}
 			else {
