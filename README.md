@@ -112,10 +112,14 @@ La [sélection mesurée des optimisations restantes](docs/native-php-measured-op
 présente les parcours fusionnés, les titres natifs et les essais de cache,
 avec les compromis de temps et de mémoire. Le [plafond des références a été retiré](docs/native-php-reference-cache.md) ; le cache existant est conservé.
 
-Les oracles hors ligne nécessitent Python, `lupa` et `luaparser` :
+Le PHP de `debatephp/src/` est désormais la source de référence des deux moteurs.
+Les générateurs historiques et leurs tests propres sont archivés dans Git ;
+voir [la méthode de migration native](debatephp/docs/native-php-migration-baseline.md).
+Le contrôle PHP natif utilise un commit de référence fixe et ne régénère aucun fichier.
+Les oracles Lua hors ligne conservés nécessitent Python et `lupa` :
 
 ```sh
-python3 debatephp/tests/conditions_differential.py php
+python3 debatephp/tests/regenerate.py
 python3 debatephp/tests/serialized_differential.py php
 python3 debatephp/tests/differential_i18n.py php
 python3 debatephp/tests/argument_differential.py php

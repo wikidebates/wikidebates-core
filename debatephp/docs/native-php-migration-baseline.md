@@ -2,7 +2,26 @@
 
 The corrected pre-migration reference is core commit
 `2439e0749bcdc9ab81aeb20a902f8b6845a744e4` (parent fixes #127 and #128).
-Do not regenerate production renderers from Lua when the migration begins.
+Production renderers are now hand-maintained PHP. Do not regenerate them from Lua.
+
+## Historical generator archive
+
+The last complete pre-retirement tree is commit
+`8556c6a12c1f649edaeff5284c8a8488c6693431`.
+It preserves the 15 translation/rewriting scripts, the former byte-for-byte
+regeneration check and the three compiler-specific test files. To study or
+reproduce those historical tests (requires `luaparser` and `lupa`), use a
+separate detached worktree of that commit, never the current production tree.
+The older optimization reports describe that historical workflow, not current
+maintenance instructions.
+
+`python3 debatephp/tests/regenerate.py` now runs the native PHP contract and
+checks all four Lua snapshots without rewriting PHP. The legacy filename is
+kept for callers. The generator-only tests of AST conditions and closure
+captures remain reproducible in the archived worktree; the native rendering
+contract and existing runtime tests govern the current implementation.
+Translation compilation and Lua differential oracles are not renderer generators
+and are intentionally retained.
 
 ## Validation
 
@@ -66,8 +85,8 @@ Do not change the production caches or extension dependencies during this phase.
 
 ## Next gates
 
-1. Validate the native contract on both PHP versions before retiring
-   the renderer generation requirement and historical build entry points.
+1. Native contract validated on PHP 8.3 and 8.4 in PR #130. Retire the
+   historical build entry points while keeping the native contract in CI.
 2. Refactor renderer functions with narrow reviewed changes and native
    arrays, preserving public IDs, null/false/zero and list ordering.
 3. Migrate context interfaces, semantic adapters and variable handling with

@@ -1,4 +1,4 @@
-> Documentation originale du paquet autonome 0.8.0. Wikidebates intègre ce paquet avec un seul `wfLoadExtension( 'Wikidebates' )` ; voir [le README du dépôt](../README.md).
+> Documentation historique du paquet autonome 0.8.0. Les générateurs de moteurs ont été retirés ; voir [la migration PHP native](docs/native-php-migration-baseline.md). Wikidebates intègre ce paquet avec un seul `wfLoadExtension( 'Wikidebates' )` ; voir [le README du dépôt](../README.md).
 
 # DebatePHP 0.8.0 — MediaWiki 1.43
 

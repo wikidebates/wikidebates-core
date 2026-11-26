@@ -1,9 +1,9 @@
 <?php
 namespace MediaWiki\Extension\DebatePHP;
 
-/** Reference port of the supplied Module:Debate. See docs/equivalence.md.
- * No Lua interpreter is used. Table preserves reference and 1-based semantics.
- * Generated mechanically, then checked against the reference source.
+/** Debate renderer. This PHP source is authoritative and maintained directly.
+ * Legacy Table boundaries remain until their native migration is complete.
+ * See docs/native-php-migration-baseline.md for the behavioural contract.
  */
 class ReferenceRenderer {
 	private ?DecodedReferences $decodedReferences = null;

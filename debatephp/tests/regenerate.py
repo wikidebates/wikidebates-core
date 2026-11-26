@@ -1,29 +1,73 @@
 #!/usr/bin/env python3
-"""Regenerate in a temporary tree and reject any unrecorded renderer hand edits."""
-from pathlib import Path
-import shutil
+"""Compatibility command: validate native renderers; never regenerate PHP.
+
+The former byte-for-byte transpiler check is archived in Git history.
+This command compares exact behaviour against the corrected native baseline.
+"""
+import argparse
 import difflib
+from pathlib import Path
 import subprocess
-import sys
 import tempfile
 
-root = Path(__file__).resolve().parents[1]
-with tempfile.TemporaryDirectory(prefix='wikidebates-regenerate-') as directory:
-	work = Path(directory)
-	for name in ['src', 'tools', 'resources']:
-		shutil.copytree(root / name, work / name, ignore=shutil.ignore_patterns('__pycache__'))
-	for name in ['buildReference.py', 'buildArgument.py']:
-		subprocess.run([sys.executable, str(work / 'tools' / name)], check=True)
-	mismatches = []
-	for name in ['ReferenceRenderer.php', 'ArgumentReferenceRenderer.php']:
-		original = (root / 'src' / name).read_bytes()
-		generated = (work / 'src' / name).read_bytes()
-		if original != generated:
-			mismatches.append(name)
-			print('Generator mismatch: ' + name, flush=True)
-			diff = list(difflib.unified_diff(original.decode('utf-8').splitlines(), generated.decode('utf-8').splitlines(), fromfile='checked-in/' + name, tofile='generated/' + name, n=2))
-			print('\n'.join(diff[:160]), flush=True)
-			if len(diff) > 160:
-				print('Remaining diff lines: ' + str(len(diff) - 160), flush=True)
-	assert not mismatches, 'Generator mismatch: ' + ', '.join(mismatches)
-print('Both renderers regenerate byte-for-byte from the unchanged Lua snapshots and reviewed native passes')
+ROOT = Path(__file__).resolve().parents[2]
+BASELINE = '2439e0749bcdc9ab81aeb20a902f8b6845a744e4'
+DRIVER = ROOT / 'debatephp/tests/nativeCorpus.php'
+SNAPSHOTS = (
+	'Module-Argument.reference.lua',
+	'Module-Debate.reference.lua',
+	'WD-I18N.reference.lua',
+	'WD-I18N-Data.snapshot.lua',
+)
+
+
+def git(*args):
+	return subprocess.run(['git', '-C', str(ROOT), *args], check=True)
+
+
+def compare(php, baseline):
+	expected = subprocess.check_output([php, str(DRIVER), '--root=' + str(baseline)])
+	actual = subprocess.check_output([php, str(DRIVER)])
+	if expected != actual:
+		for line in difflib.unified_diff(
+			expected.decode().splitlines(), actual.decode().splitlines(),
+			fromfile='baseline', tofile='current', n=2
+		):
+			print(line)
+		raise SystemExit('Native renderer behaviour differs from baseline')
+	for name in SNAPSHOTS:
+		path = Path('debatephp/resources') / name
+		if (baseline / path).read_bytes() != (ROOT / path).read_bytes():
+			raise SystemExit('Historical oracle changed: ' + name)
+	print('Native renderer behaviour and historical Lua snapshots match the pinned baseline')
+
+
+def main():
+	parser = argparse.ArgumentParser(description=__doc__)
+	parser.add_argument('--php', default='php')
+	parser.add_argument('--baseline-root', type=Path, help='Existing checkout of the pinned baseline')
+	args = parser.parse_args()
+	if args.baseline_root:
+		baseline = args.baseline_root.resolve()
+		head = subprocess.check_output(['git', '-C', str(baseline), 'rev-parse', 'HEAD'], text=True).strip()
+		if head != BASELINE:
+			raise SystemExit('Baseline checkout must be at ' + BASELINE)
+		if subprocess.check_output(['git', '-C', str(baseline), 'status', '--porcelain']):
+			raise SystemExit('Baseline checkout must be clean')
+		compare(args.php, baseline)
+		return
+	try:
+		git('cat-file', '-e', BASELINE + '^{commit}')
+	except subprocess.CalledProcessError:
+		raise SystemExit('Fetch the baseline first: git fetch --no-tags origin ' + BASELINE)
+	with tempfile.TemporaryDirectory(prefix='wikidebates-native-contract-') as temporary:
+		baseline = Path(temporary) / 'baseline'
+		git('worktree', 'add', '--detach', str(baseline), BASELINE)
+		try:
+			compare(args.php, baseline)
+		finally:
+			git('worktree', 'remove', str(baseline))
+
+
+if __name__ == '__main__':
+	main()
