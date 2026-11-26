@@ -43,8 +43,8 @@ The unused `allDebates` computation has been removed. The only allowed
 behaviour difference is one exact historical SMW read in each of the four
 fixtures `parents`, `inherited`, `fallback-parents` and `both-parent-types`,
 in each renderer mode. `nativeContract.py` enumerates the exact requests,
-checks that each occurs once in the pinned baseline, and compares the remaining
-ordered read trace and every other effect. Candidate reads and timed read
+checks that each occurs once in the pinned baseline and in the original Lua
+oracle, and compares the remaining ordered read trace and every other effect. Candidate reads and timed read
 counts are recorded without filtering. The live breadcrumb selection, direct
 parent reads, semantic writes, HTML and JSON-LD remain in the strict contract.
 This removes a query and its failure opportunity; it is not a change to the
