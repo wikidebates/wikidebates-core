@@ -289,4 +289,33 @@ try {
 	$equal($failure, $error, 'URL lookup propagates SQL exception');
 }
 
+// Semantic write queues preserve ordering, multiplicity, scalar replacement and literal zero.
+$properties = ['first' => 'unchanged', 'multiple' => 'old'];
+$semantic = \MediaWiki\Extension\DebatePHP\SemanticProperties::class;
+$semantic::add($properties, 'multiple', ['0', 'x', 'x'], true);
+$semantic::add($properties, 'multiple', ' y ', true);
+$semantic::add($properties, 'empty', ' \t ', true);
+$semantic::add($properties, '', 'ignored', true);
+$semantic::add($properties, false, 'ignored', false);
+$semantic::add($properties, 'nil', null, false);
+$semantic::add($properties, 'zero', 0, false);
+$semantic::add($properties, 'false', false, false);
+$semantic::add($properties, 'replace', ' old ', false);
+$semantic::merge($properties, ['replace' => ' new ', 'multiple' => ['last', '0'], 'list' => ['a', 'b']]);
+$expectedProperties = ['first' => 'unchanged', 'multiple' => ['old', '0', 'x', 'x', 'y', 'last', '0'],
+	'zero' => 0, 'false' => false, 'replace' => 'new', 'list' => ['a', 'b']];
+$equal($expectedProperties, $properties, 'Native semantic properties retain ordered and repeated values');
+$equal($expectedProperties, TextEscaper::jsonValue($semantic::toLegacyTable($properties)), 'Legacy write boundary preserves semantic values');
+$equal([1 => 'old', 2 => '0', 3 => 'x', 4 => 'x', 5 => 'y', 6 => 'last', 7 => '0'],
+	Table::unwrap($semantic::toLegacyTable($properties))['multiple'], 'Only the legacy boundary uses one-based sequences');
+$source = ['new' => ['a']];
+$semantic::merge($properties, $source);
+$semantic::add($properties, 'new', 'b', true);
+$equal(['new' => ['a']], $source, 'Merging native lists does not mutate the source');
+$semantic::add($properties, 'new', 'scalar', false);
+$equal('scalar', $properties['new'], 'Single-valued writes replace previous lists');
+$semantic::add($properties, 'new', '0', true);
+$equal(['scalar', '0'], $properties['new'], 'A later multi-value write retains the previous scalar');
+$equal(['empty' => []], TextEscaper::jsonValue($semantic::toLegacyTable(['empty' => [], 'missing' => null])), 'Empty list and missing property remain distinct');
+
 echo "$assertions native-read assertions: semantic indexing, JSON bytes, CSV isolation, optional adapters and certified fallback/cache lifetimes\n";
