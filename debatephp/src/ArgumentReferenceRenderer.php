@@ -603,8 +603,8 @@ class ArgumentReferenceRenderer {
 		return CacheKey::semantic($q);
 	}
 
-	protected function makeSMWCache() {
-		return new Table(['debatsPour' => null, 'debatsContre' => null, 'justifs' => null, 'objs' => null, 'debatsTousFinal' => null, 'debatCardsTous' => null, 'debatCardsPour' => null, 'debatCardsContre' => null, 'argCardsJustifs' => null, 'argCardsObjs' => null, 'breadcrumbChainsFinal' => null, 'parentDebatesFinal' => null]);
+	protected function makeSMWCache(): ParentRelations {
+		return new ParentRelations;
 	}
 
 	protected function renderTitleWarnings($pv = null, $cats = null, $lang = null) {
@@ -669,63 +669,71 @@ class ArgumentReferenceRenderer {
 		return implode('', $out);
 	}
 
-	protected function uniqList($list = null) {
-		[$out, $seen] = [[], []];
-		foreach (((Lua::truth($v107 = $list) ? $v107 : new Table([])))->sequence() as $_ => $x) {
-			$x = trim(NativeText::field($x), NativeText::ASCII_WHITESPACE);
-			if ((($x !== '') && !isset($seen[$x]))) {
-				$seen[$x] = true;
-				$out[count($out) + 1] = $x;
+	/** Retain the one-based envelope only at the remaining SMW/legacy boundary. */
+	protected function uniqList(Table|array|null $list = null): Table {
+		$values = $this->uniqueStrings($list instanceof Table ? $list->sequence() : ($list ?? []));
+		return new Table($values === [] ? [] : array_combine(range(1, count($values)), $values));
+	}
+
+	/** Trim and deduplicate strings without changing their first-seen order. */
+	private function uniqueStrings(iterable $values): array {
+		$out = [];
+		$seen = [];
+		foreach ($values as $value) {
+			$value = trim(NativeText::field($value), NativeText::ASCII_WHITESPACE);
+			if ($value !== '' && !isset($seen[$value])) {
+				$seen[$value] = true;
+				$out[] = $value;
 			}
 		}
-		return new Table($out);
+		return $out;
 	}
 
 	/** Deduplicate page titles, not their raw SMW representations. Preserve first-seen order. */
-	protected function uniqueParentTitles(Table $titles): Table {
+	protected function uniqueParentTitles(array $titles): array {
 		$out = [];
 		$seen = [];
-		foreach ($titles->sequence() as $title) {
+		foreach ($titles as $title) {
 			$title = $this->canonicalTitle($this->normalizeTitleForCard($title));
 			$key = $this->normTitle($title);
 			if ($key !== '' && !isset($seen[$key])) {
 				$seen[$key] = true;
-				$out[count($out) + 1] = $title;
+				$out[] = $title;
 			}
 		}
-		return new Table($out);
+		return $out;
 	}
 
-	protected function smwAskTitles($conditions = null, $limit = null, string $origin = 'other') {
-		$limit = (Lua::truth($v109 = Lua::number($limit)) ? $v109 : 200);
-		$q = new Table([]);
-		foreach (((Lua::truth($v110 = $conditions) ? $v110 : new Table([])))->sequence() as $_ => $c) {
-			Lua::insert($q, $c);
+	/** Extract the first non-nil/non-false title field, including an explicit empty string. */
+	private function semanticRowTitle(array $row): mixed {
+		foreach (['fulltext', 'page', 1] as $key) {
+			$value = $row[$key] ?? null;
+			if ($value !== null && $value !== false) {
+				return $value;
+			}
 		}
-		Lua::insert($q, ('limit=' . Lua::str($limit)));
-		Lua::insert($q, 'link=none');
-		$ck = ('TITLES
-' . $this->smwKeyFromArray($q));
-		$hit = $this->cacheGet($this->SMW_TITLES_CACHE, $ck);
-		if (($hit !== null)) {
+		return null;
+	}
+
+	protected function smwAskTitles(string $condition, string $origin): array {
+		$query = new Table([1 => $condition, 2 => 'limit=200', 3 => 'link=none']);
+		$key = "TITLES\n" . $this->smwKeyFromArray($query);
+		$hit = $this->cacheGet($this->SMW_TITLES_CACHE, $key);
+		if ($hit !== null) {
 			$this->smwCacheHit($origin, 'titles');
 			return $hit;
 		}
-		$semantic = $this->readSemantic($q, $origin);
-		$res = $semantic->rows;
-		if ((!is_array($res))) {
-			$this->cachePut($this->SMW_TITLES_CACHE, $ck, new Table([]));
-			return new Table([]);
-		}
-		[$out, $seen] = [new Table([]), new Table([])];
-		foreach (SemanticReadResult::sequence($res) as $_ => $row) {
-			$ft = (Lua::truth($v111 = (Lua::truth($v112 = ($row['fulltext'] ?? null)) ? $v112 : ($row['page'] ?? null))) ? $v111 : ($row[1] ?? null));
-			if ((((is_string($ft)) && ($ft !== '')) && !(Lua::truth($seen[$ft])))) {
-				$seen[$ft] = true;
-				Lua::insert($out, $ft);
+		$rows = $this->readSemantic($query, $origin)->rows;
+		$out = [];
+		$seen = [];
+		foreach (SemanticReadResult::sequence($rows ?? []) as $row) {
+			$title = $this->semanticRowTitle($row);
+			if (is_string($title) && $title !== '' && !isset($seen[$title])) {
+				$seen[$title] = true;
+				$out[] = $title;
 			}
 		}
-		$this->cachePut($this->SMW_TITLES_CACHE, $ck, $out);
+		$this->cachePut($this->SMW_TITLES_CACHE, $key, $out);
 		return $out;
 	}
 
@@ -751,117 +759,101 @@ class ArgumentReferenceRenderer {
 		return $s;
 	}
 
-	protected function containsTitle($val = null, $target = null) {
+	protected function containsTitle($val = null, $target = null): bool {
 		$target = $this->normTitle($target);
-		if ((($target === '') || ($val === null))) {
+		if ($target === '' || $val === null) {
 			return false;
 		}
-		$checkOne = function($x = null) use (&$target, &$checkOne) {
-		if (($x === null)) {
-			return false;
-		}
-		if ((is_string($x))) {
-			return ($this->normTitle($x) === $target);
-		}
-		if ($x instanceof Table) { $x = Table::unwrap($x); }
-		if (is_array($x)) {
-			$ft = (Lua::truth($v114 = (Lua::truth($v115 = (Lua::truth($v116 = ($x['fulltext'] ?? null)) ? $v116 : ($x['page'] ?? null))) ? $v115 : ($x['name'] ?? null))) ? $v114 : ($x['title'] ?? null));
-			if (((is_string($ft)) && ($this->normTitle($ft) === $target))) {
-				return true;
+		$checkOne = function($value) use ($target, &$checkOne): bool {
+			if (is_string($value)) {
+				return $this->normTitle($value) === $target;
 			}
-			foreach (SemanticReadResult::sequence($x) as $_ => $y) {
-				if (Lua::truth($checkOne($y))) {
+			if ($value instanceof Table) {
+				$value = Table::unwrap($value);
+			}
+			if (!is_array($value)) {
+				return false;
+			}
+			foreach (['fulltext', 'page', 'name', 'title'] as $key) {
+				$title = $value[$key] ?? null;
+				if ($title !== null && $title !== false) {
+					if (is_string($title) && $this->normTitle($title) === $target) {
+						return true;
+					}
+					break;
+				}
+			}
+			foreach (SemanticReadResult::sequence($value) as $child) {
+				if ($checkOne($child)) {
 					return true;
 				}
 			}
-		}
-		return false;
+			return false;
 		};
 		return $checkOne($val);
 	}
 
-	protected function ensureDebateParents($pv = null, $cache = null, $PF = null) {
-		if ((!(Lua::truth($cache)) || ($cache['debatsPour'] !== null))) {
-			return null;
+	protected function ensureDebateParents($pv = null, ?ParentRelations $cache = null, $PF = null): void {
+		if ($cache === null || $cache->proDebates !== null) {
+			return;
 		}
-		$argTitle = $this->smwSafeTitle($pv['rawTitle']);
-		$propPro = NativeText::field($PF['prop_arg_pro']);
-		$propCon = NativeText::field($PF['prop_arg_con']);
-		if (((($propPro === '') || ($propCon === '')) || ($argTitle === ''))) {
-			$cache['debatsPour'] = new Table([]);
-			$cache['debatsContre'] = new Table([]);
-			return null;
-		}
-		$q = new Table([1 => ('([[' . $propPro . '::' . $argTitle . ']] OR [[' . $propCon . '::' . $argTitle . ']] )'), 2 => ('?' . $propPro . '=pro'), 3 => ('?' . $propCon . '=con'), 4 => 'limit=200', 5 => 'link=none']);
-		$semantic = $this->readSemantic($q, 'debate-parents');
-		$res = $semantic->rows;
-		[$debatsPour, $debatsContre] = [new Table([]), new Table([])];
-		[$seenP, $seenC] = [new Table([]), new Table([])];
-		if ((is_array($res))) {
-			foreach (SemanticReadResult::sequence($res) as $_ => $row) {
-				$ft = (Lua::truth($v119 = (Lua::truth($v120 = ($row['fulltext'] ?? null)) ? $v120 : ($row['page'] ?? null))) ? $v119 : ($row[1] ?? null));
-				if (((is_string($ft)) && ($ft !== ''))) {
-					if ((Lua::truth($this->containsTitle(($row['pro'] ?? null), $argTitle)) && !(Lua::truth($seenP[$ft])))) {
-						$seenP[$ft] = true;
-						Lua::insert($debatsPour, $ft);
-					}
-					if ((Lua::truth($this->containsTitle(($row['con'] ?? null), $argTitle)) && !(Lua::truth($seenC[$ft])))) {
-						$seenC[$ft] = true;
-						Lua::insert($debatsContre, $ft);
-					}
-				}
-			}
-		}
-		if (((Lua::len($debatsPour) === 0) && (Lua::len($debatsContre) === 0)) && !$semantic->completeEmpty) {
-			$debatsPour = $this->uniqList($this->smwAskTitles(new Table([1 => ('[[' . $propPro . '::' . $argTitle . ']]')]), 200, 'debate-parents'));
-			$debatsContre = $this->uniqList($this->smwAskTitles(new Table([1 => ('[[' . $propCon . '::' . $argTitle . ']]')]), 200, 'debate-parents'));
-		} elseif ($semantic->completeEmpty && $this->context instanceof NativeSemanticContext) {
-			$this->context->skipEmptyParentFallback('debate-parents');
-		}
-		$cache['debatsPour'] = $this->uniqueParentTitles($debatsPour);
-		$cache['debatsContre'] = $this->uniqueParentTitles($debatsContre);
+		[$cache->proDebates, $cache->conDebates] = $this->findParents(
+			$this->smwSafeTitle($pv['rawTitle']),
+			NativeText::field($PF['prop_arg_pro']), NativeText::field($PF['prop_arg_con']),
+			'pro', 'con', 'debate-parents'
+		);
 	}
 
-	protected function ensureArgumentParents($pv = null, $cache = null, $PF = null) {
-		if ((!(Lua::truth($cache)) || ($cache['justifs'] !== null))) {
-			return null;
+	protected function ensureArgumentParents($pv = null, ?ParentRelations $cache = null, $PF = null): void {
+		if ($cache === null || $cache->justificationParents !== null) {
+			return;
 		}
-		$argTitle = $this->smwSafeTitle($pv['rawTitle']);
-		$propJustif = NativeText::field($PF['prop_justif']);
-		$propObj = NativeText::field($PF['prop_obj']);
-		if (((($propJustif === '') || ($propObj === '')) || ($argTitle === ''))) {
-			$cache['justifs'] = new Table([]);
-			$cache['objs'] = new Table([]);
-			return null;
+		[$cache->justificationParents, $cache->objectionParents] = $this->findParents(
+			$this->smwSafeTitle($pv['rawTitle']),
+			NativeText::field($PF['prop_justif']), NativeText::field($PF['prop_obj']),
+			'justif', 'obj', 'argument-parents'
+		);
+	}
+
+	/** Both relation pairs use the same ordered union and certified-empty fallback policy. */
+	private function findParents(
+		string $title, string $firstProperty, string $secondProperty,
+		string $firstAlias, string $secondAlias, string $origin
+	): array {
+		if ($title === '' || $firstProperty === '' || $secondProperty === '') {
+			return [[], []];
 		}
-		$q = new Table([1 => ('([[' . $propJustif . '::' . $argTitle . ']] OR [[' . $propObj . '::' . $argTitle . ']] )'), 2 => ('?' . $propJustif . '=justif'), 3 => ('?' . $propObj . '=obj'), 4 => 'limit=200', 5 => 'link=none']);
-		$semantic = $this->readSemantic($q, 'argument-parents');
-		$res = $semantic->rows;
-		[$justifs, $objs] = [new Table([]), new Table([])];
-		[$seenJ, $seenO] = [new Table([]), new Table([])];
-		if ((is_array($res))) {
-			foreach (SemanticReadResult::sequence($res) as $_ => $row) {
-				$ft = (Lua::truth($v123 = (Lua::truth($v124 = ($row['fulltext'] ?? null)) ? $v124 : ($row['page'] ?? null))) ? $v123 : ($row[1] ?? null));
-				if (((is_string($ft)) && ($ft !== ''))) {
-					if ((Lua::truth($this->containsTitle(($row['justif'] ?? null), $argTitle)) && !(Lua::truth($seenJ[$ft])))) {
-						$seenJ[$ft] = true;
-						Lua::insert($justifs, $ft);
-					}
-					if ((Lua::truth($this->containsTitle(($row['obj'] ?? null), $argTitle)) && !(Lua::truth($seenO[$ft])))) {
-						$seenO[$ft] = true;
-						Lua::insert($objs, $ft);
-					}
-				}
+		$firstCondition = '[[' . $firstProperty . '::' . $title . ']]';
+		$secondCondition = '[[' . $secondProperty . '::' . $title . ']]';
+		$query = new Table([1 => '(' . $firstCondition . ' OR ' . $secondCondition . ' )',
+			2 => '?' . $firstProperty . '=' . $firstAlias,
+			3 => '?' . $secondProperty . '=' . $secondAlias, 4 => 'limit=200', 5 => 'link=none']);
+		$result = $this->readSemantic($query, $origin);
+		$first = [];
+		$second = [];
+		$seenFirst = [];
+		$seenSecond = [];
+		foreach (SemanticReadResult::sequence($result->rows ?? []) as $row) {
+			$page = $this->semanticRowTitle($row);
+			if (!is_string($page) || $page === '') {
+				continue;
+			}
+			if ($this->containsTitle($row[$firstAlias] ?? null, $title) && !isset($seenFirst[$page])) {
+				$seenFirst[$page] = true;
+				$first[] = $page;
+			}
+			if ($this->containsTitle($row[$secondAlias] ?? null, $title) && !isset($seenSecond[$page])) {
+				$seenSecond[$page] = true;
+				$second[] = $page;
 			}
 		}
-		if (((Lua::len($justifs) === 0) && (Lua::len($objs) === 0)) && !$semantic->completeEmpty) {
-			$justifs = $this->uniqList($this->smwAskTitles(new Table([1 => ('[[' . $propJustif . '::' . $argTitle . ']]')]), 200, 'argument-parents'));
-			$objs = $this->uniqList($this->smwAskTitles(new Table([1 => ('[[' . $propObj . '::' . $argTitle . ']]')]), 200, 'argument-parents'));
-		} elseif ($semantic->completeEmpty && $this->context instanceof NativeSemanticContext) {
-			$this->context->skipEmptyParentFallback('argument-parents');
+		if ($first === [] && $second === [] && !$result->completeEmpty) {
+			$first = $this->uniqueStrings($this->smwAskTitles($firstCondition, $origin));
+			$second = $this->uniqueStrings($this->smwAskTitles($secondCondition, $origin));
+		} elseif ($result->completeEmpty && $this->context instanceof NativeSemanticContext) {
+			$this->context->skipEmptyParentFallback($origin);
 		}
-		$cache['justifs'] = $this->uniqueParentTitles($justifs);
-		$cache['objs'] = $this->uniqueParentTitles($objs);
+		return [$this->uniqueParentTitles($first), $this->uniqueParentTitles($second)];
 	}
 
 	protected function breadcrumbLenByteSafe($ch = null) {
@@ -877,86 +869,65 @@ class ArgumentReferenceRenderer {
 		return $count;
 	}
 
-	protected function ensureDebateParentsFinal($pv = null, $cache = null, $PF = null) {
-		if ((!(Lua::truth($cache)) || ($cache['debatsTousFinal'] !== null))) {
-			return null;
+	protected function ensureDebateParentsFinal($pv = null, ?ParentRelations $cache = null, $PF = null): void {
+		if ($cache === null || $cache->allDebates !== null) {
+			return;
 		}
-		$final = new Table([]);
 		$this->ensureDebateParents($pv, $cache, $PF);
-		foreach (((Lua::truth($v127 = $cache['debatsPour']) ? $v127 : new Table([])))->sequence() as $_ => $d) {
-			Lua::insert($final, $this->canonicalTitle($d));
-		}
-		foreach (((Lua::truth($v128 = $cache['debatsContre']) ? $v128 : new Table([])))->sequence() as $_ => $d) {
-			Lua::insert($final, $this->canonicalTitle($d));
+		$final = [];
+		foreach ([$cache->proDebates ?? [], $cache->conDebates ?? []] as $titles) {
+			foreach ($titles as $title) {
+				$final[] = $this->canonicalTitle($title);
+			}
 		}
 		if ($this->hasSMW()) {
 			$this->ensureArgumentParents($pv, $cache, $PF);
 			$propBreadcrumb = NativeText::field($PF['prop_breadcrumb']);
 			$propParentDebate = NativeText::field($PF['prop_parent_debate']);
-			if ((($propBreadcrumb !== '') && ($propParentDebate !== ''))) {
-				$parents = new Table([]);
-				foreach (((Lua::truth($v131 = $cache['justifs']) ? $v131 : new Table([])))->sequence() as $_ => $a) {
-					Lua::insert($parents, $this->canonicalTitle($a));
-				}
-				foreach (((Lua::truth($v132 = $cache['objs']) ? $v132 : new Table([])))->sequence() as $_ => $a) {
-					Lua::insert($parents, $this->canonicalTitle($a));
-				}
-				$parents = $this->uniqList($parents);
-				if ((Lua::len($parents) > 0)) {
-					$conds = new Table([]);
-					foreach (($parents)->sequence() as $_ => $t) {
-						$safe = $this->smwSafeTitle($t);
-						if (($safe !== '')) {
-							Lua::insert($conds, ('[[' . $safe . ']]'));
-						}
+			if ($propBreadcrumb !== '' && $propParentDebate !== '') {
+				$parents = [];
+				foreach ([$cache->justificationParents ?? [], $cache->objectionParents ?? []] as $titles) {
+					foreach ($titles as $title) {
+						$parents[] = $this->canonicalTitle($title);
 					}
-					if ((Lua::len($conds) > 0)) {
-						$q = new Table([1 => ('(' . Lua::concat($conds, ' OR ') . ')'), 2 => ('?' . $propBreadcrumb . '=chain'), 3 => ('?' . $propParentDebate . '=pdeb'), 4 => 'limit=200', 5 => 'link=none']);
-						$semantic = $this->readSemantic($q, 'breadcrumb');
-						$res = $semantic->rows;
-						if ((is_array($res))) {
-							foreach (SemanticReadResult::sequence($res) as $_ => $row) {
-								$chain = ($row['chain'] ?? null);
-								$okLen = false;
-								if ((is_string($chain))) {
-									$n = $this->breadcrumbLenByteSafe($chain);
-									$okLen = (($n > 0) && ($n < 6));
+				}
+				$conditions = [];
+				foreach ($this->uniqueStrings($parents) as $title) {
+					$safe = $this->smwSafeTitle($title);
+					if ($safe !== '') {
+						$conditions[] = '[[' . $safe . ']]';
+					}
+				}
+				if ($conditions !== []) {
+					$query = new Table([1 => '(' . implode(' OR ', $conditions) . ')',
+						2 => '?' . $propBreadcrumb . '=chain', 3 => '?' . $propParentDebate . '=pdeb',
+						4 => 'limit=200', 5 => 'link=none']);
+					$result = $this->readSemantic($query, 'breadcrumb');
+					foreach (SemanticReadResult::sequence($result->rows ?? []) as $row) {
+						$chain = $row['chain'] ?? null;
+						$valid = false;
+						foreach (is_array($chain) ? SemanticReadResult::sequence($chain) : [$chain] as $part) {
+							if (is_string($part)) {
+								$length = $this->breadcrumbLenByteSafe($part);
+								if ($length > 0 && $length < 6) {
+									$valid = true;
+									break;
 								}
-								else {
-									if ((is_array($chain))) {
-										foreach (SemanticReadResult::sequence($chain) as $_ => $ch) {
-											if ((is_string($ch))) {
-												$n = $this->breadcrumbLenByteSafe($ch);
-												if ((($n > 0) && ($n < 6))) {
-													$okLen = true;
-													break;
-												}
-											}
-										}
-									}
-								}
-								if (Lua::truth($okLen)) {
-									$pdeb = ($row['pdeb'] ?? null);
-									if (((is_string($pdeb)) && (trim($pdeb, NativeText::ASCII_WHITESPACE) !== ''))) {
-										Lua::insert($final, $this->canonicalTitle($pdeb));
-									}
-									else {
-										if ((is_array($pdeb))) {
-											foreach (SemanticReadResult::sequence($pdeb) as $_ => $x) {
-												if (((is_string($x)) && (trim($x, NativeText::ASCII_WHITESPACE) !== ''))) {
-													Lua::insert($final, $this->canonicalTitle($x));
-												}
-												else {
-													if ((is_array($x))) {
-														$ft = (Lua::truth($v133 = (Lua::truth($v134 = ($x['fulltext'] ?? null)) ? $v134 : ($x['page'] ?? null))) ? $v133 : ($x[1] ?? null));
-														if (((is_string($ft)) && (trim($ft, NativeText::ASCII_WHITESPACE) !== ''))) {
-															Lua::insert($final, $this->canonicalTitle($ft));
-														}
-													}
-												}
-											}
-										}
-									}
+							}
+						}
+						if (!$valid) {
+							continue;
+						}
+						$parent = $row['pdeb'] ?? null;
+						if (is_string($parent)) {
+							if (trim($parent, NativeText::ASCII_WHITESPACE) !== '') {
+								$final[] = $this->canonicalTitle($parent);
+							}
+						} elseif (is_array($parent)) {
+							foreach (SemanticReadResult::sequence($parent) as $value) {
+								$title = is_array($value) ? $this->semanticRowTitle($value) : $value;
+								if (is_string($title) && trim($title, NativeText::ASCII_WHITESPACE) !== '') {
+									$final[] = $this->canonicalTitle($title);
 								}
 							}
 						}
@@ -964,7 +935,7 @@ class ArgumentReferenceRenderer {
 				}
 			}
 		}
-		$cache['debatsTousFinal'] = $this->uniqueParentTitles($final);
+		$cache->allDebates = $this->uniqueParentTitles($final);
 	}
 
 	protected function normalizeTitleForCard($s = null) {
@@ -1033,8 +1004,8 @@ class ArgumentReferenceRenderer {
 		return $this->cardRendered('argument', $argTitle, $currentArgTitle, $typeValue);
 	}
 
-	protected function ensureDebateCards($pv = null, $cache = null, $lang = null, $PF = null) {
-		if ((!(Lua::truth($cache)) || ($cache['debatCardsTous'] !== null))) {
+	protected function ensureDebateCards($pv = null, ?ParentRelations $cache = null, $lang = null, $PF = null) {
+		if (($cache === null || ($cache->allDebateCards !== null))) {
 			return null;
 		}
 		$argTitle = $pv['rawTitle'];
@@ -1042,54 +1013,54 @@ class ArgumentReferenceRenderer {
 		return $this->canonicalTitle($d);
 		};
 		$linked = [];
-		foreach (((Lua::truth($v141 = $cache['debatsPour']) ? $v141 : new Table([])))->sequence() as $_ => $d) {
+		foreach ($cache->proDebates ?? [] as $d) {
 			$k = $debateKey($d);
 			if (($k !== '')) {
 				$linked[$k] = true;
 			}
 		}
-		foreach (((Lua::truth($v142 = $cache['debatsContre']) ? $v142 : new Table([])))->sequence() as $_ => $d) {
+		foreach ($cache->conDebates ?? [] as $d) {
 			$k = $debateKey($d);
 			if (($k !== '')) {
 				$linked[$k] = true;
 			}
 		}
 		$cardsTous = [];
-		foreach (((Lua::truth($v143 = $cache['parentDebatesFinal']) ? $v143 : new Table([])))->sequence() as $_ => $d) {
+		foreach ($cache->breadcrumbDebates ?? [] as $d) {
 			$k = $debateKey($d);
 			$typeDebate = ($k !== '' && isset($linked[$k]) ? 'debate' : '');
 			$cardsTous[] = $this->cardDebateRendered($d, $argTitle, $typeDebate);
 		}
-		$cache['debatCardsTous'] = $cardsTous;
+		$cache->allDebateCards = $cardsTous;
 		$cardsPour = [];
-		foreach (((Lua::truth($v147 = $cache['debatsPour']) ? $v147 : new Table([])))->sequence() as $_ => $d) {
+		foreach ($cache->proDebates ?? [] as $d) {
 			$cardsPour[] = $this->cardDebateRendered($d, $argTitle, 'debate');
 		}
-		$cache['debatCardsPour'] = $cardsPour;
+		$cache->proDebateCards = $cardsPour;
 		$cardsContre = [];
-		foreach (((Lua::truth($v148 = $cache['debatsContre']) ? $v148 : new Table([])))->sequence() as $_ => $d) {
+		foreach ($cache->conDebates ?? [] as $d) {
 			$cardsContre[] = $this->cardDebateRendered($d, $argTitle, 'debate');
 		}
-		$cache['debatCardsContre'] = $cardsContre;
+		$cache->conDebateCards = $cardsContre;
 	}
 
-	protected function ensureArgumentCards($pv = null, $cache = null, $PF = null) {
-		if ((!(Lua::truth($cache)) || ($cache['argCardsJustifs'] !== null))) {
+	protected function ensureArgumentCards($pv = null, ?ParentRelations $cache = null, $PF = null) {
+		if (($cache === null || ($cache->justificationCards !== null))) {
 			return null;
 		}
 		$this->ensureArgumentParents($pv, $cache, $PF);
 		$argTitle = $pv['rawTitle'];
 		$typeArgument = 'argument';
 		$cj = [];
-		foreach (((Lua::truth($v149 = $cache['justifs']) ? $v149 : new Table([])))->sequence() as $_ => $a) {
+		foreach ($cache->justificationParents ?? [] as $a) {
 			$cj[] = $this->cardArgumentRendered($a, $argTitle, $typeArgument);
 		}
-		$cache['argCardsJustifs'] = $cj;
+		$cache->justificationCards = $cj;
 		$co = [];
-		foreach (((Lua::truth($v150 = $cache['objs']) ? $v150 : new Table([])))->sequence() as $_ => $a) {
+		foreach ($cache->objectionParents ?? [] as $a) {
 			$co[] = $this->cardArgumentRendered($a, $argTitle, $typeArgument);
 		}
-		$cache['argCardsObjs'] = $co;
+		$cache->objectionCards = $co;
 	}
 
 	protected function ensureDot($s = null) {
@@ -1162,69 +1133,69 @@ class ArgumentReferenceRenderer {
 		return implode(', ', $cards) . $conjunction . $last;
 	}
 
-	protected function renderDebateParentsBoxes($pv = null, $cats = null, $lang = null, $cache = null, $PF = null) {
+	protected function renderDebateParentsBoxes($pv = null, $cats = null, $lang = null, ?ParentRelations $cache = null, $PF = null) {
 		if (!($this->hasSMW())) {
 			return '';
 		}
 		$this->ensureDebateParents($pv, $cache, $PF);
 		$this->ensureDebateCards($pv, $cache, $lang, $PF);
 		$out = [];
-		$nTous = Lua::len((Lua::truth($v169 = $cache['parentDebatesFinal']) ? $v169 : new Table([])));
+		$nTous = count($cache->breadcrumbDebates ?? []);
 		if (($nTous > 0)) {
 			$msgKey = (($nTous === 1) ? 'parent_used_in_debate_1' : 'parent_used_in_debate_n');
-			$texte = sprintf($this->L($lang, 'text', $msgKey), (': ' . $this->joinCards($cache['debatCardsTous'], $lang)));
+			$texte = sprintf($this->L($lang, 'text', $msgKey), (': ' . $this->joinCards($cache->allDebateCards, $lang)));
 			$out[] = $this->renderParentBanner('wk-icon-parent', $texte);
 		}
-		if ((Lua::truth($cache['debatsPour']) && (Lua::len($cache['debatsPour']) > 0))) {
-			$msgKey = (Lua::truth($v172 = (Lua::truth($v173 = (Lua::len($cache['debatsPour']) === 1)) ? 'parent_is_pro_in_1' : $v173)) ? $v172 : 'parent_is_pro_in_n');
-			$texte = sprintf($this->L($lang, 'text', $msgKey), (': ' . $this->joinCards($cache['debatCardsPour'], $lang)));
+		if (!empty($cache->proDebates)) {
+			$msgKey = (count($cache->proDebates) === 1 ? 'parent_is_pro_in_1' : 'parent_is_pro_in_n');
+			$texte = sprintf($this->L($lang, 'text', $msgKey), (': ' . $this->joinCards($cache->proDebateCards, $lang)));
 			$out[] = $this->renderParentBanner('wk-icon-argument is-pro', $texte);
 		}
-		if ((Lua::truth($cache['debatsContre']) && (Lua::len($cache['debatsContre']) > 0))) {
-			$msgKey = (Lua::truth($v174 = (Lua::truth($v175 = (Lua::len($cache['debatsContre']) === 1)) ? 'parent_is_con_in_1' : $v175)) ? $v174 : 'parent_is_con_in_n');
-			$texte = sprintf($this->L($lang, 'text', $msgKey), (': ' . $this->joinCards($cache['debatCardsContre'], $lang)));
+		if (!empty($cache->conDebates)) {
+			$msgKey = (count($cache->conDebates) === 1 ? 'parent_is_con_in_1' : 'parent_is_con_in_n');
+			$texte = sprintf($this->L($lang, 'text', $msgKey), (': ' . $this->joinCards($cache->conDebateCards, $lang)));
 			$out[] = $this->renderParentBanner('wk-icon-argument is-against', $texte);
 		}
 		return implode('', $out);
 	}
 
-	protected function renderArgumentParentsBoxes($pv = null, $cats = null, $lang = null, $cache = null, $PF = null) {
+	protected function renderArgumentParentsBoxes($pv = null, $cats = null, $lang = null, ?ParentRelations $cache = null, $PF = null) {
 		if (!($this->hasSMW())) {
 			return '';
 		}
 		$this->ensureArgumentParents($pv, $cache, $PF);
 		$this->ensureArgumentCards($pv, $cache, $PF);
 		$out = [];
-		if ((Lua::truth($cache['justifs']) && (Lua::len($cache['justifs']) > 0))) {
-			$texte = sprintf($PF['parent_is_justification_of'], (': ' . $this->joinCards($cache['argCardsJustifs'], $lang)));
+		if (!empty($cache->justificationParents)) {
+			$texte = sprintf($PF['parent_is_justification_of'], (': ' . $this->joinCards($cache->justificationCards, $lang)));
 			$out[] = $this->renderParentBanner('wk-icon-argument is-pro', $texte);
 		}
-		if ((Lua::truth($cache['objs']) && (Lua::len($cache['objs']) > 0))) {
-			$texte = sprintf($PF['parent_is_objection_to'], (': ' . $this->joinCards($cache['argCardsObjs'], $lang)));
+		if (!empty($cache->objectionParents)) {
+			$texte = sprintf($PF['parent_is_objection_to'], (': ' . $this->joinCards($cache->objectionCards, $lang)));
 			$out[] = $this->renderParentBanner('wk-icon-argument is-against', $texte);
 		}
 		return implode('', $out);
 	}
 
-	protected function renderDebatesParentsBottom($pv = null, $lang = null, $cache = null, $PF = null) {
+	protected function renderDebatesParentsBottom($pv = null, $lang = null, ?ParentRelations $cache = null, $PF = null) {
 		if (!($this->hasSMW())) {
 			return '';
 		}
 		$this->ensureDebateCards($pv, $cache, $lang, $PF);
-		$n = Lua::len((Lua::truth($v176 = $cache['parentDebatesFinal']) ? $v176 : new Table([])));
+		$n = count($cache->breadcrumbDebates ?? []);
 		if (($n === 0)) {
 			return '<h2 id="Parent_debates" style="display:none;"></h2>';
 		}
 		$title = (Lua::truth($v177 = (Lua::truth($v178 = ($n === 1)) ? $PF['parent_debates_title_1'] : $v178)) ? $v177 : $PF['parent_debates_title_n']);
 		$lis = [];
-		foreach ($cache['debatCardsTous'] ?? [] as $card) {
+		foreach ($cache->allDebateCards ?? [] as $card) {
 			$lis[] = ('<li style="position: relative;">' . $card . '</li>');
 		}
 		return ('<h2 id="Parent_debates" class="wk-icon-before wk-icon-parent">' . $title . '</h2>' . '<ul class="hover-top navigation-not-searchable">' . implode('', $lis) . '</ul>');
 	}
 
-	protected function renderInitializationBlock($args = null, $pv = null, $cats = null, $lang = null, $cache = null, $PF = null) {
-		$hasParents = (((Lua::len((Lua::truth($v180 = $cache['parentDebatesFinal']) ? $v180 : new Table([]))) > 0) || (Lua::len((Lua::truth($v181 = $cache['justifs']) ? $v181 : new Table([]))) > 0)) || (Lua::len((Lua::truth($v182 = $cache['objs']) ? $v182 : new Table([]))) > 0));
+	protected function renderInitializationBlock($args = null, $pv = null, $cats = null, $lang = null, ?ParentRelations $cache = null, $PF = null) {
+		$hasParents = (((count($cache->breadcrumbDebates ?? []) > 0) || (count($cache->justificationParents ?? []) > 0)) || (count($cache->objectionParents ?? []) > 0));
 		if ($hasParents) {
 			return '';
 		}
@@ -1344,115 +1315,79 @@ class ArgumentReferenceRenderer {
 		return $orphanBanner;
 	}
 
-	protected function ensureBreadcrumbSelection($pv = null, $cache = null, $cats = null, $lang = null, $PF = null) {
-		if ((!(Lua::truth($cache)) || ($cache['breadcrumbChainsFinal'] !== null))) {
-			return null;
+	protected function ensureBreadcrumbSelection($pv = null, ?ParentRelations $cache = null, $cats = null, $lang = null, $PF = null): void {
+		if ($cache === null || $cache->breadcrumbChains !== null) {
+			return;
 		}
-		$cache['breadcrumbChainsFinal'] = new Table([]);
-		$cache['parentDebatesFinal'] = new Table([]);
-		if ((!($this->hasSMW()) || (Lua::type(($this->context->smwAvailable() ? function($query) { return $this->context->smwAsk($query); } : null)) !== 'function'))) {
-			return null;
+		$cache->breadcrumbChains = [];
+		$cache->breadcrumbDebates = [];
+		if (!$this->hasSMW()) {
+			return;
 		}
-		$lang = (Lua::truth($v204 = $lang) ? $v204 : 'fr');
+		$lang ??= 'fr';
 		$title = $this->smwSafeTitle($pv['rawTitle']);
-		if (($title === '')) {
-			return null;
-		}
 		$propBreadcrumb = NativeText::field($PF['prop_breadcrumb']);
 		$propDebateName = NativeText::field($PF['prop_debate_name']);
 		$propPro = NativeText::field($PF['prop_arg_pro']);
 		$propCon = NativeText::field($PF['prop_arg_con']);
 		$propJustif = NativeText::field($PF['prop_justif']);
 		$propObj = NativeText::field($PF['prop_obj']);
-		if (((((($propBreadcrumb === '') || ($propPro === '')) || ($propCon === '')) || ($propJustif === '')) || ($propObj === ''))) {
-			return null;
+		if ($title === '' || $propBreadcrumb === '' || $propPro === '' || $propCon === '' || $propJustif === '' || $propObj === '') {
+			return;
 		}
-		$q = new Table([1 => ('([[' . $propJustif . '::' . $title . ']] OR [[' . $propObj . '::' . $title . ']] OR [[' . $propPro . '::' . $title . ']] OR [[' . $propCon . '::' . $title . ']] )'), 2 => ('?' . $propBreadcrumb . '=chain'), 3 => (Lua::truth($v211 = (Lua::truth($v212 = ($propDebateName !== '')) ? ('?' . $propDebateName . '=debateName') : $v212)) ? $v211 : null), 4 => 'limit=200', 5 => 'link=none']);
-		$qq = new Table([]);
-		foreach (($q)->sequence() as $_ => $x) {
-			if (Lua::truth($x)) {
-				Lua::insert($qq, $x);
-			}
+		$query = [1 => '([[' . $propJustif . '::' . $title . ']] OR [[' . $propObj . '::' . $title
+			. ']] OR [[' . $propPro . '::' . $title . ']] OR [[' . $propCon . '::' . $title . ']] )',
+			2 => '?' . $propBreadcrumb . '=chain'];
+		// Keep the historical query shape when a translation lacks the debate-name property.
+		// Its absent slot used to stop the one-based sequence before limit/link options.
+		if ($propDebateName !== '') {
+			$query[3] = '?' . $propDebateName . '=debateName';
+			$query[4] = 'limit=200';
+			$query[5] = 'link=none';
 		}
-		$semantic = $this->readSemantic($qq, 'breadcrumb');
-		$res = $semantic->rows;
-		if (((!is_array($res)) || (count($res) === 0))) {
-			return null;
-		}
-		$bestByDebate = new Table([]);
-		$consider = function($ch = null) use (&$bestByDebate) {
-		if (((!is_string($ch)) || ($ch === ''))) {
-			return null;
-		}
-		$parts = $this->splitByLiteral($ch, '⟭');
-		$clean = new Table([]);
-		foreach (($parts)->sequence() as $_ => $part) {
-			$part = trim($part, NativeText::ASCII_WHITESPACE);
-			if (($part !== '')) {
-				$clean[(Lua::len($clean) + 1)] = $part;
-			}
-		}
-		$n = Lua::len($clean);
-		if (($n === 0)) {
-			return null;
-		}
-		$root = $this->canonicalTitle($this->normalizeTitleForCard((Lua::truth($v213 = $clean[1]) ? $v213 : '')));
-		if (($root === '')) {
-			return null;
-		}
-		$cur = $bestByDebate[$root];
-		if ((!(Lua::truth($cur)) || ($n < $cur['len']))) {
-			$bestByDebate[$root] = new Table(['root' => $root, 'chain' => Lua::concat($clean, '⟭'), 'len' => $n]);
-		}
-		};
-		foreach (SemanticReadResult::sequence($res) as $_ => $row) {
-			$chain = ($row['chain'] ?? null);
-			if ((is_string($chain))) {
-				$consider($chain);
-			}
-			else {
-				if ((is_array($chain))) {
-					foreach (SemanticReadResult::sequence($chain) as $_ => $ch) {
-						$consider($ch);
+		$result = $this->readSemantic(new Table($query), 'breadcrumb');
+		$best = [];
+		foreach (SemanticReadResult::sequence($result->rows ?? []) as $row) {
+			$chain = $row['chain'] ?? null;
+			foreach (is_array($chain) ? SemanticReadResult::sequence($chain) : [$chain] as $value) {
+				if (!is_string($value) || $value === '') {
+					continue;
+				}
+				$parts = [];
+				foreach (explode('⟭', $value) as $part) {
+					$part = trim($part, NativeText::ASCII_WHITESPACE);
+					if ($part !== '') {
+						$parts[] = $part;
 					}
 				}
-			}
-		}
-		$selected = new Table([]);
-		foreach (Lua::pairs($bestByDebate) as $_ => $item) {
-			$selected[(Lua::len($selected) + 1)] = $item;
-		}
-		if ((Lua::len($selected) === 0)) {
-			return null;
-		}
-		if ((Lua::len($selected) > 1)) {
-			$filtered = new Table([]);
-			foreach (($selected)->sequence() as $_ => $item) {
-				if (($item['len'] < 4)) {
-					$filtered[(Lua::len($filtered) + 1)] = $item;
+				if ($parts === []) {
+					continue;
+				}
+				$root = $this->canonicalTitle($this->normalizeTitleForCard($parts[0]));
+				$length = count($parts);
+				if ($root !== '' && (!isset($best[$root]) || $length < $best[$root]['len'])) {
+					$best[$root] = ['root' => $root, 'chain' => implode('⟭', $parts), 'len' => $length];
 				}
 			}
-			$selected = $filtered;
 		}
-		if ((Lua::len($selected) === 0)) {
-			return null;
-		}
-		$chains = new Table([]);
-		$debates = new Table([]);
+		$multiple = count($best) > 1;
+		$chains = [];
+		$debates = [];
 		$tooLong = false;
-		foreach (($selected)->sequence() as $_ => $item) {
-			$newChain = ($item['chain'] . '⟭' . $title);
-			if (($this->breadcrumbLenByteSafe($newChain) > 4)) {
-				$tooLong = true;
+		foreach ($best as $item) {
+			if ($multiple && $item['len'] >= 4) {
+				continue;
 			}
-			$chains[(Lua::len($chains) + 1)] = $newChain;
-			$debates[(Lua::len($debates) + 1)] = $item['root'];
+			$chain = $item['chain'] . '⟭' . $title;
+			$tooLong = $this->breadcrumbLenByteSafe($chain) > 4 || $tooLong;
+			$chains[] = $chain;
+			$debates[] = $item['root'];
 		}
 		if ($tooLong) {
-			Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'breadcrumb_too_long') . ']]'));
+			Lua::insert($cats, '[[Category:' . $this->L($lang, 'categories', 'breadcrumb_too_long') . ']]');
 		}
-		$cache['breadcrumbChainsFinal'] = $this->uniqList($chains);
-		$cache['parentDebatesFinal'] = $this->uniqueParentTitles($debates);
+		$cache->breadcrumbChains = $this->uniqueStrings($chains);
+		$cache->breadcrumbDebates = $this->uniqueParentTitles($debates);
 	}
 
 	/** @param list<array{page:string,title:string,warnings:string}> $items */
@@ -1822,7 +1757,7 @@ class ArgumentReferenceRenderer {
 		return implode('', $out);
 	}
 
-	protected function setSemanticData($args = null, $pv = null, $lang = null, $cache = null, $PF = null, $maps = null, $rawB = null, $rawW = null, $rawV = null) {
+	protected function setSemanticData($args = null, $pv = null, $lang = null, ?ParentRelations $cache = null, $PF = null, $maps = null, $rawB = null, $rawW = null, $rawV = null) {
 		$props = new Table([]);
 		$props[$PF['prop_arg_name']] = $pv['rawTitle'];
 		$props[$PF['prop_arg_number']] = $pv['pageId'];
@@ -1830,24 +1765,24 @@ class ArgumentReferenceRenderer {
 			$this->ensureDebateParentsFinal($pv, $cache, $PF);
 			$this->ensureArgumentParents($pv, $cache, $PF);
 			{
-				$chains = $this->uniqList((Lua::truth($v269 = $cache['breadcrumbChainsFinal']) ? $v269 : new Table([])));
+				$chains = $this->uniqList(($cache->breadcrumbChains ?? []));
 				if ((((Lua::len($chains) > 0) && Lua::truth($PF['prop_breadcrumb'])) && ($PF['prop_breadcrumb'] !== ''))) {
 					$props[$PF['prop_breadcrumb']] = $chains;
 				}
 				if ((Lua::truth($PF['prop_parent_debate']) && ($PF['prop_parent_debate'] !== ''))) {
-					$dp = $this->uniqList((Lua::truth($v270 = $cache['parentDebatesFinal']) ? $v270 : new Table([])));
+					$dp = $this->uniqList(($cache->breadcrumbDebates ?? []));
 					if ((Lua::len($dp) > 0)) {
 						$props[$PF['prop_parent_debate']] = $dp;
 					}
 				}
 			}
 			{
-				$parents = new Table([]);
-				foreach (((Lua::truth($v271 = $cache['justifs']) ? $v271 : new Table([])))->sequence() as $_ => $x) {
-					Lua::insert($parents, $this->canonicalTitle($x));
+				$parents = [];
+				foreach ($cache->justificationParents ?? [] as $x) {
+					$parents[] = $this->canonicalTitle($x);
 				}
-				foreach (((Lua::truth($v272 = $cache['objs']) ? $v272 : new Table([])))->sequence() as $_ => $x) {
-					Lua::insert($parents, $this->canonicalTitle($x));
+				foreach ($cache->objectionParents ?? [] as $x) {
+					$parents[] = $this->canonicalTitle($x);
 				}
 				$parents = $this->uniqList($parents);
 				if ((((Lua::len($parents) > 0) && Lua::truth($PF['prop_parent_argument'])) && ($PF['prop_parent_argument'] !== ''))) {
@@ -2118,7 +2053,7 @@ class ArgumentReferenceRenderer {
 
 	protected function wkAppendAllValidIds($out = null, $titles = null, $suffix = null, $lang = null) {
 		$added = false;
-		foreach (((Lua::truth($v305 = $titles) ? $v305 : new Table([])))->sequence() as $_ => $title) {
+		foreach ($titles ?? [] as $title) {
 			$title = $this->canonicalTitle(trim(NativeText::field($title), NativeText::ASCII_WHITESPACE));
 			if (($title !== '')) {
 				$url = $this->wkFullUrl($title, $lang);
@@ -2132,7 +2067,7 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function wkAppendFirstValidId($out = null, $titles = null, $suffix = null, $lang = null) {
-		foreach (((Lua::truth($v307 = $titles) ? $v307 : new Table([])))->sequence() as $_ => $title) {
+		foreach ($titles ?? [] as $title) {
 			$title = $this->canonicalTitle(trim(NativeText::field($title), NativeText::ASCII_WHITESPACE));
 			if (($title !== '')) {
 				$url = $this->wkFullUrl($title, $lang);
@@ -2145,26 +2080,21 @@ class ArgumentReferenceRenderer {
 		return false;
 	}
 
-	protected function wkBuildClaimIsPartOf($lang = null, $cache = null) {
-		$out = new Table([]);
-		$out[(Lua::len($out) + 1)] = $this->jsonNode(['@id' => $this->wkBuildWikiUrl($lang, 'category_prefix', 'arguments_label')]);
-		$debats = new Table([]);
-		foreach (((Lua::truth($v309 = (Lua::truth($v310 = $cache) ? $cache['debatsPour'] : $v310)) ? $v309 : new Table([])))->sequence() as $_ => $d) {
-			Lua::insert($debats, $this->canonicalTitle($d));
+	protected function wkBuildClaimIsPartOf($lang = null, ?ParentRelations $cache = null) {
+		$out = new Table([1 => $this->jsonNode(['@id' => $this->wkBuildWikiUrl($lang, 'category_prefix', 'arguments_label')])]);
+		$debates = [];
+		foreach ([$cache->proDebates ?? [], $cache->conDebates ?? []] as $titles) {
+			foreach ($titles as $title) {
+				$debates[] = $this->canonicalTitle($title);
+			}
 		}
-		foreach (((Lua::truth($v311 = (Lua::truth($v312 = $cache) ? $cache['debatsContre'] : $v312)) ? $v311 : new Table([])))->sequence() as $_ => $d) {
-			Lua::insert($debats, $this->canonicalTitle($d));
-		}
-		$debats = $this->uniqList($debats);
-		if (Lua::truth($this->wkAppendAllValidIds($out, $debats, '#qa', $lang))) {
+		if ($this->wkAppendAllValidIds($out, $this->uniqueStrings($debates), '#qa', $lang)) {
 			return $out;
 		}
-		if (Lua::truth($this->wkAppendFirstValidId($out, (Lua::truth($v313 = (Lua::truth($v314 = $cache) ? $cache['justifs'] : $v314)) ? $v313 : new Table([])), '#claim', $lang))) {
+		if ($this->wkAppendFirstValidId($out, $cache->justificationParents ?? [], '#claim', $lang)) {
 			return $out;
 		}
-		if (Lua::truth($this->wkAppendFirstValidId($out, (Lua::truth($v315 = (Lua::truth($v316 = $cache) ? $cache['objs'] : $v316)) ? $v315 : new Table([])), '#claim', $lang))) {
-			return $out;
-		}
+		$this->wkAppendFirstValidId($out, $cache->objectionParents ?? [], '#claim', $lang);
 		return $out;
 	}
 
@@ -2413,7 +2343,7 @@ class ArgumentReferenceRenderer {
 	}
 
 
-	protected function renderArgumentSchemaJSONLD($args = null, $pv = null, $lang = null, $cache = null, $PF = null, $maps = null) {
+	protected function renderArgumentSchemaJSONLD($args = null, $pv = null, $lang = null, ?ParentRelations $cache = null, $PF = null, $maps = null) {
 		$previousNativeJson = $this->nativeJson;
 		$this->nativeJson = $this->context instanceof NativeJsonContext;
 		try {

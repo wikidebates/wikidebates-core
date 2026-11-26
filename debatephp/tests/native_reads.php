@@ -157,4 +157,39 @@ foreach ([ArgumentReferenceRenderer::class, \MediaWiki\Extension\DebatePHP\Argum
 	}
 }
 
+// The native state distinguishes a not-yet-loaded relation from a known empty list.
+$relations = new \\MediaWiki\\Extension\\DebatePHP\\ParentRelations;
+$equal(null, $relations->proDebates, 'Unloaded parent relation');
+$relations->proDebates = [];
+$equal([], $relations->proDebates, 'Loaded empty parent relation');
+
+$parentRenderer = new ArgumentReferenceRenderer($parentContext);
+$parentRenderer->render();
+$parentFields = new Table([
+	'prop_arg_pro' => 'Pro', 'prop_arg_con' => 'Con',
+	'prop_justif' => 'Justif', 'prop_obj' => 'Obj',
+	'prop_breadcrumb' => 'Chain', 'prop_debate_name' => 'Debate'
+]);
+$pv = $parentContext->pageVars();
+$relations = new \\MediaWiki\\Extension\\DebatePHP\\ParentRelations;
+(new ReflectionMethod($parentRenderer, 'ensureDebateParents'))->invoke($parentRenderer, $pv, $relations, $parentFields);
+$equal(['Debate A', 'Debate B', 'Debate C'], $relations->proDebates, 'Native direct-parent list preserves canonical order');
+$equal(['Debate A'], $relations->conDebates, 'Parent relation sets remain distinct');
+(new ReflectionMethod($parentRenderer, 'ensureArgumentParents'))->invoke($parentRenderer, $pv, $relations, $parentFields);
+$equal(['Parent & A', 'Parent B', 'Parent C'], $relations->justificationParents, 'Canonical native argument-parent order');
+(new ReflectionMethod($parentRenderer, 'ensureBreadcrumbSelection'))->invoke($parentRenderer, $pv, $relations, new Table, 'en', $parentFields);
+$equal(['Debate A', 'Debate & B', 'Debate C'], $relations->breadcrumbDebates, 'Breadcrumb roots deduplicate equivalent titles');
+$equal(true, array_is_list($relations->breadcrumbChains), 'Native breadcrumb chains are dense zero-based lists');
+
+$lookup = new ReflectionMethod($parentRenderer, 'containsTitle');
+foreach ([
+	[['fulltext' => '', 'page' => 'Target'], false],
+	[['fulltext' => false, 'page' => 'Target'], true],
+	[['fulltext' => '0', 'page' => 'Target'], false],
+	[[1 => 'Other', 3 => 'Target'], false],
+	[[1 => ['name' => 'Target']], true]
+] as [$input, $expected]) {
+	$equal($expected, $lookup->invoke($parentRenderer, $input, 'Target'), 'Title field priority and sparse semantic lists');
+}
+
 echo "$assertions native-read assertions: semantic indexing, JSON bytes, CSV isolation, optional adapters and certified fallback/cache lifetimes\n";
