@@ -781,75 +781,6 @@ class ArgumentReferenceRenderer {
 		return $count;
 	}
 
-	protected function ensureDebateParentsFinal($pv = null, ?ParentRelations $cache = null, $PF = null): void {
-		if ($cache === null || $cache->allDebates !== null) {
-			return;
-		}
-		$this->ensureDebateParents($pv, $cache, $PF);
-		$final = [];
-		foreach ([$cache->proDebates ?? [], $cache->conDebates ?? []] as $titles) {
-			foreach ($titles as $title) {
-				$final[] = $this->canonicalTitle($title);
-			}
-		}
-		if ($this->hasSMW()) {
-			$this->ensureArgumentParents($pv, $cache, $PF);
-			$propBreadcrumb = NativeText::field($PF['prop_breadcrumb']);
-			$propParentDebate = NativeText::field($PF['prop_parent_debate']);
-			if ($propBreadcrumb !== '' && $propParentDebate !== '') {
-				$parents = [];
-				foreach ([$cache->justificationParents ?? [], $cache->objectionParents ?? []] as $titles) {
-					foreach ($titles as $title) {
-						$parents[] = $this->canonicalTitle($title);
-					}
-				}
-				$conditions = [];
-				foreach ($this->uniqueStrings($parents) as $title) {
-					$safe = $this->smwSafeTitle($title);
-					if ($safe !== '') {
-						$conditions[] = '[[' . $safe . ']]';
-					}
-				}
-				if ($conditions !== []) {
-					$query = new Table([1 => '(' . implode(' OR ', $conditions) . ')',
-						2 => '?' . $propBreadcrumb . '=chain', 3 => '?' . $propParentDebate . '=pdeb',
-						4 => 'limit=200', 5 => 'link=none']);
-					$result = $this->readSemantic($query, 'breadcrumb');
-					foreach (SemanticReadResult::sequence($result->rows ?? []) as $row) {
-						$chain = $row['chain'] ?? null;
-						$valid = false;
-						foreach (is_array($chain) ? SemanticReadResult::sequence($chain) : [$chain] as $part) {
-							if (is_string($part)) {
-								$length = $this->breadcrumbLenByteSafe($part);
-								if ($length > 0 && $length < 6) {
-									$valid = true;
-									break;
-								}
-							}
-						}
-						if (!$valid) {
-							continue;
-						}
-						$parent = $row['pdeb'] ?? null;
-						if (is_string($parent)) {
-							if (trim($parent, NativeText::ASCII_WHITESPACE) !== '') {
-								$final[] = $this->canonicalTitle($parent);
-							}
-						} elseif (is_array($parent)) {
-							foreach (SemanticReadResult::sequence($parent) as $value) {
-								$title = is_array($value) ? $this->semanticRowTitle($value) : $value;
-								if (is_string($title) && trim($title, NativeText::ASCII_WHITESPACE) !== '') {
-									$final[] = $this->canonicalTitle($title);
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		$cache->allDebates = $this->uniqueParentTitles($final);
-	}
-
 	protected function normalizeTitleForCard($s = null) {
 		$s = trim(NativeText::field($s), NativeText::ASCII_WHITESPACE);
 		if ($s === '' || ($s[0] !== ':' && strpbrk($s, '[<&') === false)) { return $s; }
@@ -1645,7 +1576,7 @@ class ArgumentReferenceRenderer {
 		$props[$PF['prop_arg_name']] = $pv['rawTitle'];
 		$props[$PF['prop_arg_number']] = $pv['pageId'];
 		if ($this->hasSMW()) {
-			$this->ensureDebateParentsFinal($pv, $cache, $PF);
+			$this->ensureDebateParents($pv, $cache, $PF);
 			$this->ensureArgumentParents($pv, $cache, $PF);
 			{
 				$chains = $this->uniqueStrings(($cache->breadcrumbChains ?? []));
@@ -2201,7 +2132,7 @@ class ArgumentReferenceRenderer {
 		$previousNativeJson = $this->nativeJson;
 		$this->nativeJson = $this->context instanceof NativeJsonContext;
 		try {
-			$this->ensureDebateParentsFinal($pv, $cache, $PF);
+			$this->ensureDebateParents($pv, $cache, $PF);
 			$this->ensureArgumentParents($pv, $cache, $PF);
 			$schemaCategories = [];
 			$this->ensureBreadcrumbSelection($pv, $cache, $schemaCategories, $lang, $PF);
