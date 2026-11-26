@@ -294,7 +294,7 @@ $properties = ['first' => 'unchanged', 'multiple' => 'old'];
 $semantic = \MediaWiki\Extension\DebatePHP\SemanticProperties::class;
 $semantic::add($properties, 'multiple', ['0', 'x', 'x'], true);
 $semantic::add($properties, 'multiple', ' y ', true);
-$semantic::add($properties, 'empty', ' \t ', true);
+$semantic::add($properties, 'empty', " \t ", true);
 $semantic::add($properties, '', 'ignored', true);
 $semantic::add($properties, false, 'ignored', false);
 $semantic::add($properties, 'nil', null, false);
