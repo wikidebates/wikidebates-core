@@ -14,7 +14,6 @@ class ReferenceRenderer {
 	protected Context $context;
 	protected $ITEM_SEP;
 	protected $FIELD_SEP;
-	protected $SEO_CACHE;
 	protected array $ARGUMENT_WARNING_BANNER_KEYS;
 	protected array $ARGUMENT_WARNING_LOOKUPS;
 	protected array $PROGRESS_BANNER_KEYS;
@@ -30,7 +29,6 @@ class ReferenceRenderer {
 		$this->context = $context;
 		$this->ITEM_SEP = '⟭';
 		$this->FIELD_SEP = '⟬';
-		$this->SEO_CACHE = new Table([]);
 		$this->ARGUMENT_WARNING_BANNER_KEYS = ['displayed_title_too_long', 'displayed_title_unclear', 'displayed_title_disadvantageous'];
 		$this->ARGUMENT_WARNING_LOOKUPS = [];
 		$this->PROGRESS_BANNER_KEYS = ['progress_under_construction', 'progress_draft'];
@@ -116,46 +114,21 @@ class ReferenceRenderer {
 		return $pages;
 	}
 
-	protected function seoCacheKey($args = null, $pv = null, $lang = null) {
-		return Lua::concat(new Table([1 => NativeText::field($lang), 2 => (Lua::truth($v5 = $pv['pageId']) ? $v5 : ''), 3 => NativeText::field($pv['rawTitle']), 4 => NativeText::field($args['expanded-topic']), 5 => NativeText::field($args['keywords']), 6 => NativeText::field($args['sections'])]), '
-');
-	}
 
 	protected function seoL($lang = null, $key = null, ...$rest) {
 		return $this->context->message('Debate.seo', $lang, $key, ...$rest);
 	}
 
-	protected function seoJoinList($items = null) {
-		$out = [];
-		$seen = [];
-		foreach (((Lua::truth($v11 = $items) ? $v11 : new Table([])))->sequence() as $_ => $v) {
-			$v = trim(NativeText::field($v), NativeText::ASCII_WHITESPACE);
-			if ((($v !== '') && !isset($seen[$v]))) {
-				$seen[$v] = true;
-				$out[count($out) + 1] = $v;
-			}
-		}
-		return implode(', ', $out);
-	}
 
 	protected function buildSeoKeywords($args = null, $lang = null) {
-		$items = [];
-		foreach ($this->csvValues($args['keywords'], ',') as $_ => $k) {
-			$items[count($items) + 1] = $k;
-		}
-		foreach ($this->csvValues($args['sections'], ',') as $_ => $s) {
-			$items[count($items) + 1] = $s;
-		}
-		return $this->seoJoinList(new Table($items));
+		return NativeText::seoKeywords(
+			$this->csvValues($args['keywords'], ','),
+			$this->csvValues($args['sections'], ',')
+		);
 	}
 
 	protected function renderFullSEO($args = null, $pv = null, $lang = null) {
-		$ck = $this->seoCacheKey($args, $pv, $lang);
-		if (Lua::truth($this->SEO_CACHE[$ck])) {
-			return null;
-		}
-		$this->SEO_CACHE[$ck] = true;
-		$pageTitle = (Lua::truth($v16 = $pv['rawTitle']) ? $v16 : '');
+		$pageTitle = NativeText::field($pv['rawTitle']);
 		$topic = trim(NativeText::field($args['expanded-topic']), NativeText::ASCII_WHITESPACE);
 		if (($topic === '')) {
 			$topic = $pageTitle;
@@ -1476,9 +1449,6 @@ class ReferenceRenderer {
 	public function render($frame = null) {
 		$this->decodedReferences = null;
 		$this->renderData = null;
-		foreach (Lua::pairs($this->SEO_CACHE) as $k => $_value) {
-			$this->SEO_CACHE[$k] = null;
-		}
 		$args = $this->getArgs($frame);
 		$this->renderData = new RenderData;
 		$this->renderData->expectReuse([$args['keywords'], $args['sections']]);

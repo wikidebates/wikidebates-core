@@ -29,6 +29,22 @@ final class NativeText {
 		$position = $separator === '' ? false : strpos($text, $separator);
 		return $position === false ? [$text, ''] : [substr($text, 0, $position), substr($text, $position + strlen($separator))];
 	}
+	/** Stable keyword/section union: preserve first occurrence, literal zero and Unicode. */
+	public static function seoKeywords(iterable ...$lists): string {
+		$out = [];
+		$seen = [];
+		foreach ($lists as $list) {
+			foreach ($list as $item) {
+				$value = trim(self::field($item), self::ASCII_WHITESPACE);
+				if ($value !== '' && !isset($seen[$value])) {
+					$seen[$value] = true;
+					$out[] = $value;
+				}
+			}
+		}
+		return implode(', ', $out);
+	}
+
 	/** Plain SEO text shared by HTML attributes and JSON-LD; no additional expansion. */
 	public static function seoPlainText( string $text, ?Context $context = null ): string {
 		$text = preg_replace( '/<!--.*?-->/su', ' ', $text ) ?? $text;

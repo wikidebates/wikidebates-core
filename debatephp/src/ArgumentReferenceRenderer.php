@@ -31,7 +31,6 @@ class ArgumentReferenceRenderer {
 	protected $CARD_CACHE;
 	protected array $TITLE_WARNING_BANNER_KEYS;
 	protected array $ARGUMENT_WARNING_BANNER_KEYS;
-	protected $SEO_CACHE;
 	public function __construct(ArgumentContext $context) {
 		$this->context = $context;
 		$this->ITEM_SEP = '⟭';
@@ -1700,43 +1699,16 @@ class ArgumentReferenceRenderer {
 		return $this->context->message('Argument.seo', $lang, $key, ...$rest);
 	}
 
-	protected function seoJoinList($items = null) {
-		$out = [];
-		$seen = [];
-		foreach (((Lua::truth($v288 = $items) ? $v288 : new Table([])))->sequence() as $_ => $v) {
-			$v = trim(NativeText::field($v), NativeText::ASCII_WHITESPACE);
-			if ((($v !== '') && !isset($seen[$v]))) {
-				$seen[$v] = true;
-				$out[count($out) + 1] = $v;
-			}
-		}
-		return implode(', ', $out);
-	}
 
 	protected function buildSeoKeywords($args = null, $lang = null) {
-		$items = [];
-		foreach ($this->csvValues($args['keywords'], ',') as $_ => $k) {
-			$items[count($items) + 1] = $k;
-		}
-		foreach ($this->csvValues($args['sections'], ',') as $_ => $s) {
-			$items[count($items) + 1] = $s;
-		}
-		return $this->seoJoinList(new Table($items));
+		return NativeText::seoKeywords(
+			$this->csvValues($args['keywords'], ','),
+			$this->csvValues($args['sections'], ',')
+		);
 	}
 
 	protected function renderFullSEO($args = null, $pv = null, $lang = null) {
-		$titleText = (Lua::truth($v290 = $pv['rawTitle']) ? $v290 : '');
-		$ck = ('SEO
-' . NativeText::field($lang) . '
-' . NativeText::field($pv['pageId']) . '
-' . $titleText . '
-' . $this->seoKeyPart((Lua::truth($v293 = $args['keywords']) ? $v293 : '')) . '
-' . $this->seoKeyPart((Lua::truth($v294 = $args['sections']) ? $v294 : '')));
-		$hit = $this->cacheGet($this->SEO_CACHE, $ck);
-		if (($hit !== null)) {
-			return '';
-		}
-		$this->cachePut($this->SEO_CACHE, $ck, true);
+		$titleText = NativeText::field($pv['rawTitle']);
 		$topic = trim(NativeText::field($args['keywords']), NativeText::ASCII_WHITESPACE);
 		if (($topic === '')) {
 			$topic = $titleText;
@@ -2252,7 +2224,6 @@ class ArgumentReferenceRenderer {
 		$this->CARD_CACHE = $this->cacheMake(600);
 		$this->SMW_ASK_CACHE = $this->cacheMake(250);
 		$this->SMW_TITLES_CACHE = $this->cacheMake(250);
-		$this->SEO_CACHE = $this->cacheMake(60);
 		$args = $this->getArgs($frame);
 		$norm = static function($key) use ($args): void {
 			if (!is_string($args[$key])) { return; }
@@ -2579,7 +2550,6 @@ class ArgumentReferenceRenderer {
 	protected function vget($name) { return $this->context->variableGet($name); }
 	protected function titleNewCached($text) { return $this->context->titleInfo($text); }
 	protected function safeJsonEncode($data) { return $this->context->jsonEncode($data); }
-	protected function seoKeyPart($text) { return md5(Lua::str($text ?? '')); }
 	protected function absUrlFromTitle($title, $query) { return $this->context->fullUrl($title, $query) ?? $this->context->localUrl($title, $query) ?? ''; }
 	protected function smwAskSafe($query, string $origin = 'other') {
 		if (!$this->hasSMW()) { return null; }
