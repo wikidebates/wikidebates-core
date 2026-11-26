@@ -432,7 +432,7 @@ foreach ([ArgumentReferenceRenderer::class, \MediaWiki\Extension\DebatePHP\Refer
 	$equal($isArgument ? 5 : 4, count($context->graph['@graph']), 'Graph retains all top-level nodes');
 	$node = $context->graph['@graph'][$isArgument ? 5 : 4];
 	$equal('0', $node['about'][1]['name'], 'Literal zero retained in about metadata');
-	$equal(true, isset($node['citation'][1]), 'Documentary reference remains in native graph');
+	$equal($isArgument ? [1] : [1, 2], array_keys($node['citation']), 'Native reference sequence retains one-based order and repeated entries');
 	$equal('Article', $node['citation'][1]['@type'], 'Documentary reference retains schema type');
 	$equal('PublicationIssue', $node['citation'][1]['isPartOf']['@type'], 'Article retains issue metadata');
 	$equal('PublicationVolume', $node['citation'][1]['isPartOf']['isPartOf']['@type'], 'Article retains volume metadata');
