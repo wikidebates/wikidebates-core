@@ -18,7 +18,7 @@ final class Hooks {
 		return self::execute($parser, $frame, $args, 'Argument');
 	}
 	private static function execute(Parser $parser, PPFrame $frame, array $args, string $moduleName): array {
-		$entry = isset($args[0]) ? Lua::trim($frame->expand($args[0])) : '';
+		$entry = isset($args[0]) ? trim($frame->expand($args[0]), " \t\r\n\v\f") : '';
 		if ($entry !== '' && $entry !== 'render') { throw new \InvalidArgumentException('#' . strtolower($moduleName) . ': expected render'); }
 		// Explicit parameters are still unexpanded PPNode part nodes. Their names and values
 		// are resolved by a genuine child frame, never split on an expanded '=' or '|'.

@@ -5,7 +5,7 @@ namespace MediaWiki\Extension\DebatePHP;
 final class CacheKey {
 	public static function semantic($query): string {
 		if (!$query instanceof Table) {
-			$text = Lua::str($query === null || $query === false ? '' : $query);
+			$text = ($query === true ? 'true' : ($query === null || $query === false ? '' : (string)$query));
 			return strlen($text) . ':' . $text;
 		}
 		$values = $query->values;
@@ -15,7 +15,7 @@ final class CacheKey {
 		$parts = [];
 		foreach ($indices as $key) {
 			$value = $values[$key];
-			$text = Lua::str($value === null || $value === false ? '' : $value);
+			$text = ($value === true ? 'true' : ($value === null || $value === false ? '' : (string)$value));
 			$parts[] = strlen($text) . ':' . $text;
 		}
 		return implode("\n", $parts);
