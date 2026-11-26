@@ -51,6 +51,23 @@ foreach ([null, false, -1, 0, 1, 2, 5, '2', 2.5] as $limit) {
 	}
 }
 
+// Explicit serialized data contracts, independent of the implementation.
+same([1 => '0', 2 => "\0A\0", 3 => " B "], SerializedData::csvValues("\v0\f, \t\0A\0\r, B ,, "), 'CSV trims ASCII whitespace, not NUL or NBSP');
+foreach ([null, false] as $limit) {
+	same([1 => 'A', 2 => 'B', 3 => 'C'], SerializedData::split('A|B|C', '|', $limit)->values, 'Absent/false split limit remains unlimited');
+}
+foreach ([0, 1, -1] as $limit) {
+	same([1 => 'A', 2 => 'B|C'], SerializedData::split('A|B|C', '|', $limit)->values, 'Explicit split limit allows at least one split');
+}
+same([1 => 'A', 2 => 'B', 3 => 'C'], SerializedData::split('A|B|C', '|', 2)->values, 'Split limit counts separators');
+same([1 => ''], SerializedData::split(null, '|')->values, 'Empty input keeps its single empty field');
+same([1 => 'A|B'], SerializedData::split('A|B', '')->values, 'Empty separator retains original text');
+same(['page' => '0', 'title' => '0', 'warnings' => "W⟬extra"], SerializedData::argumentItems("⟭\t0\f⟬\v⟬W⟬extra", true)[1]->values, 'Argument defaults its title and preserves warning delimiters');
+same([], SerializedData::argumentItems('A⟬B', true)->values, 'Required item separator');
+same(['a' => '0', 'b' => "\0B\0", 'c' => ''], SerializedData::recordValues("\v0\f|\0B\0", '|', ['a', 'b', 'c']), 'Record missing fields and byte-exact trim');
+same([], SerializedData::quotes('not a serialized quote')->values, 'Quotes require their field separator');
+$checks += 13;
+
 $prepared = new RenderData;
 foreach ([null, '', '0', 'a, b,,a', "\0a\0,\v b\f, c ", 'é⟬0⟬é'] as $raw) {
 	foreach ([null, ',', '⟬'] as $separator) {
