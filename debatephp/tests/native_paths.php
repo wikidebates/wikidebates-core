@@ -127,19 +127,19 @@ $checks += 12;
 trait NativeBannerProbe {
 	public function __construct() { $this->REFERENCE_WARNING_BANNER_KEYS = ['dead_link']; }
 	protected function buildSummaryLabelLookup($lang = null, array $keys = []): array { return ['dead_link' => 'dead_link']; }
-	protected function renderSubsectionBanner($pv = null, $lang = null, $key = null, $opts = null, $cats = null) {
-		Lua::insert($cats, 'category effect');
+	protected function renderSubsectionBanner($pv = null, $lang = null, $key = null, $opts = null, ?array &$cats = null) {
+		$cats[] = 'category effect';
 		return '<banner>';
 	}
-	public function append(&$out, $cats): void { $this->renderReferenceItemBanners('dead_link,dead_link', null, 'en', $cats, $out); }
+	public function append(&$out, array &$cats): void { $this->renderReferenceItemBanners('dead_link,dead_link', null, 'en', $cats, $out); }
 }
 foreach ([new class extends \MediaWiki\Extension\DebatePHP\ReferenceRenderer { use NativeBannerProbe; },
 	new class extends \MediaWiki\Extension\DebatePHP\ArgumentReferenceRenderer { use NativeBannerProbe; }] as $probe) {
-	$parts = ['prefix']; $categories = new Table;
+	$parts = ['prefix']; $categories = [];
 	$probe->append($parts, $categories);
 	same(['prefix', '<banner>', '<banner>'], $parts, 'Banner append mutates caller native fragments');
-	same([1 => 'category effect', 2 => 'category effect'], $categories->values, 'Banner category effects stay ordered');
-	$legacyParts = new Table([1 => 'prefix']); $categories = new Table;
+	same(['category effect', 'category effect'], $categories, 'Banner category effects stay ordered');
+	$legacyParts = new Table([1 => 'prefix']); $categories = [];
 	$alias = $legacyParts; $probe->append($legacyParts, $categories);
 	same($alias, $legacyParts, 'Legacy fragment Table keeps shared identity');
 	same([1 => 'prefix', 2 => '<banner>', 3 => '<banner>'], $alias->values, 'Legacy fragment append compatibility');
