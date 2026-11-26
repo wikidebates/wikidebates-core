@@ -12,7 +12,6 @@ class ArgumentReferenceRenderer {
 	private ?RenderData $renderData = null;
 	private ?FifoCache $cardTitleCache = null;
 	private ?FifoCache $nativeSemanticCache = null;
-	private bool $nativeJson = false;
 	protected ArgumentContext $context;
 	protected $ITEM_SEP;
 	protected $FIELD_SEP;
@@ -111,7 +110,8 @@ class ArgumentReferenceRenderer {
 		return ($this->decodedReferences ??= new DecodedReferences)->values($format, $raw);
 	}
 
-	protected function wkBuildNodesFromNativeItems(array $items, callable $builder): Table {
+	/** Native one-based JSON lists; JsonData preserves the historical serialization contract. */
+	protected function wkBuildNodesFromNativeItems(array $items, callable $builder): array {
 		$out = [];
 		foreach ($items as $item) {
 			$node = $builder($item);
@@ -123,16 +123,13 @@ class ArgumentReferenceRenderer {
 				$out[count($out) + 1] = $node;
 			}
 		}
-		return new Table($out);
+		return $out;
 	}
 
 	protected function csvValues(?string $text, ?string $separator = null): array {
 		return ($this->renderData ??= new RenderData)->csvValues($text, $separator);
 	}
 
-	protected function jsonNode(array $data): Table|array {
-		return $this->nativeJson ? $data : new Table($data);
-	}
 
 	protected function splitCSV($s = null, $sep = null) {
 		return ($this->renderData ??= new RenderData)->csv($s, $sep);
@@ -1774,13 +1771,13 @@ class ArgumentReferenceRenderer {
 	protected function wkBuildWebsiteNode($lang = null) {
 		$homeUrl = $this->L($lang, 'urls', 'home');
 		$siteName = $this->L($lang, 'seo', 'site_name');
-		return $this->jsonNode(['@type' => 'WebSite', '@id' => ($homeUrl . '#website'), 'url' => $homeUrl, 'name' => $siteName]);
+		return ['@type' => 'WebSite', '@id' => ($homeUrl . '#website'), 'url' => $homeUrl, 'name' => $siteName];
 	}
 
 	protected function wkBuildOrganizationNode($lang = null) {
 		$homeUrl = $this->L($lang, 'urls', 'home');
 		$siteName = $this->L($lang, 'seo', 'site_name');
-		return $this->jsonNode(['@type' => 'Organization', '@id' => ($homeUrl . '#organization'), 'name' => $siteName, 'url' => $homeUrl]);
+		return ['@type' => 'Organization', '@id' => ($homeUrl . '#organization'), 'name' => $siteName, 'url' => $homeUrl];
 	}
 
 	protected function wkBuildBreadcrumbNode($pv = null, $lang = null) {
@@ -1788,18 +1785,18 @@ class ArgumentReferenceRenderer {
 		$homeUrl = $this->L($lang, 'urls', 'home');
 		$argsLabel = $this->L($lang, 'urls', 'arguments_label');
 		$argsUrl = $this->wkBuildWikiUrl($lang, 'portal_prefix', 'arguments_label');
-		return $this->jsonNode(['@type' => 'BreadcrumbList', '@id' => ($pv['pageUrl'] . '#breadcrumb'), 'itemListElement' => new Table([1 => $this->jsonNode(['@type' => 'ListItem', 'position' => 1, 'item' => $this->jsonNode(['@id' => $homeUrl, 'name' => $homeLabel])]), 2 => $this->jsonNode(['@type' => 'ListItem', 'position' => 2, 'item' => $this->jsonNode(['@id' => $argsUrl, 'name' => $argsLabel])]), 3 => $this->jsonNode(['@type' => 'ListItem', 'position' => 3, 'item' => $this->jsonNode(['@id' => $pv['pageUrl'], 'name' => $pv['rawTitle']])])])]);
+		return ['@type' => 'BreadcrumbList', '@id' => ($pv['pageUrl'] . '#breadcrumb'), 'itemListElement' => [1 => ['@type' => 'ListItem', 'position' => 1, 'item' => ['@id' => $homeUrl, 'name' => $homeLabel]], 2 => ['@type' => 'ListItem', 'position' => 2, 'item' => ['@id' => $argsUrl, 'name' => $argsLabel]], 3 => ['@type' => 'ListItem', 'position' => 3, 'item' => ['@id' => $pv['pageUrl'], 'name' => $pv['rawTitle']]]]];
 	}
 
 	protected function wkBuildAboutAndMentions($args = null) {
 		$about = [];
 		$mentions = [];
-		$rawKeywords = $this->csvValues((Lua::truth($v299 = (Lua::truth($v300 = $args) ? $args['keywords'] : $v300)) ? $v299 : ''), ',');
+		$rawKeywords = $this->csvValues(($args['keywords'] ?? ''), ',');
 		$stop3 = count($rawKeywords);
 		for ($i = 1; $i <= $stop3; $i++) {
 			$kw = trim(NativeText::field($rawKeywords[$i]), NativeText::ASCII_WHITESPACE);
 			if (($kw !== '')) {
-				$node = $this->jsonNode(['@type' => 'Thing', 'name' => $kw]);
+				$node = ['@type' => 'Thing', 'name' => $kw];
 				if (($i <= 3)) {
 					$about[count($about) + 1] = $node;
 				}
@@ -1808,12 +1805,12 @@ class ArgumentReferenceRenderer {
 				}
 			}
 		}
-		return [new Table($about), new Table($mentions)];
+		return [$about, $mentions];
 	}
 
 	protected function wkBuildKeywords($args = null, $lang = null) {
 		$out = [];
-		$sections = $this->csvValues((Lua::truth($v302 = (Lua::truth($v303 = $args) ? $args['sections'] : $v303)) ? $v302 : ''), ',');
+		$sections = $this->csvValues(($args['sections'] ?? ''), ',');
 		$termSetId = $this->wkBuildWikiUrl($lang, 'category_prefix', 'sections_label');
 		$stop3 = count($sections);
 		for ($i = 1; $i <= $stop3; $i++) {
@@ -1822,24 +1819,24 @@ class ArgumentReferenceRenderer {
 			}
 			$section = trim(NativeText::field($sections[$i]), NativeText::ASCII_WHITESPACE);
 			if (($section !== '')) {
-				$out[count($out) + 1] = $this->jsonNode(['@type' => 'DefinedTerm', '@id' => $this->wkBuildWikiUrlFromText($lang, 'category_prefix', $section), 'name' => $section, 'inDefinedTermSet' => $this->jsonNode(['@id' => $termSetId])]);
+				$out[count($out) + 1] = ['@type' => 'DefinedTerm', '@id' => $this->wkBuildWikiUrlFromText($lang, 'category_prefix', $section), 'name' => $section, 'inDefinedTermSet' => ['@id' => $termSetId]];
 			}
 		}
-		return new Table($out);
+		return $out;
 	}
 
 	protected function wkBuildDiscussionUrl($pv = null, $lang = null) {
 		return $this->wkBuildWikiUrlFromText($lang, 'discussion_prefix', $pv['rawTitle']);
 	}
 
-	protected function wkAppendAllValidIds($out = null, $titles = null, $suffix = null, $lang = null) {
+	protected function wkAppendAllValidIds(array &$out, $titles = null, $suffix = null, $lang = null) {
 		$added = false;
 		foreach ($titles ?? [] as $title) {
 			$title = $this->canonicalTitle(trim(NativeText::field($title), NativeText::ASCII_WHITESPACE));
 			if (($title !== '')) {
 				$url = $this->wkFullUrl($title, $lang);
 				if (($url !== '')) {
-					$out[(Lua::len($out) + 1)] = $this->jsonNode(['@id' => ($url . $suffix)]);
+					$out[(count($out) + 1)] = ['@id' => ($url . $suffix)];
 					$added = true;
 				}
 			}
@@ -1847,13 +1844,13 @@ class ArgumentReferenceRenderer {
 		return $added;
 	}
 
-	protected function wkAppendFirstValidId($out = null, $titles = null, $suffix = null, $lang = null) {
+	protected function wkAppendFirstValidId(array &$out, $titles = null, $suffix = null, $lang = null) {
 		foreach ($titles ?? [] as $title) {
 			$title = $this->canonicalTitle(trim(NativeText::field($title), NativeText::ASCII_WHITESPACE));
 			if (($title !== '')) {
 				$url = $this->wkFullUrl($title, $lang);
 				if (($url !== '')) {
-					$out[(Lua::len($out) + 1)] = $this->jsonNode(['@id' => ($url . $suffix)]);
+					$out[(count($out) + 1)] = ['@id' => ($url . $suffix)];
 					return true;
 				}
 			}
@@ -1862,7 +1859,7 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function wkBuildClaimIsPartOf($lang = null, ?ParentRelations $cache = null) {
-		$out = new Table([1 => $this->jsonNode(['@id' => $this->wkBuildWikiUrl($lang, 'category_prefix', 'arguments_label')])]);
+		$out = [1 => ['@id' => $this->wkBuildWikiUrl($lang, 'category_prefix', 'arguments_label')]];
 		$debates = [];
 		foreach ([$cache->proDebates ?? [], $cache->conDebates ?? []] as $titles) {
 			foreach ($titles as $title) {
@@ -1884,30 +1881,30 @@ class ArgumentReferenceRenderer {
 		if (($raw === '')) {
 			return null;
 		}
-		$authors = $this->splitCSV($raw, ',');
-		if ((Lua::len($authors) === 0)) {
+		$authors = $this->csvValues($raw, ',');
+		if ((count($authors) === 0)) {
 			return null;
 		}
-		if ((Lua::len($authors) === 1)) {
-			return $this->jsonNode(['@type' => 'Person', 'name' => $authors[1]]);
+		if ((count($authors) === 1)) {
+			return ['@type' => 'Person', 'name' => $authors[1]];
 		}
 		$out = [];
-		foreach (($authors)->sequence() as $_ => $one) {
+		foreach ($authors as $one) {
 			$one = trim(NativeText::field($one), NativeText::ASCII_WHITESPACE);
 			if (($one !== '')) {
-				$out[count($out) + 1] = $this->jsonNode(['@type' => 'Person', 'name' => $one]);
+				$out[count($out) + 1] = ['@type' => 'Person', 'name' => $one];
 			}
 		}
 		if ((count($out) === 0)) {
 			return null;
 		}
-		return new Table($out);
+		return $out;
 	}
 
 	protected function wkBuildClaimCitationsFromQuotes($raw = null) {
 		$raw = trim(NativeText::field($raw), NativeText::ASCII_WHITESPACE);
 		if (($raw === '')) {
-			return new Table([]);
+			return [];
 		}
 		$items = $this->nativeReferenceValues('quotes', $raw);
 		return $this->wkBuildNodesFromNativeItems($items, function($item = null) {
@@ -1921,7 +1918,7 @@ class ArgumentReferenceRenderer {
 		$link = $item['link'];
 		$node = null;
 		if (((($number !== '') && ($article !== '')) && ($work !== ''))) {
-			$node = $this->jsonNode(['@type' => 'Article', 'name' => $article, 'isPartOf' => $this->jsonNode(['@type' => 'Periodical', 'name' => $work])]);
+			$node = ['@type' => 'Article', 'name' => $article, 'isPartOf' => ['@type' => 'Periodical', 'name' => $work]];
 			if (($volume !== '')) {
 				$node['volumeNumber'] = $volume;
 			}
@@ -1929,7 +1926,7 @@ class ArgumentReferenceRenderer {
 		}
 		else {
 			if ((($publisher !== '') && ($work !== ''))) {
-				$node = $this->jsonNode(['@type' => 'Book', 'name' => $work]);
+				$node = ['@type' => 'Book', 'name' => $work];
 				if (($article !== '')) {
 					$node['description'] = $article;
 				}
@@ -1942,9 +1939,9 @@ class ArgumentReferenceRenderer {
 			}
 			else {
 				if ((($link !== '') && ($article !== ''))) {
-					$node = $this->jsonNode(['@type' => 'WebPage', 'name' => $article]);
+					$node = ['@type' => 'WebPage', 'name' => $article];
 					if (($work !== '')) {
-						$node['isPartOf'] = $this->jsonNode(['@type' => 'WebSite', 'name' => $work]);
+						$node['isPartOf'] = ['@type' => 'WebSite', 'name' => $work];
 					}
 				}
 			}
@@ -1953,29 +1950,29 @@ class ArgumentReferenceRenderer {
 			if ($article === '' && $work === '') {
 				return null;
 			}
-			$node = $this->jsonNode(['@type' => 'CreativeWork', 'name' => $article !== '' ? $article : $work]);
+			$node = ['@type' => 'CreativeWork', 'name' => $article !== '' ? $article : $work];
 			if ($article !== '' && $work !== '') {
-				$node['isPartOf'] = $this->jsonNode(['@type' => 'CreativeWork', 'name' => $work]);
+				$node['isPartOf'] = ['@type' => 'CreativeWork', 'name' => $work];
 			}
 			// Preserve ambiguous volume/number as literal identifiers.
 			$identifiers = [];
 			foreach (['volume' => $volume, 'number' => $number] as $key => $value) {
 				if ($value !== '') {
-					$identifiers[count($identifiers) + 1] = $this->jsonNode([
+					$identifiers[count($identifiers) + 1] = [
 						'@type' => 'PropertyValue', 'propertyID' => $key, 'value' => $value
-					]);
+					];
 				}
 			}
 			if ($identifiers !== []) {
-				$node['identifier'] = new Table($identifiers);
+				$node['identifier'] = $identifiers;
 			}
 		}
 		$authorValue = $this->wkBuildQuoteAuthorValue($authors);
-		if (Lua::truth($authorValue)) {
+		if ($authorValue !== null) {
 			$node['author'] = $authorValue;
 		}
 		if (($publisher !== '')) {
-			$node['publisher'] = $this->jsonNode(['@type' => 'Organization', 'name' => $publisher]);
+			$node['publisher'] = ['@type' => 'Organization', 'name' => $publisher];
 		}
 		if (($date !== '')) {
 			$node['datePublished'] = $date;
@@ -1990,7 +1987,7 @@ class ArgumentReferenceRenderer {
 	protected function wkBuildClaimCitationsFromBibliography($raw = null) {
 		$raw = trim(NativeText::field($raw), NativeText::ASCII_WHITESPACE);
 		if (($raw === '')) {
-			return new Table([]);
+			return [];
 		}
 		$items = $this->nativeReferenceValues('bibliography', $raw);
 		return $this->wkBuildNodesFromNativeItems($items, function($item = null) {
@@ -2004,7 +2001,7 @@ class ArgumentReferenceRenderer {
 		$link = $item['link'];
 		$node = null;
 		if (((($number !== '') && ($article !== '')) && ($work !== ''))) {
-			$node = $this->jsonNode(['@type' => 'Article', 'name' => $article, 'isPartOf' => $this->jsonNode(['@type' => 'Periodical', 'name' => $work])]);
+			$node = ['@type' => 'Article', 'name' => $article, 'isPartOf' => ['@type' => 'Periodical', 'name' => $work]];
 			if (($volume !== '')) {
 				$node['volumeNumber'] = $volume;
 			}
@@ -2012,7 +2009,7 @@ class ArgumentReferenceRenderer {
 		}
 		else {
 			if ((($publisher !== '') && ($work !== ''))) {
-				$node = $this->jsonNode(['@type' => 'Book', 'name' => $work]);
+				$node = ['@type' => 'Book', 'name' => $work];
 				if (($article !== '')) {
 					$node['description'] = $article;
 				}
@@ -2025,9 +2022,9 @@ class ArgumentReferenceRenderer {
 			}
 			else {
 				if ((($link !== '') && ($article !== ''))) {
-					$node = $this->jsonNode(['@type' => 'WebPage', 'name' => $article]);
+					$node = ['@type' => 'WebPage', 'name' => $article];
 					if (($work !== '')) {
-						$node['isPartOf'] = $this->jsonNode(['@type' => 'WebSite', 'name' => $work]);
+						$node['isPartOf'] = ['@type' => 'WebSite', 'name' => $work];
 					}
 				}
 			}
@@ -2036,29 +2033,29 @@ class ArgumentReferenceRenderer {
 			if ($article === '' && $work === '') {
 				return null;
 			}
-			$node = $this->jsonNode(['@type' => 'CreativeWork', 'name' => $article !== '' ? $article : $work]);
+			$node = ['@type' => 'CreativeWork', 'name' => $article !== '' ? $article : $work];
 			if ($article !== '' && $work !== '') {
-				$node['isPartOf'] = $this->jsonNode(['@type' => 'CreativeWork', 'name' => $work]);
+				$node['isPartOf'] = ['@type' => 'CreativeWork', 'name' => $work];
 			}
 			// Preserve ambiguous volume/number as literal identifiers.
 			$identifiers = [];
 			foreach (['volume' => $volume, 'number' => $number] as $key => $value) {
 				if ($value !== '') {
-					$identifiers[count($identifiers) + 1] = $this->jsonNode([
+					$identifiers[count($identifiers) + 1] = [
 						'@type' => 'PropertyValue', 'propertyID' => $key, 'value' => $value
-					]);
+					];
 				}
 			}
 			if ($identifiers !== []) {
-				$node['identifier'] = new Table($identifiers);
+				$node['identifier'] = $identifiers;
 			}
 		}
 		$authorValue = $this->wkBuildQuoteAuthorValue($authors);
-		if (Lua::truth($authorValue)) {
+		if ($authorValue !== null) {
 			$node['author'] = $authorValue;
 		}
 		if (($publisher !== '')) {
-			$node['publisher'] = $this->jsonNode(['@type' => 'Organization', 'name' => $publisher]);
+			$node['publisher'] = ['@type' => 'Organization', 'name' => $publisher];
 		}
 		if (($date !== '')) {
 			$node['datePublished'] = $date;
@@ -2073,7 +2070,7 @@ class ArgumentReferenceRenderer {
 	protected function wkBuildClaimCitationsFromWebliography($raw = null) {
 		$raw = trim(NativeText::field($raw), NativeText::ASCII_WHITESPACE);
 		if (($raw === '')) {
-			return new Table([]);
+			return [];
 		}
 		$items = $this->nativeReferenceValues('webliography', $raw);
 		return $this->wkBuildNodesFromNativeItems($items, function($item = null) {
@@ -2084,12 +2081,12 @@ class ArgumentReferenceRenderer {
 		if ($page === '' && $site === '') {
 			return null;
 		}
-		$node = $this->jsonNode(['@type' => 'WebPage', 'name' => $page !== '' ? $page : $site]);
+		$node = ['@type' => 'WebPage', 'name' => $page !== '' ? $page : $site];
 		if ($link !== '') {
 			$node['url'] = $link;
 		}
 		if ($page !== '' && $site !== '') {
-			$node['isPartOf'] = $this->jsonNode(['@type' => 'WebSite', 'name' => $site]);
+			$node['isPartOf'] = ['@type' => 'WebSite', 'name' => $site];
 		}
 		if (($date !== '')) {
 			$node['datePublished'] = $date;
@@ -2101,7 +2098,7 @@ class ArgumentReferenceRenderer {
 	protected function wkBuildClaimCitationsFromVideography($raw = null) {
 		$raw = trim(NativeText::field($raw), NativeText::ASCII_WHITESPACE);
 		if (($raw === '')) {
-			return new Table([]);
+			return [];
 		}
 		$items = $this->nativeReferenceValues('videography', $raw);
 		return $this->wkBuildNodesFromNativeItems($items, function($item = null) {
@@ -2111,12 +2108,12 @@ class ArgumentReferenceRenderer {
 		if ($title === '') {
 			return null;
 		}
-		$node = $this->jsonNode(['@type' => 'VideoObject', 'name' => $title]);
+		$node = ['@type' => 'VideoObject', 'name' => $title];
 		if ($link !== '') {
 			$node['url'] = $link;
 		}
 		$authorValue = $this->wkBuildQuoteAuthorValue($authors);
-		if (Lua::truth($authorValue)) {
+		if ($authorValue !== null) {
 			$node['author'] = $authorValue;
 		}
 		return $node;
@@ -2125,86 +2122,82 @@ class ArgumentReferenceRenderer {
 
 
 	protected function renderArgumentSchemaJSONLD($args = null, $pv = null, $lang = null, ?ParentRelations $cache = null, $PF = null, $maps = null) {
-		$previousNativeJson = $this->nativeJson;
-		$this->nativeJson = $this->context instanceof NativeJsonContext;
-		try {
-			$this->ensureDebateParents($pv, $cache, $PF);
-			$this->ensureArgumentParents($pv, $cache, $PF);
-			$schemaCategories = [];
-			$this->ensureBreadcrumbSelection($pv, $cache, $schemaCategories, $lang, $PF);
-			$websiteNode = $this->wkBuildWebsiteNode($lang);
-			$breadcrumbNode = $this->wkBuildBreadcrumbNode($pv, $lang);
-			$organizationNode = $this->wkBuildOrganizationNode($lang);
-			[$about, $mentions] = $this->wkBuildAboutAndMentions($args);
-			$keywords = $this->wkBuildKeywords($args, $lang);
-			$isPartOf = $this->wkBuildClaimIsPartOf($lang, $cache);
-			$parts = SchemaData::argumentParts($args, $maps, $pv['pageUrl'], $lang,
-				fn(string $title): string => $this->wkFullUrl($this->canonicalTitle($title)), $this->context);
-			$citations = new Table;
-			foreach ([
-				'wkBuildClaimCitationsFromQuotes' => '_quotes_wikitext',
-				'wkBuildClaimCitationsFromBibliography' => 'bibliography',
-				'wkBuildClaimCitationsFromWebliography' => 'webliography',
-				'wkBuildClaimCitationsFromVideography' => 'videography'
-			] as $builder => $field) {
-				foreach ($this->$builder((string)($args[$field] ?? ''))->sequence() as $node) {
-					$citations[count($citations) + 1] = $node;
-				}
+		$this->ensureDebateParents($pv, $cache, $PF);
+		$this->ensureArgumentParents($pv, $cache, $PF);
+		$schemaCategories = [];
+		$this->ensureBreadcrumbSelection($pv, $cache, $schemaCategories, $lang, $PF);
+		$websiteNode = $this->wkBuildWebsiteNode($lang);
+		$breadcrumbNode = $this->wkBuildBreadcrumbNode($pv, $lang);
+		$organizationNode = $this->wkBuildOrganizationNode($lang);
+		[$about, $mentions] = $this->wkBuildAboutAndMentions($args);
+		$keywords = $this->wkBuildKeywords($args, $lang);
+		$isPartOf = $this->wkBuildClaimIsPartOf($lang, $cache);
+		$parts = SchemaData::argumentParts($args, $maps, $pv['pageUrl'], $lang,
+			fn(string $title): string => $this->wkFullUrl($this->canonicalTitle($title)), $this->context);
+		$citations = [];
+		foreach ([
+			'wkBuildClaimCitationsFromQuotes' => '_quotes_wikitext',
+			'wkBuildClaimCitationsFromBibliography' => 'bibliography',
+			'wkBuildClaimCitationsFromWebliography' => 'webliography',
+			'wkBuildClaimCitationsFromVideography' => 'videography'
+		] as $builder => $field) {
+			foreach ($this->$builder((string)($args[$field] ?? '')) as $node) {
+				$citations[count($citations) + 1] = $node;
 			}
-			$pageNode = [
-				'@type' => [1 => 'WebPage', 2 => 'LearningResource'],
-				'@id' => $pv['pageUrl'],
-				'url' => $pv['pageUrl'],
-				'name' => $pv['rawTitle'],
-				'inLanguage' => $lang,
-				'isPartOf' => ['@id' => $this->L($lang, 'urls', 'home') . '#website'],
-				'breadcrumb' => ['@id' => $pv['pageUrl'] . '#breadcrumb'],
-				'discussionUrl' => $this->wkBuildDiscussionUrl($pv, $lang),
-				'mainEntity' => ['@id' => $pv['pageUrl'] . '#claim']
-			] + SchemaData::education($lang, 'argument');
-			if ($parts !== []) {
-				$pageNode['hasPart'] = $parts;
+		}
+		$pageNode = [
+			'@type' => [1 => 'WebPage', 2 => 'LearningResource'],
+			'@id' => $pv['pageUrl'],
+			'url' => $pv['pageUrl'],
+			'name' => $pv['rawTitle'],
+			'inLanguage' => $lang,
+			'isPartOf' => ['@id' => $this->L($lang, 'urls', 'home') . '#website'],
+			'breadcrumb' => ['@id' => $pv['pageUrl'] . '#breadcrumb'],
+			'discussionUrl' => $this->wkBuildDiscussionUrl($pv, $lang),
+			'mainEntity' => ['@id' => $pv['pageUrl'] . '#claim']
+		] + SchemaData::education($lang, 'argument');
+		if ($parts !== []) {
+			$pageNode['hasPart'] = $parts;
+		}
+		// Credit collective page authors without attributing the Claim to them.
+		$credit = $this->seoL($lang, 'author');
+		$pageNode['creditText'] = $credit;
+		$pageNode['author'] = ['@type' => 'Organization', 'name' => $credit];
+		$pageNode['publisher'] = ['@id' => ($this->L($lang, 'urls', 'home') . '#organization')];
+		$claimNode = [
+			'@type' => 'Claim',
+			'@id' => $pv['pageUrl'] . '#claim',
+			'url' => $pv['pageUrl'],
+			'name' => $pv['rawTitle'],
+			'inLanguage' => $lang,
+			'isPartOf' => $isPartOf,
+			'appearance' => ['@id' => $pv['pageUrl']]
+		];
+		if (($args['established-name'] !== null && $args['established-name'] !== false && (trim($args['established-name'], NativeText::ASCII_WHITESPACE) !== ''))) {
+			$claimNode['alternateName'] = $args['established-name'];
+		}
+		{
+			$summary = NativeText::seoPlainText((string)($args['summary'] ?? ''), $this->context);
+			if (($summary !== '')) {
+				$claimNode['abstract'] = $summary;
 			}
-			// Credit collective page authors without attributing the Claim to them.
-			$credit = $this->seoL($lang, 'author');
-			$pageNode['creditText'] = $credit;
-			$pageNode['author'] = $this->jsonNode(['@type' => 'Organization', 'name' => $credit]);
-			$pageNode['publisher'] = ['@id' => ($this->L($lang, 'urls', 'home') . '#organization')];
-			$claimNode = [
-				'@type' => 'Claim',
-				'@id' => $pv['pageUrl'] . '#claim',
-				'url' => $pv['pageUrl'],
-				'name' => $pv['rawTitle'],
-				'inLanguage' => $lang,
-				'isPartOf' => $isPartOf,
-				'appearance' => ['@id' => $pv['pageUrl']]
-			];
-			if ((Lua::truth($args['established-name']) && (trim($args['established-name'], NativeText::ASCII_WHITESPACE) !== ''))) {
-				$claimNode['alternateName'] = $args['established-name'];
-			}
-			{
-				$summary = NativeText::seoPlainText((string)($args['summary'] ?? ''), $this->context);
-				if (($summary !== '')) {
-					$claimNode['abstract'] = $summary;
-				}
-			}
-			if ((Lua::len($about) > 0)) {
-				$claimNode['about'] = $about;
-			}
-			if ((Lua::len($mentions) > 0)) {
-				$claimNode['mentions'] = $mentions;
-			}
-			if ((Lua::len($keywords) > 0)) {
-				$claimNode['keywords'] = $keywords;
-			}
-			if ((Lua::len($citations) > 0)) {
-				$claimNode['citation'] = $citations;
-			}
-			$data = (['@context' => 'https://schema.org', '@graph' => ([1 => $websiteNode, 2 => $organizationNode, 3 => $breadcrumbNode, 4 => $pageNode, 5 => $claimNode])]);
-			if ($this->context instanceof NativeJsonContext) { return $this->context->jsonLdData($data); }
-			$json = $this->safeJsonEncode(Table::wrap($data));
-			return $this->context->jsonLd($json);
-		} finally { $this->nativeJson = $previousNativeJson; }
+		}
+		if ((count($about) > 0)) {
+			$claimNode['about'] = $about;
+		}
+		if ((count($mentions) > 0)) {
+			$claimNode['mentions'] = $mentions;
+		}
+		if ((count($keywords) > 0)) {
+			$claimNode['keywords'] = $keywords;
+		}
+		if ((count($citations) > 0)) {
+			$claimNode['citation'] = $citations;
+		}
+		$data = (['@context' => 'https://schema.org', '@graph' => ([1 => $websiteNode, 2 => $organizationNode, 3 => $breadcrumbNode, 4 => $pageNode, 5 => $claimNode])]);
+		if ($this->context instanceof NativeJsonContext) { return $this->context->jsonLdData($data); }
+		$json = $this->context->jsonEncode(Table::wrap($data));
+		return $this->context->jsonLd($json);
 	}
 
 	protected function canonicalTitle($s = null) {
@@ -2578,7 +2571,6 @@ class ArgumentReferenceRenderer {
 	protected function vset($name, $value) { $this->context->variableSet($name, Lua::str($value ?? '')); }
 	protected function vget($name) { return $this->context->variableGet($name); }
 	protected function titleNewCached($text) { return $this->context->titleInfo($text); }
-	protected function safeJsonEncode($data) { return $this->context->jsonEncode($data); }
 	protected function seoKeyPart($text) { return md5(Lua::str($text ?? '')); }
 	protected function absUrlFromTitle($title, $query) { return $this->context->fullUrl($title, $query) ?? $this->context->localUrl($title, $query) ?? ''; }
 	protected function smwAskSafe($query, string $origin = 'other') {
