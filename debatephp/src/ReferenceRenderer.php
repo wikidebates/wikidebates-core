@@ -466,54 +466,43 @@ class ReferenceRenderer {
 		return SerializedData::argumentItems($raw, false);
 	}
 
-	protected function wkComputeArgumentItems($raw = null) {
-		$items = $this->wkExtractArgumentItemsFromData($raw);
-		if ((Lua::len($items) > 0)) {
-			return [$items, 'data'];
-		}
-		return [new Table([]), 'none'];
-	}
-
-	protected function wkBuildArgumentData($items = null, $lang = null, $kind = null) {
-		$items = (Lua::truth($v68 = $items) ? $v68 : new Table([]));
-		$idPrefix = (($kind === 'pro') ? 'Pro_argument_' : 'Con_argument_');
+	/** @param list<array{page:string,title:string,warnings:string}> $items */
+	protected function wkBuildArgumentData(array $items = [], $lang = null, $kind = null): array {
+		$idPrefix = $kind === 'pro' ? 'Pro_argument_' : 'Con_argument_';
 		$listLines = [];
 		$argsVarParts = [];
 		$mapLines = [];
 		$hoverLines = [];
-		foreach (($items)->sequence() as $i => $it) {
-			$listLines[] = ('* ' . $it['title']);
-			if (($it['page'] === $it['title'])) {
-				if ($it['page'] !== null) { $argsVarParts[] = $it['page']; }
-			}
-			else {
-				$argsVarParts[] = ($it['page'] . '⟬' . $it['title']);
-			}
-			$mapLines[] = ('<div  id="' . $idPrefix . $i . '_map" class="argument-title--map wk-icon-before wk-icon-argument">' . $it['title'] . '</div>');
-			$hoverLines[] = ('<div class="argument-title--map wk-icon-before wk-icon-argument">' . '[[' . $it['page'] . '|' . $it['title'] . ']]</div>');
+		foreach ($items as $index => $item) {
+			$page = $item['page'];
+			$title = $item['title'];
+			$listLines[] = '* ' . $title;
+			$argsVarParts[] = $page === $title ? $page : $page . $this->FIELD_SEP . $title;
+			$mapLines[] = '<div  id="' . $idPrefix . ($index + 1) . '_map" class="argument-title--map wk-icon-before wk-icon-argument">' . $title . '</div>';
+			$hoverLines[] = '<div class="argument-title--map wk-icon-before wk-icon-argument">[[' . $page . '|' . $title . ']]</div>';
 		}
-		$listText = implode('
-', $listLines);
-		$argsVar = implode(' -;- ', $argsVarParts);
-		$mapHtml = implode('
-', $mapLines);
-		$mapHoverHtml = implode('
-', $hoverLines);
-		return new Table(['items' => $items, 'list' => $listText, 'argsVar' => $argsVar, 'map' => $mapHtml, 'mapHover' => $mapHoverHtml]);
+		return [
+			'items' => $items,
+			'list' => implode("\n", $listLines),
+			'argsVar' => implode(' -;- ', $argsVarParts),
+			'map' => implode("\n", $mapLines),
+			'mapHover' => implode("\n", $hoverLines)
+		];
 	}
 
-	protected function computeArgumentMapsFromArgs($args = null, $lang = null) {
-		$rawPro = (Lua::truth($v71 = $args['pro-arguments']) ? $v71 : '');
-		$rawCon = (Lua::truth($v72 = $args['con-arguments']) ? $v72 : '');
+	protected function computeArgumentMapsFromArgs($args = null, $lang = null): array {
+		$rawPro = NativeText::field($args['pro-arguments']);
+		$rawCon = NativeText::field($args['con-arguments']);
 		if (($rawPro !== '')) {
 			$rawPro = $this->context->expandField($rawPro, 'debate.arguments.pro');
 		}
 		if (($rawCon !== '')) {
 			$rawCon = $this->context->expandField($rawCon, 'debate.arguments.con');
 		}
-		[$pro, $proMode] = $this->wkComputeArgumentItems($rawPro);
-		[$con, $conMode] = $this->wkComputeArgumentItems($rawCon);
-		return new Table(['pro' => $this->wkBuildArgumentData($pro, $lang, 'pro'), 'con' => $this->wkBuildArgumentData($con, $lang, 'con'), '_mode' => new Table(['pro' => $proMode, 'con' => $conMode])]);
+		return [
+			'pro' => $this->wkBuildArgumentData($this->wkExtractArgumentItemsFromData($rawPro), $lang, 'pro'),
+			'con' => $this->wkBuildArgumentData($this->wkExtractArgumentItemsFromData($rawCon), $lang, 'con')
+		];
 	}
 
 	protected function wkRenderArgumentLi($pv = null, $lang = null, $it = null, $kind = null, $idx = null, $cats = null) {
@@ -607,9 +596,8 @@ class ReferenceRenderer {
 	}
 
 	protected function renderArgumentMapTop($lang = null, $maps = null) {
-		$maps = (Lua::truth($v90 = $maps) ? $v90 : new Table([]));
-		$pro = (Lua::truth($v91 = (Lua::truth($v92 = $maps['pro']) ? $maps['pro']['map'] : $v92)) ? $v91 : '');
-		$con = (Lua::truth($v93 = (Lua::truth($v94 = $maps['con']) ? $maps['con']['map'] : $v94)) ? $v93 : '');
+		$pro = $maps['pro']['map'] ?? '';
+		$con = $maps['con']['map'] ?? '';
 		$labelPour = $this->L($lang, 'text', 'arg_map_pro_label');
 		$labelContre = $this->L($lang, 'text', 'arg_map_con_label');
 		$msgPour = $this->L($lang, 'text', 'none_pro_args_msg_short');
@@ -618,11 +606,11 @@ class ReferenceRenderer {
 		$colP = ((HtmlBuilder::create('div'))->addClass('wk-arg-map__col'))->addClass('is-pro');
 		$colC = ((HtmlBuilder::create('div'))->addClass('wk-arg-map__col'))->addClass('is-con');
 		($colP)->node(((HtmlBuilder::create('div'))->addClass('wk-arg-map__th'))->wikitext($labelPour));
-		($colP)->node(((HtmlBuilder::create('div'))->addClass('wk-arg-map__td'))->wikitext((Lua::truth($v95 = (Lua::truth($v96 = ($pro !== '')) ? $pro : $v96)) ? $v95 : ('<div class="carte-vide navigation-not-searchable">' . $msgPour . '</div>'))));
+		($colP)->node(((HtmlBuilder::create('div'))->addClass('wk-arg-map__td'))->wikitext(($pro !== '' ? $pro : '<div class="carte-vide navigation-not-searchable">' . $msgPour . '</div>')));
 		($colC)->node(((HtmlBuilder::create('div'))->addClass('wk-arg-map__th'))->wikitext($labelContre));
-		($colC)->node(((HtmlBuilder::create('div'))->addClass('wk-arg-map__td'))->wikitext((Lua::truth($v97 = (Lua::truth($v98 = ($con !== '')) ? $con : $v98)) ? $v97 : ('<div class="carte-vide navigation-not-searchable">' . $msgContre . '</div>'))));
+		($colC)->node(((HtmlBuilder::create('div'))->addClass('wk-arg-map__td'))->wikitext(($con !== '' ? $con : '<div class="carte-vide navigation-not-searchable">' . $msgContre . '</div>')));
 		(($root)->node($colP))->node($colC);
-		return Lua::str($root);
+		return (string)$root;
 	}
 
 	protected function wkParseIntroSubsections($raw = null) {
@@ -773,18 +761,16 @@ class ReferenceRenderer {
 		$out[] = $this->listBreaker();
 		$out[] = ('<h2 class="section-modifiable wk-icon-before wk-icon-argument ' . (Lua::truth($v119 = (Lua::truth($v120 = $isCon) ? $hIconCon : $v120)) ? $v119 : $hIconPro) . '">' . $title . $btnForm . '</h2>');
 		$out[] = $this->renderQuestionsFAQ($args['expanded-topic'], $sens, $lang);
-		$mode = (Lua::truth($v121 = (Lua::truth($v122 = (Lua::truth($v123 = $maps) ? $maps['_mode'] : $v123)) ? (Lua::truth($v124 = (Lua::truth($v125 = $isCon) ? $maps['_mode']['con'] : $v125)) ? $v124 : $maps['_mode']['pro']) : $v122)) ? $v121 : 'none');
-		$data = (Lua::truth($v126 = (Lua::truth($v127 = $maps) ? (Lua::truth($v128 = (Lua::truth($v129 = $isCon) ? $maps['con'] : $v129)) ? $v128 : $maps['pro']) : $v127)) ? $v126 : null);
-		$items = (Lua::truth($v130 = (Lua::truth($v131 = $data) ? $data['items'] : $v131)) ? $v130 : new Table([]));
-		if ((($mode === 'data') && (Lua::len($items) > 0))) {
+		$items = $maps[$isCon ? 'con' : 'pro']['items'] ?? [];
+		if ($items !== []) {
 			$ul = ((HtmlBuilder::create('ul'))->addClass('argument-list'))->addClass(($isCon ? 'is-con' : 'is-pro'));
 			$lis = [];
 			$anyTitleWarnings = false;
-			foreach (($items)->sequence() as $i => $it) {
-				if ((Lua::truth($it['warnings']) && (trim($it['warnings'], NativeText::ASCII_WHITESPACE) !== ''))) {
+			foreach ($items as $i => $it) {
+				if ($it['warnings'] !== '') {
 					$anyTitleWarnings = true;
 				}
-				$lis[] = $this->wkRenderArgumentLi($pv, $lang, $it, ($isCon ? 'con' : 'pro'), $i, $cats);
+				$lis[] = $this->wkRenderArgumentLi($pv, $lang, $it, ($isCon ? 'con' : 'pro'), $i + 1, $cats);
 			}
 			($ul)->wikitext(implode('
 ', $lis));
@@ -1574,32 +1560,31 @@ class ReferenceRenderer {
 	}
 
 	protected function setSemanticData($args = null, $pv = null, $lang = null, $maps = null, $smwPending = null) {
-		$maps = (Lua::truth($v241 = $maps) ? $v241 : new Table([]));
-		$pro = (Lua::truth($v242 = $maps['pro']) ? $v242 : new Table([]));
-		$con = (Lua::truth($v243 = $maps['con']) ? $v243 : new Table([]));
+		$pro = $maps['pro'] ?? [];
+		$con = $maps['con'] ?? [];
 		$pourPages = new Table([]);
 		$contrePages = new Table([]);
-		foreach (((Lua::truth($v244 = $pro['items']) ? $v244 : new Table([])))->sequence() as $_ => $it) {
-			if ((Lua::truth($it['page']) && ($it['page'] !== ''))) {
+		foreach ($pro['items'] ?? [] as $it) {
+			if ($it['page'] !== '') {
 				Lua::insert($pourPages, $it['page']);
 			}
 		}
-		foreach (((Lua::truth($v245 = $con['items']) ? $v245 : new Table([])))->sequence() as $_ => $it) {
-			if ((Lua::truth($it['page']) && ($it['page'] !== ''))) {
+		foreach ($con['items'] ?? [] as $it) {
+			if ($it['page'] !== '') {
 				Lua::insert($contrePages, $it['page']);
 			}
 		}
 		$props = new Table([]);
-		$pourSurvol = trim((Lua::truth($v246 = $pro['mapHover']) ? $v246 : ''), NativeText::ASCII_WHITESPACE);
-		$contreSurvol = trim((Lua::truth($v247 = $con['mapHover']) ? $v247 : ''), NativeText::ASCII_WHITESPACE);
+		$pourSurvol = trim($pro['mapHover'] ?? '', NativeText::ASCII_WHITESPACE);
+		$contreSurvol = trim($con['mapHover'] ?? '', NativeText::ASCII_WHITESPACE);
 		if (($pourSurvol === '')) {
 			$pourSurvol = ('<div class="carte-vide">' . $this->L($lang, 'text', 'none_pro_args_msg_short') . '</div>');
 		}
 		if (($contreSurvol === '')) {
 			$contreSurvol = ('<div class="carte-vide">' . $this->L($lang, 'text', 'none_con_args_msg_short') . '</div>');
 		}
-		$listePour = trim((Lua::truth($v248 = $pro['argsVar']) ? $v248 : ''), NativeText::ASCII_WHITESPACE);
-		$listeContre = trim((Lua::truth($v249 = $con['argsVar']) ? $v249 : ''), NativeText::ASCII_WHITESPACE);
+		$listePour = trim($pro['argsVar'] ?? '', NativeText::ASCII_WHITESPACE);
+		$listeContre = trim($con['argsVar'] ?? '', NativeText::ASCII_WHITESPACE);
 		$props[$this->smwProp($lang, 'debate_name')] = $pv['rawTitle'];
 		$props[$this->smwProp($lang, 'debate_number')] = $pv['pageId'];
 		$props[$this->smwProp($lang, 'breadcrumb')] = $pv['rawTitle'];
