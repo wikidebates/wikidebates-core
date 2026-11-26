@@ -322,7 +322,7 @@ $equal(['empty' => []], TextEscaper::jsonValue($semantic::toLegacyTable(['empty'
 
 // A missing category sink suppresses only category collection, not the banner.
 $categoryContext = new ArgumentTestContext(['title' => 'Category probe', 'args' => ['lang' => 'en']]);
-foreach ([ArgumentReferenceRenderer::class, \\MediaWiki\\Extension\\DebatePHP\\ReferenceRenderer::class] as $class) {
+foreach ([ArgumentReferenceRenderer::class, \MediaWiki\Extension\DebatePHP\ReferenceRenderer::class] as $class) {
 	$renderer = new $class($categoryContext);
 	$banner = new ReflectionMethod($renderer, 'renderSubsectionBanner');
 	$category = new ReflectionMethod($renderer, 'subMsg');
