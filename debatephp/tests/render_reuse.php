@@ -38,6 +38,13 @@ foreach ([\MediaWiki\Extension\DebatePHP\ReferenceRenderer::class, \MediaWiki\Ex
 	$case = ['title' => 'Native debate references', 'args' => ['lang' => 'en']];
 	$context = new class($case) extends ArgumentTestContext {
 		public array $expansions = [];
+		public array $referenceForms = [];
+		public function message(string $domain, string $lang, string $key, ...$args): string {
+			if ($domain === 'Debate.forms' && preg_match('/^(biblio|weblio(?:graphy)?|video(?:graphy)?)_(pro|con|neutral)_title$/D', $key)) {
+				$this->referenceForms[] = $key;
+			}
+			return parent::message($domain, $lang, $key, ...$args);
+		}
 		public function expandField(string $text, string $origin = ''): string {
 			$this->expansions[] = [$origin, $text];
 			return str_replace('RAW', 'Expanded', $text);
@@ -65,7 +72,14 @@ foreach ([\MediaWiki\Extension\DebatePHP\ReferenceRenderer::class, \MediaWiki\Ex
 		$case['args'] = $args;
 		$caseProperty->setValue($context, $case);
 		$context->expansions = [];
+		$context->referenceForms = [];
 		$html = $renderer->render();
+		same([
+			'biblio_pro_title', 'biblio_con_title', 'biblio_neutral_title',
+			'webliography_pro_title', 'webliography_con_title', 'webliography_neutral_title',
+			'videography_pro_title', 'videography_con_title', 'videography_neutral_title'
+		], $context->referenceForms, 'Exact editing form translations and order');
+		$checks++;
 		same($expected, array_values(array_filter($context->expansions, static fn($entry) =>
 			preg_match('/^debate\\.(bibliography|webliography|videography)\\./', $entry[0]))),
 			'Reference expansion occurs once per nonempty field in the historical order');

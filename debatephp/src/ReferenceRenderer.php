@@ -1042,8 +1042,8 @@ class ReferenceRenderer {
 		$refRaw = [];
 		$formats = [
 			'bibliography' => ['Bibliography', 'biblio', 'wkRenderBiblioListFromArg'],
-			'webliography' => ['Webliography', 'weblio', 'wkRenderWeblioListFromArg'],
-			'videography' => ['Videography', 'video', 'wkRenderVideoListFromArg']
+			'webliography' => ['Webliography', 'webliography', 'wkRenderWeblioListFromArg'],
+			'videography' => ['Videography', 'videography', 'wkRenderVideoListFromArg']
 		];
 		$sides = [
 			'pro' => ['wk-icon-argument is-pro', 'side_pro_title'],
