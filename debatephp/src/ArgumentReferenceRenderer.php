@@ -283,41 +283,6 @@ class ArgumentReferenceRenderer {
 		return '';
 	}
 
-	protected function smwQueueAdd($pending = null, $key = null, $val = null, $multi = null) {
-		if ((((!(Lua::truth($pending)) || !(Lua::truth($key))) || ($key === '')) || ($val === null))) {
-			return null;
-		}
-		if ((is_string($val))) {
-			$val = trim($val, NativeText::ASCII_WHITESPACE);
-			if (($val === '')) {
-				return null;
-			}
-		}
-		$cur = $pending[$key];
-		if (Lua::truth($multi)) {
-			if (($cur === null)) {
-				$pending[$key] = (Lua::truth($v38 = (Lua::truth($v39 = (($val instanceof Table))) ? $val : $v39)) ? $v38 : new Table([1 => $val]));
-				return null;
-			}
-			if ((!($cur instanceof Table))) {
-				$cur = new Table([1 => $cur]);
-				$pending[$key] = $cur;
-			}
-			if ((($val instanceof Table))) {
-				foreach (($val)->sequence() as $_ => $x) {
-					if (($x !== null)) {
-						$cur[(Lua::len($cur) + 1)] = $x;
-					}
-				}
-			}
-			else {
-				$cur[(Lua::len($cur) + 1)] = $val;
-			}
-			return null;
-		}
-		$pending[$key] = $val;
-	}
-
 	protected function subMsg($lang = null, $key = null, ...$rest) {
 		return $this->L($lang, 'subsection_banners', $key, ...$rest);
 	}
@@ -414,7 +379,7 @@ class ArgumentReferenceRenderer {
 		}
 	}
 
-	protected function wkRenderOneBiblioLi($item = null, $pv = null, $lang = null, $cats = null, $PF = null, $smwPending = null, $args = null) {
+	protected function wkRenderOneBiblioLi($item = null, $pv = null, $lang = null, $cats = null, $PF = null) {
 		$item = $item instanceof Table ? $item->values : $item;
 		$out = [];
 		$authors = $item['authors'];
@@ -422,27 +387,9 @@ class ArgumentReferenceRenderer {
 			$authors = $PF['unknown_author'];
 		}
 		$out[] = $authors;
-		{
-			$k = (Lua::truth($v62 = (Lua::truth($v63 = $smwPending) ? $this->smwPropRef($PF, 'authors') : $v63)) ? $v62 : '');
-			if (($k !== '')) {
-				$this->smwQueueAdd($smwPending, $k, $authors, true);
-			}
-		}
 		$article = $item['article'];
 		$work = $item['work'];
 		$link = $item['link'];
-		{
-			if (Lua::truth($smwPending)) {
-				$ka = $this->smwPropRef($PF, 'article_name');
-				if ((($ka !== '') && ($article !== ''))) {
-					$this->smwQueueAdd($smwPending, $ka, $article, true);
-				}
-				$kw = $this->smwPropRef($PF, 'work_name');
-				if ((($kw !== '') && ($work !== ''))) {
-					$this->smwQueueAdd($smwPending, $kw, $work, true);
-				}
-			}
-		}
 		if (($article !== '')) {
 			if (($link !== '')) {
 				$out[] = (', « [' . $link . ' ' . $article . '] »');
@@ -483,22 +430,10 @@ class ArgumentReferenceRenderer {
 		$publisher = $item['publisher'];
 		if (($publisher !== '')) {
 			$out[] = (', ' . $publisher);
-			{
-				$kp = (Lua::truth($v72 = (Lua::truth($v73 = $smwPending) ? $this->smwPropRef($PF, 'publishing_house') : $v73)) ? $v72 : '');
-				if (($kp !== '')) {
-					$this->smwQueueAdd($smwPending, $kp, $publisher, true);
-				}
-			}
 		}
 		$place = $item['place'];
 		if (($place !== '')) {
 			$out[] = (', ' . $place);
-			{
-				$kp = (Lua::truth($v75 = (Lua::truth($v76 = $smwPending) ? $this->smwPropRef($PF, 'place_of_publication') : $v76)) ? $v75 : '');
-				if (($kp !== '')) {
-					$this->smwQueueAdd($smwPending, $kp, $place, true);
-				}
-			}
 		}
 		$date = $item['date'];
 		if (($date !== '')) {
@@ -508,7 +443,7 @@ class ArgumentReferenceRenderer {
 		return ('<li>' . implode('', $out) . '</li>');
 	}
 
-	protected function wkRenderOneWeblioLi($item = null, $pv = null, $lang = null, $cats = null, $PF = null, $smwPending = null, $args = null) {
+	protected function wkRenderOneWeblioLi($item = null, $pv = null, $lang = null, $cats = null, $PF = null) {
 		$item = $item instanceof Table ? $item->values : $item;
 		$out = [];
 		$page = $item['page'];
@@ -516,12 +451,6 @@ class ArgumentReferenceRenderer {
 		$link = $item['link'];
 		$date = $item['date'];
 		$authors = $item['authors'];
-		{
-			$k = (Lua::truth($v83 = (Lua::truth($v84 = $smwPending) ? $this->smwPropRef($PF, 'authors') : $v84)) ? $v83 : '');
-			if ((($k !== '') && ($authors !== ''))) {
-				$this->smwQueueAdd($smwPending, $k, $authors, true);
-			}
-		}
 		if (($authors !== '')) {
 			$out[] = $authors;
 		}
@@ -552,18 +481,12 @@ class ArgumentReferenceRenderer {
 		return ('<li>' . implode('', $out) . '</li>');
 	}
 
-	protected function wkRenderOneVideoLi($item = null, $pv = null, $lang = null, $cats = null, $PF = null, $smwPending = null, $args = null) {
+	protected function wkRenderOneVideoLi($item = null, $pv = null, $lang = null, $cats = null, $PF = null) {
 		$item = $item instanceof Table ? $item->values : $item;
 		$out = [];
 		$title = $item['title'];
 		$link = $item['link'];
 		$authors = $item['authors'];
-		{
-			$k = (Lua::truth($v94 = (Lua::truth($v95 = $smwPending) ? $this->smwPropRef($PF, 'authors') : $v95)) ? $v94 : '');
-			if ((($k !== '') && ($authors !== ''))) {
-				$this->smwQueueAdd($smwPending, $k, $authors, true);
-			}
-		}
 		if (($authors !== '')) {
 			$out[] = $authors;
 		}
@@ -579,16 +502,16 @@ class ArgumentReferenceRenderer {
 		return ('<li>' . implode('', $out) . '</li>');
 	}
 
-	protected function wkRenderReferencesFromRaw($rawB = null, $rawW = null, $rawV = null, $pv = null, $lang = null, $cats = null, $PF = null, $smwPending = null, $args = null) {
+	protected function wkRenderReferencesFromRaw($rawB = null, $rawW = null, $rawV = null, $pv = null, $lang = null, $cats = null, $PF = null) {
 		[$b, $w, $v] = [[], [], []];
 		foreach ($this->nativeReferenceValues('bibliography', $rawB) as $_ => $it) {
-			$b[] = $this->wkRenderOneBiblioLi($it, $pv, $lang, $cats, $PF, $smwPending, $args);
+			$b[] = $this->wkRenderOneBiblioLi($it, $pv, $lang, $cats, $PF);
 		}
 		foreach ($this->nativeReferenceValues('webliography', $rawW) as $_ => $it) {
-			$w[] = $this->wkRenderOneWeblioLi($it, $pv, $lang, $cats, $PF, $smwPending, $args);
+			$w[] = $this->wkRenderOneWeblioLi($it, $pv, $lang, $cats, $PF);
 		}
 		foreach ($this->nativeReferenceValues('videography', $rawV) as $_ => $it) {
-			$v[] = $this->wkRenderOneVideoLi($it, $pv, $lang, $cats, $PF, $smwPending, $args);
+			$v[] = $this->wkRenderOneVideoLi($it, $pv, $lang, $cats, $PF);
 		}
 		if ((((count($b) === 0) && (count($w) === 0)) && (count($v) === 0))) {
 			return '';
@@ -670,11 +593,6 @@ class ArgumentReferenceRenderer {
 	}
 
 	/** Retain the one-based envelope only at the remaining SMW/legacy boundary. */
-	protected function uniqList(Table|array|null $list = null): Table {
-		$values = $this->uniqueStrings($list instanceof Table ? $list->sequence() : ($list ?? []));
-		return new Table($values === [] ? [] : array_combine(range(1, count($values)), $values));
-	}
-
 	/** Trim and deduplicate strings without changing their first-seen order. */
 	private function uniqueStrings(iterable $values): array {
 		$out = [];
@@ -1723,20 +1641,20 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function setSemanticData($args = null, $pv = null, $lang = null, ?ParentRelations $cache = null, $PF = null, $maps = null, $rawB = null, $rawW = null, $rawV = null) {
-		$props = new Table([]);
+		$props = [];
 		$props[$PF['prop_arg_name']] = $pv['rawTitle'];
 		$props[$PF['prop_arg_number']] = $pv['pageId'];
 		if ($this->hasSMW()) {
 			$this->ensureDebateParentsFinal($pv, $cache, $PF);
 			$this->ensureArgumentParents($pv, $cache, $PF);
 			{
-				$chains = $this->uniqList(($cache->breadcrumbChains ?? []));
-				if ((((Lua::len($chains) > 0) && Lua::truth($PF['prop_breadcrumb'])) && ($PF['prop_breadcrumb'] !== ''))) {
+				$chains = $this->uniqueStrings(($cache->breadcrumbChains ?? []));
+				if ((((count($chains) > 0) && ($PF['prop_breadcrumb'] !== null && $PF['prop_breadcrumb'] !== false)) && ($PF['prop_breadcrumb'] !== ''))) {
 					$props[$PF['prop_breadcrumb']] = $chains;
 				}
-				if ((Lua::truth($PF['prop_parent_debate']) && ($PF['prop_parent_debate'] !== ''))) {
-					$dp = $this->uniqList(($cache->breadcrumbDebates ?? []));
-					if ((Lua::len($dp) > 0)) {
+				if ((($PF['prop_parent_debate'] !== null && $PF['prop_parent_debate'] !== false) && ($PF['prop_parent_debate'] !== ''))) {
+					$dp = $this->uniqueStrings(($cache->breadcrumbDebates ?? []));
+					if ((count($dp) > 0)) {
 						$props[$PF['prop_parent_debate']] = $dp;
 					}
 				}
@@ -1749,8 +1667,8 @@ class ArgumentReferenceRenderer {
 				foreach ($cache->objectionParents ?? [] as $x) {
 					$parents[] = $this->canonicalTitle($x);
 				}
-				$parents = $this->uniqList($parents);
-				if ((((Lua::len($parents) > 0) && Lua::truth($PF['prop_parent_argument'])) && ($PF['prop_parent_argument'] !== ''))) {
+				$parents = $this->uniqueStrings($parents);
+				if ((((count($parents) > 0) && ($PF['prop_parent_argument'] !== null && $PF['prop_parent_argument'] !== false)) && ($PF['prop_parent_argument'] !== ''))) {
 					$props[$PF['prop_parent_argument']] = $parents;
 				}
 			}
@@ -1758,28 +1676,28 @@ class ArgumentReferenceRenderer {
 		$justif = $maps['justif'] ?? [];
 		$obj = $maps['obj'] ?? [];
 		{
-			$lst = new Table([]);
+			$lst = [];
 			foreach ($justif['items'] ?? [] as $it) {
 				$t = $this->canonicalTitle($it['page']);
 				if (($t !== '')) {
-					Lua::insert($lst, $t);
+					$lst[] = $t;
 				}
 			}
-			$lst = $this->uniqList($lst);
-			if ((((Lua::len($lst) > 0) && Lua::truth($PF['prop_justif'])) && ($PF['prop_justif'] !== ''))) {
+			$lst = $this->uniqueStrings($lst);
+			if ((((count($lst) > 0) && ($PF['prop_justif'] !== null && $PF['prop_justif'] !== false)) && ($PF['prop_justif'] !== ''))) {
 				$props[$PF['prop_justif']] = $lst;
 			}
 		}
 		{
-			$lst = new Table([]);
+			$lst = [];
 			foreach ($obj['items'] ?? [] as $it) {
 				$t = $this->canonicalTitle($it['page']);
 				if (($t !== '')) {
-					Lua::insert($lst, $t);
+					$lst[] = $t;
 				}
 			}
-			$lst = $this->uniqList($lst);
-			if ((((Lua::len($lst) > 0) && Lua::truth($PF['prop_obj'])) && ($PF['prop_obj'] !== ''))) {
+			$lst = $this->uniqueStrings($lst);
+			if ((((count($lst) > 0) && ($PF['prop_obj'] !== null && $PF['prop_obj'] !== false)) && ($PF['prop_obj'] !== ''))) {
 				$props[$PF['prop_obj']] = $lst;
 			}
 		}
@@ -1791,89 +1709,59 @@ class ArgumentReferenceRenderer {
 		if (($objSurvol === '')) {
 			$objSurvol = ('<div class="argument-title--map carte-vide">' . $PF['no_objections_short'] . '</div>');
 		}
-		if ((Lua::truth($PF['prop_argument_map']) && ($PF['prop_argument_map'] !== ''))) {
+		if ((($PF['prop_argument_map'] !== null && $PF['prop_argument_map'] !== false) && ($PF['prop_argument_map'] !== ''))) {
 			$props[$PF['prop_argument_map']] = ('<div class="wk-arg-map navigation-not-searchable">' . '<div class="wk-arg-map__col is-pro">' . '<div class="wk-arg-map__th">' . $PF['justifications'] . '</div>' . '<div class="wk-arg-map__td">' . $justifSurvol . '</div>' . '</div>' . '<div class="wk-arg-map__col is-con">' . '<div class="wk-arg-map__th">' . $PF['objections'] . '</div>' . '<div class="wk-arg-map__td">' . $objSurvol . '</div>' . '</div>' . '</div>');
 		}
 		{
 			$lst = trim($justif['argsVar'] ?? '', NativeText::ASCII_WHITESPACE);
-			if (((($lst !== '') && Lua::truth($PF['prop_justif_list'])) && ($PF['prop_justif_list'] !== ''))) {
+			if (((($lst !== '') && ($PF['prop_justif_list'] !== null && $PF['prop_justif_list'] !== false)) && ($PF['prop_justif_list'] !== ''))) {
 				$props[$PF['prop_justif_list']] = $lst;
 			}
 		}
 		{
 			$lst = trim($obj['argsVar'] ?? '', NativeText::ASCII_WHITESPACE);
-			if (((($lst !== '') && Lua::truth($PF['prop_obj_list'])) && ($PF['prop_obj_list'] !== ''))) {
+			if (((($lst !== '') && ($PF['prop_obj_list'] !== null && $PF['prop_obj_list'] !== false)) && ($PF['prop_obj_list'] !== ''))) {
 				$props[$PF['prop_obj_list']] = $lst;
 			}
 		}
 		$mc = $args['keywords'];
-		if ((Lua::truth($mc) && ($mc !== ''))) {
-			$list = $this->splitCSV($mc, ',');
-			if ((Lua::len($list) > 0)) {
+		if ((($mc !== null && $mc !== false) && ($mc !== ''))) {
+			$list = array_values($this->csvValues($mc, ','));
+			if ((count($list) > 0)) {
 				$props[$PF['prop_keyword']] = $list;
 			}
 		}
-		if ((Lua::truth($args['dedicated-debate']) && ($args['dedicated-debate'] !== ''))) {
+		if ((($args['dedicated-debate'] !== null && $args['dedicated-debate'] !== false) && ($args['dedicated-debate'] !== ''))) {
 			$props[$PF['prop_detailed_debate']] = $this->canonicalTitle($args['dedicated-debate']);
 		}
-		{
-			$uniqCSVVar = function($varName = null) {
-		$raw = ($this->vget($varName) ?? '');
-		$raw = trim($raw, NativeText::ASCII_WHITESPACE);
-		if (($raw === '')) {
-			return null;
-		}
-		$lst = $this->splitCSV($raw, ',');
-		$lst = $this->uniqList($lst);
-		return (Lua::truth($v285 = (Lua::truth($v286 = (Lua::len($lst) > 0)) ? $lst : $v286)) ? $v285 : null);
-		};
-			$authors = $uniqCSVVar('WD_QUOTES_AUTHORS');
-			if (Lua::truth($authors)) {
-				$k = $this->smwPropRef($PF, 'authors');
-				if (($k !== '')) {
-					$this->smwQueueAdd($props, $k, $authors, true);
-				}
+		$quoteProperties = [
+			'WD_QUOTES_AUTHORS' => 'authors',
+			'WD_QUOTES_ARTICLES' => 'article_name',
+			'WD_QUOTES_WORKS' => 'work_name',
+			'WD_QUOTES_PUBLISHERS' => 'publishing_house',
+			'WD_QUOTES_PLACES' => 'place_of_publication'
+		];
+		foreach ($quoteProperties as $variable => $property) {
+			$raw = trim($this->vget($variable) ?? '', NativeText::ASCII_WHITESPACE);
+			if ($raw === '') {
+				continue;
 			}
-			$articles = $uniqCSVVar('WD_QUOTES_ARTICLES');
-			if (Lua::truth($articles)) {
-				$k = $this->smwPropRef($PF, 'article_name');
-				if (($k !== '')) {
-					$this->smwQueueAdd($props, $k, $articles, true);
-				}
-			}
-			$works = $uniqCSVVar('WD_QUOTES_WORKS');
-			if (Lua::truth($works)) {
-				$k = $this->smwPropRef($PF, 'work_name');
-				if (($k !== '')) {
-					$this->smwQueueAdd($props, $k, $works, true);
-				}
-			}
-			$pubs = $uniqCSVVar('WD_QUOTES_PUBLISHERS');
-			if (Lua::truth($pubs)) {
-				$k = $this->smwPropRef($PF, 'publishing_house');
-				if (($k !== '')) {
-					$this->smwQueueAdd($props, $k, $pubs, true);
-				}
-			}
-			$places = $uniqCSVVar('WD_QUOTES_PLACES');
-			if (Lua::truth($places)) {
-				$k = $this->smwPropRef($PF, 'place_of_publication');
-				if (($k !== '')) {
-					$this->smwQueueAdd($props, $k, $places, true);
-				}
+			$values = $this->uniqueStrings($this->csvValues($raw, ','));
+			if ($values !== []) {
+				SemanticProperties::add($props, $this->smwPropRef($PF, $property), $values, true);
 			}
 		}
 		{
-			if ((Lua::truth($args['sections']) && ($args['sections'] !== ''))) {
-				$lst = new Table([]);
+			if ((($args['sections'] !== null && $args['sections'] !== false) && ($args['sections'] !== ''))) {
+				$lst = [];
 				foreach ($this->csvValues($args['sections'], ',') as $_ => $r) {
 					$r = $this->safeRubriqueValue($r);
 					if (($r !== '')) {
-						Lua::insert($lst, $r);
+						$lst[] = $r;
 					}
 				}
-				$lst = $this->uniqList($lst);
-				if ((((Lua::len($lst) > 0) && Lua::truth($PF['prop_section'])) && ($PF['prop_section'] !== ''))) {
+				$lst = $this->uniqueStrings($lst);
+				if ((((count($lst) > 0) && ($PF['prop_section'] !== null && $PF['prop_section'] !== false)) && ($PF['prop_section'] !== ''))) {
 					$props[$PF['prop_section']] = $lst;
 				}
 			}
@@ -2642,7 +2530,7 @@ class ArgumentReferenceRenderer {
 			$editRefs = $this->addDataEditLink($PF['form_edit_references'], $pv['rawTitle'], '&nbsp;', $PF['edit_references_tooltip']);
 			$out[] = ('<h2 class="section-modifiable wk-icon-before wk-icon-bibliography">' . $PF['references'] . $editRefs . '</h2>');
 			{
-				$refsHtml = $this->wkRenderReferencesFromRaw($rawB, $rawW, $rawV, $pv, $lang, $cats, $PF, null, $args);
+				$refsHtml = $this->wkRenderReferencesFromRaw($rawB, $rawW, $rawV, $pv, $lang, $cats, $PF);
 				if (($refsHtml !== '')) {
 					$out[] = ('<ul class="references-argument">' . $refsHtml . '</ul>');
 				}
@@ -2800,5 +2688,5 @@ class ArgumentReferenceRenderer {
 	protected function computePageVars() { return $this->context->pageVars(); }
 	protected function wkDbKey($page = null) { return $this->context->dbKey($page); }
 	protected function wkSeoSet($data = null) { $this->context->seoSet($data); }
-	protected function smwSetSafe($data = null) { $this->context->smwSet($data); }
+	protected function smwSetSafe(array $data): void { $this->context->smwSet(SemanticProperties::toLegacyTable($data)); }
 }

@@ -214,79 +214,6 @@ class ReferenceRenderer {
 		return $html;
 	}
 
-	protected function smwQueueAdd($pending = null, $key = null, $val = null, $multi = null) {
-		if (((!(Lua::truth($key)) || ($key === '')) || ($val === null))) {
-			return null;
-		}
-		if ((is_string($val))) {
-			$val = trim($val, NativeText::ASCII_WHITESPACE);
-			if (($val === '')) {
-				return null;
-			}
-		}
-		$cur = $pending[$key];
-		if (Lua::truth($multi)) {
-			if (($cur === null)) {
-				$pending[$key] = (Lua::truth($v25 = (Lua::truth($v26 = (($val instanceof Table))) ? $val : $v26)) ? $v25 : new Table([1 => $val]));
-				return null;
-			}
-			if ((!($cur instanceof Table))) {
-				$cur = new Table([1 => $cur]);
-				$pending[$key] = $cur;
-			}
-			if ((($val instanceof Table))) {
-				foreach (($val)->sequence() as $_ => $x) {
-					if (($x !== null)) {
-						$cur[(Lua::len($cur) + 1)] = $x;
-					}
-				}
-			}
-			else {
-				$cur[(Lua::len($cur) + 1)] = $val;
-			}
-			return null;
-		}
-		$pending[$key] = $val;
-	}
-
-	protected function smwQueueAddFromSepString($pending = null, $key = null, $raw = null, $sep = null) {
-		$raw = (Lua::truth($v27 = (Lua::truth($v28 = (is_string($raw))) ? trim($raw, NativeText::ASCII_WHITESPACE) : $v28)) ? $v27 : '');
-		if (($raw === '')) {
-			return null;
-		}
-		$sep = (Lua::truth($v29 = $sep) ? $v29 : $this->ITEM_SEP);
-		$vals = new Table([]);
-		if (str_contains($raw, $sep)) {
-			foreach (Lua::split($raw, $sep, true) as $part) {
-				$part = trim($part, NativeText::ASCII_WHITESPACE);
-				if (($part !== '')) {
-					$vals[(Lua::len($vals) + 1)] = $part;
-				}
-			}
-		}
-		else {
-			$vals[1] = $raw;
-		}
-		if ((Lua::len($vals) > 0)) {
-			$this->smwQueueAdd($pending, $key, $vals, true);
-		}
-	}
-
-	protected function smwQueueAddFromCSV($pending = null, $key = null, $raw = null) {
-		$this->smwQueueAddFromSepString($pending, $key, $raw, ',');
-	}
-
-	protected function smwQueueMerge($dst = null, $src = null) {
-		foreach (Lua::pairs((Lua::truth($v30 = $src) ? $v30 : new Table([]))) as $k => $v) {
-			if ((($v instanceof Table))) {
-				$this->smwQueueAdd($dst, $k, $v, true);
-			}
-			else {
-				$this->smwQueueAdd($dst, $k, $v, false);
-			}
-		}
-	}
-
 
 	protected function pf_escape($v = null) {
 		if (!(Lua::truth($v))) {
@@ -829,7 +756,7 @@ class ReferenceRenderer {
 		return ($this->decodedReferences ??= new DecodedReferences)->parse('bibliography', $raw);
 	}
 
-	protected function wkRenderOneBiblioLi($pv = null, $item = null, $lang = null, $categories = null, $smwPending = null) {
+	protected function wkRenderOneBiblioLi($pv = null, $item = null, $lang = null, $categories = null, array &$smwPending = []) {
 		$item = $item instanceof Table ? $item->values : $item;
 		$out = [];
 		$authors = $item['authors'];
@@ -842,10 +769,10 @@ class ReferenceRenderer {
 		$work = $item['work'];
 		$link = $item['link'];
 		if (($article !== '')) {
-			$this->smwQueueAdd($smwPending, $this->smwProp($lang, 'article_name'), $article, true);
+			SemanticProperties::add($smwPending, $this->smwProp($lang, 'article_name'), $article, true);
 		}
 		if (($work !== '')) {
-			$this->smwQueueAdd($smwPending, $this->smwProp($lang, 'work_name'), $work, true);
+			SemanticProperties::add($smwPending, $this->smwProp($lang, 'work_name'), $work, true);
 		}
 		if (($article !== '')) {
 			if (($link !== '')) {
@@ -888,12 +815,12 @@ class ReferenceRenderer {
 		}
 		$publisher = $item['publisher'];
 		if (($publisher !== '')) {
-			$this->smwQueueAdd($smwPending, $this->smwProp($lang, 'publishing_house'), $publisher, true);
+			SemanticProperties::add($smwPending, $this->smwProp($lang, 'publishing_house'), $publisher, true);
 			$out[] = (', ' . $publisher);
 		}
 		$place = $item['place'];
 		if (($place !== '')) {
-			$this->smwQueueAdd($smwPending, $this->smwProp($lang, 'place_of_publication'), $place, true);
+			SemanticProperties::add($smwPending, $this->smwProp($lang, 'place_of_publication'), $place, true);
 			$out[] = (', ' . $place);
 		}
 		$date = $item['date'];
@@ -904,7 +831,7 @@ class ReferenceRenderer {
 		return ('<li>' . implode('', $out) . '</li>');
 	}
 
-	protected function wkRenderBiblioListFromArg($raw = null, $pv = null, $lang = null, $categories = null, $smwPending = null) {
+	protected function wkRenderBiblioListFromArg($raw = null, $pv = null, $lang = null, $categories = null, array &$smwPending = []) {
 		return $this->wkRenderNativeReferenceList($raw, 'bibliography', function($item = null) use (&$pv, &$lang, &$categories, &$smwPending) {
 		return $this->wkRenderOneBiblioLi($pv, $item, $lang, $categories, $smwPending);
 		});
@@ -914,7 +841,7 @@ class ReferenceRenderer {
 		return ($this->decodedReferences ??= new DecodedReferences)->parse('webliography', $raw);
 	}
 
-	protected function wkRenderOneWeblioLi($pv = null, $item = null, $lang = null, $categories = null, $smwPending = null, $side = null) {
+	protected function wkRenderOneWeblioLi($pv = null, $item = null, $lang = null, $categories = null, array &$smwPending = [], $side = null) {
 		$item = $item instanceof Table ? $item->values : $item;
 		$out = [];
 		$page = $item['page'];
@@ -923,10 +850,10 @@ class ReferenceRenderer {
 		$authors = $item['authors'];
 		$date = $item['date'];
 		if (($page !== '')) {
-			$this->smwQueueAdd($smwPending, $this->smwProp($lang, 'article_name'), $page, true);
+			SemanticProperties::add($smwPending, $this->smwProp($lang, 'article_name'), $page, true);
 		}
 		if (($site !== '')) {
-			$this->smwQueueAdd($smwPending, $this->smwProp($lang, 'website_name'), $site, true);
+			SemanticProperties::add($smwPending, $this->smwProp($lang, 'website_name'), $site, true);
 		}
 		if (($authors !== '')) {
 			$out[] = $authors;
@@ -973,14 +900,14 @@ class ReferenceRenderer {
 			foreach (explode(',', $authors) as $a) {
 				$a = trim($a, NativeText::ASCII_WHITESPACE);
 				if (($a !== '')) {
-					$this->smwQueueAdd($smwPending, $this->smwProp($lang, $propKey), $a, true);
+					SemanticProperties::add($smwPending, $this->smwProp($lang, $propKey), $a, true);
 				}
 			}
 		}
 		return ('<li>' . implode('', $out) . '</li>');
 	}
 
-	protected function wkRenderWeblioListFromArg($raw = null, $pv = null, $lang = null, $categories = null, $smwPending = null, $side = null) {
+	protected function wkRenderWeblioListFromArg($raw = null, $pv = null, $lang = null, $categories = null, array &$smwPending = [], $side = null) {
 		return $this->wkRenderNativeReferenceList($raw, 'webliography', function($item = null) use (&$pv, &$lang, &$categories, &$smwPending, &$side) {
 		return $this->wkRenderOneWeblioLi($pv, $item, $lang, $categories, $smwPending, $side);
 		});
@@ -990,7 +917,7 @@ class ReferenceRenderer {
 		return ($this->decodedReferences ??= new DecodedReferences)->parse('videography', $raw);
 	}
 
-	protected function wkRenderOneVideoLi($pv = null, $item = null, $lang = null, $categories = null, $smwPending = null) {
+	protected function wkRenderOneVideoLi($pv = null, $item = null, $lang = null, $categories = null, array &$smwPending = []) {
 		$item = $item instanceof Table ? $item->values : $item;
 		$title = $item['title'];
 		if (($title === '')) {
@@ -1014,7 +941,7 @@ class ReferenceRenderer {
 		return ('<li>' . implode('', $out) . '</li>');
 	}
 
-	protected function wkRenderVideoListFromArg($raw = null, $pv = null, $lang = null, $categories = null, $smwPending = null) {
+	protected function wkRenderVideoListFromArg($raw = null, $pv = null, $lang = null, $categories = null, array &$smwPending = []) {
 		return $this->wkRenderNativeReferenceList($raw, 'videography', function($item = null) use (&$pv, &$lang, &$categories, &$smwPending) {
 		return $this->wkRenderOneVideoLi($pv, $item, $lang, $categories, $smwPending);
 		});
@@ -1037,7 +964,7 @@ class ReferenceRenderer {
 	 * Expansion and rendering order must remain bibliography/web/video, pro/con/neutral.
 	 * @return array{string,array<string,array<string,string>>}
 	 */
-	protected function renderReferences($args = null, $pageVars = null, $lang = null, $categories = null, $smwPending = null): array {
+	protected function renderReferences($args = null, $pageVars = null, $lang = null, $categories = null, array &$smwPending = []): array {
 		$wrap = ['<h2 class="wk-icon-before wk-icon-further">' . $this->L($lang, 'text', 'further_reading_title') . '</h2>'];
 		$refRaw = [];
 		$formats = [
@@ -1495,22 +1422,22 @@ class ReferenceRenderer {
 		return ('[[Category:' . $this->L($lang, 'categories', 'sections_missing') . ']]');
 	}
 
-	protected function setSemanticData($args = null, $pv = null, $lang = null, $maps = null, $smwPending = null) {
+	protected function setSemanticData($args = null, $pv = null, $lang = null, $maps = null, array $smwPending = []) {
 		$pro = $maps['pro'] ?? [];
 		$con = $maps['con'] ?? [];
-		$pourPages = new Table([]);
-		$contrePages = new Table([]);
+		$pourPages = [];
+		$contrePages = [];
 		foreach ($pro['items'] ?? [] as $it) {
 			if ($it['page'] !== '') {
-				Lua::insert($pourPages, $it['page']);
+				$pourPages[] = $it['page'];
 			}
 		}
 		foreach ($con['items'] ?? [] as $it) {
 			if ($it['page'] !== '') {
-				Lua::insert($contrePages, $it['page']);
+				$contrePages[] = $it['page'];
 			}
 		}
-		$props = new Table([]);
+		$props = [];
 		$pourSurvol = trim($pro['mapHover'] ?? '', NativeText::ASCII_WHITESPACE);
 		$contreSurvol = trim($con['mapHover'] ?? '', NativeText::ASCII_WHITESPACE);
 		if (($pourSurvol === '')) {
@@ -1528,15 +1455,13 @@ class ReferenceRenderer {
 		$props[$this->smwProp($lang, 'pro_list')] = $listePour;
 		$props[$this->smwProp($lang, 'con_list')] = $listeContre;
 		$props[$this->smwProp($lang, 'arg_map')] = ('<div class="wk-arg-map navigation-not-searchable">' . '<div class="wk-arg-map__col is-pro">' . '<div class="wk-arg-map__th">' . $this->L($lang, 'text', 'arg_map_pro_label') . '</div>' . '<div class="wk-arg-map__td">' . $pourSurvol . '</div>' . '</div>' . '<div class="wk-arg-map__col is-con">' . '<div class="wk-arg-map__th">' . $this->L($lang, 'text', 'arg_map_con_label') . '</div>' . '<div class="wk-arg-map__td">' . $contreSurvol . '</div>' . '</div>' . '</div>');
-		if ((Lua::len($pourPages) > 0)) {
+		if ((count($pourPages) > 0)) {
 			$props[$this->smwProp($lang, 'arg_pro')] = $pourPages;
 		}
-		if ((Lua::len($contrePages) > 0)) {
+		if ((count($contrePages) > 0)) {
 			$props[$this->smwProp($lang, 'arg_con')] = $contrePages;
 		}
-		if (Lua::truth($smwPending)) {
-			$this->smwQueueMerge($props, $smwPending);
-		}
+		SemanticProperties::merge($props, $smwPending);
 		$this->smwSetSafe($props);
 	}
 
@@ -1556,12 +1481,15 @@ class ReferenceRenderer {
 		$lang = $this->detectLang($args);
 		$pv = $this->computePageVars();
 		[$pieces, $cats] = [[], new Table([])];
-		$smwPending = new Table([]);
-		$this->smwQueueAddFromCSV($smwPending, $this->smwProp($lang, 'keyword'), $args['keywords']);
+		$smwPending = [];
+		$keywords = is_string($args['keywords']) ? array_values($this->csvValues($args['keywords'], ',')) : [];
+		if ($keywords !== []) {
+			SemanticProperties::add($smwPending, $this->smwProp($lang, 'keyword'), $keywords, true);
+		}
 		$maps = $this->computeArgumentMapsFromArgs($args, $lang);
 		Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'debates') . ']]'));
 		if ((Lua::truth($args['topic']) && (trim($args['topic'], NativeText::ASCII_WHITESPACE) !== ''))) {
-			$this->smwQueueAdd($smwPending, $this->smwProp($lang, 'debate_topic'), $args['topic'], false);
+			SemanticProperties::add($smwPending, $this->smwProp($lang, 'debate_topic'), $args['topic'], false);
 		}
 		else {
 			Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'topic_missing') . ']]'));
@@ -1622,5 +1550,5 @@ class ReferenceRenderer {
 	protected function computePageVars() { return $this->context->pageVars(); }
 	protected function wkDbKey($page = null) { return $this->context->dbKey($page); }
 	protected function wkSeoSet($data = null) { $this->context->seoSet($data); }
-	protected function smwSetSafe($data = null) { $this->context->smwSet($data); }
+	protected function smwSetSafe(array $data): void { $this->context->smwSet(SemanticProperties::toLegacyTable($data)); }
 }
