@@ -168,20 +168,19 @@ class ReferenceRenderer {
 		return $this->context->message('Debate.subsections', $lang, $key, ...$rest);
 	}
 
-	protected function renderSubsectionBanner($pv = null, $lang = null, $key = null, $opts = null, ?array &$cats = null) {
+	protected function renderSubsectionBanner($pv = null, $lang = null, $key = null, ?array $opts = null, ?array &$cats = null) {
 		$key = NativeText::field($key);
 		if (($key === '')) {
 			return '';
 		}
-		$opts = (Lua::truth($v20 = $opts) ? $v20 : new Table([]));
-		$isReorg = ($opts['reorg'] === true);
+		$isReorg = (($opts['reorg'] ?? false) === true);
 		$linkHtml = '';
 		$title = '';
 		$text = '';
 		if ($isReorg) {
-			$formName = NativeText::field($opts['form']);
-			$tooltip = NativeText::field($opts['tooltip']);
-			$linkLabel = NativeText::field($opts['link_label']);
+			$formName = NativeText::field($opts['form'] ?? null);
+			$tooltip = NativeText::field($opts['tooltip'] ?? null);
+			$linkLabel = NativeText::field($opts['link_label'] ?? null);
 			if (($linkLabel === '')) {
 				$linkLabel = $this->L($lang, 'text', 'reorganize_link_label');
 			}
@@ -208,7 +207,7 @@ class ReferenceRenderer {
 		}
 		$html = ('<div class="bandeau-avertissement wk-icon-before wk-icon-sensible">' . $title . '<span class="smw-highlighter smwttinline wk-icon-before wk-icon-help mw-no-invert" data-state="inline">' . '<div class="smwttcontent">' . $text . '</div>' . '</span>' . '</div>');
 		$cat = $this->subMsg($lang, ($key . '_category'));
-		if (((($cats !== null) && Lua::truth($cat)) && ($cat !== ''))) {
+		if ($cats !== null && $cat !== '') {
 			$cats[] = ('[[Category:' . $cat . ']]');
 		}
 		return $html;
@@ -274,40 +273,38 @@ class ReferenceRenderer {
 		return NativeText::tooltip($s);
 	}
 
-	protected function wkRunQueryHtmlTagButton($formName = null, $label = null, $tooltip = null, $query = null) {
+	protected function wkRunQueryHtmlTagButton($formName = null, $label = null, $tooltip = null, ?array $query = null) {
 		$formName = NativeText::field($formName);
 		$label = NativeText::field($label);
-		$query = (Lua::truth($v40 = (Lua::truth($v41 = (($query instanceof Table))) ? $query : $v41)) ? $v40 : new Table([]));
 		$tooltip = NativeText::field($tooltip);
 		$tooltip = $this->normalizeTooltipText($tooltip);
 		if (($formName === '')) {
 			return '';
 		}
 		$title = $this->wkRunQueryPath($formName);
-		$href = Lua::str($this->context->localUrl($title, $query));
+		$href = Lua::str($this->context->localUrl($title, new Table($query ?? [])));
 		$content = ('＋ ' . $label);
 		$attributes = new Table(['href' => 'javascript:void(0)', 'data-href' => $this->escapeAttr($href), 'class' => 'wk-btn__a wk-js-nav']);
 		if ($tooltip !== '') { $attributes['title'] = $this->escapeAttr($tooltip); }
 		return $this->context->htmlTag('a', $content, $attributes, true);
 	}
 
-	protected function wkAddDataGetButton($formName = null, $pageTitle = null, $label = null, $tooltip = null, $query = null) {
+	protected function wkAddDataGetButton($formName = null, $pageTitle = null, $label = null, $tooltip = null, ?array $query = null) {
 		$formName = NativeText::field($formName);
 		$pageTitle = NativeText::field($pageTitle);
 		$label = NativeText::field($label);
 		$tooltip = NativeText::field($tooltip);
-		$query = (Lua::truth($v49 = (Lua::truth($v50 = (($query instanceof Table))) ? $query : $v50)) ? $v49 : new Table([]));
 		if ((($formName === '') || ($pageTitle === ''))) {
 			return '';
 		}
 		$title = $this->wkAddDataPath($formName, $pageTitle);
-		$url = Lua::str($this->context->fullUrl($title, $query));
+		$url = Lua::str($this->context->fullUrl($title, new Table($query ?? [])));
 		$linkInner = ('<span class="wk-btn__icon" aria-hidden="true">➜</span>' . '<span class="wk-btn__label">' . $label . '</span>');
 		$link = ('[' . $url . ' ' . $linkInner . ']');
 		return ('<div class="wk-btn wk-auto-id mw-ui-button navigation-not-searchable"' . (Lua::truth($v51 = (Lua::truth($v52 = ($tooltip !== '')) ? (' title="' . $this->escapeAttr($tooltip) . '"') : $v52)) ? $v51 : '') . '>' . $link . '</div>');
 	}
 
-	protected function runQueryLink($formName = null, $fieldLabel = null, $fieldName = null, $value = null, $linktext = null, $tooltip = null, $extraParams = null) {
+	protected function runQueryLink($formName = null, $fieldLabel = null, $fieldName = null, $value = null, $linktext = null, $tooltip = null, ?array $extraParams = null) {
 		$formName = NativeText::field($formName);
 		$fieldLabel = NativeText::field($fieldLabel);
 		$fieldName = NativeText::field($fieldName);
@@ -316,18 +313,18 @@ class ReferenceRenderer {
 			return '';
 		}
 		$title = $this->wkRunQueryPath($formName);
-		$q = new Table([]);
+		$q = [];
 		$q[($fieldLabel . '[' . $fieldName . ']')] = $value;
-		if ((($extraParams instanceof Table))) {
-			foreach (Lua::pairs($extraParams) as $k => $v) {
-				if ((((Lua::truth($k) && ($k !== '')) && ($v !== null)) && (Lua::str($v) !== ''))) {
+		if ($extraParams !== null) {
+			foreach ($extraParams as $k => $v) {
+				if (((($k !== '') && ($v !== null)) && (Lua::str($v) !== ''))) {
 					$q[$k] = Lua::str($v);
 				}
 			}
 		}
 		$q['_run'] = '';
-		$url = Lua::str($this->context->fullUrl($title, $q));
-		$label = (Lua::truth($v57 = $linktext) ? $v57 : $value);
+		$url = Lua::str($this->context->fullUrl($title, new Table($q)));
+		$label = $linktext === null || $linktext === false ? $value : $linktext;
 		$tt = NativeText::field($tooltip);
 		$link = ('[' . $url . ' ' . $label . ']');
 		if (($tt !== '')) {
@@ -443,17 +440,17 @@ class ReferenceRenderer {
 		return ('<li id="' . $idPrefix . Lua::str($idx) . '" class="argument level-1">' . '<div id="' . $this->escapeAttr($aId) . '" class="argument-title wk-icon-before wk-icon-argument wk-icon-after wk-carret">' . '[[' . $page . '|' . $titleShown . ']]' . implode('', $banners) . '</div>' . '</li>');
 	}
 
-	protected function renderMetaWarningHtml($params = null) {
-		$color = NativeText::field($params['color']);
-		$icon = NativeText::field($params['icon']);
-		$title = NativeText::field($params['title']);
-		$text = NativeText::field($params['text']);
+	protected function renderMetaWarningHtml(array $params = []) {
+		$color = NativeText::field($params['color'] ?? null);
+		$icon = NativeText::field($params['icon'] ?? null);
+		$title = NativeText::field($params['title'] ?? null);
+		$text = NativeText::field($params['text'] ?? null);
 		return ('<div class="bandeau bandeau-' . $color . ' wk-icon-before ' . $icon . ' navigation-not-searchable">' . '<div class="bandeau-titre">' . $title . '</div>' . '<div class="bandeau-texte">' . $text . '</div>' . '</div>');
 	}
 
 	protected function renderMainBanner($frame = null, $pv = null, $lang = null) {
 		$titre = sprintf($this->L($lang, 'text', 'main_banner_title'), $this->context->nowiki($pv['rawTitle']));
-		return $this->renderMetaWarningHtml(new Table(['color' => $this->L($lang, 'text', 'main_banner_color'), 'title' => $titre, 'icon' => 'wk-icon-wikidebates', 'text' => ('<div class="bandeau-section wk-icon-before wk-icon-loupe mw-no-invert">' . $this->L($lang, 'text', 'learn_more_label') . $this->L($lang, 'text', 'founding_principles_link') . '</div>')]));
+		return $this->renderMetaWarningHtml(['color' => $this->L($lang, 'text', 'main_banner_color'), 'title' => $titre, 'icon' => 'wk-icon-wikidebates', 'text' => ('<div class="bandeau-section wk-icon-before wk-icon-loupe mw-no-invert">' . $this->L($lang, 'text', 'learn_more_label') . $this->L($lang, 'text', 'founding_principles_link') . '</div>')]);
 	}
 
 	protected function bannerMsg($lang = null, $key = null, ...$rest) {
@@ -472,7 +469,7 @@ class ReferenceRenderer {
 		if ((((($color === '') && ($icon === '')) && ($title === '')) && ($text === ''))) {
 			return '';
 		}
-		$html = $this->renderMetaWarningHtml(new Table(['color' => $color, 'icon' => $icon, 'title' => $title, 'text' => $text]));
+		$html = $this->renderMetaWarningHtml(['color' => $color, 'icon' => $icon, 'title' => $title, 'text' => $text]);
 		$cat = $this->bannerMsg($lang, ($key . '_category'));
 		if (((($cats !== null) && Lua::truth($cat)) && ($cat !== ''))) {
 			$cats[] = ('[[Category:' . $cat . ']]');
@@ -570,7 +567,7 @@ class ReferenceRenderer {
 				if (($lab !== '')) {
 					$k = ($lookup[$lab] ?? '');
 					if (($k !== '')) {
-						$h = $this->renderSubsectionBanner($pv, $lang, $k, new Table([]), $cats);
+						$h = $this->renderSubsectionBanner($pv, $lang, $k, [], $cats);
 						if ((Lua::truth($h) && ($h !== ''))) {
 							$banners[] = $h;
 						}
@@ -718,9 +715,11 @@ class ReferenceRenderer {
 		$tooltip = sprintf($this->L($lang, 'text', 'arg_add_tt'), $sideLabel, $pv['rawTitle']);
 		$baseField = $this->L($lang, 'forms', 'new_arg_title');
 		$rqTypeValue = (Lua::truth($v142 = (Lua::truth($v143 = $isCon) ? $this->L($lang, 'forms', 'new_arg_con_type_label') : $v143)) ? $v142 : $this->L($lang, 'forms', 'new_arg_pro_type_label'));
-		$rqQuery = new Table([]);
+		$rqQuery = [];
 		$rqQuery[($baseField . '[type]')] = $rqTypeValue;
-		$rqQuery[($baseField . '[ID]')] = $pv['pageId'];
+		if ($pv['pageId'] !== null) {
+			$rqQuery[$baseField . '[ID]'] = $pv['pageId'];
+		}
 		$rqQuery['_run'] = '1';
 		$out[] = ('<div class="bouton-ajouter wk-btn mw-ui-button navigation-not-searchable noprint">' . $this->wkRunQueryHtmlTagButton($baseField, $label, $tooltip, $rqQuery) . '</div>');
 		return implode('', $out);
@@ -1366,7 +1365,7 @@ class ReferenceRenderer {
 			$tt = $this->L($lang, 'text', 'search_by_keyword_tt');
 			$typeField = $this->L($lang, 'params', 'search_type_field');
 			$typeValue = $this->L($lang, 'params', 'search_type_value');
-			$extra = new Table([($fieldLabel . '[' . $typeField . ']') => $typeValue]);
+			$extra = [($fieldLabel . '[' . $typeField . ']') => $typeValue];
 			foreach ($this->csvValues($args['keywords'], ',') as $_ => $k) {
 				$k = trim(NativeText::field($k), NativeText::ASCII_WHITESPACE);
 				if (($k !== '')) {
@@ -1522,7 +1521,7 @@ class ReferenceRenderer {
 			$f_debat = $this->L($lang, 'text', 'self_eval_debate_field');
 			$box = [];
 			$box[] = ('<h2 class="navigation-not-searchable noprint wk-icon-before wk-icon-selfeval">' . $this->L($lang, 'text', 'self_eval_title') . '</h2>');
-			$startBtn = $this->wkAddDataGetButton($this->L($lang, 'forms', 'self_eval_home_title'), $target, $this->L($lang, 'text', 'self_eval_start_label'), $this->L($lang, 'text', 'self_eval_start_tt'), new Table([($ns . '[' . $f_debat . ']') => $pv['rawTitle']]));
+			$startBtn = $this->wkAddDataGetButton($this->L($lang, 'forms', 'self_eval_home_title'), $target, $this->L($lang, 'text', 'self_eval_start_label'), $this->L($lang, 'text', 'self_eval_start_tt'), [($ns . '[' . $f_debat . ']') => $pv['rawTitle']]);
 			$box[] = ('<div class="boite-info navigation-not-searchable noprint">' . $this->L($lang, 'text', 'self_eval_blurb') . $startBtn . '</div>');
 			$pieces[] = implode('', $box);
 		}

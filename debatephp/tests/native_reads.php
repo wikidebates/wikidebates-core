@@ -348,4 +348,52 @@ foreach ([ArgumentReferenceRenderer::class, \MediaWiki\Extension\DebatePHP\Refer
 	$equal(true, array_is_list($categories), 'Collected categories are a zero-based list');
 }
 
+
+/* PageForms query construction preserves historical keys, values and insertion order. */
+$formContext = new class(['title' => 'Child', 'args' => ['lang' => 'en']]) extends ArgumentTestContext {
+	public array $queries = [];
+	public bool $failFullUrl = false;
+	public function fullUrl(string $page, ?Table $query = null): ?string {
+		$this->queries[] = ['full', $page, $query?->values];
+		return $this->failFullUrl ? null : parent::fullUrl($page, $query);
+	}
+	public function localUrl(string $page, ?Table $query = null): ?string {
+		$this->queries[] = ['local', $page, $query?->values];
+		return substr(parent::fullUrl($page, $query), strlen('https://wiki.example'));
+	}
+};
+$argumentForm = new ArgumentReferenceRenderer($formContext);
+$debateForm = new \MediaWiki\Extension\DebatePHP\ReferenceRenderer($formContext);
+$argumentQuery = new ReflectionMethod($argumentForm, 'runQueryLink');
+$debateQuery = new ReflectionMethod($debateForm, 'runQueryLink');
+$extra = ['0' => '0', 'blank' => '', 'missing' => null, 'flag' => false, 'yes' => true, 'literal%[field]' => 'x'];
+$options = ['form' => 'Search', 'field' => 'Keyword', 'value' => '0', 'label' => false, 'extra' => $extra];
+$link = $argumentQuery->invoke($argumentForm, $options);
+$equal(['full', 'Special:RunQuery/Search', ['Search[Keyword]' => '0', 'Search[0]' => '0',
+	'Search[flag]' => 'false', 'Search[yes]' => 'true', 'literal%[field]' => 'x', '_run' => '1']],
+	end($formContext->queries), 'Argument preserves exact historical extra parameter rules');
+$equal(true, str_ends_with($link, ' 0]</span>'), 'False label falls back to literal zero');
+$equal($extra, $options['extra'], 'Query construction does not mutate extra options');
+$formContext->failFullUrl = true;
+$argumentQuery->invoke($argumentForm, ['form' => 'Search', 'field' => 'Keyword', 'value' => '0']);
+$equal(['local', 'Special:RunQuery/Search', ['Search[Keyword]' => '0', '_run' => '1']],
+	end($formContext->queries), 'Argument keeps full-to-local URL fallback');
+$formContext->failFullUrl = false;
+$link = $debateQuery->invoke($debateForm, 'Search', 'Fields', 'Keyword', '0', false, '', $extra);
+$equal(['full', 'Special:RunQuery/Search', ['Fields[Keyword]' => '0', 0 => '0',
+	'flag' => 'false', 'yes' => 'true', 'literal%[field]' => 'x', '_run' => '']],
+	end($formContext->queries), 'Debate keeps its own historical extra parameter and run flag rules');
+$equal(true, str_ends_with($link, ' 0]</span>'), 'Debate false label falls back to literal zero');
+foreach ([$argumentForm, $debateForm] as $renderer) {
+	$button = new ReflectionMethod($renderer, 'wkRunQueryHtmlTagButton');
+	$button->invoke($renderer, 'Search', '0', '', ['ID' => 0, '_run' => '1']);
+	$equal(['local', 'Special:RunQuery/Search', ['ID' => 0, '_run' => '1']],
+		end($formContext->queries), 'Navigation button passes native parameters intact at context boundary');
+	$button->invoke($renderer, 'Search', '0', '');
+	$equal(['local', 'Special:RunQuery/Search', []], end($formContext->queries), 'Absent navigation query remains an empty map');
+}
+$edit = new ReflectionMethod($argumentForm, 'addDataLink');
+$equal(true, str_contains($edit->invoke($argumentForm, 'Edit', 'Child', '', '', true), 'bouton-modifier'), 'Native edit flag enables modifier class');
+$equal(false, str_contains($edit->invoke($argumentForm, 'Edit', 'Child', '', ''), 'bouton-modifier'), 'Default link does not get modifier class');
+
 echo "$assertions native-read assertions: semantic indexing, JSON bytes, CSV isolation, optional adapters and certified fallback/cache lifetimes\n";
