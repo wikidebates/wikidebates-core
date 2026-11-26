@@ -168,7 +168,7 @@ class ReferenceRenderer {
 		return $this->context->message('Debate.subsections', $lang, $key, ...$rest);
 	}
 
-	protected function renderSubsectionBanner($pv = null, $lang = null, $key = null, $opts = null, $cats = null) {
+	protected function renderSubsectionBanner($pv = null, $lang = null, $key = null, $opts = null, ?array &$cats = null) {
 		$key = NativeText::field($key);
 		if (($key === '')) {
 			return '';
@@ -208,8 +208,8 @@ class ReferenceRenderer {
 		}
 		$html = ('<div class="bandeau-avertissement wk-icon-before wk-icon-sensible">' . $title . '<span class="smw-highlighter smwttinline wk-icon-before wk-icon-help mw-no-invert" data-state="inline">' . '<div class="smwttcontent">' . $text . '</div>' . '</span>' . '</div>');
 		$cat = $this->subMsg($lang, ($key . '_category'));
-		if (((Lua::truth($cats) && Lua::truth($cat)) && ($cat !== ''))) {
-			Lua::insert($cats, ('[[Category:' . $cat . ']]'));
+		if (((($cats !== null) && Lua::truth($cat)) && ($cat !== ''))) {
+			$cats[] = ('[[Category:' . $cat . ']]');
 		}
 		return $html;
 	}
@@ -360,7 +360,7 @@ class ReferenceRenderer {
 		return $this->ARGUMENT_WARNING_LOOKUPS[$lang];
 	}
 
-	protected function renderArgumentItemBanners($itemWarnings = null, $pv = null, $lang = null, $cats = null): array {
+	protected function renderArgumentItemBanners($itemWarnings = null, $pv = null, $lang = null, ?array &$cats = null): array {
 		$warnsArg = trim(NativeText::field($itemWarnings), NativeText::ASCII_WHITESPACE);
 		if (($warnsArg === '')) {
 			return [];
@@ -371,13 +371,13 @@ class ReferenceRenderer {
 		foreach ($this->csvValues($warnsArg, ',') as $_ => $x) {
 			$key = $this->resolveKeyFromLookup($x, $lookup, $this->ARGUMENT_WARNING_BANNER_KEYS);
 			if (($key !== '')) {
-				$fragment = $this->renderSubsectionBanner($pv, $lang, $key, null, null);
+				$fragment = $this->renderSubsectionBanner($pv, $lang, $key);
 				if ($fragment !== null) { $out[] = $fragment; }
 				$hasBanner = true;
 			}
 		}
-		if (($hasBanner && Lua::truth($cats))) {
-			Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'displayed_titles_to_review') . ']]'));
+		if (($hasBanner && ($cats !== null))) {
+			$cats[] = ('[[Category:' . $this->L($lang, 'categories', 'displayed_titles_to_review') . ']]');
 		}
 		return $out;
 	}
@@ -429,7 +429,7 @@ class ReferenceRenderer {
 		];
 	}
 
-	protected function wkRenderArgumentLi($pv = null, $lang = null, $it = null, $kind = null, $idx = null, $cats = null) {
+	protected function wkRenderArgumentLi($pv = null, $lang = null, $it = null, $kind = null, $idx = null, ?array &$cats = null) {
 		$isPro = ($kind === 'pro');
 		$idPrefix = ($isPro ? 'Pro_argument_' : 'Con_argument_');
 		$page = NativeText::field($it['page']);
@@ -460,7 +460,7 @@ class ReferenceRenderer {
 		return $this->context->message('Debate.banners', $lang, $key, ...$rest);
 	}
 
-	protected function renderBannerByKey($pv = null, $lang = null, $key = null, $cats = null) {
+	protected function renderBannerByKey($pv = null, $lang = null, $key = null, ?array &$cats = null) {
 		$key = NativeText::field($key);
 		if (($key === '')) {
 			return '';
@@ -474,13 +474,13 @@ class ReferenceRenderer {
 		}
 		$html = $this->renderMetaWarningHtml(new Table(['color' => $color, 'icon' => $icon, 'title' => $title, 'text' => $text]));
 		$cat = $this->bannerMsg($lang, ($key . '_category'));
-		if (((Lua::truth($cats) && Lua::truth($cat)) && ($cat !== ''))) {
-			Lua::insert($cats, ('[[Category:' . $cat . ']]'));
+		if (((($cats !== null) && Lua::truth($cat)) && ($cat !== ''))) {
+			$cats[] = ('[[Category:' . $cat . ']]');
 		}
 		return $html;
 	}
 
-	protected function renderWarningBanners($args = null, $pv = null, $cats = null, $lang = null) {
+	protected function renderWarningBanners($args = null, $pv = null, ?array &$cats = null, $lang = null) {
 		$av = $args['progress'];
 		$out = [];
 		$titleLookup = $this->buildBannerLabelLookup($lang, $this->TITLE_WARNING_BANNER_KEYS);
@@ -506,11 +506,11 @@ class ReferenceRenderer {
 			}
 		}
 		if (Lua::truth($this->isProgress($lang, $av, 'constructed'))) {
-			Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'constructed') . ']]'));
+			$cats[] = ('[[Category:' . $this->L($lang, 'categories', 'constructed') . ']]');
 		}
 		else {
 			if (((!(Lua::truth($this->isProgress($lang, $av, 'draft'))) && !(Lua::truth($this->isProgress($lang, $av, 'building')))) && !(Lua::truth($this->isProgress($lang, $av, 'constructed'))))) {
-				Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'progress_missing') . ']]'));
+				$cats[] = ('[[Category:' . $this->L($lang, 'categories', 'progress_missing') . ']]');
 			}
 		}
 		if (Lua::truth($args['debate-warnings'])) {
@@ -552,7 +552,7 @@ class ReferenceRenderer {
 		return $lookup;
 	}
 
-	protected function wkRenderIntroSubsection($pv = null, $lang = null, $it = null, $cats = null, $lookup = null) {
+	protected function wkRenderIntroSubsection($pv = null, $lang = null, $it = null, ?array &$cats = null, $lookup = null) {
 		$titre = trim(NativeText::field($it['title']), NativeText::ASCII_WHITESPACE);
 		$contenu = trim(NativeText::field($it['content']), NativeText::ASCII_WHITESPACE);
 		$avert = trim(NativeText::field($it['warnings']), NativeText::ASCII_WHITESPACE);
@@ -593,14 +593,14 @@ class ReferenceRenderer {
 			$link = $this->addDataLink($editForm, $pv['rawTitle'], $linkLabel, $editTT);
 			$out[] = ('<i>' . $emptyIntro . '</i>');
 			if (($emptyCat !== '')) {
-				Lua::insert($cats, ('[[Category:' . $emptyCat . ']]'));
+				$cats[] = ('[[Category:' . $emptyCat . ']]');
 			}
 		}
 		$out[] = '</div></div></div>';
 		return implode('', $out);
 	}
 
-	protected function wkRenderIntroSubsectionsBlock($pv = null, $lang = null, $raw = null, $cats = null) {
+	protected function wkRenderIntroSubsectionsBlock($pv = null, $lang = null, $raw = null, ?array &$cats = null) {
 		$items = $this->wkParseIntroSubsections($raw);
 		if ((Lua::len($items) === 0)) {
 			return '';
@@ -613,13 +613,18 @@ class ReferenceRenderer {
 		return implode('', $out);
 	}
 
-	protected function renderIntroduction($args = null, $pv = null, $lang = null, $cats = null) {
+	protected function renderIntroduction($args = null, $pv = null, $lang = null, ?array &$cats = null) {
 		$h2 = ('<h2 class="section-modifiable wk-icon-before wk-icon-question">' . $this->L($lang, 'text', 'understand_debate_title') . $this->addDataLink($this->L($lang, 'forms', 'intro_edit_title'), $pv['rawTitle'], $this->L($lang, 'text', 'edit_label'), $this->L($lang, 'text', 'intro_edit_tt')) . '</h2>');
 		$raw = $args['introduction'];
 		$raw = (Lua::truth($v105 = (Lua::truth($v106 = (is_string($raw))) ? trim($raw, NativeText::ASCII_WHITESPACE) : $v106)) ? $v105 : '');
 		if (($raw !== '')) {
 			$expanded = $this->context->expandField($raw, 'debate.introduction');
-			$subs = $this->wkRenderIntroSubsectionsBlock($pv, $lang, $expanded, (Lua::truth($v107 = $cats) ? $v107 : new Table([])));
+			if ($cats === null) {
+				$ignoredCategories = [];
+				$subs = $this->wkRenderIntroSubsectionsBlock($pv, $lang, $expanded, $ignoredCategories);
+			} else {
+				$subs = $this->wkRenderIntroSubsectionsBlock($pv, $lang, $expanded, $cats);
+			}
 			if (($subs !== '')) {
 				$s = Lua::gsub(($h2 . $subs), '%s*$', '');
 				return $s;
@@ -675,7 +680,7 @@ class ReferenceRenderer {
 		return ('<div class="question-FAQ">' . $q . '</div>');
 	}
 
-	protected function renderArgsList($args = null, $pv = null, $lang = null, $sens = null, $maps = null, $cats = null) {
+	protected function renderArgsList($args = null, $pv = null, $lang = null, $sens = null, $maps = null, ?array &$cats = null) {
 		$isCon = ($sens === 'con');
 		$hIconCon = 'is-con';
 		$hIconPro = 'is-pro';
@@ -699,7 +704,7 @@ class ReferenceRenderer {
 			($ul)->wikitext(implode('
 ', $lis));
 			if ($anyTitleWarnings) {
-				Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'refs_to_review') . ']]'));
+				$cats[] = ('[[Category:' . $this->L($lang, 'categories', 'refs_to_review') . ']]');
 			}
 			$out[] = Lua::str($ul);
 		}
@@ -721,7 +726,7 @@ class ReferenceRenderer {
 		return implode('', $out);
 	}
 
-	protected function renderReferenceItemBanners($itemWarnings = null, $pv = null, $lang = null, $cats = null, &$out = null) {
+	protected function renderReferenceItemBanners($itemWarnings = null, $pv = null, $lang = null, ?array &$cats = null, &$out = null) {
 		$warnsRef = trim(NativeText::field($itemWarnings), NativeText::ASCII_WHITESPACE);
 		if (($warnsRef === '')) {
 			return null;
@@ -756,13 +761,13 @@ class ReferenceRenderer {
 		return ($this->decodedReferences ??= new DecodedReferences)->parse('bibliography', $raw);
 	}
 
-	protected function wkRenderOneBiblioLi($pv = null, $item = null, $lang = null, $categories = null, array &$smwPending = []) {
+	protected function wkRenderOneBiblioLi($pv = null, $item = null, $lang = null, ?array &$categories = null, array &$smwPending = []) {
 		$item = $item instanceof Table ? $item->values : $item;
 		$out = [];
 		$authors = $item['authors'];
 		if (($authors === '')) {
 			$authors = $this->L($lang, 'text', 'refs_to_review');
-			Lua::insert($categories, ('[[Category:' . $this->L($lang, 'categories', 'refs_to_review') . ']]'));
+			$categories[] = ('[[Category:' . $this->L($lang, 'categories', 'refs_to_review') . ']]');
 		}
 		$out[] = $authors;
 		$article = $item['article'];
@@ -831,7 +836,7 @@ class ReferenceRenderer {
 		return ('<li>' . implode('', $out) . '</li>');
 	}
 
-	protected function wkRenderBiblioListFromArg($raw = null, $pv = null, $lang = null, $categories = null, array &$smwPending = []) {
+	protected function wkRenderBiblioListFromArg($raw = null, $pv = null, $lang = null, ?array &$categories = null, array &$smwPending = []) {
 		return $this->wkRenderNativeReferenceList($raw, 'bibliography', function($item = null) use (&$pv, &$lang, &$categories, &$smwPending) {
 		return $this->wkRenderOneBiblioLi($pv, $item, $lang, $categories, $smwPending);
 		});
@@ -841,7 +846,7 @@ class ReferenceRenderer {
 		return ($this->decodedReferences ??= new DecodedReferences)->parse('webliography', $raw);
 	}
 
-	protected function wkRenderOneWeblioLi($pv = null, $item = null, $lang = null, $categories = null, array &$smwPending = [], $side = null) {
+	protected function wkRenderOneWeblioLi($pv = null, $item = null, $lang = null, ?array &$categories = null, array &$smwPending = [], $side = null) {
 		$item = $item instanceof Table ? $item->values : $item;
 		$out = [];
 		$page = $item['page'];
@@ -907,7 +912,7 @@ class ReferenceRenderer {
 		return ('<li>' . implode('', $out) . '</li>');
 	}
 
-	protected function wkRenderWeblioListFromArg($raw = null, $pv = null, $lang = null, $categories = null, array &$smwPending = [], $side = null) {
+	protected function wkRenderWeblioListFromArg($raw = null, $pv = null, $lang = null, ?array &$categories = null, array &$smwPending = [], $side = null) {
 		return $this->wkRenderNativeReferenceList($raw, 'webliography', function($item = null) use (&$pv, &$lang, &$categories, &$smwPending, &$side) {
 		return $this->wkRenderOneWeblioLi($pv, $item, $lang, $categories, $smwPending, $side);
 		});
@@ -917,7 +922,7 @@ class ReferenceRenderer {
 		return ($this->decodedReferences ??= new DecodedReferences)->parse('videography', $raw);
 	}
 
-	protected function wkRenderOneVideoLi($pv = null, $item = null, $lang = null, $categories = null, array &$smwPending = []) {
+	protected function wkRenderOneVideoLi($pv = null, $item = null, $lang = null, ?array &$categories = null, array &$smwPending = []) {
 		$item = $item instanceof Table ? $item->values : $item;
 		$title = $item['title'];
 		if (($title === '')) {
@@ -941,7 +946,7 @@ class ReferenceRenderer {
 		return ('<li>' . implode('', $out) . '</li>');
 	}
 
-	protected function wkRenderVideoListFromArg($raw = null, $pv = null, $lang = null, $categories = null, array &$smwPending = []) {
+	protected function wkRenderVideoListFromArg($raw = null, $pv = null, $lang = null, ?array &$categories = null, array &$smwPending = []) {
 		return $this->wkRenderNativeReferenceList($raw, 'videography', function($item = null) use (&$pv, &$lang, &$categories, &$smwPending) {
 		return $this->wkRenderOneVideoLi($pv, $item, $lang, $categories, $smwPending);
 		});
@@ -964,7 +969,7 @@ class ReferenceRenderer {
 	 * Expansion and rendering order must remain bibliography/web/video, pro/con/neutral.
 	 * @return array{string,array<string,array<string,string>>}
 	 */
-	protected function renderReferences($args = null, $pageVars = null, $lang = null, $categories = null, array &$smwPending = []): array {
+	protected function renderReferences($args = null, $pageVars = null, $lang = null, ?array &$categories = null, array &$smwPending = []): array {
 		$wrap = ['<h2 class="wk-icon-before wk-icon-further">' . $this->L($lang, 'text', 'further_reading_title') . '</h2>'];
 		$refRaw = [];
 		$formats = [
@@ -1350,7 +1355,7 @@ class ReferenceRenderer {
 		} finally { $this->nativeJson = $previousNativeJson; }
 	}
 
-	protected function renderKeywords($args = null, $pv = null, $cats = null, $lang = null) {
+	protected function renderKeywords($args = null, $pv = null, ?array &$cats = null, $lang = null) {
 		$out = [];
 		$out[count($out) + 1] = ('<div style="font-size: 95%; margin-top: 1em;">' . $this->L($lang, 'text', 'keywords_label_text'));
 		if ((Lua::truth($args['keywords']) && (trim($args['keywords'], NativeText::ASCII_WHITESPACE) !== ''))) {
@@ -1379,18 +1384,18 @@ class ReferenceRenderer {
 			}
 			else {
 				$out[count($out) + 1] = ('<strong>' . $this->L($lang, 'text', 'none_label') . '</strong>');
-				Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'keywords_missing') . ']]'));
+				$cats[] = ('[[Category:' . $this->L($lang, 'categories', 'keywords_missing') . ']]');
 			}
 		}
 		else {
 			$out[count($out) + 1] = ('<strong>' . $this->L($lang, 'text', 'none_label') . '</strong>');
-			Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'keywords_missing') . ']]'));
+			$cats[] = ('[[Category:' . $this->L($lang, 'categories', 'keywords_missing') . ']]');
 		}
 		$out[count($out) + 1] = ($this->addDataLink($this->L($lang, 'forms', 'keywords_edit_title'), $pv['rawTitle'], $this->L($lang, 'text', 'edit_label'), $this->L($lang, 'text', 'keywords_edit_tt')) . '<span style="display: none;">.</span></div>');
 		return implode('', $out);
 	}
 
-	protected function renderConnexes($args = null, $pv = null, $cats = null, $lang = null) {
+	protected function renderConnexes($args = null, $pv = null, ?array &$cats = null, $lang = null) {
 		$h2 = ('<h2 class="section-modifiable wk-icon-before wk-icon-parent">' . $this->L($lang, 'forms', 'related_edit_title') . $this->addDataLink($this->L($lang, 'forms', 'related_edit_title'), $pv['rawTitle'], $this->L($lang, 'text', 'edit_label'), $this->L($lang, 'text', 'related_edit_tt')) . '</h2>');
 		$raw = $args['related-debates'];
 		if ((Lua::truth($raw) && (trim($raw, NativeText::ASCII_WHITESPACE) !== ''))) {
@@ -1407,11 +1412,11 @@ class ReferenceRenderer {
 				return ($h2 . '<ul class="hover-top searchaux">' . implode('', $items) . '</ul>');
 			}
 		}
-		Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'related_missing') . ']]'));
+		$cats[] = ('[[Category:' . $this->L($lang, 'categories', 'related_missing') . ']]');
 		return ($h2 . '<div class="aucun-contenu navigation-not-searchable">' . $this->L($lang, 'text', 'none_related_msg') . '</div>');
 	}
 
-	protected function renderRubriques($args = null, $cats = null, $lang = null) {
+	protected function renderRubriques($args = null, ?array &$cats = null, $lang = null) {
 		if ((Lua::truth($args['sections']) && (trim($args['sections'], NativeText::ASCII_WHITESPACE) !== ''))) {
 			$out = [];
 			foreach ($this->csvValues($args['sections'], ',') as $_ => $r) {
@@ -1480,25 +1485,25 @@ class ReferenceRenderer {
 		$this->renderData->expectReuse([$args['keywords'], $args['sections']]);
 		$lang = $this->detectLang($args);
 		$pv = $this->computePageVars();
-		[$pieces, $cats] = [[], new Table([])];
+		[$pieces, $cats] = [[], []];
 		$smwPending = [];
 		$keywords = is_string($args['keywords']) ? array_values($this->csvValues($args['keywords'], ',')) : [];
 		if ($keywords !== []) {
 			SemanticProperties::add($smwPending, $this->smwProp($lang, 'keyword'), $keywords, true);
 		}
 		$maps = $this->computeArgumentMapsFromArgs($args, $lang);
-		Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'debates') . ']]'));
+		$cats[] = ('[[Category:' . $this->L($lang, 'categories', 'debates') . ']]');
 		if ((Lua::truth($args['topic']) && (trim($args['topic'], NativeText::ASCII_WHITESPACE) !== ''))) {
 			SemanticProperties::add($smwPending, $this->smwProp($lang, 'debate_topic'), $args['topic'], false);
 		}
 		else {
-			Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'topic_missing') . ']]'));
+			$cats[] = ('[[Category:' . $this->L($lang, 'categories', 'topic_missing') . ']]');
 		}
 		if ((Lua::truth($args['expanded-topic']) && (trim($args['expanded-topic'], NativeText::ASCII_WHITESPACE) !== ''))) {
 			$pieces[] = $this->context->shortDescription(sprintf($this->L($lang, 'text', 'shortdesc_topic'), $args['expanded-topic']));
 		}
 		else {
-			Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'topic_complete_missing') . ']]'));
+			$cats[] = ('[[Category:' . $this->L($lang, 'categories', 'topic_complete_missing') . ']]');
 			$pieces[] = $this->context->shortDescription($this->L($lang, 'text', 'shortdesc_plain'));
 		}
 		$pieces[] = $this->renderArgumentMapTop($lang, $maps);
@@ -1528,7 +1533,7 @@ class ReferenceRenderer {
 		$pieces[] = $this->renderRubriques($args, $cats, $lang);
 		$this->setSemanticData($args, $pv, $lang, $maps, $smwPending);
 		$this->renderFullSEO($args, $pv, $lang);
-		$pieces[] = Lua::concat($cats);
+		$pieces[] = implode('', $cats);
 		$renameLink = sprintf($this->L($lang, 'text', 'rename_special_page_text'), $pv['encoded']);
 		$pieces[] = ('<span id="bouton-renommer" class="bouton-modifier navigation-not-searchable noprint" style="display: none;">[[' . $renameLink . '|' . $this->L($lang, 'text', 'rename_link_label') . ']]</span>');
 		$pieces[] = ('<span id="bouton-modifier-sujet" style="display: none;">' . $this->addDataLink($this->L($lang, 'forms', 'topic_edit_title'), $pv['rawTitle'], $this->L($lang, 'text', 'edit_label'), $this->L($lang, 'text', 'topic_edit_tt')) . '</span>');
