@@ -1,9 +1,9 @@
 <?php
 namespace MediaWiki\Extension\DebatePHP;
 
-/** Native PHP port of the supplied Module:Argument. See docs/argument.md.
- * No Lua interpreter is used. Table preserves reference and 1-based semantics.
- * Generated mechanically, then checked against the reference source.
+/** Argument renderer. This PHP source is authoritative and maintained directly.
+ * Legacy Table boundaries remain until their native migration is complete.
+ * See docs/native-php-migration-baseline.md for the behavioural contract.
  */
 class ArgumentReferenceRenderer {
 	private ?DecodedReferences $decodedReferences = null;
