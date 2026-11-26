@@ -40,3 +40,38 @@ p.write_text(s)
 from simplifyNative import simplify
 simplify(p, True)
 print('Applied native Argument operations')
+
+# Keep canonical parent-title sets reproducible without changing the preserved Lua oracle.
+s = p.read_text()
+def replace_once(old, new):
+	global s
+	assert s.count(old) == 1, old
+	s = s.replace(old, new, 1)
+
+marker = '\tprotected function smwAskTitles('
+replace_once(marker, '''	/** Deduplicate page titles, not their raw SMW representations. Preserve first-seen order. */
+	protected function uniqueParentTitles(Table $titles): Table {
+		$out = [];
+		$seen = [];
+		foreach ($titles->sequence() as $title) {
+			$title = $this->canonicalTitle($this->normalizeTitleForCard($title));
+			$key = $this->normTitle($title);
+			if ($key !== '' && !isset($seen[$key])) {
+				$seen[$key] = true;
+				$out[count($out) + 1] = $title;
+			}
+		}
+		return new Table($out);
+	}
+
+''' + marker)
+for name in ['debatsPour', 'debatsContre', 'justifs', 'objs']:
+	replace_once("$cache['" + name + "'] = $" + name + ";",
+		"$cache['" + name + "'] = $this->uniqueParentTitles($" + name + ");")
+replace_once("$cache['parentDebatesFinal'] = $this->uniqList($debates);",
+	"$cache['parentDebatesFinal'] = $this->uniqueParentTitles($debates);")
+replace_once("$cache['debatsTousFinal'] = $this->uniqList($final);",
+	"$cache['debatsTousFinal'] = $this->uniqueParentTitles($final);")
+replace_once("$root = $this->canonicalTitle((Lua::truth($v213 = $clean[1]) ? $v213 : ''));",
+	"$root = $this->canonicalTitle($this->normalizeTitleForCard((Lua::truth($v213 = $clean[1]) ? $v213 : '')));")
+p.write_text(s)

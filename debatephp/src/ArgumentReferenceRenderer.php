@@ -712,6 +712,21 @@ class ArgumentReferenceRenderer {
 		return new Table($out);
 	}
 
+	/** Deduplicate page titles, not their raw SMW representations. Preserve first-seen order. */
+	protected function uniqueParentTitles(Table $titles): Table {
+		$out = [];
+		$seen = [];
+		foreach ($titles->sequence() as $title) {
+			$title = $this->canonicalTitle($this->normalizeTitleForCard($title));
+			$key = $this->normTitle($title);
+			if ($key !== '' && !isset($seen[$key])) {
+				$seen[$key] = true;
+				$out[count($out) + 1] = $title;
+			}
+		}
+		return new Table($out);
+	}
+
 	protected function smwAskTitles($conditions = null, $limit = null, string $origin = 'other') {
 		$limit = (Lua::truth($v109 = Lua::number($limit)) ? $v109 : 200);
 		$q = new Table([]);
@@ -834,8 +849,8 @@ class ArgumentReferenceRenderer {
 		} elseif ($semantic->completeEmpty && $this->context instanceof NativeSemanticContext) {
 			$this->context->skipEmptyParentFallback('debate-parents');
 		}
-		$cache['debatsPour'] = $debatsPour;
-		$cache['debatsContre'] = $debatsContre;
+		$cache['debatsPour'] = $this->uniqueParentTitles($debatsPour);
+		$cache['debatsContre'] = $this->uniqueParentTitles($debatsContre);
 	}
 
 	protected function ensureArgumentParents($pv = null, $cache = null, $PF = null) {
@@ -876,8 +891,8 @@ class ArgumentReferenceRenderer {
 		} elseif ($semantic->completeEmpty && $this->context instanceof NativeSemanticContext) {
 			$this->context->skipEmptyParentFallback('argument-parents');
 		}
-		$cache['justifs'] = $justifs;
-		$cache['objs'] = $objs;
+		$cache['justifs'] = $this->uniqueParentTitles($justifs);
+		$cache['objs'] = $this->uniqueParentTitles($objs);
 	}
 
 	protected function breadcrumbLenByteSafe($ch = null) {
@@ -980,7 +995,7 @@ class ArgumentReferenceRenderer {
 				}
 			}
 		}
-		$cache['debatsTousFinal'] = $this->uniqList($final);
+		$cache['debatsTousFinal'] = $this->uniqueParentTitles($final);
 	}
 
 	protected function normalizeTitleForCard($s = null) {
@@ -1438,7 +1453,7 @@ class ArgumentReferenceRenderer {
 		if (($n === 0)) {
 			return null;
 		}
-		$root = $this->canonicalTitle((Lua::truth($v213 = $clean[1]) ? $v213 : ''));
+		$root = $this->canonicalTitle($this->normalizeTitleForCard((Lua::truth($v213 = $clean[1]) ? $v213 : '')));
 		if (($root === '')) {
 			return null;
 		}
@@ -1494,7 +1509,7 @@ class ArgumentReferenceRenderer {
 			Lua::insert($cats, ('[[Category:' . $this->L($lang, 'categories', 'breadcrumb_too_long') . ']]'));
 		}
 		$cache['breadcrumbChainsFinal'] = $this->uniqList($chains);
-		$cache['parentDebatesFinal'] = $this->uniqList($debates);
+		$cache['parentDebatesFinal'] = $this->uniqueParentTitles($debates);
 	}
 
 	protected function wkBuildArgumentData($items = null) {
