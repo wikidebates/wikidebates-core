@@ -110,7 +110,11 @@ foreach (['fr' => ' et ', 'en' => ' and '] as $language => $conjunction) {
 // Equivalent raw SMW forms must produce one link per relation, preserving order.
 $parentContext = new class(['title' => 'Child', 'args' => ['lang' => 'en']]) extends ArgumentTestContext {
 	public function smwAsk(Table $query): ?Table {
+		$this->effects['ask'][] = $query->values;
 		$fields = implode("\n", $query->values);
+		if (str_contains($fields, '=pdeb')) {
+			throw new LogicException('Unused inherited-parent query must not run');
+		}
 		if (str_contains($fields, '=pro')) {
 			return Table::wrap([
 				1 => ['fulltext' => 'Debate A', 'pro' => 'Child', 'con' => 'Child'],
@@ -140,7 +144,12 @@ $parentContext = new class(['title' => 'Child', 'args' => ['lang' => 'en']]) ext
 	}
 };
 foreach ([ArgumentReferenceRenderer::class, \MediaWiki\Extension\DebatePHP\ArgumentRenderer::class] as $class) {
+	$parentContext->effects['ask'] = [];
 	$rendered = (new $class($parentContext))->render();
+	$breadcrumbQueries = array_filter($parentContext->effects['ask'], static fn($query) => str_contains(implode("\n", $query), '=chain'));
+	$equal(1, count($breadcrumbQueries), 'The used breadcrumb read remains, without the unused inherited-parent read');
+	$semanticWrite = end($parentContext->effects['set']);
+	$equal(['Debate A', 'Debate & B', 'Debate C'], $semanticWrite['Parent debate'], 'Inherited roots remain in semantic parent debate writes');
 	preg_match_all('~<div class="bandeau-en-tete searchaux wk-icon-before [^"]+">.*?</div>~s', $rendered, $matches);
 	$parentBanners = array_values(array_filter($matches[0], static fn($banner) => str_contains($banner, 'class="hover-map"')));
 	$equal(5, count($parentBanners), 'All five parent relation banners remain present');
