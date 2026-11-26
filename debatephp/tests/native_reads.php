@@ -212,8 +212,7 @@ foreach (['', '0', " \t: [[Title|label]]\f", '[[A_B]]', 'Title#section',
 	$expected = trim($input, " \t\r\n\v\f");
 	if ($expected !== '') {
 		$expected = $concat::gsub($expected, '^:%s*', '');
-		$expected = $concat::gsub($concat::gsub($expected, '^%[%[%s*', ''), '%s*%]%] semantic indexing, JSON bytes, CSV isolation, optional adapters and certified fallback/cache lifetimes\n";
-, '');
+		$expected = $concat::gsub($concat::gsub($expected, '^%[%[%s*', ''), '%s*%]%], '');
 		$expected = $concat::match($expected, '^([^%]|]+)%|') ?? $expected;
 		$expected = str_replace('_', ' ', trim($expected, " \t\r\n\v\f"));
 	}
@@ -292,3 +291,154 @@ try {
 }
 
 echo "$assertions native-read assertions: semantic indexing, JSON bytes, CSV isolation, optional adapters and certified fallback/cache lifetimes\n";
+, '');
+		$expected = $concat::match($expected, '^([^%]|]+)%|') ?? $expected;
+		$expected = str_replace('_', ' ', trim($expected, " \t\r\n\v\f"));
+	}
+	$equal($expected, $canonical->invoke($parentRenderer, $input), 'Canonical title retains the historical byte grammar');
+	$smw = trim($concat::gsub($expected, '#.*, ''), " \t\r\n\v\f");
+	if ($concat::truth($concat::find($smw, '[%[%]{}|<>]'))) {
+		$smw = '';
+	}
+	$equal($smw, $safe->invoke($parentRenderer, $input), 'SMW title filtering remains unchanged');
+}
+
+// The two native catch blocks must never hide a SQL error.
+$initContext = new class(['title' => 'Child argument test', 'args' => ['lang' => 'en', 'initialization' => 'Pro argument@id-123'], 'publication_date' => '2025-01-01T00:00:00Z']) extends ArgumentTestContext {
+	public ?Throwable $queryFailure = null;
+	public ?Throwable $editFailure = null;
+	public ?Throwable $urlFailure = null;
+	public int $initQueries = 0;
+	public int $edits = 0;
+	public function smwAsk(Table $query): ?Table {
+		if (!in_array('limit=1', $query->values, true)) {
+			return parent::smwAsk($query);
+		}
+		$this->initQueries++;
+		if ($this->queryFailure) {
+			throw $this->queryFailure;
+		}
+		return Table::wrap([1 => ['fulltext' => 'Parent title']]);
+	}
+	public function autoEdit(Table $params): string {
+		$this->edits++;
+		if ($this->editFailure) {
+			throw $this->editFailure;
+		}
+		return parent::autoEdit($params);
+	}
+	public function fullUrl(string $page, ?Table $query = null): ?string {
+		if ($this->urlFailure) {
+			throw $this->urlFailure;
+		}
+		return parent::fullUrl($page, $query);
+	}
+};
+$initRenderer = new ArgumentReferenceRenderer($initContext);
+$initHtml = $initRenderer->render();
+$equal(1, $initContext->initQueries, 'Initialization does one uncached lookup');
+$equal(1, $initContext->edits, 'Initialization still renders its edit button');
+$equal(true, str_contains($initHtml, 'Parent title'), 'Initialization shows the found parent');
+$initContext->queryFailure = new RuntimeException('Recoverable query');
+$initContext->editFailure = new RuntimeException('Recoverable edit');
+$recovered = $initRenderer->render();
+$equal(false, str_contains($recovered, 'Recoverable'), 'Recoverable initialization errors remain private');
+$initContext->queryFailure = null;
+$initContext->editFailure = null;
+foreach (['queryFailure', 'editFailure'] as $field) {
+	$failure = new PDOException('SQL failure');
+	$initContext->$field = $failure;
+	try {
+		$initRenderer->render();
+		throw new LogicException('Initialization swallowed a database error');
+	} catch (PDOException $error) {
+		$equal($failure, $error, 'Initialization propagates the original SQL exception');
+	}
+	$initContext->$field = null;
+}
+$url = new ReflectionMethod($initRenderer, 'wkFullUrl');
+$initContext->urlFailure = new RuntimeException('Recoverable URL');
+$equal('', $url->invoke($initRenderer, 'Target'), 'Ordinary URL failure falls back to empty string');
+$failure = new PDOException('SQL failure');
+$initContext->urlFailure = $failure;
+try {
+	$url->invoke($initRenderer, 'Target');
+	throw new LogicException('URL swallowed SQL error');
+} catch (PDOException $error) {
+	$equal($failure, $error, 'URL lookup propagates SQL exception');
+}
+
+echo "$assertions native-read assertions: semantic indexing, JSON bytes, CSV isolation, optional adapters and certified fallback/cache lifetimes\n";
+, ''), " \t\r\n\v\f");
+	if ($concat::truth($concat::find($smw, '[%[%]{}|<>]'))) {
+		$smw = '';
+	}
+	$equal($smw, $safe->invoke($parentRenderer, $input), 'SMW title filtering remains unchanged');
+}
+
+// The two native catch blocks must never hide a SQL error.
+$initContext = new class(['title' => 'Child argument test', 'args' => ['lang' => 'en', 'initialization' => 'Pro argument@id-123'], 'publication_date' => '2025-01-01T00:00:00Z']) extends ArgumentTestContext {
+	public ?Throwable $queryFailure = null;
+	public ?Throwable $editFailure = null;
+	public ?Throwable $urlFailure = null;
+	public int $initQueries = 0;
+	public int $edits = 0;
+	public function smwAsk(Table $query): ?Table {
+		if (!in_array('limit=1', $query->values, true)) {
+			return parent::smwAsk($query);
+		}
+		$this->initQueries++;
+		if ($this->queryFailure) {
+			throw $this->queryFailure;
+		}
+		return Table::wrap([1 => ['fulltext' => 'Parent title']]);
+	}
+	public function autoEdit(Table $params): string {
+		$this->edits++;
+		if ($this->editFailure) {
+			throw $this->editFailure;
+		}
+		return parent::autoEdit($params);
+	}
+	public function fullUrl(string $page, ?Table $query = null): ?string {
+		if ($this->urlFailure) {
+			throw $this->urlFailure;
+		}
+		return parent::fullUrl($page, $query);
+	}
+};
+$initRenderer = new ArgumentReferenceRenderer($initContext);
+$initHtml = $initRenderer->render();
+$equal(1, $initContext->initQueries, 'Initialization does one uncached lookup');
+$equal(1, $initContext->edits, 'Initialization still renders its edit button');
+$equal(true, str_contains($initHtml, 'Parent title'), 'Initialization shows the found parent');
+$initContext->queryFailure = new RuntimeException('Recoverable query');
+$initContext->editFailure = new RuntimeException('Recoverable edit');
+$recovered = $initRenderer->render();
+$equal(false, str_contains($recovered, 'Recoverable'), 'Recoverable initialization errors remain private');
+$initContext->queryFailure = null;
+$initContext->editFailure = null;
+foreach (['queryFailure', 'editFailure'] as $field) {
+	$failure = new PDOException('SQL failure');
+	$initContext->$field = $failure;
+	try {
+		$initRenderer->render();
+		throw new LogicException('Initialization swallowed a database error');
+	} catch (PDOException $error) {
+		$equal($failure, $error, 'Initialization propagates the original SQL exception');
+	}
+	$initContext->$field = null;
+}
+$url = new ReflectionMethod($initRenderer, 'wkFullUrl');
+$initContext->urlFailure = new RuntimeException('Recoverable URL');
+$equal('', $url->invoke($initRenderer, 'Target'), 'Ordinary URL failure falls back to empty string');
+$failure = new PDOException('SQL failure');
+$initContext->urlFailure = $failure;
+try {
+	$url->invoke($initRenderer, 'Target');
+	throw new LogicException('URL swallowed SQL error');
+} catch (PDOException $error) {
+	$equal($failure, $error, 'URL lookup propagates SQL exception');
+}
+
+echo "$assertions native-read assertions:
