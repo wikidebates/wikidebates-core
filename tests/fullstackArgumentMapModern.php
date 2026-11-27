@@ -1,6 +1,6 @@
 <?php
 
-/** Real SMW 7.3.1 hover integration; no Lua extension is loaded. */
+/** Real pinned SMW hover integration; no Lua extension is loaded. */
 define('WD_FULLSTACK_TEST', true);
 putenv('WD_TEST_LANGUAGE=en');
 putenv('WD_TEST_EXTENSIONS=SemanticMediaWiki');

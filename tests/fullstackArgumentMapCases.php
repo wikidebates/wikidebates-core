@@ -100,6 +100,9 @@ function fsArgumentMapCases(bool $legacy): void {
 			fsArgumentMapUpdatedData($parserHtml, $properties, $lang);
 		}
 	}
+	if (!$legacy && in_array(SMW_VERSION, ['7.3.1', '7.4.1'], true)) {
+		fsArgumentMapBenchmarkMaintenance();
+	}
 	echo "OK: native hover map, FR/EN, full fallback, contextual columns, empty/missing data and encoded titles"
 		. ($legacy ? '; exact historical Lua HTML comparison' : '; no Lua extensions loaded') . "\n";
 }
@@ -174,12 +177,16 @@ function fsArgumentMapApiEnvelope(string $page, string $lang): void {
 		$text = '{{#argumentmap:render|' . $page . $tail . '|lang=' . $lang . '}}';
 		$original = $call($text, false);
 		$compact = $call($text, true);
-		$typed = new ApiMain(new FauxRequest(['action' => 'wikidebatesargumentmap', 'page' => $page,
+		$typedParams = ['action' => 'wikidebatesargumentmap', 'page' => $page,
 			'source' => $mode === 'fallback' ? '' : 'WD Map source',
 			'mode' => $mode === 'fallback' ? 'full' : $mode, 'lang' => $lang,
-			'formatversion' => 2, 'uselang' => $GLOBALS['wgLanguageCode']], false));
-		$typed->execute();
-		$typedResponse = $typed->getResult()->getResultData([], ['Strip' => 'all']);
+			'formatversion' => 2, 'uselang' => $GLOBALS['wgLanguageCode']];
+		$typedCall = static function() use ($typedParams): array {
+			$typed = new ApiMain(new FauxRequest($typedParams, false));
+			$typed->execute();
+			return $typed->getResult()->getResultData([], ['Strip' => 'all']);
+		};
+		$typedResponse = $typedCall();
 		same($visible($compact), $visible(['parse' => ['text' => $typedResponse['wikidebatesargumentmap']['html'] ?? null]]),
 			'Typed API keeps map HTML: ' . $lang . '/' . $mode);
 		same($visible($original), $visible($compact), 'Compact API keeps map HTML: ' . $lang . '/' . $mode);
@@ -188,8 +195,35 @@ function fsArgumentMapApiEnvelope(string $page, string $lang): void {
 		$before = strlen(json_encode($original, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
 		$after = strlen(json_encode($compact, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
 		check($after < $before, 'Compact JSON is strictly smaller');
+		$typedBytes = strlen(json_encode($typedResponse, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
 		echo 'ARGUMENTMAP_API_BYTES ' . json_encode(['lang' => $lang, 'mode' => $mode,
-			'default' => $before, 'compact' => $after], JSON_THROW_ON_ERROR) . "\n";
+			'default' => $before, 'compact' => $after, 'typed' => $typedBytes], JSON_THROW_ON_ERROR) . "\n";
+
+		// Measure the entire PHP API envelope (including JSON serialization),
+		// not the network or the browser. Alternate order and clear only the
+		// isolated SMW Store's internal state before each measured call.
+		$store = \SMW\Services\ServicesFactory::getInstance()->getStore();
+		$times = ['compact' => [], 'typed' => []];
+		for ($i = 0; $i < 12; $i++) {
+			foreach ($i % 2 === 0 ? ['compact', 'typed'] : ['typed', 'compact'] as $transport) {
+				$store->clear();
+				$started = hrtime(true);
+				$response = $transport === 'compact' ? $call($text, true) : $typedCall();
+				json_encode($response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+				$times[$transport][] = (hrtime(true) - $started) / 1000;
+				same($visible($compact), $visible($transport === 'compact' ? $response :
+					['parse' => ['text' => $response['wikidebatesargumentmap']['html'] ?? null]]),
+					'Measured transport retains visible map HTML');
+			}
+		}
+		foreach ($times as &$samples) {
+			sort($samples);
+		}
+		unset($samples);
+		echo 'ARGUMENTMAP_API_TIMING ' . json_encode(['lang' => $lang, 'mode' => $mode,
+			'read_mode' => MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesArgumentMapDirectRead') ? 'direct' : 'query',
+			'compact_median_us' => ($times['compact'][5] + $times['compact'][6]) / 2,
+			'typed_median_us' => ($times['typed'][5] + $times['typed'][6]) / 2], JSON_THROW_ON_ERROR) . "\n";
 	}
 }
 
@@ -306,4 +340,32 @@ function fsArgumentMapUpdatedData(callable $render, array $properties, string $l
 	fsFlush();
 	\SMW\Services\ServicesFactory::getInstance()->getStore()->clear();
 	check(!str_contains($render($call), 'After update'), 'Removed semantic value is not retained by the read path');
+}
+
+/** Execute the same maintenance audit on the isolated wiki, not merely php -l. */
+function fsArgumentMapBenchmarkMaintenance(): void {
+	require_once dirname(__DIR__) . '/maintenance/BenchmarkArgumentMap.php';
+	$audit = new class extends BenchmarkArgumentMap {
+		public array $records = [];
+		protected function output($out, $channel = null) {
+			$this->records[] = json_decode(trim($out), true, 512, JSON_THROW_ON_ERROR);
+		}
+	};
+	$audit->loadParamsAndArgs('BenchmarkArgumentMap', ['limit' => 100, 'cache-probe' => true], []);
+	$audit->execute();
+	$records = array_column($audit->records, null, 'type');
+	$summary = $records['summary'] ?? [];
+	check(($summary['pages'] ?? 0) > 0 && $summary['pages'] <= 100, 'Maintenance audit is bounded and finds real fixture pages');
+	same(0, $summary['errors'], 'Maintenance audit has no read errors');
+	check(!isset($records['mismatch']), 'Maintenance audit finds no mismatches on fixture data');
+	$nonempty = 0;
+	foreach ($summary['modes'] as $mode) {
+		same(0, $mode['mismatches'], 'Maintenance audit verifies real stored fields');
+		$nonempty += $mode['eligible_nonempty'];
+	}
+	check($nonempty > 0, 'Maintenance audit actually measures populated eligible map fields');
+	$probe = $records['cache_probe'] ?? [];
+	same(100, ($probe['hits'] ?? 0) + ($probe['misses'] ?? 0), 'Synthetic WAN probe accounts for all lookups');
+	same(100, $probe['round_trip']['count'], 'Synthetic WAN probe times all lookups');
+	echo "OK: bounded real-data audit and synthetic WAN cache probe\n";
 }

@@ -137,3 +137,30 @@ cas de repli et édition/suppression de valeurs sémantiques. La mesure
 runtime inclut les garde-fous de sélection : elle est distincte du
 prototype brut. Le chemin reste désactivé tant que les contrôles
 et l'échantillonnage de la ferme ne sont pas validés.
+
+## Mesurer les gains de bout en bout et décider du cache partagé
+
+Les lignes ARGUMENTMAP_API_TIMING comparent le temps PHP du transport
+compact et de l'API dédiée, sérialisation JSON comprise, en alternant
+12 mesures par chemin et en vérifiant le HTML visible. Ce n'est pas
+un benchmark réseau ni PHP-FPM.
+
+Après installation du code, `maintenance/BenchmarkArgumentMap.php`
+permet un audit borné, sans modification des pages ni du schéma.
+Il compare les champs effectivement enregistrés sur les pages réelles,
+compte les cas éligibles et les divergences, et mesure les lectures
+non vides. Par exemple (adapter l'identifiant du wiki à la ferme) :
+
+```bash
+php maintenance/run.php Wikidebates:BenchmarkArgumentMap --wiki=fr --limit=200 --cache-probe
+```
+
+Utiliser aussi le wiki EN et plusieurs plages d'identifiants. Une
+divergence interdit l'activation sans analyse. L'option cache-probe
+évalue 100 lectures WAN d'une valeur synthétique (clé aléatoire, TTL
+30 s, suppression en fin de mesure) avec une clé de validation dédiée.
+Elle ne met jamais les cartes de production en cache. Les résultats
+CLI ne représentent pas nécessairement le backend ou les coûts FPM.
+Ne pas ajouter de cache de production uniquement sur la base d'un
+HIT rapide : considérer aussi le taux de HIT réel, les MISS et les
+coûts/risques d'invalidation.
