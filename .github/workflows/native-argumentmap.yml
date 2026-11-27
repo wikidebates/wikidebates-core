@@ -55,7 +55,7 @@
 			},
 			"steps": [
 				{
-					"uses": "actions/checkout@v7.0.1"
+					"uses": "actions/checkout@v7"
 				},
 				{
 					"uses": "shivammathur/setup-php@v2",
@@ -72,7 +72,7 @@
 				},
 				{
 					"name": "MediaWiki 1.43.12",
-					"uses": "actions/checkout@v7.0.1",
+					"uses": "actions/checkout@v7",
 					"with": {
 						"repository": "wikimedia/mediawiki",
 						"ref": "1.43.12",
@@ -81,7 +81,7 @@
 				},
 				{
 					"name": "Vector for isolated ApiParse responses",
-					"uses": "actions/checkout@v7.0.1",
+					"uses": "actions/checkout@v7",
 					"with": {
 						"repository": "wikimedia/mediawiki-skins-Vector",
 						"ref": "REL1_43",
@@ -90,7 +90,7 @@
 				},
 				{
 					"name": "SMW 7.4.1",
-					"uses": "actions/checkout@v7.0.1",
+					"uses": "actions/checkout@v7",
 					"with": {
 						"repository": "SemanticMediaWiki/SemanticMediaWiki",
 						"ref": "7.4.1",

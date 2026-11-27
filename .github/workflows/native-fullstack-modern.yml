@@ -51,7 +51,7 @@
 			"timeout-minutes": 30,
 			"steps": [
 				{
-					"uses": "actions/checkout@v7.0.1"
+					"uses": "actions/checkout@v7"
 				},
 				{
 					"uses": "shivammathur/setup-php@v2",
@@ -63,7 +63,7 @@
 					}
 				},
 				{
-					"uses": "actions/checkout@v7.0.1",
+					"uses": "actions/checkout@v7",
 					"name": "MediaWiki 1.43.12",
 					"with": {
 						"repository": "wikimedia/mediawiki",
@@ -72,7 +72,7 @@
 					}
 				},
 				{
-					"uses": "actions/checkout@v7.0.1",
+					"uses": "actions/checkout@v7",
 					"name": "Pinned ParserFunctions",
 					"with": {
 						"repository": "wikimedia/mediawiki-extensions-ParserFunctions",
@@ -81,7 +81,7 @@
 					}
 				},
 				{
-					"uses": "actions/checkout@v7.0.1",
+					"uses": "actions/checkout@v7",
 					"name": "Pinned Cite",
 					"with": {
 						"repository": "wikimedia/mediawiki-extensions-Cite",
@@ -90,7 +90,7 @@
 					}
 				},
 				{
-					"uses": "actions/checkout@v7.0.1",
+					"uses": "actions/checkout@v7",
 					"name": "SMW 7.4.1",
 					"with": {
 						"repository": "SemanticMediaWiki/SemanticMediaWiki",
@@ -99,7 +99,7 @@
 					}
 				},
 				{
-					"uses": "actions/checkout@v7.0.1",
+					"uses": "actions/checkout@v7",
 					"name": "Pinned Variables",
 					"with": {
 						"repository": "wikimedia/mediawiki-extensions-Variables",
@@ -108,7 +108,7 @@
 					}
 				},
 				{
-					"uses": "actions/checkout@v7.0.1",
+					"uses": "actions/checkout@v7",
 					"name": "Pinned PageForms",
 					"with": {
 						"repository": "wikimedia/mediawiki-extensions-PageForms",
@@ -117,7 +117,7 @@
 					}
 				},
 				{
-					"uses": "actions/checkout@v7.0.1",
+					"uses": "actions/checkout@v7",
 					"name": "Pinned ShortDescription",
 					"with": {
 						"repository": "StarCitizenTools/mediawiki-extensions-ShortDescription",
@@ -126,7 +126,7 @@
 					}
 				},
 				{
-					"uses": "actions/checkout@v7.0.1",
+					"uses": "actions/checkout@v7",
 					"name": "Pinned WikiSEO",
 					"with": {
 						"repository": "wikidebates/WikiSEO",
