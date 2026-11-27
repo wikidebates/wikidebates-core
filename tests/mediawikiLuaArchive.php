@@ -102,9 +102,10 @@ foreach (['old' => $old, 'current' => $new, 'convertedOld' => $old, 'converted' 
 	$html = $services->getContentRenderer()->getParserOutput($content, $title, $rev, ParserOptions::newFromAnon())->getRawText();
 	check(str_contains($html, '<pre') && str_contains($html, 'mw-code'), 'Revision is rendered as literal source');
 	check(!str_contains($html, '<script>'), 'No active script element in source display');
-	if ($key !== 'current') {
-		check(str_contains($html, '&lt;script&gt;') && str_contains($html, '{{SITENAME}}'), 'HTML escaped and magic word left literal');
-	}
+	// Core Html serialization may encode only the opening angle bracket or
+	// represent other literal characters as entities. Check the actual visible source.
+	$visible = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+	same($expected, trim($visible, "\r\n"), 'Escaped source and magic words stay literal: ' . $key . ' / ' . $html);
 }
 check(!$contents['old']->diff($contents['current'])->isEmpty(), 'Native text diff compares original revisions');
 $restricted = $lookup->getRevisionById($ids['hidden']);
