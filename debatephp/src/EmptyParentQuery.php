@@ -33,9 +33,11 @@ final class EmptyParentQuery {
 		foreach ($branches as $branch) {
 			if (!$branch instanceof \SMW\Query\Language\SomeProperty) { return false; }
 			$value = $branch->getDescription();
-			if (!$value instanceof \SMW\Query\Language\ValueDescription || $value->getComparator() !== SMW_CMP_EQ
-				|| !$value->getDataItem() instanceof \SMW\DIWikiPage) { return false; }
-			$page = $value->getDataItem()->getSerialization();
+			if (!$value instanceof \SMW\Query\Language\ValueDescription || $value->getComparator() !== SMW_CMP_EQ) { return false; }
+			$item = $value->getDataItem();
+			// SMW 7 moved the concrete data item; the old alias need not exist.
+			if (!$item instanceof \SMW\DataItems\WikiPage && !$item instanceof \SMW\DIWikiPage) { return false; }
+			$page = $item->getSerialization();
 			if ($target !== null && $target !== $page) { return false; }
 			$target = $page;
 		}
