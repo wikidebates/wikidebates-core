@@ -12,6 +12,8 @@ use Skin;
 class Hooks {
 
 	public static function onBeforePageDisplay( OutputPage $out, Skin $skin ): void {
+		$out->addJsConfigVars('wgWikidebatesArgumentMapApi',
+			(bool)MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesArgumentMapApi'));
 		$out->addJsConfigVars('wgWikidebatesReadingFragments',
 			(bool)MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesReadingFragments'));
 		$out->addJsConfigVars( 'wgWikidebatesWikiNames', MessageCatalog::siteNames(

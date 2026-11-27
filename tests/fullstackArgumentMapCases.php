@@ -165,6 +165,14 @@ function fsArgumentMapApiEnvelope(string $page, string $lang): void {
 		$text = '{{#argumentmap:render|' . $page . $tail . '|lang=' . $lang . '}}';
 		$original = $call($text, false);
 		$compact = $call($text, true);
+		$typed = new ApiMain(new FauxRequest(['action' => 'wikidebatesargumentmap', 'page' => $page,
+			'source' => $mode === 'fallback' ? '' : 'WD Map source',
+			'mode' => $mode === 'fallback' ? 'full' : $mode, 'lang' => $lang,
+			'formatversion' => 2, 'uselang' => $GLOBALS['wgLanguageCode']], false));
+		$typed->execute();
+		$typedResponse = $typed->getResult()->getResultData([], ['Strip' => 'all']);
+		same($visible($compact), $visible(['parse' => ['text' => $typedResponse['wikidebatesargumentmap']['html'] ?? null]]),
+			'Typed API keeps map HTML: ' . $lang . '/' . $mode);
 		same($visible($original), $visible($compact), 'Compact API keeps map HTML: ' . $lang . '/' . $mode);
 		check(isset($original['parse']['links']) && !isset($compact['parse']['links']),
 			'Compact request omits the default links payload');

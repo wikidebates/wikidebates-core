@@ -105,8 +105,19 @@
 					+ WK_SEP + ( p3 || '' )
 					+ WK_SEP + 'encoding=uri'
 					+ WK_CLOSE,
-				key: 'map|' + p1m + '|' + ( p2 || '' ) + '|' + ( p3 || '' )
+				key: 'map|' + p1m + '|' + ( p2 || '' ) + '|' + ( p3 || '' ),
+				map: { page: p1m, source: source, mode: source.trim() === '' ? 'full' : ( p3 ? 'debate' : 'argument' ) }
 			};
+		}
+
+		function wkHoverVisible( el, $wrap ) {
+			if ( $wrap.is( ':hidden' ) || el.offsetParent === null ) return false;
+			try {
+				var r = el.getBoundingClientRect();
+				var vh = W.innerHeight || D.documentElement.clientHeight || 0;
+				if ( r.bottom < 0 || r.top > vh ) return false;
+			} catch ( e ) {}
+			return true;
 		}
 
 		$D.on( 'mouseenter.wkHover', '.hover-map, .hover-wikipedia', function () {
@@ -119,22 +130,26 @@
 
 			var myToken = ++wkHoverToken;
 
+			// A fresh shared map is already available: no timer or network.
+			if ( $wrap.hasClass( 'hover-map' ) && wkHoverVisible( el, $wrap ) ) {
+				var a = wkGetLinkNode( $wrap );
+				var map = a && wkBuildHoverQuery( { type: 'map' }, el, a );
+				var cached = map ? WK.wkGetCachedMap( map.query ) : null;
+				if ( cached !== null ) {
+					wkEnsureLocalHoverWrapper( $wrap ).attr( 'aria-hidden', 'false' ).html( cached ).show();
+					return;
+				}
+			}
+
 			wkHoverTimer = setTimeout( function () {
 				wkHoverTimer = 0;
 
 				if ( myToken !== wkHoverToken ) return;
 				if ( !wkHoverCurrent || wkHoverCurrent[ 0 ] !== el ) return;
 
-				if ( $wrap.is( ':hidden' ) ) return;
-				if ( el && el.offsetParent === null ) return;
+				if ( !wkHoverVisible( el, $wrap ) ) return;
 
-				try {
-					var r = el.getBoundingClientRect();
-					var vh = W.innerHeight || D.documentElement.clientHeight || 0;
-					if ( r.bottom < 0 || r.top > vh ) return;
-				} catch ( e ) {}
-
-				WK.wkWarmI18nCaches();
+				if ( !$wrap.hasClass( 'hover-map' ) ) WK.wkWarmI18nCaches();
 
 				var info = wkGetHoverTypeAndTpl( $wrap );
 				if ( !info ) return;
@@ -152,7 +167,7 @@
 				// element-local cache equally strict, including the complete query.
 				var language = mw.config.get( 'wgUserLanguage' );
 				var cacheKey = JSON.stringify( [ language, built.query ] );
-				var stored = wkHoverStore ? wkHoverStore.get( el ) : null;
+				var stored = !built.map && wkHoverStore ? wkHoverStore.get( el ) : null;
 				if ( stored && stored.key === cacheKey && stored.html ) {
 					$local.html( stored.html ).show();
 					return;
@@ -160,7 +175,7 @@
 
 				$local.hide().empty();
 
-				WK.wkParseWikitext( built.query, 'hover' ).then( function ( html ) {
+				WK.wkParseWikitext( built.query, 'hover', { map: built.map } ).then( function ( html ) {
 					if ( myToken !== wkHoverToken ) return;
 					if ( !wkHoverCurrent || wkHoverCurrent[ 0 ] !== el ) return;
 					// An in-flight response belongs to the language and query at
@@ -171,7 +186,7 @@
 					var currentQuery = currentLink && wkBuildHoverQuery( currentInfo, el, currentLink );
 					if ( !currentQuery || currentQuery.query !== built.query ) return;
 
-					if ( wkHoverStore ) {
+					if ( !built.map && wkHoverStore ) {
 						wkHoverStore.set( el, { key: cacheKey, html: html } );
 					}
 

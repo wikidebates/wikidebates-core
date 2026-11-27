@@ -616,6 +616,10 @@
 			"value": false,
 			"description": "Log renderer integration diagnostics to the DebatePHP debug channel."
 		},
+		"WikidebatesArgumentMapApi": {
+			"value": false,
+			"description": "Opt-in typed ArgumentMap endpoint pending parity and performance validation."
+		},
 		"WikidebatesReadingFragments": {
 			"value": true
 		},
@@ -666,6 +670,7 @@
 		}
 	},
 	"APIModules": {
+		"wikidebatesargumentmap": "MediaWiki\\Extension\\DebatePHP\\ApiArgumentMap",
 		"wikidebatesreading": "MediaWiki\\Extension\\Wikidebates\\Reading\\ApiReadingFragment"
 	},
 	"JobClasses": {
