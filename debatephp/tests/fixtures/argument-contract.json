@@ -1,0 +1,3131 @@
+{
+	"format": 1,
+	"baseline": "ad37f75b2257b3bf0cb16d47ecf67fd20383a26e",
+	"validated_capture": "e0062017ddb7eb79e3e3e33b50e9a5d8022a4f8b",
+	"workflow_job": 140615961578,
+	"cases": [
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {},
+				"name": "empty-fr",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "57a50626ab7003bfa90533155e839e440d79d1f98299a26c52c3b0c6a86061aa",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "6a1f2d9e91ef783b85af2a8fd3d0a0df98c5851626d1e0df7daf2d5401a50383",
+				"text": "324f8a30412b6dc145384ee65ae6f53a7134fb65c9153e7720fc653571fd2479",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "442bd225ed8343d7fc37d7342daf354f9fa1df7314e9f9e012bc1ab789da866d",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Breadcrumb=chain\n?Debate name=debateName\nlimit=200\nlink=none": [],
+				"([[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Pro argument=pro\n?Con argument=con\nlimit=200\nlink=none": [],
+				"[[Con argument::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Pro argument::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"lang": "en"
+				},
+				"name": "empty-en",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "b9ede3b235705cbd3cf90d04d7a01267b578cd581e909eaf7a471241291b9f94",
+				"preprocess": "8d25c23fb737308acb95026c69d0da4053da623698456e361342260b89b9d2e2",
+				"seo": "a011ea7f45ad2583a134c54e0a15a03ab1e0556197e8ba500f1fdeaa1dd058da",
+				"set": "ce3db8a0632b11008b393637f9f4dbe6ccab40d02c6af616896caf4000f762c0",
+				"text": "6473e486298abf5a6415fe75346ac38c924728ac77d7e5814807264f307cf9df",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "6166926f5bfcc1acb92a107579186040f8938278f147fd48dd0f6a55b2e10e5c",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {},
+			"case": {
+				"args": {},
+				"name": "extensions-absent",
+				"seo": false,
+				"smw": false,
+				"title": "Un argument de démonstration",
+				"vars": false
+			},
+			"expected": {
+				"ask": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+				"preprocess": "57a50626ab7003bfa90533155e839e440d79d1f98299a26c52c3b0c6a86061aa",
+				"seo": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+				"set": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+				"text": "711fc8a5825ed22f5072ff89b61f496f2b7a5b4b53c7b17b4c034990b61a9bac",
+				"variables": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+			},
+			"input_sha256": "b55d944eaba94359a45eb9f1f938b5afeafd24df2862ffa216c837ce15289bb6",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2025-03-12",
+					"established-name": "Autre nom",
+					"interlanguage": "[[en:Example]]",
+					"keywords": "Énergie, Climat, Énergie",
+					"sections": "Sciences, Politique",
+					"summary": "Un résumé avec [[Lien|libellé]], = et |."
+				},
+				"name": "summary",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "b456eeb510ac0e9c25d1eaa3a4e31334eca43b9fe233171aa33e88fc2d3f5de4",
+				"seo": "72c3ecd47a070eb00cf22181ad4a7ea21a965c24391f6738fdb3f1fd399a4817",
+				"set": "9fa134b1922cf3c309a9f29e980b7fae9a7ad8ab0e48e42b31a9ccf12885a4e6",
+				"text": "6f64af8cf9e55bb29e59bb43d608532940bfc7533fe0f5f31414efd17ece920e",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "5899732d9cb58f8082f4876b495421e3fa5154d6c1d8837ab69f9e530a31d7b1",
+			"publication_date": "2025-03-12T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": " ",
+					"keywords": "  ",
+					"quotes": " ",
+					"sections": " ",
+					"summary": " \t\n"
+				},
+				"name": "whitespace",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "57a50626ab7003bfa90533155e839e440d79d1f98299a26c52c3b0c6a86061aa",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "6a1f2d9e91ef783b85af2a8fd3d0a0df98c5851626d1e0df7daf2d5401a50383",
+				"text": "324f8a30412b6dc145384ee65ae6f53a7134fb65c9153e7720fc653571fd2479",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "c250a6ab128112a1caa0e5dabf30cbd9164786b129dfee2560f40c2b2a5f4262",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "0",
+					"established-name": "0",
+					"keywords": "0",
+					"summary": "0"
+				},
+				"name": "zero",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "09ba126ab62bf0ce15648489da6bf8ca25194df4160feb404d9d803d4dd51c57",
+				"seo": "790356c16dd88726c8ea8ccbb5b9f4263f91f2bc4054e18519d70bbf584cd8ad",
+				"set": "34d444ee1c360cd6b975a3a126ea88a708b092c2dac748b5925e735be0af0a43",
+				"text": "b2c37194738f045bcc8b74111ddf4a9beb8645000b86f6546fb0d286241285b3",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "735f03227e5d99b6271ff643444acd581b99361b0cc9dfbba88daef06c83692d",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Débat dédié]]\n?Carte des arguments=map\nlimit=1\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"dedicated-debate": "[[Débat_dédié|libellé]]",
+					"summary": "Un résumé"
+				},
+				"name": "dedicated",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "9c8253951cc06dfa3fe6c24a7ace642decde23a47aa98e903c9845b94b7f3aef",
+				"preprocess": "f299486d5148a893558ac6a94da32501984144c205d71bf1eea6cbd8c2dc317f",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "c64d49e91636d5059e9c80b761fc8ca9c669d456323ce08957b27f3200233c2a",
+				"text": "7bbcefc115f3219a157370b09de0e4dc5bb3ee58923c8575f4063267570be6bb",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "249e269100efaeff73a7cd8b6ec8746e9879a142f9b460946d66e361e267bdfc",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2026-10-18",
+					"initialization": "Argument pour@123"
+				},
+				"name": "init-today",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "9fe4afcdefdfc512bdd8ac48cfd2c33f43a841b6471030ae29ee2f873dbf86b1",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "6a1f2d9e91ef783b85af2a8fd3d0a0df98c5851626d1e0df7daf2d5401a50383",
+				"text": "324f8a30412b6dc145384ee65ae6f53a7134fb65c9153e7720fc653571fd2479",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "b92d1ffaf79e5e1cec6887f40f5eed067df7f8ebe867ff9fcb6f4d140c96889e",
+			"publication_date": "2026-10-18T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Numéro de débat::123]] OR [[Numéro d'argument::123]]\nlimit=1\nlink=none": [
+					{
+						"fulltext": "Débat parent"
+					}
+				],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2025-01-01",
+					"initialization": "Argument pour@id-123",
+					"lang": "fr"
+				},
+				"init_rows": [
+					{
+						"fulltext": "Débat parent"
+					}
+				],
+				"name": "init-fr",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "095843fdb941f5feca0efd412b2048852a979c42658321e529a321c31413c891",
+				"preprocess": "3091127dc7ff25a2e3006ad7e1ed70048a5f5b25a46f405acd54cddf6d8f9d39",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "6a1f2d9e91ef783b85af2a8fd3d0a0df98c5851626d1e0df7daf2d5401a50383",
+				"text": "027aea50d7470c8704ca1138d1e3dcaafa6e53671d9f93989d77fca79d3f82b1",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "e1ab535f9717ac7fca0bf3513439ecc5dc89387d7c742990cc7e283c3a345300",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"argument-warnings": "argument_orphan,argument_redundant,argument_to_split",
+					"justification-warnings": "justifications_to_reorganize",
+					"lang": "fr",
+					"objection-warnings": "objections_to_reorganize",
+					"summary": "Texte",
+					"summary-warnings": "summary_unclear,summary_too_long",
+					"title-warnings": "title_non_standard,title_to_explain,title_to_simplify"
+				},
+				"name": "warnings-fr",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "0433ef219dab2ac18ab45328dda4371981ede78474fedda76fdefb227d9a8222",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "6a1f2d9e91ef783b85af2a8fd3d0a0df98c5851626d1e0df7daf2d5401a50383",
+				"text": "916bdaca09a66ee94e8ceadfc30eab47fda08df31292968070f53d61d4a5f3cb",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "a11a63c4fde29a7ef42e20d4e5f8ac160770e18e1aa219e1ce01f936463cbaa5",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Breadcrumb=chain\n?Debate name=debateName\nlimit=200\nlink=none": [],
+				"([[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Pro argument=pro\n?Con argument=con\nlimit=200\nlink=none": [],
+				"[[Con argument::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Debate number::123]] OR [[Argument number::123]]\nlimit=1\nlink=none": [
+					{
+						"fulltext": "Débat parent"
+					}
+				],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Pro argument::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2025-01-01",
+					"initialization": "Pro argument@id-123",
+					"lang": "en"
+				},
+				"init_rows": [
+					{
+						"fulltext": "Débat parent"
+					}
+				],
+				"name": "init-en",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "412f71132c7537607b16c0293150d1fec8b55be800f0fdd866f77cc894331b92",
+				"preprocess": "8ec90cec8db068cd45e06df7113210f0c45aed4259ef5be2f82e86a15e80f4d6",
+				"seo": "a011ea7f45ad2583a134c54e0a15a03ab1e0556197e8ba500f1fdeaa1dd058da",
+				"set": "ce3db8a0632b11008b393637f9f4dbe6ccab40d02c6af616896caf4000f762c0",
+				"text": "99440ed32e87af3f65299dcaeda00469e0d61e63699617c165e0ce866cbb9ab5",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "08307377dd519316a0a51067e09ed028d221a983571bbd990ec8cc6d3f375b4a",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Breadcrumb=chain\n?Debate name=debateName\nlimit=200\nlink=none": [],
+				"([[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Pro argument=pro\n?Con argument=con\nlimit=200\nlink=none": [],
+				"[[Con argument::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Pro argument::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"argument-warnings": "argument_orphan,argument_redundant,argument_to_split",
+					"justification-warnings": "justifications_to_reorganize",
+					"lang": "en",
+					"objection-warnings": "objections_to_reorganize",
+					"summary": "Texte",
+					"summary-warnings": "summary_unclear,summary_too_long",
+					"title-warnings": "title_non_standard,title_to_explain,title_to_simplify"
+				},
+				"name": "warnings-en",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "b9ede3b235705cbd3cf90d04d7a01267b578cd581e909eaf7a471241291b9f94",
+				"preprocess": "9817a5782c48bd8fe480f50d7167542293ea8f8839ab40a9d21529053354a4e1",
+				"seo": "a011ea7f45ad2583a134c54e0a15a03ab1e0556197e8ba500f1fdeaa1dd058da",
+				"set": "ce3db8a0632b11008b393637f9f4dbe6ccab40d02c6af616896caf4000f762c0",
+				"text": "47f577f5f27172e7ebb2a94077f5027439ece36f64aff90138cda6c712076f0b",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "6f4891b571f9cc700036357d0ee665d9a8d99ee91d60a68ce7045758873a8a18",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"justifications": "⟭Justification A⟬Titre A⟬displayed_title_unclear⟭Justification B⟬⟬",
+					"objections": "⟭Objection A⟬Contre⟬displayed_title_too_long"
+				},
+				"name": "arguments",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "a59a7398811d6460c5250cd6503c66991a9af03a435d331877def6fb8ef4d429",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "913265a10f25792bf24f49fc4fa17625ffe66c1220432218e32231b7f14400fe",
+				"text": "d98f4814a3a5413becdb207476222745e4447e3927da3a62ddaa103e6231e585",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "124d85b325d1c621ca2710e988ddb8cd948c3d2b6d11087446cf7c1c22c65b5b",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"justifications": "Page⟬Titre⟬avertissement"
+				},
+				"name": "one-item-without-separator",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "57a50626ab7003bfa90533155e839e440d79d1f98299a26c52c3b0c6a86061aa",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "6a1f2d9e91ef783b85af2a8fd3d0a0df98c5851626d1e0df7daf2d5401a50383",
+				"text": "324f8a30412b6dc145384ee65ae6f53a7134fb65c9153e7720fc653571fd2479",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "4708a6b89689dd2978d9dcf006bd388287298e5c29622b5f1c02c2b5a557fbb4",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭Alice, Bob⟬Article⟬Livre⟬2⟬5⟬Section⟬12-15⟬Éditeur⟬Paris⟬2020⟬https://example.org/a?x=1&y=2⟬dead_link",
+					"videography": "⟭Vidéo⟬https://example.org/v⟬David⟬reference_quality_insufficient",
+					"webliography": "⟭Page⟬Site⟬https://example.org⟬Chloé⟬2024⟬reference_incomplete"
+				},
+				"name": "references",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "baf668bfb6903ea6d99a46bfa53d891712c4b06b6bc9af8c250aba78bd7258a0",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "6a1f2d9e91ef783b85af2a8fd3d0a0df98c5851626d1e0df7daf2d5401a50383",
+				"text": "7d467f719918b18f2bb4885d870e87d883d643e5782da62edf4fd996d3d2148d",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "d2056c511d233d6b8f28c52eb0829bfb125c76fcfc7b0c9f41e64e8864e14de0",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"quotes": "Texte de citation⟬⟬⟬Alice, Bob⟬⟬⟬Article⟬⟬⟬Livre⟬⟬⟬2⟬⟬⟬3⟬⟬⟬Lieu⟬⟬⟬12⟬⟬⟬Éditeur⟬⟬⟬Paris⟬⟬⟬2020⟬⟬⟬https://example.org⟬⟬⟬quote_translated"
+				},
+				"name": "quote",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "7931b8d95aa986923cdf4215a424c9e424868b95787c5252ea81fd438659d110",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "3847a00bd5fdda456ccc7aa73f30f54d1f404bb902b5350d05ec83cdfbce4afb",
+				"text": "5eaa5848800dfb6cba2c4e8854bc96310d74b87ff45dbcdb31e4d7383ba36341",
+				"variables": "e585eb3cb85b998e004906d11051d23926bba5f26d2768acd32b0b46cac00a1b"
+			},
+			"input_sha256": "74cf31365d1443dbadd46bbe8e63b04c0f96c4506dc2783eb65f0370d210d998",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"quotes": "Texte de citation⟬⟬⟬Alice, Bob⟬⟬⟬Article⟬⟬⟬Livre⟬⟬⟬2⟬⟬⟬3⟬⟬⟬Lieu⟬⟬⟬12⟬⟬⟬Éditeur⟬⟬⟬Paris⟬⟬⟬2020⟬⟬⟬https://example.org⟬⟬⟬quote_translated⟭⟭⟭Texte de citation⟬⟬⟬Alice, Bob⟬⟬⟬Article⟬⟬⟬Livre⟬⟬⟬2⟬⟬⟬3⟬⟬⟬Lieu⟬⟬⟬12⟬⟬⟬Éditeur⟬⟬⟬Paris⟬⟬⟬2020⟬⟬⟬https://example.org⟬⟬⟬quote_translated⟭⟭⟭Texte de citation⟬⟬⟬Alice, Bob⟬⟬⟬Article⟬⟬⟬Livre⟬⟬⟬2⟬⟬⟬3⟬⟬⟬Lieu⟬⟬⟬12⟬⟬⟬Éditeur⟬⟬⟬Paris⟬⟬⟬2020⟬⟬⟬https://example.org⟬⟬⟬quote_translated⟭⟭⟭Texte de citation⟬⟬⟬Alice, Bob⟬⟬⟬Article⟬⟬⟬Livre⟬⟬⟬2⟬⟬⟬3⟬⟬⟬Lieu⟬⟬⟬12⟬⟬⟬Éditeur⟬⟬⟬Paris⟬⟬⟬2020⟬⟬⟬https://example.org⟬⟬⟬quote_translated⟭⟭⟭Texte de citation⟬⟬⟬Alice, Bob⟬⟬⟬Article⟬⟬⟬Livre⟬⟬⟬2⟬⟬⟬3⟬⟬⟬Lieu⟬⟬⟬12⟬⟬⟬Éditeur⟬⟬⟬Paris⟬⟬⟬2020⟬⟬⟬https://example.org⟬⟬⟬quote_translated⟭⟭⟭Texte de citation⟬⟬⟬Alice, Bob⟬⟬⟬Article⟬⟬⟬Livre⟬⟬⟬2⟬⟬⟬3⟬⟬⟬Lieu⟬⟬⟬12⟬⟬⟬Éditeur⟬⟬⟬Paris⟬⟬⟬2020⟬⟬⟬https://example.org⟬⟬⟬quote_translated"
+				},
+				"name": "quotes-many",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "52f489048a71dcc813409bc4d7184521aa4c337f952de34625c9200e49908f7f",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "3847a00bd5fdda456ccc7aa73f30f54d1f404bb902b5350d05ec83cdfbce4afb",
+				"text": "23b40cb85d890145c363ce9634e61369c5d6de616374c50bd1879aa972588ce4",
+				"variables": "0c61f9bd955a11b0d3ea98c1e981f8cb60b61a2b1a4dd9076e87a8c3a6101a26"
+			},
+			"input_sha256": "c379a59b099ad0a560e1b87a60b2e8c6b36540ff80735e3d10d115ca5e8329bc",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"quotes": "Texte de citation⟬⟬⟬Alice, Bob⟬⟬⟬Article⟬⟬⟬Livre⟬⟬⟬2⟬⟬⟬3⟬⟬⟬Lieu⟬⟬⟬12⟬⟬⟬Éditeur⟬⟬⟬Paris⟬⟬⟬2020⟬⟬⟬https://example.org⟬⟬⟬quote_translated"
+				},
+				"name": "quotes-no-variables",
+				"title": "Un argument de démonstration",
+				"vars": false
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "7931b8d95aa986923cdf4215a424c9e424868b95787c5252ea81fd438659d110",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "6a1f2d9e91ef783b85af2a8fd3d0a0df98c5851626d1e0df7daf2d5401a50383",
+				"text": "5eaa5848800dfb6cba2c4e8854bc96310d74b87ff45dbcdb31e4d7383ba36341",
+				"variables": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+			},
+			"input_sha256": "bc0427ed8017f56ae76a08a8ea2258906f19603a6178bd2dbc46b630d08a7862",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Breadcrumb=chain\n?Debate name=debateName\nlimit=200\nlink=none": [],
+				"([[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Pro argument=pro\n?Con argument=con\nlimit=200\nlink=none": [],
+				"[[Con argument::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Pro argument::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭⟬⟬Un livre⟬⟬⟬⟬⟬⟬⟬2020⟬⟬reference_incomplete",
+					"lang": "en"
+				},
+				"name": "references-english",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "b9ede3b235705cbd3cf90d04d7a01267b578cd581e909eaf7a471241291b9f94",
+				"preprocess": "4765293b85b0c6b2a2417dd59249653b5f88c8b1353a808df5a823e20550b0de",
+				"seo": "a011ea7f45ad2583a134c54e0a15a03ab1e0556197e8ba500f1fdeaa1dd058da",
+				"set": "ce3db8a0632b11008b393637f9f4dbe6ccab40d02c6af616896caf4000f762c0",
+				"text": "6c064975588482c51ed4d76558c26941865037a3439a37579ccea2a61ab8c4ae",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "5f93b7c48ec0ddbb5af4478890fe02fbd2369576e18475a81256431b487e49c7",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument parent]])\n?Fil d'Ariane=chain\n?Débat parent=pdeb\nlimit=200\nlink=none": [],
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [
+					{
+						"con": [],
+						"fulltext": "Débat parent",
+						"pro": [
+							"Un argument de démonstration"
+						]
+					}
+				],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [
+					{
+						"fulltext": "Argument parent",
+						"justif": {
+							"fulltext": "Un argument de démonstration"
+						},
+						"obj": []
+					}
+				],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [
+					{
+						"chain": "Débat parent⟭Argument parent"
+					}
+				]
+			},
+			"case": {
+				"args": {},
+				"argument_rows": [
+					{
+						"fulltext": "Argument parent",
+						"justif": {
+							"fulltext": "Un argument de démonstration"
+						},
+						"obj": []
+					}
+				],
+				"breadcrumb_rows": [
+					{
+						"chain": "Débat parent⟭Argument parent"
+					}
+				],
+				"debate_rows": [
+					{
+						"con": [],
+						"fulltext": "Débat parent",
+						"pro": [
+							"Un argument de démonstration"
+						]
+					}
+				],
+				"name": "parents",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "bdda7572a2083338bdd14c5f4b211bc299b2517b8e390e41b552615f55b56a7f",
+				"preprocess": "a6dac8d91403e36843644e9fb6404e300ab40ec3d202d4e2699e50f27b1684ec",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "1618b5b1dc1a03f3891529cf4659f4ae3b4ac09fd53d2be1cfbe3aea7f93d07f",
+				"text": "0ac2f6dfef07f3de7e5435387f0f36d1fe43245fc8258471484ee0ee20170c8f",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "99553d745179363d915eecdf4318943e99dff02737c466f27c0eb1c6a611d4b0",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [
+					{
+						"fulltext": "Parent",
+						"obj": [
+							"Un argument de démonstration"
+						]
+					}
+				],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [
+					{
+						"chain": [
+							"Débat racine⟭Parent",
+							"Débat racine⟭A⟭B"
+						]
+					}
+				],
+				"([[Parent]])\n?Fil d'Ariane=chain\n?Débat parent=pdeb\nlimit=200\nlink=none": [
+					{
+						"chain": [
+							"Débat racine⟭Parent"
+						],
+						"pdeb": [
+							{
+								"fulltext": "Débat racine"
+							}
+						]
+					}
+				],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {},
+				"argument_rows": [
+					{
+						"fulltext": "Parent",
+						"obj": [
+							"Un argument de démonstration"
+						]
+					}
+				],
+				"breadcrumb_rows": [
+					{
+						"chain": [
+							"Débat racine⟭Parent",
+							"Débat racine⟭A⟭B"
+						]
+					}
+				],
+				"inherited_rows": [
+					{
+						"chain": [
+							"Débat racine⟭Parent"
+						],
+						"pdeb": [
+							{
+								"fulltext": "Débat racine"
+							}
+						]
+					}
+				],
+				"name": "inherited",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "db34be94c1bdf0ab3261c9513667b27d4a02eab0f5ff0090abcba60b6efda85e",
+				"preprocess": "ae42d5cc7d3af52266288918996da2b65e40d20d2fca78896317b99dc8869a13",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "9759a296ff5c9172d2c8bd1d06c37fac764d86097193bfcc158c7598d51c660b",
+				"text": "a770bc8be73c33fc57347e2d3247fe133077cc6bfdb63576e62a78c2f4d83d68",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "c44779dad4cd128389d5f090ff1d3d2196e32a259b58c6693377fa0ef78bfbaf",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [
+					{
+						"chain": "Débat racine⟭A⟭B⟭C"
+					}
+				],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {},
+				"breadcrumb_rows": [
+					{
+						"chain": "Débat racine⟭A⟭B⟭C"
+					}
+				],
+				"name": "long-chain",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "57a50626ab7003bfa90533155e839e440d79d1f98299a26c52c3b0c6a86061aa",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "3a9fdecf5f8c8d391c7f3eebd1006ff56e59a998f4047b1abfdfaeccf3ad28c4",
+				"text": "291f44e742448218a1921abba93a223c1c718bf19496efc0b57cf1b4d9d5a7c6",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "7642dc9bebd3823ca42ce9cfccf4017f31a6fc284732e76c6431bbcc05607a42",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [
+					{
+						"chain": [
+							"Racine A⟭Parent",
+							"Racine B⟭A⟭B⟭C",
+							"Racine A"
+						]
+					}
+				],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {},
+				"breadcrumb_rows": [
+					{
+						"chain": [
+							"Racine A⟭Parent",
+							"Racine B⟭A⟭B⟭C",
+							"Racine A"
+						]
+					}
+				],
+				"name": "multiple-chains",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "57a50626ab7003bfa90533155e839e440d79d1f98299a26c52c3b0c6a86061aa",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "91db035dbf79ac4ddd3c81c2ca94cc878053f443ce960aba18a2a159f093ce4c",
+				"text": "11197a29709c260f88122d69782eb95ce98aba3290689e91db999cc838e253b8",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "73890956fa7c9118b032bf1f85f887ddbccc0a7d36ec7d193f3595728c7a4272",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {},
+			"case": {
+				"args": {},
+				"ask_error": true,
+				"name": "queries-fail",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "57a50626ab7003bfa90533155e839e440d79d1f98299a26c52c3b0c6a86061aa",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "6a1f2d9e91ef783b85af2a8fd3d0a0df98c5851626d1e0df7daf2d5401a50383",
+				"text": "324f8a30412b6dc145384ee65ae6f53a7134fb65c9153e7720fc653571fd2479",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "f5d0e6dfd89cf2b39ac8c37eb33af26f762e5f0b1902a8e55660ea86a19bc273",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"argument-warnings": "Argument sensible,Argument saugrenu,Argument potentiellement illégal,Argument généré par IA",
+					"justification-warnings": "Justifications à réorganiser",
+					"lang": "fr",
+					"objection-warnings": "Objections à réorganiser",
+					"summary": "Résumé avec \"guillemets\" et apostrophes",
+					"summary-warnings": "Le résumé de cet argument est désavantageux,Le résumé de l'argument est encore à rédiger,Le résumé de cet argument n'est pas assez clair,Le résumé de cet argument est trop long,Ce résumé mélange plusieurs arguments,Le style de ce résumé est à revoir",
+					"title-warnings": "Titre incomplet,Titre désavantageux,Titre peu clair,Titre trop long"
+				},
+				"name": "translated-banners-fr",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "72526d529d1fd3409136346a52af73762f363732afed17599e8f49fd5ef4bdc6",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "6a1f2d9e91ef783b85af2a8fd3d0a0df98c5851626d1e0df7daf2d5401a50383",
+				"text": "6fa70bf32e3b246dea47fc41faba977c12b6a812049a55a348edf81ae9848cac",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "c015ee96ef9501cb69c12597dcb0bf2c01196b6faa80dfe1b52dde5ff21abfd9",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Numéro de débat::123]] OR [[Numéro d'argument::123]]\nlimit=1\nlink=none": [
+					{
+						"fulltext": "Parent réel"
+					}
+				],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2025-01-01",
+					"initialization": "Argument pour@123",
+					"lang": "fr"
+				},
+				"init_rows": [
+					{
+						"fulltext": "Parent réel"
+					}
+				],
+				"name": "initialization-fr-pro",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "095843fdb941f5feca0efd412b2048852a979c42658321e529a321c31413c891",
+				"preprocess": "d51a9b5ae3f883e6f5a4b32574cd24238585946b8c20654d2d1a887150a65271",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "6a1f2d9e91ef783b85af2a8fd3d0a0df98c5851626d1e0df7daf2d5401a50383",
+				"text": "416dd349ef25f9d87d3a90f63662b0e3b7a14060ce64b24358190fe48744cc50",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "f364c9dd438b3db474f1872c4e0e9d64ccaa7417f4e97c2067bd70922f76f847",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Numéro de débat::123]] OR [[Numéro d'argument::123]]\nlimit=1\nlink=none": [
+					{
+						"fulltext": "Parent réel"
+					}
+				],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2025-01-01",
+					"initialization": "Argument contre@123",
+					"lang": "fr"
+				},
+				"init_rows": [
+					{
+						"fulltext": "Parent réel"
+					}
+				],
+				"name": "initialization-fr-con",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "095843fdb941f5feca0efd412b2048852a979c42658321e529a321c31413c891",
+				"preprocess": "178662c968a64654730d5e5ceca82af1aee584756dba6c9e8a189ce942a046f2",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "6a1f2d9e91ef783b85af2a8fd3d0a0df98c5851626d1e0df7daf2d5401a50383",
+				"text": "64f059af1c4d1bad626555eda7c1935aff7afc52fa3f2b15339fa2393ca1b64e",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "aacb617b6cc942afd8fc5ff71fe91da47a9ed3cd8498f6fdfb69e257aa629811",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Numéro de débat::123]] OR [[Numéro d'argument::123]]\nlimit=1\nlink=none": [
+					{
+						"fulltext": "Parent réel"
+					}
+				],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2025-01-01",
+					"initialization": "Justification@123",
+					"lang": "fr"
+				},
+				"init_rows": [
+					{
+						"fulltext": "Parent réel"
+					}
+				],
+				"name": "initialization-fr-justification",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "095843fdb941f5feca0efd412b2048852a979c42658321e529a321c31413c891",
+				"preprocess": "7d3d26b62aab38f6e8997fcaecde7960697679f755718f01dcdce52be441a0c0",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "6a1f2d9e91ef783b85af2a8fd3d0a0df98c5851626d1e0df7daf2d5401a50383",
+				"text": "6e858e2982a713e49d67bbb57355f877e62ecc2fb2f1fc87d2c2068d22aa407e",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "3045b2edde9a754f862dee4f089a3a6a3853620ac6386d9debfbd3d031c35d4c",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Numéro de débat::123]] OR [[Numéro d'argument::123]]\nlimit=1\nlink=none": [
+					{
+						"fulltext": "Parent réel"
+					}
+				],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2025-01-01",
+					"initialization": "Objection@123",
+					"lang": "fr"
+				},
+				"init_rows": [
+					{
+						"fulltext": "Parent réel"
+					}
+				],
+				"name": "initialization-fr-objection",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "095843fdb941f5feca0efd412b2048852a979c42658321e529a321c31413c891",
+				"preprocess": "2cc9e047097c4cc5548cbb246de237340c7456c1d16aee2e8b0d088633257cfe",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "6a1f2d9e91ef783b85af2a8fd3d0a0df98c5851626d1e0df7daf2d5401a50383",
+				"text": "44b4cae14a71c19faaec8ab9181c1a99848dc5caf5a79d256a68857e0bcbe225",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "54244f1f183366d310915592cdb7e6c81cd0583bcff52c1b82c09faf9c782d98",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Breadcrumb=chain\n?Debate name=debateName\nlimit=200\nlink=none": [],
+				"([[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Pro argument=pro\n?Con argument=con\nlimit=200\nlink=none": [],
+				"[[Con argument::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Pro argument::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"argument-warnings": "Sensitive argument,Fanciful argument,Potentially illegal argument,Argument generated by AI",
+					"justification-warnings": "Justifications to reorganize",
+					"lang": "en",
+					"objection-warnings": "Objections to reorganize",
+					"summary": "Résumé avec \"guillemets\" et apostrophes",
+					"summary-warnings": "This argument's summary is disadvantageous,This argument's summary still needs to be written,This argument's summary is not clear enough,This argument's summary is too long,This summary mixes several arguments,This summary's style should be reviewed",
+					"title-warnings": "Incomplete title,Disadvantageous title,Unclear title,Title too long"
+				},
+				"name": "translated-banners-en",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "b9ede3b235705cbd3cf90d04d7a01267b578cd581e909eaf7a471241291b9f94",
+				"preprocess": "65419c673e4111f4ec339c219e232f4f5c713ae447165be24262e01e486c9f81",
+				"seo": "a011ea7f45ad2583a134c54e0a15a03ab1e0556197e8ba500f1fdeaa1dd058da",
+				"set": "ce3db8a0632b11008b393637f9f4dbe6ccab40d02c6af616896caf4000f762c0",
+				"text": "35b3839c1870259996c3dbc650d1348acaf876f496bbe118a929b3563bcf20a4",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "924ae0834da3eab5088dd27abef51a60fe7ac581699edd210ae923db3a70fc5e",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Breadcrumb=chain\n?Debate name=debateName\nlimit=200\nlink=none": [],
+				"([[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Pro argument=pro\n?Con argument=con\nlimit=200\nlink=none": [],
+				"[[Con argument::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Debate number::123]] OR [[Argument number::123]]\nlimit=1\nlink=none": [
+					{
+						"fulltext": "Parent réel"
+					}
+				],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Pro argument::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2025-01-01",
+					"initialization": "Pro argument@123",
+					"lang": "en"
+				},
+				"init_rows": [
+					{
+						"fulltext": "Parent réel"
+					}
+				],
+				"name": "initialization-en-pro",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "412f71132c7537607b16c0293150d1fec8b55be800f0fdd866f77cc894331b92",
+				"preprocess": "98150130bdb486ebf51c453219f29fcdbf5b8776a5e26a8c850f2890285f061f",
+				"seo": "a011ea7f45ad2583a134c54e0a15a03ab1e0556197e8ba500f1fdeaa1dd058da",
+				"set": "ce3db8a0632b11008b393637f9f4dbe6ccab40d02c6af616896caf4000f762c0",
+				"text": "99bec20fd6ed0a71940bebfa0442122abd5a37edafd93ccbb3992a1fd0a67bf8",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "0e7918b4409f75dcf299450a89364f7241274dcda14c1e98a958c6c44cbba2e1",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Breadcrumb=chain\n?Debate name=debateName\nlimit=200\nlink=none": [],
+				"([[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Pro argument=pro\n?Con argument=con\nlimit=200\nlink=none": [],
+				"[[Con argument::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Debate number::123]] OR [[Argument number::123]]\nlimit=1\nlink=none": [
+					{
+						"fulltext": "Parent réel"
+					}
+				],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Pro argument::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2025-01-01",
+					"initialization": "Con argument@123",
+					"lang": "en"
+				},
+				"init_rows": [
+					{
+						"fulltext": "Parent réel"
+					}
+				],
+				"name": "initialization-en-con",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "412f71132c7537607b16c0293150d1fec8b55be800f0fdd866f77cc894331b92",
+				"preprocess": "d00c621e7b4f816b168701e0386498cb44a69d7a5862b0de4b9f167b6f609a63",
+				"seo": "a011ea7f45ad2583a134c54e0a15a03ab1e0556197e8ba500f1fdeaa1dd058da",
+				"set": "ce3db8a0632b11008b393637f9f4dbe6ccab40d02c6af616896caf4000f762c0",
+				"text": "da52811e87ca1cd34e364fc30904b31af7263d9199e3246eb6ca1b2b91c96cf4",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "907c7924cc9709066b5e6fc88892262bb3e901dae806d9d15512c20c8deee3b2",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Breadcrumb=chain\n?Debate name=debateName\nlimit=200\nlink=none": [],
+				"([[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Pro argument=pro\n?Con argument=con\nlimit=200\nlink=none": [],
+				"[[Con argument::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Debate number::123]] OR [[Argument number::123]]\nlimit=1\nlink=none": [
+					{
+						"fulltext": "Parent réel"
+					}
+				],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Pro argument::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2025-01-01",
+					"initialization": "Justification@123",
+					"lang": "en"
+				},
+				"init_rows": [
+					{
+						"fulltext": "Parent réel"
+					}
+				],
+				"name": "initialization-en-justification",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "412f71132c7537607b16c0293150d1fec8b55be800f0fdd866f77cc894331b92",
+				"preprocess": "219d65d5e5c5dbbf852cb8c0f2fb438ab754a27f417e37c7dc9d5c1761e920ef",
+				"seo": "a011ea7f45ad2583a134c54e0a15a03ab1e0556197e8ba500f1fdeaa1dd058da",
+				"set": "ce3db8a0632b11008b393637f9f4dbe6ccab40d02c6af616896caf4000f762c0",
+				"text": "f721db12b2296272885325c719c46eb0504af10e267397d236b498963c959080",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "2996026baec02f0b948908d945b04684377f609f4dfa70fd21ec993f08a4eeca",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Breadcrumb=chain\n?Debate name=debateName\nlimit=200\nlink=none": [],
+				"([[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Pro argument=pro\n?Con argument=con\nlimit=200\nlink=none": [],
+				"[[Con argument::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Debate number::123]] OR [[Argument number::123]]\nlimit=1\nlink=none": [
+					{
+						"fulltext": "Parent réel"
+					}
+				],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Pro argument::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2025-01-01",
+					"initialization": "Objection@123",
+					"lang": "en"
+				},
+				"init_rows": [
+					{
+						"fulltext": "Parent réel"
+					}
+				],
+				"name": "initialization-en-objection",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "412f71132c7537607b16c0293150d1fec8b55be800f0fdd866f77cc894331b92",
+				"preprocess": "39b55b6dd4945ba506d00cd4dd161f7beb1b3c4a5111d5dc9dbb7aa444c8f841",
+				"seo": "a011ea7f45ad2583a134c54e0a15a03ab1e0556197e8ba500f1fdeaa1dd058da",
+				"set": "ce3db8a0632b11008b393637f9f4dbe6ccab40d02c6af616896caf4000f762c0",
+				"text": "817e10f78f1cead545180244d6f5b19aa73f9519dd20975b937208a9365de26f",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "efabedccd97eae3e94b8040146cc8c201ae64a0d7d601350a4df8ef72aa521ea",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Court]] OR [[Argument contre::Court]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Court]] OR [[Objection::Court]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Court]] OR [[Objection::Court]] OR [[Argument pour::Court]] OR [[Argument contre::Court]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Court]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Court]]\nlimit=200\nlink=none": [],
+				"[[Justification::Court]]\nlimit=200\nlink=none": [],
+				"[[Objection::Court]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"keywords": "A,B",
+					"sections": "[[Injection]],Normal,{{Template}},Valide"
+				},
+				"name": "title-Court",
+				"title": "Court"
+			},
+			"expected": {
+				"ask": "ab2d06a7242b1c6f6014fe4d5bfcd28e39978ccd95cd68b465cdaaebcf92ba3f",
+				"preprocess": "2ebc09361b67f3128dfe52f4bc43f5c39685c6676fe4d6a285454b2f1752ca3d",
+				"seo": "2fc4c8eceaee3a8a3d018fca0e42b1d4278c846e3b6efcfc4c0e2c3261594f24",
+				"set": "203c31ff9cb6b996d832ba3e732bb6aa61804ba81b002548ca24a0d2445df838",
+				"text": "69750794a24cb06b1565933099b8f2c3e5672008c4a68dafd403a672a807bcee",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "8a52cd06a0f9fd7f8ba94f770cff1bb76653b8987b74a6a415b32e3c85b07e67",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Deux mots]] OR [[Argument contre::Deux mots]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Deux mots]] OR [[Objection::Deux mots]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Deux mots]] OR [[Objection::Deux mots]] OR [[Argument pour::Deux mots]] OR [[Argument contre::Deux mots]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Deux mots]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Deux mots]]\nlimit=200\nlink=none": [],
+				"[[Justification::Deux mots]]\nlimit=200\nlink=none": [],
+				"[[Objection::Deux mots]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"keywords": "A,B",
+					"sections": "[[Injection]],Normal,{{Template}},Valide"
+				},
+				"name": "title-Deux mots",
+				"title": "Deux mots"
+			},
+			"expected": {
+				"ask": "e25a0bbdfd26aae2a8afc1ab162a19656f453f60c39e9ceaf7b6d8a24ce434ea",
+				"preprocess": "99ea2db4d99becb21f2c21cf065ac09c1c4e573db11deb895b1c1050d6c51a10",
+				"seo": "4730fbfe3496c4fe6d71bc45fa9ff3023f45ae678bb870df6a80b0840925f844",
+				"set": "af7ea3b3d851246dcdb9615748fdd03aa5ad8690ea364430ee58462073a7bc37",
+				"text": "592929c98bdf8475ca72721d5c557f99fea568510e7ffb04f3c179e2a1f757dc",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "4eaefd5870fa6af23be46e91f297ea825427f52bbe9b855fd026b3edb23efa13",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Cela est vrai.]] OR [[Argument contre::Cela est vrai.]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Cela est vrai.]] OR [[Objection::Cela est vrai.]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Cela est vrai.]] OR [[Objection::Cela est vrai.]] OR [[Argument pour::Cela est vrai.]] OR [[Argument contre::Cela est vrai.]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Cela est vrai.]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Cela est vrai.]]\nlimit=200\nlink=none": [],
+				"[[Justification::Cela est vrai.]]\nlimit=200\nlink=none": [],
+				"[[Objection::Cela est vrai.]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"keywords": "A,B",
+					"sections": "[[Injection]],Normal,{{Template}},Valide"
+				},
+				"name": "title-Cela est vrai.",
+				"title": "Cela est vrai."
+			},
+			"expected": {
+				"ask": "9fb5795ee8d6e2ca9a44ead8030b27cbd5a087381f17f581d854b7f6cba9267c",
+				"preprocess": "7ba31c1706b9f4d91d06ef2d3417398f214ef40d365096248bcf60f8d6073fe7",
+				"seo": "824c30ebf5728cbeaf0fb739727cd686fc66ac4b1333ebdb3a2df42f79446409",
+				"set": "45b0e2f1909af8d2e633ab3b2dca8ac3b369a54de901dfa768dc763078974cf0",
+				"text": "216f24f543c0f3a3db435a6336f82c60b35f4e9b49af6a52033691ce49862964",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "5cdb134a7289671e1c5dcee5e7f1b4cb4ef755d9631937212a3c777f88f48435",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Ça suffit]] OR [[Argument contre::Ça suffit]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Ça suffit]] OR [[Objection::Ça suffit]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Ça suffit]] OR [[Objection::Ça suffit]] OR [[Argument pour::Ça suffit]] OR [[Argument contre::Ça suffit]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Ça suffit]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Ça suffit]]\nlimit=200\nlink=none": [],
+				"[[Justification::Ça suffit]]\nlimit=200\nlink=none": [],
+				"[[Objection::Ça suffit]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"keywords": "A,B",
+					"sections": "[[Injection]],Normal,{{Template}},Valide"
+				},
+				"name": "title-Ça suffit",
+				"title": "Ça suffit"
+			},
+			"expected": {
+				"ask": "9856efd2fa8269d2006970ec2a05313e7b3a38855124e12e5f66e8c92667503d",
+				"preprocess": "7142b1f1dc71e9795ed3ed569f8b60e9a33f37f9bd1ec9a994949d306b5e738d",
+				"seo": "9f1a64040ff1e595146fe89bffd536ca3b44eb0a9ffde9bb18c552a9e9e270cd",
+				"set": "248c9719c7e0f1fa31071990ac05b7ade3758c0f5d691e6ee6b67d96ba3de6e2",
+				"text": "0986a0875f1a3a010390ddfd9dcd6369525516469b94eb29c3140d4b19dbc89e",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "4b384b4c120d714cffbf2337b4311f18e02b835ace2cfaca4ef6f12c47caae47",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Au contraire, cet argument est faux]] OR [[Argument contre::Au contraire, cet argument est faux]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Au contraire, cet argument est faux]] OR [[Objection::Au contraire, cet argument est faux]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Au contraire, cet argument est faux]] OR [[Objection::Au contraire, cet argument est faux]] OR [[Argument pour::Au contraire, cet argument est faux]] OR [[Argument contre::Au contraire, cet argument est faux]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Au contraire, cet argument est faux]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Au contraire, cet argument est faux]]\nlimit=200\nlink=none": [],
+				"[[Justification::Au contraire, cet argument est faux]]\nlimit=200\nlink=none": [],
+				"[[Objection::Au contraire, cet argument est faux]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"keywords": "A,B",
+					"sections": "[[Injection]],Normal,{{Template}},Valide"
+				},
+				"name": "title-Au contraire, cet argument est faux",
+				"title": "Au contraire, cet argument est faux"
+			},
+			"expected": {
+				"ask": "d82abf018c7b5c4a3cfa69d7ecffad1fa6b71c02f3c471ba92178ed5b29f3fe3",
+				"preprocess": "821f3c28b687a7f93c7474f18a4a9a14f088b5fbee24b52c32215af33f8ccd1b",
+				"seo": "b9c67c62c2f32f8f5817e4d9c6b9ffd2097239da9422fd5241243c46fcbaa263",
+				"set": "91f0f30cfe1c9d79d58ec078320a6eb5bd87470af1d6a7e7c36d7aa0728cff52",
+				"text": "bc78fb067eced3e3b185a4f5f3c3323ffd95ceb81aa7be33acefd4678893460c",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "05b934f4f278b6b9a8755b301f19c309babf692a53739494fb1e7ff2e8963b49",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un titre etc.]] OR [[Argument contre::Un titre etc.]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un titre etc.]] OR [[Objection::Un titre etc.]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un titre etc.]] OR [[Objection::Un titre etc.]] OR [[Argument pour::Un titre etc.]] OR [[Argument contre::Un titre etc.]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un titre etc.]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un titre etc.]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un titre etc.]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un titre etc.]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"keywords": "A,B",
+					"sections": "[[Injection]],Normal,{{Template}},Valide"
+				},
+				"name": "title-Un titre etc.",
+				"title": "Un titre etc."
+			},
+			"expected": {
+				"ask": "55989122b1680157b353266a7e88ee0ef7551a8c6676aea8ec1cd7a28d2b68c2",
+				"preprocess": "44ec7ab81d921622a6253d0abd6df9cf515963cf7e445a475fabbecc0abcb451",
+				"seo": "f8120764492d7f1eae4537b8fc9027df8b3bba0337d0008fdec55e8916ba588a",
+				"set": "e022fe0113391345420f2b47583249b8b621a6b39fb36db32aefdf3b141c8a0a",
+				"text": "19e2c4df227714cdda3740f854b7b28d9768b12552f59f17c07ada6f5caa7d68",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "2f12098cfcc8cd511eb136a48c52f153eaf75b85768db37898888a4b40fb848c",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Titre]] OR [[Argument contre::Titre]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Titre]] OR [[Objection::Titre]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Titre]] OR [[Objection::Titre]] OR [[Argument pour::Titre]] OR [[Argument contre::Titre]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Titre]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Titre]]\nlimit=200\nlink=none": [],
+				"[[Justification::Titre]]\nlimit=200\nlink=none": [],
+				"[[Objection::Titre]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"keywords": "A,B",
+					"sections": "[[Injection]],Normal,{{Template}},Valide"
+				},
+				"name": "title-[[Titre|libellé]]",
+				"title": "[[Titre|libellé]]"
+			},
+			"expected": {
+				"ask": "8366e1102bf1085707ac7772b29fa13307044b5715abca6eb7d45d7d25e18cf9",
+				"preprocess": "ace02063c9daf2158002fe8adff264e4033ecb12bca1874028407420fa2871fc",
+				"seo": "90388a41f487c20629d9b4b5a532ef423a005a2bf0be19e6bc3e62b5ca92a7be",
+				"set": "1ef0051780721da878af74139b6f7b0c96a6bde831ff4b649fc35cc87c964c03",
+				"text": "6e9820d73221190e91f2d615c865066fd61fd4c841710eaaa3fb69fb36c4c444",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "303ddee43518848a27a21f253f6b1af5f0fdfe150a38f0d46c3df29fcb505a36",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un titre &amp; des accents éàç]] OR [[Argument contre::Un titre &amp; des accents éàç]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un titre &amp; des accents éàç]] OR [[Objection::Un titre &amp; des accents éàç]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un titre &amp; des accents éàç]] OR [[Objection::Un titre &amp; des accents éàç]] OR [[Argument pour::Un titre &amp; des accents éàç]] OR [[Argument contre::Un titre &amp; des accents éàç]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un titre &amp; des accents éàç]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un titre &amp; des accents éàç]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un titre &amp; des accents éàç]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un titre &amp; des accents éàç]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"keywords": "A,B",
+					"sections": "[[Injection]],Normal,{{Template}},Valide"
+				},
+				"name": "title-Un titre &amp; des accents éàç",
+				"title": "Un titre &amp; des accents éàç"
+			},
+			"expected": {
+				"ask": "8caa293082654b505ca1e3e3ae52e214979dc7c2bd6ac9ca10a40657b23eba1c",
+				"preprocess": "719249d38195afadf64b69453d6a04210fb5bd08148f8252215da0f27590232c",
+				"seo": "d8364781362d4e9818494c8aed3ff170d8629e941666fbb02261a954aea9aa82",
+				"set": "2ff90685546f368b9bea498add5dd7f6a604b5c036bac0a2137b454250040be3",
+				"text": "7efcced3e6cdaa198fae5445e9921093fe0553dbbbefb61156269c71466e4b3d",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "0edc5b1792c7050cd8c5daafdc01511b2d06b4b548347c5510a45adac800f26e",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un titre/avec ?]] OR [[Argument contre::Un titre/avec ?]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un titre/avec ?]] OR [[Objection::Un titre/avec ?]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un titre/avec ?]] OR [[Objection::Un titre/avec ?]] OR [[Argument pour::Un titre/avec ?]] OR [[Argument contre::Un titre/avec ?]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un titre/avec ?]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un titre/avec ?]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un titre/avec ?]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un titre/avec ?]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"keywords": "A,B",
+					"sections": "[[Injection]],Normal,{{Template}},Valide"
+				},
+				"name": "title-Un titre/avec ? # fragment",
+				"title": "Un titre/avec ? # fragment"
+			},
+			"expected": {
+				"ask": "f515b2e34a32c8125545fb437e4520ac1f5b232fa391cedd746f0f73920c918e",
+				"preprocess": "7ee1af016d00f33ae35641a1b9928d728834f4cbdca19e50ef4f2e2725eee66c",
+				"seo": "aacbd95f43fb7f3921c86212d8e8108fd54ead893a91db3aec16020975e03228",
+				"set": "575b722b365c18a7401619f7adc4c8280d587833566cbc53c243ae01d71fefc0",
+				"text": "0013baa662c394ebc9b4fa9ea5deff01dac9a39e1b62614c50c7dcc0f02a93ce",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "9024e68dc4c95ba74a6d180b85c7c7e56e68a9f74a063af8e63df6b236154b00",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [
+					{
+						"fulltext": "Débat fallback"
+					}
+				],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [
+					{
+						"fulltext": "Parent fallback"
+					}
+				],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [
+					{
+						"fulltext": "Débat fallback"
+					}
+				],
+				"([[Parent fallback]])\n?Fil d'Ariane=chain\n?Débat parent=pdeb\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [
+					{
+						"fulltext": "Débat fallback"
+					}
+				],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": [
+					{
+						"fulltext": "Parent fallback"
+					}
+				]
+			},
+			"case": {
+				"args": {},
+				"name": "fallback-parents",
+				"query_rules": [
+					[
+						"[[Argument pour::",
+						[
+							{
+								"fulltext": "Débat fallback"
+							}
+						]
+					],
+					[
+						"[[Objection::",
+						[
+							{
+								"fulltext": "Parent fallback"
+							}
+						]
+					]
+				],
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "55d57b40ada33f1b1de957cc563436768ae9a5edb94abcba7d5823546b6154c9",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "caed3bec0e94ada50c4843da6a5c866d101760d70a8cc992f90e1a29564e528c",
+				"text": "ca53de5f750adb59168992f62a2fd9bf48f9c148526afb84fb515acb972bc9aa",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "d39b1d8fe22e9e6a94721cdc8cc59451d5f7f61be4c0e08ff40eb76bae25f491",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Débat dédié]]\n?Carte des arguments=map\nlimit=1\nlink=none": [
+					{
+						"map": [
+							"<div>Carte</div>"
+						]
+					}
+				],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"dedicated-debate": "Débat dédié",
+					"justifications": "⟭A⟬Titre A⟬"
+				},
+				"dedicated_rows": [
+					{
+						"map": [
+							"<div>Carte</div>"
+						]
+					}
+				],
+				"name": "dedicated-map",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "9c8253951cc06dfa3fe6c24a7ace642decde23a47aa98e903c9845b94b7f3aef",
+				"preprocess": "45beeae342a79ee33d7c6be640f8c56fcb5c48a95cf6e01e06f772e4a444416a",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "899cd6b2ba763263c52ca9a27a11acc5154efafdc8bc6df4bc23f3edf65d61f1",
+				"text": "cad2c2502c6212d2446310d0289975dcf601254cb024d672ca784a65c8938d18",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "a3052351e406c81c45c3bf78d1746e63b9c3c5800fb3d76900592a3f69557c84",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"quotes": "FAIL"
+				},
+				"name": "preprocess-failure",
+				"preprocess_fail": "FAIL",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "3c6e10cb328b532e0986185ebd6c4674c3c3e4000508f0cbc5bfee522dd966d8",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "6a1f2d9e91ef783b85af2a8fd3d0a0df98c5851626d1e0df7daf2d5401a50383",
+				"text": "8acf8cb849a84778005d649c97a7779242776a4dc09e6f5fb00d9fcb0621d30c",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "d096a21aaf84cc2a5bd35d756c8a7b7d6ca283338dfef23bad33691d3df23421",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [
+					{
+						"con": [
+							{
+								"fulltext": "Un argument de démonstration"
+							}
+						],
+						"fulltext": "Parent débat",
+						"pro": [
+							"Un argument de démonstration"
+						]
+					}
+				],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [
+					{
+						"fulltext": "Parent argument",
+						"justif": [
+							"Un argument de démonstration"
+						],
+						"obj": [
+							"Un argument de démonstration"
+						]
+					}
+				],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"([[Parent argument]])\n?Fil d'Ariane=chain\n?Débat parent=pdeb\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {},
+				"argument_rows": [
+					{
+						"fulltext": "Parent argument",
+						"justif": [
+							"Un argument de démonstration"
+						],
+						"obj": [
+							"Un argument de démonstration"
+						]
+					}
+				],
+				"debate_rows": [
+					{
+						"con": [
+							{
+								"fulltext": "Un argument de démonstration"
+							}
+						],
+						"fulltext": "Parent débat",
+						"pro": [
+							"Un argument de démonstration"
+						]
+					}
+				],
+				"name": "both-parent-types",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "bdda7572a2083338bdd14c5f4b211bc299b2517b8e390e41b552615f55b56a7f",
+				"preprocess": "1d50aac98013a53671d84337255160c39c4237df8659bf6cb0262e1be4439394",
+				"seo": "adf41b5002625bbc14e26c58b164139b026db94508bfc9969c928e0167ecfbba",
+				"set": "49e0fc97ff3efd2e46d3ec58e5f603a67d40feb0d7336569e8d16970548307f3",
+				"text": "637de85fd8c4df7909569398d30f1622a838fc24b332a5081a2d92cde42d1003",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "375183f964c6568da663f6ff3d3a7afb62f556b114ba3fc6081113a912a55d4b",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Breadcrumb=chain\n?Debate name=debateName\nlimit=200\nlink=none": [],
+				"([[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Pro argument=pro\n?Con argument=con\nlimit=200\nlink=none": [],
+				"[[Con argument::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Pro argument::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭<ref>x</ref>⟬Texte⟬<ref>x</ref>⟬<ref>x</ref>⟬A|B⟬A=B⟬Texte⟬Texte⟬[[Lien|Texte]]⟬<ref>x</ref>⟬A|B⟬0",
+					"creation-date": "2025-01-01",
+					"justifications": "⟭<ref>x</ref>⟬<ref>x</ref>⟬A|B⟭0⟬0⟬0",
+					"keywords": "<ref>x</ref>,A & B,[[Lien|Texte]]",
+					"lang": "en",
+					"objections": "⟭<ref>x</ref>⟬⟬A=B⟭A=B⟬[[Lien|Texte]]⟬[[Lien|Texte]]⟭éàç漢字⟬A & B⟬[[Lien|Texte]]",
+					"sections": "Science,Test",
+					"summary": "A=B",
+					"videography": "⟭éàç漢字⟬⟬[[Lien|Texte]]⟬éàç漢字⟭⟬<ref>x</ref>⟬Texte⟬A|B⟭A=B⟬A=B⟬<ref>x</ref>⟬A|B"
+				},
+				"name": "serialized-0",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "b9ede3b235705cbd3cf90d04d7a01267b578cd581e909eaf7a471241291b9f94",
+				"preprocess": "a0eee9d0648b13edbdffd0f5a2fe78eccee256c219ddd21616b22213d54cb674",
+				"seo": "adeb21ab282b0df07a9dd386cdc4083c391b0c2d9bfd666eb111afcd8399269e",
+				"set": "49c4fd2b7384edae153bd0ef739fd077608f4d1ec6394bc40270e96f9b7ffb28",
+				"text": "7a03ee50dec30679918a3b13fcac452b27837837c5109f387ef5bfdbbd0eba67",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "29e3d6a0bcf9d1a23ec41846104eaaafdbe38f2b9bfa8a6b3861cf687f558bd3",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Breadcrumb=chain\n?Debate name=debateName\nlimit=200\nlink=none": [],
+				"([[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Pro argument=pro\n?Con argument=con\nlimit=200\nlink=none": [],
+				"[[Con argument::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Pro argument::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2025-01-01",
+					"keywords": "Texte,0,A & B",
+					"lang": "en",
+					"objections": "⟭éàç漢字⟬A|B⟬A & B",
+					"quotes": "⟭⟭⟭Texte⟬⟬⟬Texte⟬⟬⟬<ref>x</ref>⟬⟬⟬éàç漢字⟬⟬⟬[[Lien|Texte]]⟬⟬⟬0⟬⟬⟬A & B⟬⟬⟬Texte⟬⟬⟬0⟬⟬⟬⟬⟬⟬Texte⟬⟬⟬⟬⟬⟬Texte",
+					"sections": "Science,Test",
+					"summary": "0",
+					"videography": "⟭0⟬0⟬⟬0⟭A|B⟬A & B⟬<ref>x</ref>⟬A=B",
+					"webliography": "⟭A=B⟬⟬éàç漢字⟬<ref>x</ref>⟬éàç漢字⟬éàç漢字⟭⟬0⟬éàç漢字⟬Texte⟬<ref>x</ref>⟬0⟭0⟬Texte⟬<ref>x</ref>⟬A & B⟬[[Lien|Texte]]⟬0"
+				},
+				"name": "serialized-1",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "b9ede3b235705cbd3cf90d04d7a01267b578cd581e909eaf7a471241291b9f94",
+				"preprocess": "2c8a69de7b8c50ab1cfcd7219eab49be49d35c3504a62cd208501f2164289bf1",
+				"seo": "f945e35d4c7cad76f933b1d55e187cd088d73331e135ae59b0045e3dec49740d",
+				"set": "4e94eb0af9e06ba026e02ce83fb4f87767f695e0d1e89ae44c028cffc9b8526d",
+				"text": "c0ba930349c7a647ccfbb7f3517b18679d09a2e170be244ec0ab8e0f42d89b4c",
+				"variables": "0c4f5aad493387a3cc1d6e2d60a9c4e4fea8806d51d2f250832f92bd3758709e"
+			},
+			"input_sha256": "21923f8c354d62a7d3f74b599a642c49345d874407701447a8accf0b55631e15",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Breadcrumb=chain\n?Debate name=debateName\nlimit=200\nlink=none": [],
+				"([[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Pro argument=pro\n?Con argument=con\nlimit=200\nlink=none": [],
+				"[[Con argument::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Pro argument::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2025-01-01",
+					"keywords": "A=B,A=B,A=B",
+					"lang": "en",
+					"quotes": "⟭⟭⟭Texte⟬⟬⟬0⟬⟬⟬A|B⟬⟬⟬A=B⟬⟬⟬Texte⟬⟬⟬A|B⟬⟬⟬⟬⟬⟬0⟬⟬⟬éàç漢字⟬⟬⟬Texte⟬⟬⟬A & B⟬⟬⟬[[Lien|Texte]]⟬⟬⟬0⟭⟭⟭[[Lien|Texte]]⟬⟬⟬éàç漢字⟬⟬⟬A=B⟬⟬⟬A|B⟬⟬⟬Texte⟬⟬⟬[[Lien|Texte]]⟬⟬⟬A=B⟬⟬⟬A=B⟬⟬⟬A & B⟬⟬⟬⟬⟬⟬[[Lien|Texte]]⟬⟬⟬éàç漢字⟬⟬⟬éàç漢字⟭⟭⟭Texte⟬⟬⟬⟬⟬⟬<ref>x</ref>⟬⟬⟬Texte⟬⟬⟬⟬⟬⟬A=B⟬⟬⟬⟬⟬⟬<ref>x</ref>⟬⟬⟬A=B⟬⟬⟬[[Lien|Texte]]⟬⟬⟬[[Lien|Texte]]⟬⟬⟬⟬⟬⟬<ref>x</ref>",
+					"sections": "Science,Test",
+					"summary": "A|B"
+				},
+				"name": "serialized-2",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "b9ede3b235705cbd3cf90d04d7a01267b578cd581e909eaf7a471241291b9f94",
+				"preprocess": "bdb845c0f4ba1325a240139450d89331cf103e55982bd9fb959807730d318d19",
+				"seo": "6990f46e3d720c43bc0cf1af71e5cc413d63a8619620daf39126cfc635af139c",
+				"set": "80ac1dde5a56740ae2168f0f670f3999a728f02800b66e9270cb78883ae196d1",
+				"text": "cd89da08920e6c09ab6a0842b52b93b416fc6a52afc9338ccb907153bd864437",
+				"variables": "45f594e3c8ed9480e81ab3bdc361a37876939c0302fe81fab62babc81498c154"
+			},
+			"input_sha256": "e4cc5bb2b7abd2ea0247240630f454ee25a333fa8c7f8ec7ae54075d501fda7b",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Breadcrumb=chain\n?Debate name=debateName\nlimit=200\nlink=none": [],
+				"([[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Pro argument=pro\n?Con argument=con\nlimit=200\nlink=none": [],
+				"[[Con argument::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Pro argument::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2025-01-01",
+					"justifications": "⟭A|B⟬A|B⟬A|B⟭0⟬A|B⟬A & B",
+					"keywords": "éàç漢字,[[Lien|Texte]],",
+					"lang": "en",
+					"quotes": "⟭⟭⟭[[Lien|Texte]]⟬⟬⟬0⟬⟬⟬[[Lien|Texte]]⟬⟬⟬A|B⟬⟬⟬0⟬⟬⟬Texte⟬⟬⟬Texte⟬⟬⟬⟬⟬⟬Texte⟬⟬⟬[[Lien|Texte]]⟬⟬⟬éàç漢字⟬⟬⟬[[Lien|Texte]]⟬⟬⟬A & B",
+					"sections": "Science,Test",
+					"summary": "<ref>x</ref>",
+					"videography": "⟭[[Lien|Texte]]⟬0⟬Texte⟬éàç漢字",
+					"webliography": "⟭éàç漢字⟬A|B⟬A & B⟬<ref>x</ref>⟬éàç漢字⟬⟭éàç漢字⟬éàç漢字⟬[[Lien|Texte]]⟬A & B⟬éàç漢字⟬⟭⟬0⟬Texte⟬0⟬⟬<ref>x</ref>"
+				},
+				"name": "serialized-3",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "b9ede3b235705cbd3cf90d04d7a01267b578cd581e909eaf7a471241291b9f94",
+				"preprocess": "4d41e0dfc83faeefa1de92aa45fd78dfb02f386a08240024c5543b06f386d240",
+				"seo": "3db9a02dc2490caaefa54ffbb32fca5216dc0f0328d4f6aae928726b13c4606d",
+				"set": "9e48301c1f465be2e4088f37c0d5910b0d15a2c604412c2d288c293e785b9a53",
+				"text": "5f7f805d1d7e0d57edc337b351ab65566022f0dfd40cc95bfceb84f1be671750",
+				"variables": "3c959bd1ef3e7021795e6e379698b2f5f2085f612cc7c7a249c3b247f713cb56"
+			},
+			"input_sha256": "82379dad5fbc4013779249395ad941cccc647c1278f6f071ee602851e00d20e9",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2025-01-01",
+					"justifications": "⟭⟬A & B⟬Texte",
+					"keywords": "<ref>x</ref>,[[Lien|Texte]],",
+					"lang": "fr",
+					"objections": "⟭[[Lien|Texte]]⟬⟬A=B",
+					"sections": "Science,Test",
+					"summary": "0",
+					"videography": "⟭⟬Texte⟬Texte⟬Texte⟭éàç漢字⟬A=B⟬Texte⟬[[Lien|Texte]]",
+					"webliography": "⟭A|B⟬⟬A=B⟬A=B⟬éàç漢字⟬0"
+				},
+				"name": "serialized-4",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "3e1f66c76c2db18082f96b975a638ef6e96f724122a64a51296a37a3e53cfa37",
+				"seo": "cf49b7987a484f0937f040300dc1d9ddfd2cf7dcc9059291907ad38da125f74f",
+				"set": "5ddbd3d1753a07d875fe7832ca3320335fec769164e4d1eb3e1ead7351c341e5",
+				"text": "85e6ebeb0394bb1ef1ef63163b30e8bd46e7b9e510c05986fdd77c54763c2ed2",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "02f57b6a48f3f1e18ca5085f8128989aa1426e43da6aeab5945e297b74abf4a2",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭A|B⟬A=B⟬A|B⟬A|B⟬A=B⟬éàç漢字⟬Texte⟬<ref>x</ref>⟬Texte⟬⟬Texte⟬⟭A=B⟬A=B⟬0⟬<ref>x</ref>⟬[[Lien|Texte]]⟬A|B⟬A & B⟬A & B⟬[[Lien|Texte]]⟬<ref>x</ref>⟬[[Lien|Texte]]⟬éàç漢字⟭<ref>x</ref>⟬A & B⟬A|B⟬⟬Texte⟬⟬éàç漢字⟬A|B⟬A=B⟬A=B⟬éàç漢字⟬0",
+					"creation-date": "2025-01-01",
+					"keywords": "A & B,0,A & B",
+					"lang": "fr",
+					"objections": "⟭[[Lien|Texte]]⟬[[Lien|Texte]]⟬Texte⟭A & B⟬A|B⟬A & B",
+					"quotes": "⟭⟭⟭A & B⟬⟬⟬0⟬⟬⟬A|B⟬⟬⟬A=B⟬⟬⟬A=B⟬⟬⟬[[Lien|Texte]]⟬⟬⟬A=B⟬⟬⟬0⟬⟬⟬⟬⟬⟬A|B⟬⟬⟬A|B⟬⟬⟬⟬⟬⟬[[Lien|Texte]]",
+					"sections": "Science,Test",
+					"summary": "",
+					"videography": "⟭A=B⟬A & B⟬<ref>x</ref>⟬",
+					"webliography": "⟭A|B⟬A|B⟬A|B⟬A|B⟬éàç漢字⟬<ref>x</ref>⟭[[Lien|Texte]]⟬A & B⟬A & B⟬<ref>x</ref>⟬éàç漢字⟬[[Lien|Texte]]⟭<ref>x</ref>⟬A|B⟬A & B⟬A & B⟬<ref>x</ref>⟬Texte"
+				},
+				"name": "serialized-5",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "8151936b56c698d32a0e27184eff52b699fb5ab40ce1b74605f476c28a887577",
+				"seo": "1a87107d1b678f9d1831ecbd9263b3a450513130e3a347e96f0b313ce704f9ff",
+				"set": "51f2c088c391660aeafebea50209e007ec0df2ad5bdc6f824e272f845c1a7485",
+				"text": "0c714e27014ed4f813d947ac518eece93bee09dcf125309f52fa596bb8a5e6a4",
+				"variables": "ed9c391dba2bc2b53a7c1f30554993aa8a02023ef759eb4571e4ba87e07a8f63"
+			},
+			"input_sha256": "1407326077c6d033bcb28f40e7784fc0a309fadb8798a4e760cd4c0fd9d3f39e",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2025-01-01",
+					"justifications": "⟭éàç漢字⟬⟬[[Lien|Texte]]",
+					"keywords": "A=B,A & B,A=B",
+					"lang": "fr",
+					"objections": "⟭<ref>x</ref>⟬A=B⟬",
+					"quotes": "⟭⟭⟭0⟬⟬⟬A & B⟬⟬⟬0⟬⟬⟬[[Lien|Texte]]⟬⟬⟬A|B⟬⟬⟬Texte⟬⟬⟬<ref>x</ref>⟬⟬⟬Texte⟬⟬⟬0⟬⟬⟬0⟬⟬⟬<ref>x</ref>⟬⟬⟬<ref>x</ref>⟬⟬⟬A=B",
+					"sections": "Science,Test",
+					"summary": "0",
+					"webliography": "⟭[[Lien|Texte]]⟬A|B⟬0⟬Texte⟬[[Lien|Texte]]⟬0⟭A & B⟬⟬A|B⟬⟬[[Lien|Texte]]⟬0"
+				},
+				"name": "serialized-6",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "9cfc2598b8e6b191557a11c6cc409079fe38ae5936a90a82c036467f24f40aae",
+				"seo": "647a530529e2bc04a18fe19bdc98bf26cdff9f49bad6e6a0b25a2dd1e2f7803d",
+				"set": "20f3879d4672b0fb9a7c7d38953fcc30dd4e9fc7361606662690ccd6a0e9ba93",
+				"text": "9d4cfdf79f9a06b5e069665b5c98bc89d917b2a35ca1fd33c24c5e7026a00166",
+				"variables": "749d47c6a8fcfd37aff546fe73b231b072fb74f3c40409f0f05829a32b6358c8"
+			},
+			"input_sha256": "33828348540dbeb9dde19b3bb4883232235ea54a2f8331eac38ee00466296ba1",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭[[Lien|Texte]]⟬A=B⟬<ref>x</ref>⟬A & B⟬A|B⟬[[Lien|Texte]]⟬0⟬Texte⟬0⟬0⟬éàç漢字⟬A & B⟭⟬A & B⟬A & B⟬Texte⟬A|B⟬A|B⟬A=B⟬éàç漢字⟬éàç漢字⟬A|B⟬A & B⟬A & B⟭0⟬0⟬⟬éàç漢字⟬A=B⟬Texte⟬A & B⟬[[Lien|Texte]]⟬A & B⟬A|B⟬⟬Texte",
+					"creation-date": "2025-01-01",
+					"justifications": "⟭<ref>x</ref>⟬[[Lien|Texte]]⟬A|B⟭<ref>x</ref>⟬Texte⟬A=B",
+					"keywords": "A=B,A|B,[[Lien|Texte]]",
+					"lang": "fr",
+					"objections": "⟭éàç漢字⟬éàç漢字⟬[[Lien|Texte]]⟭0⟬⟬<ref>x</ref>⟭Texte⟬0⟬A & B",
+					"sections": "Science,Test",
+					"summary": "Texte"
+				},
+				"name": "serialized-7",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "ec6cb9020665daf1bb31e019e44128b8d7101bf81ca7683ad0b9d3db6cc1ba38",
+				"seo": "4700fcfabe812050fb5b5b568cdb5b5f64f9cc2a2450b92da0770644e6537a43",
+				"set": "65e0c71a24b57b6950fc714f8cbe1c3e985076a593b1600d8686d3bc1490c2e9",
+				"text": "71026017e4c19f35d5f4e3515ddd960d2717e67ee9f1ed99c2246f00c1e726d0",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "3e0007daba6e05c66c184df8a24edd91bdfe0e8f6b49a8c878bade50d9eea945",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭A|B⟬<ref>x</ref>⟬Texte⟬A & B⟬<ref>x</ref>⟬[[Lien|Texte]]⟬0⟬<ref>x</ref>⟬A & B⟬[[Lien|Texte]]⟬A|B⟬Texte",
+					"creation-date": "2025-01-01",
+					"justifications": "⟭A=B⟬Texte⟬⟭A|B⟬Texte⟬<ref>x</ref>⟭A & B⟬⟬A|B",
+					"keywords": "[[Lien|Texte]],<ref>x</ref>,A=B",
+					"lang": "fr",
+					"quotes": "⟭⟭⟭[[Lien|Texte]]⟬⟬⟬⟬⟬⟬A|B⟬⟬⟬<ref>x</ref>⟬⟬⟬A=B⟬⟬⟬0⟬⟬⟬⟬⟬⟬A=B⟬⟬⟬[[Lien|Texte]]⟬⟬⟬A=B⟬⟬⟬<ref>x</ref>⟬⟬⟬Texte⟬⟬⟬⟭⟭⟭A & B⟬⟬⟬éàç漢字⟬⟬⟬0⟬⟬⟬<ref>x</ref>⟬⟬⟬<ref>x</ref>⟬⟬⟬<ref>x</ref>⟬⟬⟬A|B⟬⟬⟬Texte⟬⟬⟬Texte⟬⟬⟬<ref>x</ref>⟬⟬⟬A & B⟬⟬⟬A|B⟬⟬⟬",
+					"sections": "Science,Test",
+					"summary": "éàç漢字",
+					"webliography": "⟭A & B⟬A & B⟬⟬⟬A|B⟬[[Lien|Texte]]⟭A & B⟬<ref>x</ref>⟬éàç漢字⟬A|B⟬⟬A|B"
+				},
+				"name": "serialized-8",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "7189074ef423d4cbd59577cf05085ad23df57461685571b167581d5e77d46f73",
+				"seo": "f22decafe0c4bfce350631fddd0ff1d3289921eb37a19b46fe3d1522eba315a7",
+				"set": "1dbc85f7487940bffea9d78035bf256e112be152e0fdf59d14242e09f6ae28ab",
+				"text": "6290d8c35768c501abe416757370533fcf1a837ae8e29500c04427a05283ba28",
+				"variables": "6586d691fb7a2ecdcee02dbfcb7df3e9570f6260a2c97e8e3ab3c65546bede29"
+			},
+			"input_sha256": "faf8327bbbe1a017e1431340004f2895ffca21172ee95f8494c57eb7ce4f7a3b",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭éàç漢字⟬A=B⟬Texte⟬[[Lien|Texte]]⟬[[Lien|Texte]]⟬Texte⟬A|B⟬0⟬A|B⟬<ref>x</ref>⟬A & B⟬[[Lien|Texte]]⟭0⟬⟬A & B⟬<ref>x</ref>⟬[[Lien|Texte]]⟬0⟬Texte⟬éàç漢字⟬<ref>x</ref>⟬A & B⟬<ref>x</ref>⟬<ref>x</ref>⟭0⟬<ref>x</ref>⟬[[Lien|Texte]]⟬[[Lien|Texte]]⟬A & B⟬A & B⟬A & B⟬Texte⟬0⟬A=B⟬⟬A & B",
+					"creation-date": "2025-01-01",
+					"justifications": "⟭A & B⟬<ref>x</ref>⟬[[Lien|Texte]]",
+					"keywords": ",A & B,A=B",
+					"lang": "fr",
+					"quotes": "⟭⟭⟭éàç漢字⟬⟬⟬éàç漢字⟬⟬⟬A=B⟬⟬⟬<ref>x</ref>⟬⟬⟬⟬⟬⟬éàç漢字⟬⟬⟬Texte⟬⟬⟬<ref>x</ref>⟬⟬⟬[[Lien|Texte]]⟬⟬⟬éàç漢字⟬⟬⟬A & B⟬⟬⟬<ref>x</ref>⟬⟬⟬A=B",
+					"sections": "Science,Test",
+					"summary": "0",
+					"videography": "⟭<ref>x</ref>⟬éàç漢字⟬⟬éàç漢字⟭Texte⟬A=B⟬A & B⟬Texte",
+					"webliography": "⟭A=B⟬A=B⟬éàç漢字⟬[[Lien|Texte]]⟬Texte⟬A=B⟭A|B⟬éàç漢字⟬éàç漢字⟬<ref>x</ref>⟬⟬A=B⟭⟬A & B⟬A=B⟬Texte⟬⟬0"
+				},
+				"name": "serialized-9",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "973977a839fa265568546c290897f1f7c76b36b1221738e420b7f780fc7ee86b",
+				"seo": "bc33f8290a4ee9fe35abfac57ddf95e8830e590c66d5fdce0ca6ef1602ffe217",
+				"set": "aceef61a529c28ef9d9b1d80169675f000f9c593acd532175603763e8e4e98dc",
+				"text": "d6548b9bffa5fcf7e7e9429a0ca5c3c5521b306cc74a386cf931eaeca03d8d66",
+				"variables": "a46f8b3ca1dc2b0ca36ea946ed5bf9f39be2780855ff3d99093d05e0a7bd1a97"
+			},
+			"input_sha256": "7440994c81ddbea9779d9774b12f596f7d0dd698a592615ea82a23160a4d8a94",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Breadcrumb=chain\n?Debate name=debateName\nlimit=200\nlink=none": [],
+				"([[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Pro argument=pro\n?Con argument=con\nlimit=200\nlink=none": [],
+				"[[Con argument::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Pro argument::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2025-01-01",
+					"justifications": "⟭<ref>x</ref>⟬0⟬[[Lien|Texte]]",
+					"keywords": ",éàç漢字,Texte",
+					"lang": "en",
+					"objections": "⟭A|B⟬A=B⟬A & B⟭[[Lien|Texte]]⟬Texte⟬⟭A & B⟬A|B⟬Texte",
+					"sections": "Science,Test",
+					"summary": "",
+					"webliography": "⟭⟬A=B⟬A|B⟬[[Lien|Texte]]⟬éàç漢字⟬A & B⟭A=B⟬⟬éàç漢字⟬A & B⟬A=B⟬éàç漢字"
+				},
+				"name": "serialized-10",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "b9ede3b235705cbd3cf90d04d7a01267b578cd581e909eaf7a471241291b9f94",
+				"preprocess": "2c6a2544180c48fc5f213a766a480515b6fd0cdefd33b1f89f17f5fa24f25b05",
+				"seo": "b7ee4b23ceacbaefb63f642c595bb47e7d6a57e0e10d45838c5a4bc18e1b10fe",
+				"set": "3e94b34adab14b76d3dde14d9900dad1dd417322b8a5512b7011455a5aa72a46",
+				"text": "11f9349a85d9c096789102591b89f555ac41b5b17c0602ae4012049b0275cc5d",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "ebc0328c6e7d7f14784ddaac8e46d6bbc549e20f1d4c910d9760c7cc0a7b434c",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2025-01-01",
+					"justifications": "⟭[[Lien|Texte]]⟬[[Lien|Texte]]⟬A & B⟭[[Lien|Texte]]⟬éàç漢字⟬[[Lien|Texte]]⟭[[Lien|Texte]]⟬⟬A|B",
+					"keywords": "Texte,éàç漢字,0",
+					"lang": "fr",
+					"sections": "Science,Test",
+					"summary": "A=B",
+					"videography": "⟭<ref>x</ref>⟬0⟬<ref>x</ref>⟬<ref>x</ref>",
+					"webliography": "⟭A=B⟬éàç漢字⟬A|B⟬A|B⟬<ref>x</ref>⟬A & B"
+				},
+				"name": "serialized-11",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "8a692b4399eb3dcd08afdcb96ee6b2c16e3ee0938e6c3018cc26eb23484f13b8",
+				"seo": "ff2a22200554e85fda96a66079a7a29628dcad1068c3d81a8715119b97ee0e1b",
+				"set": "067c2b040ec8a4a27ec5d6b712215d69e3923106f166d28e46cc2dbc897fa6ab",
+				"text": "e901bb1e938135018edb6c5bd17f19ea1a5711e507536627fbd1ea553ce5ed95",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "99736e7adb8f6043f906ae977081142d9ed76ea4ad73d1584c2727bc7f1c16b8",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭A=B⟬Texte⟬⟬⟬A=B⟬Texte⟬Texte⟬A & B⟬A=B⟬Texte⟬<ref>x</ref>⟬A=B⟭A=B⟬A|B⟬A & B⟬0⟬0⟬Texte⟬A|B⟬0⟬0⟬⟬⟬<ref>x</ref>",
+					"creation-date": "2025-01-01",
+					"justifications": "⟭0⟬A & B⟬A & B⟭éàç漢字⟬A=B⟬A & B",
+					"keywords": "0,<ref>x</ref>,A & B",
+					"lang": "fr",
+					"objections": "⟭<ref>x</ref>⟬A & B⟬A & B",
+					"sections": "Science,Test",
+					"summary": "[[Lien|Texte]]",
+					"videography": "⟭[[Lien|Texte]]⟬A=B⟬A|B⟬0⟭éàç漢字⟬<ref>x</ref>⟬0⟬[[Lien|Texte]]⟭éàç漢字⟬A|B⟬A|B⟬éàç漢字",
+					"webliography": "⟭⟬A|B⟬A=B⟬<ref>x</ref>⟬éàç漢字⟬A & B⟭[[Lien|Texte]]⟬0⟬Texte⟬<ref>x</ref>⟬[[Lien|Texte]]⟬"
+				},
+				"name": "serialized-12",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "f01098237bd780e9a04c9c25775cad0ee0c6af293022f6c5e101c95af599130c",
+				"seo": "55535cee15cf92b18b06c3a91c20800a9f025dcd8deee713a41338890e64e679",
+				"set": "4236e5dd326b10e075fd5882e3880300ab5ae57babe55513802ab70ba1a92205",
+				"text": "2f2b2517e6c2e5987bcc428ee5dc5637e34ce341808c5e0c7b83676e97accd95",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "9cc81667292bbf8633f3325880866549a0be2cc25534ec8ffc0fd124ec230798",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Breadcrumb=chain\n?Debate name=debateName\nlimit=200\nlink=none": [],
+				"([[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Pro argument=pro\n?Con argument=con\nlimit=200\nlink=none": [],
+				"[[Con argument::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Pro argument::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭0⟬⟬A=B⟬<ref>x</ref>⟬Texte⟬⟬0⟬⟬⟬A & B⟬A=B⟬<ref>x</ref>⟭A=B⟬[[Lien|Texte]]⟬⟬[[Lien|Texte]]⟬A|B⟬Texte⟬éàç漢字⟬A & B⟬A|B⟬0⟬A & B⟬éàç漢字",
+					"creation-date": "2025-01-01",
+					"keywords": "[[Lien|Texte]],,<ref>x</ref>",
+					"lang": "en",
+					"quotes": "⟭⟭⟭Texte⟬⟬⟬Texte⟬⟬⟬A|B⟬⟬⟬A & B⟬⟬⟬éàç漢字⟬⟬⟬⟬⟬⟬<ref>x</ref>⟬⟬⟬0⟬⟬⟬A=B⟬⟬⟬éàç漢字⟬⟬⟬A & B⟬⟬⟬[[Lien|Texte]]⟬⟬⟬A & B⟭⟭⟭<ref>x</ref>⟬⟬⟬Texte⟬⟬⟬[[Lien|Texte]]⟬⟬⟬0⟬⟬⟬⟬⟬⟬A & B⟬⟬⟬⟬⟬⟬A|B⟬⟬⟬0⟬⟬⟬Texte⟬⟬⟬A|B⟬⟬⟬Texte⟬⟬⟬⟭⟭⟭A & B⟬⟬⟬0⟬⟬⟬éàç漢字⟬⟬⟬A|B⟬⟬⟬⟬⟬⟬<ref>x</ref>⟬⟬⟬A=B⟬⟬⟬A=B⟬⟬⟬A & B⟬⟬⟬[[Lien|Texte]]⟬⟬⟬A|B⟬⟬⟬0⟬⟬⟬éàç漢字",
+					"sections": "Science,Test",
+					"summary": "[[Lien|Texte]]",
+					"webliography": "⟭<ref>x</ref>⟬[[Lien|Texte]]⟬A|B⟬⟬éàç漢字⟬[[Lien|Texte]]"
+				},
+				"name": "serialized-13",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "b9ede3b235705cbd3cf90d04d7a01267b578cd581e909eaf7a471241291b9f94",
+				"preprocess": "12297c07fa7c7672d7a8a8bd82f8b89c8db376411f69eeacc4bd5d6fa3e872ab",
+				"seo": "23e0a10165b414160f53315cae581d94436519fca30de5cac1237f62c7a3fb37",
+				"set": "6c729041076178cbfa6b4375a2648ec5b164aa352cf54b82d28cf3e563a5e364",
+				"text": "b0f46e92ee4426bb61011a474a4d6735cb42492305c4f36e949fdae9ece7f391",
+				"variables": "91e6b8d44b1782eb580e3fc8d90dfb5c623e8eb0fd8d19f8e5ac482c67f7f463"
+			},
+			"input_sha256": "40412701e0033806dfda0e98caf00caead3cea1ab0179f841ef03846bd4bc82d",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Breadcrumb=chain\n?Debate name=debateName\nlimit=200\nlink=none": [],
+				"([[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Pro argument=pro\n?Con argument=con\nlimit=200\nlink=none": [],
+				"[[Con argument::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Pro argument::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭⟬éàç漢字⟬[[Lien|Texte]]⟬A & B⟬A|B⟬Texte⟬Texte⟬<ref>x</ref>⟬éàç漢字⟬A=B⟬A & B⟬[[Lien|Texte]]",
+					"creation-date": "2025-01-01",
+					"justifications": "⟭<ref>x</ref>⟬<ref>x</ref>⟬A=B⟭<ref>x</ref>⟬[[Lien|Texte]]⟬A=B⟭[[Lien|Texte]]⟬Texte⟬",
+					"keywords": "A=B,0,<ref>x</ref>",
+					"lang": "en",
+					"sections": "Science,Test",
+					"summary": "A|B",
+					"videography": "⟭éàç漢字⟬<ref>x</ref>⟬A|B⟬A & B⟭⟬A & B⟬[[Lien|Texte]]⟬[[Lien|Texte]]⟭A|B⟬A & B⟬A|B⟬0",
+					"webliography": "⟭A & B⟬A & B⟬éàç漢字⟬<ref>x</ref>⟬<ref>x</ref>⟬0⟭A=B⟬Texte⟬[[Lien|Texte]]⟬Texte⟬0⟬A|B"
+				},
+				"name": "serialized-14",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "b9ede3b235705cbd3cf90d04d7a01267b578cd581e909eaf7a471241291b9f94",
+				"preprocess": "7b0e2fbbb2e89270530c4487c8365131be7641d3bd734a0720627afbba39aafe",
+				"seo": "9076e978d42132bc9386d2ad05f1fd841bd60b444243a8d1d9ef079a73afb336",
+				"set": "31a1f5eee63f15facf51d3ff0b4f864d1cee0fc6ee4c82493b7e5a2352a7e03f",
+				"text": "4a6838b9c7bb0e1ac82b5e0f0b98f55b4a5708dd7132cdb34d569cb7c533aff9",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "df65ad9bc2d9d4412db9e105ed8cf5411397d621a454064da7b47bf81961c906",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2025-01-01",
+					"justifications": "⟭A & B⟬⟬A=B⟭[[Lien|Texte]]⟬0⟬0",
+					"keywords": "[[Lien|Texte]],,<ref>x</ref>",
+					"lang": "fr",
+					"objections": "⟭0⟬éàç漢字⟬éàç漢字⟭0⟬<ref>x</ref>⟬Texte⟭A|B⟬A & B⟬A=B",
+					"quotes": "⟭⟭⟭[[Lien|Texte]]⟬⟬⟬[[Lien|Texte]]⟬⟬⟬0⟬⟬⟬éàç漢字⟬⟬⟬⟬⟬⟬A=B⟬⟬⟬⟬⟬⟬⟬⟬⟬0⟬⟬⟬⟬⟬⟬<ref>x</ref>⟬⟬⟬0⟬⟬⟬⟭⟭⟭[[Lien|Texte]]⟬⟬⟬Texte⟬⟬⟬Texte⟬⟬⟬Texte⟬⟬⟬[[Lien|Texte]]⟬⟬⟬0⟬⟬⟬Texte⟬⟬⟬Texte⟬⟬⟬[[Lien|Texte]]⟬⟬⟬Texte⟬⟬⟬A=B⟬⟬⟬éàç漢字⟬⟬⟬[[Lien|Texte]]",
+					"sections": "Science,Test",
+					"summary": "éàç漢字",
+					"videography": "⟭A|B⟬<ref>x</ref>⟬Texte⟬A=B⟭A=B⟬<ref>x</ref>⟬éàç漢字⟬éàç漢字⟭A & B⟬éàç漢字⟬<ref>x</ref>⟬A=B",
+					"webliography": "⟭[[Lien|Texte]]⟬A=B⟬⟬éàç漢字⟬A & B⟬<ref>x</ref>⟭[[Lien|Texte]]⟬0⟬éàç漢字⟬A=B⟬éàç漢字⟬<ref>x</ref>"
+				},
+				"name": "serialized-15",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "bf88294c491dc59d6a5cc4dc37506c6a9a3fc6b60d5e6689b1e8a6c3231d7d0c",
+				"seo": "e87ef8c3ef13e0ac884ee2b3161036103241dcccc19ca4b05797f07fadb10a1e",
+				"set": "e13fe34cab9af9ed515af26a3bf018b1f12ef27430a21a7612349b7425a4d5b5",
+				"text": "e59c1e25a50fc8e560d88965d7d028081cd83f70a5b0503927f882598b48c3b3",
+				"variables": "8e7ceba5f944070e0124ba7798d81e8a1700d9d36ad64c73f009b0da51759763"
+			},
+			"input_sha256": "7aa71c6b1218e53246d97e7086400f7ca2d70b1b9119a3f14db2995d37f98cda",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭Texte⟬0⟬0⟬éàç漢字⟬Texte⟬Texte⟬<ref>x</ref>⟬[[Lien|Texte]]⟬A|B⟬A|B⟬A & B⟬0",
+					"creation-date": "2025-01-01",
+					"justifications": "⟭⟬Texte⟬A|B⟭Texte⟬A & B⟬[[Lien|Texte]]⟭A|B⟬[[Lien|Texte]]⟬éàç漢字",
+					"keywords": ",A=B,A=B",
+					"lang": "fr",
+					"quotes": "⟭⟭⟭0⟬⟬⟬0⟬⟬⟬[[Lien|Texte]]⟬⟬⟬<ref>x</ref>⟬⟬⟬A & B⟬⟬⟬A & B⟬⟬⟬éàç漢字⟬⟬⟬A=B⟬⟬⟬0⟬⟬⟬éàç漢字⟬⟬⟬Texte⟬⟬⟬Texte⟬⟬⟬A=B⟭⟭⟭[[Lien|Texte]]⟬⟬⟬éàç漢字⟬⟬⟬⟬⟬⟬Texte⟬⟬⟬<ref>x</ref>⟬⟬⟬0⟬⟬⟬éàç漢字⟬⟬⟬[[Lien|Texte]]⟬⟬⟬Texte⟬⟬⟬0⟬⟬⟬éàç漢字⟬⟬⟬A & B⟬⟬⟬A & B",
+					"sections": "Science,Test",
+					"summary": "<ref>x</ref>"
+				},
+				"name": "serialized-16",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "073d74da19eb63bb6997919d3ed31d156e19d17a42d81cc1b52de8083a76b7d0",
+				"seo": "859e432600f979c6f1c832da53d7938b915dc6671699fa077397068f62bf8aee",
+				"set": "ce967e4009be83a5c12b0a6be1744386b847b422ebb639ee8626a5def782684c",
+				"text": "264d99787addc3b7fa9e26693cea53edfd50554a3bb8f4981df5b240e3cf778d",
+				"variables": "97751cae268a7f3f59b4ececf2524b6f914b7bbd0dac75cd972655f491cbdbf7"
+			},
+			"input_sha256": "cf5679d02b95d90744effdcbc7a280d7f92d59fc29a41c61ccbaf91dde6c5a54",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭A|B⟬⟬A & B⟬A & B⟬⟬A & B⟬⟬<ref>x</ref>⟬0⟬<ref>x</ref>⟬Texte⟬A & B⟭A & B⟬Texte⟬⟬A=B⟬A|B⟬A & B⟬éàç漢字⟬⟬[[Lien|Texte]]⟬[[Lien|Texte]]⟬0⟬Texte⟭éàç漢字⟬A|B⟬<ref>x</ref>⟬<ref>x</ref>⟬A|B⟬[[Lien|Texte]]⟬⟬<ref>x</ref>⟬A=B⟬éàç漢字⟬0⟬Texte",
+					"creation-date": "2025-01-01",
+					"justifications": "⟭A=B⟬[[Lien|Texte]]⟬éàç漢字⟭éàç漢字⟬éàç漢字⟬A & B",
+					"keywords": "[[Lien|Texte]],0,0",
+					"lang": "fr",
+					"sections": "Science,Test",
+					"summary": "",
+					"videography": "⟭Texte⟬⟬A=B⟬Texte⟭A=B⟬A=B⟬0⟬A & B⟭éàç漢字⟬0⟬A|B⟬Texte",
+					"webliography": "⟭éàç漢字⟬0⟬[[Lien|Texte]]⟬Texte⟬éàç漢字⟬[[Lien|Texte]]"
+				},
+				"name": "serialized-17",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "d8fa8202207436e50aa5bd624bb5cd0b829e2d31e1d29c75f7d988f8f33f73a7",
+				"seo": "d6e16796fe536ebc7d09f2c150531e1d9fdabcb7e50c06ca0e15feaa08167ad5",
+				"set": "6100317f5ca2efa5d4e0d4b457ac271ac5202f5fd10f2dc8285a9b33940340bf",
+				"text": "a338be3f84e66d8fd1b789b045e7bc78d6af26d0df1baae46d4dc4dfc19443f7",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "55815878696fa9a72eea355cb2a57ea61aabb1dfc45ed131599159adc543412a",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Breadcrumb=chain\n?Debate name=debateName\nlimit=200\nlink=none": [],
+				"([[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Pro argument=pro\n?Con argument=con\nlimit=200\nlink=none": [],
+				"[[Con argument::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Pro argument::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭0⟬[[Lien|Texte]]⟬A=B⟬Texte⟬A & B⟬Texte⟬<ref>x</ref>⟬[[Lien|Texte]]⟬A & B⟬[[Lien|Texte]]⟬A=B⟬A=B",
+					"creation-date": "2025-01-01",
+					"justifications": "⟭<ref>x</ref>⟬[[Lien|Texte]]⟬A & B⟭<ref>x</ref>⟬⟬A|B",
+					"keywords": "A|B,,A|B",
+					"lang": "en",
+					"objections": "⟭A=B⟬A & B⟬0",
+					"quotes": "⟭⟭⟭⟬⟬⟬<ref>x</ref>⟬⟬⟬[[Lien|Texte]]⟬⟬⟬Texte⟬⟬⟬⟬⟬⟬A & B⟬⟬⟬éàç漢字⟬⟬⟬0⟬⟬⟬<ref>x</ref>⟬⟬⟬0⟬⟬⟬⟬⟬⟬<ref>x</ref>⟬⟬⟬A=B⟭⟭⟭éàç漢字⟬⟬⟬<ref>x</ref>⟬⟬⟬[[Lien|Texte]]⟬⟬⟬A=B⟬⟬⟬A=B⟬⟬⟬éàç漢字⟬⟬⟬A=B⟬⟬⟬éàç漢字⟬⟬⟬Texte⟬⟬⟬A & B⟬⟬⟬éàç漢字⟬⟬⟬<ref>x</ref>⟬⟬⟬A=B",
+					"sections": "Science,Test",
+					"summary": "",
+					"webliography": "⟭⟬0⟬A & B⟬A & B⟬A|B⟬⟭A|B⟬éàç漢字⟬éàç漢字⟬A|B⟬A & B⟬A & B"
+				},
+				"name": "serialized-18",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "b9ede3b235705cbd3cf90d04d7a01267b578cd581e909eaf7a471241291b9f94",
+				"preprocess": "6136cefd00a2194a72e16199a69b32a680ae125d4b6b096ba9a2decacfd953ab",
+				"seo": "3de38323d9775ef3d0a1cc9b169fe292c19faea328af963f015f2ab87cf21363",
+				"set": "764b1c0cd7b9d0b41625e1855a961388d9564a7b2387a38ac639e70bbb846305",
+				"text": "92b32167766c3ab50a6ead246ce813df065a107678358082f33c966f5adec61b",
+				"variables": "748fee577cc30ef58f2209feb6ae1e522ff1b5f532192c0f75d86f86ee44b5ba"
+			},
+			"input_sha256": "c688c331f5bef83ac51da093570e5cecfef416baa0ec160c29fa1f6dffdf1c8b",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Breadcrumb=chain\n?Debate name=debateName\nlimit=200\nlink=none": [],
+				"([[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Pro argument=pro\n?Con argument=con\nlimit=200\nlink=none": [],
+				"[[Con argument::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Pro argument::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭A & B⟬A & B⟬<ref>x</ref>⟬A & B⟬A & B⟬A=B⟬0⟬A|B⟬⟬A|B⟬A & B⟬",
+					"creation-date": "2025-01-01",
+					"justifications": "⟭A|B⟬éàç漢字⟬éàç漢字⟭A=B⟬<ref>x</ref>⟬",
+					"keywords": "éàç漢字,éàç漢字,<ref>x</ref>",
+					"lang": "en",
+					"objections": "⟭0⟬A=B⟬A & B⟭0⟬A & B⟬Texte⟭éàç漢字⟬Texte⟬[[Lien|Texte]]",
+					"quotes": "⟭⟭⟭<ref>x</ref>⟬⟬⟬éàç漢字⟬⟬⟬A & B⟬⟬⟬⟬⟬⟬⟬⟬⟬<ref>x</ref>⟬⟬⟬A|B⟬⟬⟬éàç漢字⟬⟬⟬⟬⟬⟬[[Lien|Texte]]⟬⟬⟬A=B⟬⟬⟬A|B⟬⟬⟬",
+					"sections": "Science,Test",
+					"summary": "Texte",
+					"webliography": "⟭A=B⟬⟬[[Lien|Texte]]⟬[[Lien|Texte]]⟬éàç漢字⟬A|B⟭⟬éàç漢字⟬éàç漢字⟬A|B⟬Texte⟬<ref>x</ref>"
+				},
+				"name": "serialized-19",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "b9ede3b235705cbd3cf90d04d7a01267b578cd581e909eaf7a471241291b9f94",
+				"preprocess": "80d953287c914f6362ab831dfbec830499479aba16cee2a3dc20266655d3388c",
+				"seo": "e00bf336a71b771f7626b2ac55eff9ede34b0ea421d8d7f9dd0a183476a7681a",
+				"set": "1c7bf2501c7dd9dc73fce720c9bcf2872cae69e01260125b7beefdf160993db9",
+				"text": "7af652e8f345302dedf044f0aadb25478e96ae8d474d0b560020f16c7d6578f1",
+				"variables": "4344124c2225a00a07650e17a77ee0780e00145ca79989c3a0376f8fbf9279df"
+			},
+			"input_sha256": "c2351240509261fc6bd5d96e7a5257d3476575874ee8bca01925f3c01394a319",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2025-01-01",
+					"justifications": "⟭0⟬0⟬[[Lien|Texte]]⟭Texte⟬éàç漢字⟬<ref>x</ref>⟭éàç漢字⟬⟬<ref>x</ref>",
+					"keywords": "éàç漢字,A & B,A=B",
+					"lang": "fr",
+					"objections": "⟭éàç漢字⟬éàç漢字⟬Texte⟭A=B⟬<ref>x</ref>⟬<ref>x</ref>⟭<ref>x</ref>⟬Texte⟬",
+					"sections": "Science,Test",
+					"summary": "A & B",
+					"videography": "⟭A & B⟬A|B⟬0⟬0⟭A=B⟬[[Lien|Texte]]⟬A|B⟬<ref>x</ref>⟭[[Lien|Texte]]⟬0⟬A & B⟬A|B",
+					"webliography": "⟭A|B⟬A|B⟬<ref>x</ref>⟬<ref>x</ref>⟬[[Lien|Texte]]⟬éàç漢字⟭<ref>x</ref>⟬éàç漢字⟬A|B⟬A & B⟬<ref>x</ref>⟬"
+				},
+				"name": "serialized-20",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "833d97ffe42bea9cfb697bdeac63dd282734d5228002458e22d1f68fd0549a69",
+				"seo": "a7cb34b6bdd989159bc3ae38524099adbf927480c99ff2094e6b418b131135eb",
+				"set": "47e5d03095789acec49d45786a04dcaf030a60f8f951ddde852d49abf5b31ad2",
+				"text": "b1b6f649e378704e3a849b5ace088f608807b499763a3a0ea506f32be15026af",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "91e03bad46841e5a9b0fd409076a8a3b4d6237984671fca39e1f20d88581cb86",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭Texte⟬[[Lien|Texte]]⟬0⟬A & B⟬[[Lien|Texte]]⟬<ref>x</ref>⟬⟬[[Lien|Texte]]⟬A & B⟬A=B⟬<ref>x</ref>⟬A & B⟭<ref>x</ref>⟬A & B⟬A & B⟬Texte⟬⟬A|B⟬[[Lien|Texte]]⟬[[Lien|Texte]]⟬A=B⟬⟬0⟬A|B⟭⟬A|B⟬⟬0⟬A=B⟬0⟬Texte⟬éàç漢字⟬A=B⟬éàç漢字⟬A=B⟬0",
+					"creation-date": "2025-01-01",
+					"justifications": "⟭A=B⟬⟬A=B⟭Texte⟬A=B⟬0",
+					"keywords": "Texte,A & B,0",
+					"lang": "fr",
+					"sections": "Science,Test",
+					"summary": "éàç漢字",
+					"videography": "⟭A|B⟬A|B⟬éàç漢字⟬<ref>x</ref>⟭<ref>x</ref>⟬[[Lien|Texte]]⟬0⟬0⟭A & B⟬éàç漢字⟬[[Lien|Texte]]⟬<ref>x</ref>",
+					"webliography": "⟭<ref>x</ref>⟬⟬éàç漢字⟬Texte⟬⟬[[Lien|Texte]]⟭A|B⟬A|B⟬0⟬⟬⟬<ref>x</ref>"
+				},
+				"name": "serialized-21",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "fc8a3f08f1dc7c876589f1903482810134ba153f69040ddebef4153c764b6ade",
+				"seo": "468d1774bdf09a0a1b028bee2a76b99635946a983a83a869bc1a4bc8fccd639b",
+				"set": "189717fd745a00df161cd99400c97521cbdf46661132aba41f99b8791a8df0ae",
+				"text": "ca8f8f02947fc3afb360c563192e51bbd71286f89a16c3076805b9e9240968f7",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "79c06650044f8a2d64209a11df03995833c4deb2158b9657dbf53907b9b89135",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭Texte⟬éàç漢字⟬[[Lien|Texte]]⟬éàç漢字⟬éàç漢字⟬⟬<ref>x</ref>⟬A|B⟬éàç漢字⟬[[Lien|Texte]]⟬<ref>x</ref>⟬⟭0⟬⟬[[Lien|Texte]]⟬⟬Texte⟬A & B⟬0⟬<ref>x</ref>⟬<ref>x</ref>⟬A=B⟬éàç漢字⟬A & B⟭A & B⟬A|B⟬[[Lien|Texte]]⟬A=B⟬éàç漢字⟬0⟬éàç漢字⟬A & B⟬0⟬<ref>x</ref>⟬[[Lien|Texte]]⟬éàç漢字",
+					"creation-date": "2025-01-01",
+					"justifications": "⟭A & B⟬0⟬<ref>x</ref>",
+					"keywords": "0,A|B,A|B",
+					"lang": "fr",
+					"objections": "⟭A|B⟬<ref>x</ref>⟬A=B⟭0⟬A|B⟬éàç漢字⟭<ref>x</ref>⟬⟬éàç漢字",
+					"quotes": "⟭⟭⟭0⟬⟬⟬A & B⟬⟬⟬⟬⟬⟬0⟬⟬⟬[[Lien|Texte]]⟬⟬⟬A=B⟬⟬⟬A|B⟬⟬⟬0⟬⟬⟬A & B⟬⟬⟬[[Lien|Texte]]⟬⟬⟬A & B⟬⟬⟬⟬⟬⟬A & B⟭⟭⟭A=B⟬⟬⟬A=B⟬⟬⟬⟬⟬⟬éàç漢字⟬⟬⟬0⟬⟬⟬A=B⟬⟬⟬éàç漢字⟬⟬⟬[[Lien|Texte]]⟬⟬⟬0⟬⟬⟬A=B⟬⟬⟬[[Lien|Texte]]⟬⟬⟬éàç漢字⟬⟬⟬A=B",
+					"sections": "Science,Test",
+					"summary": "A & B",
+					"videography": "⟭A=B⟬A=B⟬A & B⟬0⟭⟬Texte⟬[[Lien|Texte]]⟬[[Lien|Texte]]⟭Texte⟬éàç漢字⟬<ref>x</ref>⟬A|B"
+				},
+				"name": "serialized-22",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "ac4e6cc0e49848d3957b91071e4643c1b9bfd33dd6ccc1bf23df918b984c654c",
+				"seo": "9cba9610436d834ab78315529241fe86b309724ad20bbcf1d1f4f43f2e9f7443",
+				"set": "6a435d9c438a88dee5bb56153eee90a233cbd261ebcdfd819e125995f0f325b2",
+				"text": "62abc330d5e65cf2dee36ce471b998f04e4a6cd82bc3024b08ff43a2838ecafc",
+				"variables": "577f1a9a443cbc4cb6fe8e18257c02edb3505e8ec6ac55ffb0d19d6283695de1"
+			},
+			"input_sha256": "e22512a235f966087ed273ede4ef23cd1ffd6e8bd92de75a7a7822d7439a8a37",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭<ref>x</ref>⟬Texte⟬0⟬0⟬[[Lien|Texte]]⟬A=B⟬Texte⟬A & B⟬⟬[[Lien|Texte]]⟬⟬⟭⟬A=B⟬A=B⟬<ref>x</ref>⟬éàç漢字⟬A|B⟬A & B⟬⟬Texte⟬⟬<ref>x</ref>⟬A|B",
+					"creation-date": "2025-01-01",
+					"justifications": "⟭A & B⟬éàç漢字⟬A & B⟭A & B⟬<ref>x</ref>⟬A|B⟭éàç漢字⟬A=B⟬éàç漢字",
+					"keywords": "<ref>x</ref>,<ref>x</ref>,A & B",
+					"lang": "fr",
+					"quotes": "⟭⟭⟭[[Lien|Texte]]⟬⟬⟬éàç漢字⟬⟬⟬[[Lien|Texte]]⟬⟬⟬A|B⟬⟬⟬Texte⟬⟬⟬[[Lien|Texte]]⟬⟬⟬Texte⟬⟬⟬0⟬⟬⟬éàç漢字⟬⟬⟬[[Lien|Texte]]⟬⟬⟬Texte⟬⟬⟬⟬⟬⟬A & B",
+					"sections": "Science,Test",
+					"summary": "<ref>x</ref>"
+				},
+				"name": "serialized-23",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "6c33e5b5f7a9c3bd2ff25039e2e1cfb047cafe2d81c8828c7537379b75631ea2",
+				"seo": "b4c81dffa96a73671c2e55ebe55b1d59e1df18ac0b50f50dab28a6e61707b2fe",
+				"set": "de26e4900fc07949c28670aaf493746b1206580b3b09ed202323d21ecf4500b2",
+				"text": "fef5c9c51a0c7160439b3c616ea429175b4c9779edb98e87897934c017308352",
+				"variables": "149435561ab6b0a487780d78b572a7c0351e29aaa49c7a9b7c54e352645f6e7a"
+			},
+			"input_sha256": "8d7d779243072ddad9a8363335fc87ca77a69176a41d00a08d0a4cf828ab1c75",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Breadcrumb=chain\n?Debate name=debateName\nlimit=200\nlink=none": [],
+				"([[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Pro argument=pro\n?Con argument=con\nlimit=200\nlink=none": [],
+				"[[Con argument::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Pro argument::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2025-01-01",
+					"justifications": "⟭éàç漢字⟬<ref>x</ref>⟬A & B⟭0⟬Texte⟬0⟭A & B⟬A|B⟬A=B",
+					"keywords": "A=B,A & B,A=B",
+					"lang": "en",
+					"objections": "⟭⟬[[Lien|Texte]]⟬A|B",
+					"quotes": "⟭⟭⟭<ref>x</ref>⟬⟬⟬⟬⟬⟬<ref>x</ref>⟬⟬⟬A=B⟬⟬⟬Texte⟬⟬⟬⟬⟬⟬A & B⟬⟬⟬A|B⟬⟬⟬0⟬⟬⟬éàç漢字⟬⟬⟬0⟬⟬⟬A=B⟬⟬⟬<ref>x</ref>⟭⟭⟭⟬⟬⟬<ref>x</ref>⟬⟬⟬éàç漢字⟬⟬⟬[[Lien|Texte]]⟬⟬⟬[[Lien|Texte]]⟬⟬⟬0⟬⟬⟬A|B⟬⟬⟬éàç漢字⟬⟬⟬A=B⟬⟬⟬<ref>x</ref>⟬⟬⟬⟬⟬⟬A|B⟬⟬⟬0⟭⟭⟭A=B⟬⟬⟬éàç漢字⟬⟬⟬A & B⟬⟬⟬Texte⟬⟬⟬<ref>x</ref>⟬⟬⟬Texte⟬⟬⟬Texte⟬⟬⟬éàç漢字⟬⟬⟬éàç漢字⟬⟬⟬A|B⟬⟬⟬[[Lien|Texte]]⟬⟬⟬éàç漢字⟬⟬⟬[[Lien|Texte]]",
+					"sections": "Science,Test",
+					"summary": "[[Lien|Texte]]",
+					"videography": "⟭A & B⟬A|B⟬0⟬",
+					"webliography": "⟭⟬⟬[[Lien|Texte]]⟬éàç漢字⟬A & B⟬Texte⟭éàç漢字⟬<ref>x</ref>⟬<ref>x</ref>⟬<ref>x</ref>⟬0⟬<ref>x</ref>"
+				},
+				"name": "serialized-24",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "b9ede3b235705cbd3cf90d04d7a01267b578cd581e909eaf7a471241291b9f94",
+				"preprocess": "e60a83149d333daf2aae882610810965851068ccdddf484a194dbde167fabea4",
+				"seo": "5752893dab7857a9173090314c0a5fd00cfee5acbb477436c29b53c529e17885",
+				"set": "067d29ff6780ab7368f1e3677c7f65041f3f11d463e0231700587c5345fd1b1a",
+				"text": "89e1fc467073bb42140dc85c3122debead7a8c77b0c33b10945f57a3ea59a186",
+				"variables": "09827ab2ce4d21ccc51172ccc9de74e11be4502e9eb9103a46de7d3d92458fed"
+			},
+			"input_sha256": "8ba226e3354dbdaf684927c9ff13e0b72505279cd86aaa8c99fcbe94e8f25ece",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭[[Lien|Texte]]⟬⟬⟬Texte⟬Texte⟬Texte⟬A|B⟬A|B⟬A & B⟬[[Lien|Texte]]⟬A & B⟬A & B",
+					"creation-date": "2025-01-01",
+					"keywords": "A|B,éàç漢字,A=B",
+					"lang": "fr",
+					"sections": "Science,Test",
+					"summary": "[[Lien|Texte]]",
+					"webliography": "⟭⟬[[Lien|Texte]]⟬Texte⟬0⟬Texte⟬[[Lien|Texte]]⟭Texte⟬A & B⟬A|B⟬⟬<ref>x</ref>⟬A & B"
+				},
+				"name": "serialized-25",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "d4e3052077984abfc920e1108de89f4750e2cb0b009acddb6deb996f58d43585",
+				"seo": "27dd10219eda41b45c25bc4b7433bbea8940451049a53ef7cbc84bd916ee71d2",
+				"set": "75e86f58e1a66f4f6c51c120b2989c02011dec7f4ea2031cc47ff09f02ada895",
+				"text": "794ffde689697bcb55d70502959400274f5e22237c68aa05b49ef74ec58d89e3",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "b4378904fe837932ffd5b9c9ab467f459b0003a203fbefd7c528312fc3e3056e",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2025-01-01",
+					"justifications": "⟭⟬[[Lien|Texte]]⟬[[Lien|Texte]]⟭Texte⟬éàç漢字⟬A=B⟭A & B⟬Texte⟬",
+					"keywords": "A|B,A|B,Texte",
+					"lang": "fr",
+					"objections": "⟭éàç漢字⟬éàç漢字⟬<ref>x</ref>",
+					"quotes": "⟭⟭⟭A & B⟬⟬⟬A & B⟬⟬⟬A & B⟬⟬⟬A|B⟬⟬⟬A & B⟬⟬⟬éàç漢字⟬⟬⟬A=B⟬⟬⟬A=B⟬⟬⟬éàç漢字⟬⟬⟬[[Lien|Texte]]⟬⟬⟬éàç漢字⟬⟬⟬Texte⟬⟬⟬<ref>x</ref>⟭⟭⟭A=B⟬⟬⟬Texte⟬⟬⟬<ref>x</ref>⟬⟬⟬A|B⟬⟬⟬0⟬⟬⟬[[Lien|Texte]]⟬⟬⟬[[Lien|Texte]]⟬⟬⟬<ref>x</ref>⟬⟬⟬éàç漢字⟬⟬⟬0⟬⟬⟬A=B⟬⟬⟬<ref>x</ref>⟬⟬⟬<ref>x</ref>",
+					"sections": "Science,Test",
+					"summary": "0",
+					"videography": "⟭⟬A|B⟬A & B⟬0⟭0⟬<ref>x</ref>⟬Texte⟬[[Lien|Texte]]⟭A & B⟬Texte⟬Texte⟬0",
+					"webliography": "⟭A & B⟬[[Lien|Texte]]⟬éàç漢字⟬A|B⟬⟬Texte"
+				},
+				"name": "serialized-26",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "4ae5b9d3b9450ce5268124b0cfdf6a0e5ce27c777b658d82fa28706766efb3f5",
+				"seo": "958c7bfe06d0c6b069951e2ef3facbe6d42defa42baf22920a284e3116a29b75",
+				"set": "7b9c9383037273d784fd40c8e65008e8743783c696204b561293bbb22d65bb62",
+				"text": "21b4acec1740b1aae1d9df0dd2b51e207d8a81eeec72a52413a8161053a42b7f",
+				"variables": "531570c29efc464e14c403b37e70d0b0f97926b04f9450d188e0e426c558a0cf"
+			},
+			"input_sha256": "86fd6e2e6ed0a2241e7873e4fb04cd3980f69b3704883a723a405f22e813a206",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭éàç漢字⟬éàç漢字⟬Texte⟬éàç漢字⟬éàç漢字⟬A|B⟬⟬[[Lien|Texte]]⟬A=B⟬Texte⟬Texte⟬Texte",
+					"creation-date": "2025-01-01",
+					"justifications": "⟭éàç漢字⟬A=B⟬A=B",
+					"keywords": "A & B,,Texte",
+					"lang": "fr",
+					"objections": "⟭éàç漢字⟬⟬éàç漢字",
+					"sections": "Science,Test",
+					"summary": "<ref>x</ref>",
+					"webliography": "⟭[[Lien|Texte]]⟬Texte⟬Texte⟬A=B⟬éàç漢字⟬Texte⟭0⟬éàç漢字⟬A|B⟬Texte⟬<ref>x</ref>⟬Texte⟭A|B⟬⟬Texte⟬⟬A=B⟬[[Lien|Texte]]"
+				},
+				"name": "serialized-27",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "7cbfbbe5a5fd09bd672591553884c1fa01273cc9a8354d4108f163128001d0fa",
+				"seo": "a33c64f5b3b569b8cd08a6a5fc40ad8f34d4e50ff840abb36089dc71f221da30",
+				"set": "54926950bc095422f6a908b3850b94e4ea98859d8e61d09ffbb503e08c78fb8a",
+				"text": "616287375b9c8c0290c0fc412b295fa774b0fe39ddbd0243d49c54379c14297c",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "9cfe34f1c003143237c76d13a42d872c53a0632d978ae294252d532329383530",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭A=B⟬Texte⟬A|B⟬⟬Texte⟬A & B⟬Texte⟬[[Lien|Texte]]⟬0⟬éàç漢字⟬A & B⟬Texte⟭A & B⟬A=B⟬A|B⟬Texte⟬A=B⟬[[Lien|Texte]]⟬A & B⟬[[Lien|Texte]]⟬Texte⟬Texte⟬0⟬<ref>x</ref>",
+					"creation-date": "2025-01-01",
+					"justifications": "⟭⟬[[Lien|Texte]]⟬A=B⟭A|B⟬A & B⟬[[Lien|Texte]]⟭0⟬<ref>x</ref>⟬éàç漢字",
+					"keywords": "A=B,A=B,A|B",
+					"lang": "fr",
+					"objections": "⟭⟬A & B⟬Texte⟭A & B⟬A=B⟬<ref>x</ref>⟭⟬A|B⟬<ref>x</ref>",
+					"quotes": "⟭⟭⟭A=B⟬⟬⟬A=B⟬⟬⟬<ref>x</ref>⟬⟬⟬A|B⟬⟬⟬<ref>x</ref>⟬⟬⟬A & B⟬⟬⟬éàç漢字⟬⟬⟬éàç漢字⟬⟬⟬A & B⟬⟬⟬<ref>x</ref>⟬⟬⟬0⟬⟬⟬A=B⟬⟬⟬A=B⟭⟭⟭A & B⟬⟬⟬A=B⟬⟬⟬A & B⟬⟬⟬⟬⟬⟬Texte⟬⟬⟬⟬⟬⟬<ref>x</ref>⟬⟬⟬[[Lien|Texte]]⟬⟬⟬éàç漢字⟬⟬⟬A|B⟬⟬⟬[[Lien|Texte]]⟬⟬⟬A & B⟬⟬⟬",
+					"sections": "Science,Test",
+					"summary": "Texte",
+					"videography": "⟭Texte⟬0⟬éàç漢字⟬A|B",
+					"webliography": "⟭A & B⟬[[Lien|Texte]]⟬<ref>x</ref>⟬Texte⟬<ref>x</ref>⟬0⟭0⟬éàç漢字⟬0⟬[[Lien|Texte]]⟬[[Lien|Texte]]⟬[[Lien|Texte]]⟭Texte⟬⟬éàç漢字⟬éàç漢字⟬A=B⟬A & B"
+				},
+				"name": "serialized-28",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "3322e88ff889d1092039673029a60812d302d6dafd96bad13d933988cd05327b",
+				"seo": "f3206d8bc811d9903737d6e07694775a8e20992170ce84ac81f9878bdb45721b",
+				"set": "7adce806b551d9e1b2ccdd397c1de420b26b2f10eca72f0895ac903c3b5da8c6",
+				"text": "54308fa3ece59454efc6bd15474534c0257f1d6ee725ca563f8ca9f84b91e667",
+				"variables": "3e29af62324480c1f41d982ce40f50ad4804dfcaf6b42af5116165b344539be4"
+			},
+			"input_sha256": "5682e9b72aff2ed546eb8a5fc464b1ba7b8f04861f61196abc2402a56d431b52",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭Texte⟬⟬Texte⟬éàç漢字⟬<ref>x</ref>⟬Texte⟬Texte⟬éàç漢字⟬0⟬[[Lien|Texte]]⟬A=B⟬A|B⟭Texte⟬A=B⟬<ref>x</ref>⟬[[Lien|Texte]]⟬A & B⟬A=B⟬0⟬A & B⟬[[Lien|Texte]]⟬⟬<ref>x</ref>⟬A|B",
+					"creation-date": "2025-01-01",
+					"justifications": "⟭éàç漢字⟬A & B⟬A=B⟭0⟬[[Lien|Texte]]⟬<ref>x</ref>⟭<ref>x</ref>⟬A=B⟬<ref>x</ref>",
+					"keywords": "0,<ref>x</ref>,0",
+					"lang": "fr",
+					"objections": "⟭éàç漢字⟬⟬<ref>x</ref>⟭⟬⟬Texte⟭0⟬⟬A & B",
+					"quotes": "⟭⟭⟭A & B⟬⟬⟬[[Lien|Texte]]⟬⟬⟬éàç漢字⟬⟬⟬[[Lien|Texte]]⟬⟬⟬<ref>x</ref>⟬⟬⟬<ref>x</ref>⟬⟬⟬⟬⟬⟬éàç漢字⟬⟬⟬0⟬⟬⟬Texte⟬⟬⟬<ref>x</ref>⟬⟬⟬<ref>x</ref>⟬⟬⟬[[Lien|Texte]]⟭⟭⟭A & B⟬⟬⟬0⟬⟬⟬0⟬⟬⟬A|B⟬⟬⟬Texte⟬⟬⟬0⟬⟬⟬éàç漢字⟬⟬⟬Texte⟬⟬⟬⟬⟬⟬A & B⟬⟬⟬<ref>x</ref>⟬⟬⟬<ref>x</ref>⟬⟬⟬⟭⟭⟭A=B⟬⟬⟬A|B⟬⟬⟬éàç漢字⟬⟬⟬<ref>x</ref>⟬⟬⟬éàç漢字⟬⟬⟬A|B⟬⟬⟬[[Lien|Texte]]⟬⟬⟬0⟬⟬⟬éàç漢字⟬⟬⟬A=B⟬⟬⟬⟬⟬⟬Texte⟬⟬⟬A & B",
+					"sections": "Science,Test",
+					"summary": "[[Lien|Texte]]",
+					"videography": "⟭A=B⟬Texte⟬Texte⟬<ref>x</ref>⟭0⟬⟬⟬<ref>x</ref>⟭[[Lien|Texte]]⟬<ref>x</ref>⟬A|B⟬0",
+					"webliography": "⟭A & B⟬<ref>x</ref>⟬<ref>x</ref>⟬⟬0⟬Texte⟭éàç漢字⟬Texte⟬éàç漢字⟬A & B⟬A|B⟬A=B"
+				},
+				"name": "serialized-29",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "7cc76f377fe0de8398bf55afaa2a7668cffe09e5007862c86eb09cc44f675603",
+				"seo": "9b53ab2c9f72fca2e85381484070a0b652b87edc5bcdc7ece9302a15694c43ef",
+				"set": "1f113fd3b402161fc587080ecd6a51e1a0ee43d502f55aa16bee3de56312fee8",
+				"text": "cbc94303d5b15a3be763112c40c41095bfd226f4c0118f13b2954787feef2fca",
+				"variables": "04529483c3478203359d2561060b303877665e20a1b6d686bfc97f9ff88a8afb"
+			},
+			"input_sha256": "4defd0f3d464bf5c3d53c6ef85befd55a144da336b8c3ce85100d368d0d87a76",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Breadcrumb=chain\n?Debate name=debateName\nlimit=200\nlink=none": [],
+				"([[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Pro argument=pro\n?Con argument=con\nlimit=200\nlink=none": [],
+				"[[Con argument::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Pro argument::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2025-01-01",
+					"keywords": "A=B,A|B,A|B",
+					"lang": "en",
+					"objections": "⟭A & B⟬A=B⟬éàç漢字",
+					"sections": "Science,Test",
+					"summary": "<ref>x</ref>",
+					"videography": "⟭[[Lien|Texte]]⟬[[Lien|Texte]]⟬A & B⟬A & B",
+					"webliography": "⟭éàç漢字⟬0⟬<ref>x</ref>⟬[[Lien|Texte]]⟬0⟬[[Lien|Texte]]⟭[[Lien|Texte]]⟬A=B⟬0⟬⟬<ref>x</ref>⟬éàç漢字"
+				},
+				"name": "serialized-30",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "b9ede3b235705cbd3cf90d04d7a01267b578cd581e909eaf7a471241291b9f94",
+				"preprocess": "ae48adf4bbabcce5f60f1107dc5ad492201036c7ebfd3a1cbae7eb20ed1169cc",
+				"seo": "8ec69b5cfccfd07abd08725e648cb9a4513c80fe1e8c44a847300b3df55048f8",
+				"set": "0ce4204d6cf3de3fb19b1e4aea317a666a94185b06eaca4ec83c96619b309772",
+				"text": "4fd0b42e7bc82b50572c660e7551ba79f447ad36704a889290fc48a6485ce5a2",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "e0c50c883557ce26222e7107383195bf8b6af447a9687fb9dcc2ba4e45def7aa",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭A|B⟬Texte⟬Texte⟬0⟬⟬A|B⟬⟬⟬<ref>x</ref>⟬A & B⟬A & B⟬A=B",
+					"creation-date": "2025-01-01",
+					"justifications": "⟭A|B⟬[[Lien|Texte]]⟬éàç漢字",
+					"keywords": "[[Lien|Texte]],A & B,[[Lien|Texte]]",
+					"lang": "fr",
+					"objections": "⟭[[Lien|Texte]]⟬Texte⟬0",
+					"quotes": "⟭⟭⟭[[Lien|Texte]]⟬⟬⟬éàç漢字⟬⟬⟬0⟬⟬⟬A=B⟬⟬⟬A=B⟬⟬⟬A|B⟬⟬⟬A=B⟬⟬⟬Texte⟬⟬⟬<ref>x</ref>⟬⟬⟬éàç漢字⟬⟬⟬éàç漢字⟬⟬⟬⟬⟬⟬0",
+					"sections": "Science,Test",
+					"summary": "A=B",
+					"webliography": "⟭A|B⟬⟬A|B⟬0⟬<ref>x</ref>⟬[[Lien|Texte]]"
+				},
+				"name": "serialized-31",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "1a4e4355fa1e761b559e934ef0b20f2a3ccc075e46c2e21350209214129454e0",
+				"seo": "ceccd84df16f3e593773372f924fa884f81758d39066b85cd14601ef6644275f",
+				"set": "868e332189f3f04ae4fc4bad0c5d9420950941588d6e83e36f77336718cd8f41",
+				"text": "8fac231ec5978bf38b51085a79203c9a5113cc422a3a2b94933ce4bdcfe8a3b4",
+				"variables": "5341f708c8bc9b6598132fe147a2f3bb1fa3325e79cff09363346a9741355882"
+			},
+			"input_sha256": "b7aa56169f5d2f4f3e0ab13bdd84a732d7c8e2226337cd0f1b731e64f6fc6577",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭A=B⟬Texte⟬A=B⟬<ref>x</ref>⟬A & B⟬éàç漢字⟬A|B⟬A & B⟬A|B⟬éàç漢字⟬Texte⟬⟭éàç漢字⟬éàç漢字⟬0⟬A=B⟬A=B⟬Texte⟬A|B⟬éàç漢字⟬A=B⟬<ref>x</ref>⟬A & B⟬A=B⟭A & B⟬0⟬<ref>x</ref>⟬0⟬⟬0⟬[[Lien|Texte]]⟬0⟬0⟬A|B⟬0⟬A|B",
+					"creation-date": "2025-01-01",
+					"justifications": "⟭<ref>x</ref>⟬0⟬⟭[[Lien|Texte]]⟬[[Lien|Texte]]⟬[[Lien|Texte]]",
+					"keywords": "A|B,Texte,éàç漢字",
+					"lang": "fr",
+					"objections": "⟭A|B⟬[[Lien|Texte]]⟬[[Lien|Texte]]⟭0⟬A=B⟬0⟭A=B⟬[[Lien|Texte]]⟬0",
+					"quotes": "⟭⟭⟭⟬⟬⟬éàç漢字⟬⟬⟬Texte⟬⟬⟬⟬⟬⟬A|B⟬⟬⟬A|B⟬⟬⟬éàç漢字⟬⟬⟬<ref>x</ref>⟬⟬⟬A|B⟬⟬⟬Texte⟬⟬⟬A=B⟬⟬⟬A|B⟬⟬⟬[[Lien|Texte]]",
+					"sections": "Science,Test",
+					"summary": "[[Lien|Texte]]",
+					"videography": "⟭<ref>x</ref>⟬Texte⟬éàç漢字⟬éàç漢字⟭A & B⟬A & B⟬0⟬éàç漢字⟭A & B⟬Texte⟬0⟬A & B",
+					"webliography": "⟭[[Lien|Texte]]⟬éàç漢字⟬A=B⟬A & B⟬A|B⟬<ref>x</ref>"
+				},
+				"name": "serialized-32",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "0aca63f07e0ff70b846aacad8f59b97ebda5e51ac6b36712ea075a952bfb971d",
+				"seo": "c9da9f78d251fb90df01e623cfddab66a6d2dd6652e98d97991fe556cf16396a",
+				"set": "b2b1c5a831c14afa7e1dcc5ac28e489d4e9bc446f33e91fea3f9ce55209aa1ec",
+				"text": "e8ccb7fcac098bc9c0bf17fb9543b48f9346a3bb378d2cb31cdd0cd0c49641b0",
+				"variables": "a600a291d9a0324d70252b41c59d6618cbcc915047124d867e3c3c79c8a2477e"
+			},
+			"input_sha256": "91b6d228df744b4eef53d559533b55538d497d818ae852b246b6afdc351d373e",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭⟬[[Lien|Texte]]⟬Texte⟬A & B⟬A|B⟬éàç漢字⟬A & B⟬Texte⟬0⟬[[Lien|Texte]]⟬A & B⟬A=B⟭A=B⟬A=B⟬Texte⟬A|B⟬A|B⟬A & B⟬0⟬<ref>x</ref>⟬A=B⟬0⟬éàç漢字⟬A=B",
+					"creation-date": "2025-01-01",
+					"justifications": "⟭A=B⟬0⟬A=B",
+					"keywords": "éàç漢字,éàç漢字,A & B",
+					"lang": "fr",
+					"objections": "⟭<ref>x</ref>⟬A=B⟬0⟭⟬[[Lien|Texte]]⟬[[Lien|Texte]]",
+					"sections": "Science,Test",
+					"summary": "A|B",
+					"videography": "⟭A=B⟬Texte⟬[[Lien|Texte]]⟬A & B⟭⟬A=B⟬A & B⟬éàç漢字⟭<ref>x</ref>⟬A & B⟬0⟬Texte",
+					"webliography": "⟭[[Lien|Texte]]⟬[[Lien|Texte]]⟬<ref>x</ref>⟬A & B⟬0⟬⟭0⟬A=B⟬[[Lien|Texte]]⟬⟬éàç漢字⟬A|B⟭A & B⟬<ref>x</ref>⟬éàç漢字⟬A|B⟬Texte⟬[[Lien|Texte]]"
+				},
+				"name": "serialized-33",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "2e39ea892115167f4bd45d8d27581aa9a7904a3f48aa2a8d81f0654ee9edc96c",
+				"seo": "440bc5bb98ad1075f6d41ce66114fbf8a34869090f7215e7cf5929f760054c67",
+				"set": "681020f6fd07ec80cd4e1d48a3950390c1b0dbe9dfec53a0f155cafbbc36586a",
+				"text": "f1abaaf49c3ac7a78515c31f0db9a98d258821b65a7890303065d65e12183b6b",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "0d310f483cc699e6e0301d7323fc4abf431a359291fbe453811568f2e402c087",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Breadcrumb=chain\n?Debate name=debateName\nlimit=200\nlink=none": [],
+				"([[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Pro argument=pro\n?Con argument=con\nlimit=200\nlink=none": [],
+				"[[Con argument::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Pro argument::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭[[Lien|Texte]]⟬0⟬<ref>x</ref>⟬Texte⟬A & B⟬A & B⟬⟬⟬A|B⟬<ref>x</ref>⟬A|B⟬<ref>x</ref>⟭A=B⟬0⟬[[Lien|Texte]]⟬éàç漢字⟬A|B⟬[[Lien|Texte]]⟬éàç漢字⟬A=B⟬A|B⟬éàç漢字⟬0⟬<ref>x</ref>⟭Texte⟬A & B⟬0⟬⟬Texte⟬<ref>x</ref>⟬A & B⟬0⟬A & B⟬A|B⟬[[Lien|Texte]]⟬A|B",
+					"creation-date": "2025-01-01",
+					"justifications": "⟭Texte⟬⟬",
+					"keywords": "Texte,A|B,",
+					"lang": "en",
+					"quotes": "⟭⟭⟭⟬⟬⟬0⟬⟬⟬0⟬⟬⟬A=B⟬⟬⟬Texte⟬⟬⟬A & B⟬⟬⟬[[Lien|Texte]]⟬⟬⟬Texte⟬⟬⟬0⟬⟬⟬Texte⟬⟬⟬Texte⟬⟬⟬Texte⟬⟬⟬",
+					"sections": "Science,Test",
+					"summary": "0",
+					"videography": "⟭éàç漢字⟬A=B⟬<ref>x</ref>⟬[[Lien|Texte]]⟭Texte⟬⟬A=B⟬Texte⟭A & B⟬<ref>x</ref>⟬Texte⟬A & B",
+					"webliography": "⟭A=B⟬0⟬A=B⟬⟬A=B⟬0"
+				},
+				"name": "serialized-34",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "b9ede3b235705cbd3cf90d04d7a01267b578cd581e909eaf7a471241291b9f94",
+				"preprocess": "bf6c4536b7c9ac2377163f90a2c8c4b1bc91c638f728583fabfd37b96345b50f",
+				"seo": "8fd9cd78979e0bc2960d7a34c24faa2b98d2adfb40f540bbb4891ab75e11b8ae",
+				"set": "de508b260ec6a48f269e6c0fee7ac023ba4e43328423ecf09d06f6d79514e7ac",
+				"text": "290097219e09b607514ee7866955a8d9315a9d81ca77735f610880edefd9cb9f",
+				"variables": "7ad4cf688d442dc075b94e0e0282437522d95475caf049fa9fcfb451cd60f654"
+			},
+			"input_sha256": "462deb9943384ab4f3cc0e32cd0b1c541d4f1a2890e87924aea221bff1064728",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Breadcrumb=chain\n?Debate name=debateName\nlimit=200\nlink=none": [],
+				"([[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Pro argument=pro\n?Con argument=con\nlimit=200\nlink=none": [],
+				"[[Con argument::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Pro argument::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭éàç漢字⟬A=B⟬0⟬<ref>x</ref>⟬⟬A & B⟬A=B⟬0⟬<ref>x</ref>⟬⟬Texte⟬<ref>x</ref>",
+					"creation-date": "2025-01-01",
+					"keywords": "A & B,[[Lien|Texte]],",
+					"lang": "en",
+					"objections": "⟭A|B⟬<ref>x</ref>⟬A|B",
+					"quotes": "⟭⟭⟭Texte⟬⟬⟬0⟬⟬⟬[[Lien|Texte]]⟬⟬⟬⟬⟬⟬éàç漢字⟬⟬⟬A=B⟬⟬⟬Texte⟬⟬⟬éàç漢字⟬⟬⟬⟬⟬⟬Texte⟬⟬⟬0⟬⟬⟬A=B⟬⟬⟬",
+					"sections": "Science,Test",
+					"summary": "0",
+					"webliography": "⟭A|B⟬<ref>x</ref>⟬⟬0⟬A=B⟬éàç漢字"
+				},
+				"name": "serialized-35",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "b9ede3b235705cbd3cf90d04d7a01267b578cd581e909eaf7a471241291b9f94",
+				"preprocess": "966fe3d62ff84bdd71ad6b89cbcace3dc4d18002ae6a106916f4b13dcb7379d4",
+				"seo": "bc2bb86bb857e317bbf659507923caf13b80ac7bacaa81ea55aee597cf7560a6",
+				"set": "f70f7d91a06001d77db21368241fc7d894a2bd3f3d2204a4a123505d884f0e46",
+				"text": "15945937b9478b9946532e34f9d8ef670c3ef687d4e1392c9f08b38fad7e7a83",
+				"variables": "fb9f1db6a8af41df94f3d1dfaea8f046ef97c427490f4e85ddc002ca615cc520"
+			},
+			"input_sha256": "d697631debb659bcb7d734f0855c2417956bde7bfca16b09437de832ad9c6136",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭A=B⟬éàç漢字⟬A & B⟬0⟬éàç漢字⟬[[Lien|Texte]]⟬A & B⟬A & B⟬⟬A=B⟬⟬Texte⟭A|B⟬Texte⟬éàç漢字⟬[[Lien|Texte]]⟬<ref>x</ref>⟬éàç漢字⟬⟬A|B⟬A & B⟬A|B⟬A & B⟬0⟭<ref>x</ref>⟬A|B⟬Texte⟬[[Lien|Texte]]⟬Texte⟬<ref>x</ref>⟬A=B⟬A & B⟬A & B⟬<ref>x</ref>⟬[[Lien|Texte]]⟬A & B",
+					"creation-date": "2025-01-01",
+					"justifications": "⟭[[Lien|Texte]]⟬A & B⟬0⟭<ref>x</ref>⟬éàç漢字⟬<ref>x</ref>",
+					"keywords": "A|B,A=B,A|B",
+					"lang": "fr",
+					"objections": "⟭A|B⟬[[Lien|Texte]]⟬A & B⟭Texte⟬A|B⟬",
+					"quotes": "⟭⟭⟭éàç漢字⟬⟬⟬<ref>x</ref>⟬⟬⟬<ref>x</ref>⟬⟬⟬[[Lien|Texte]]⟬⟬⟬<ref>x</ref>⟬⟬⟬A|B⟬⟬⟬Texte⟬⟬⟬A=B⟬⟬⟬A|B⟬⟬⟬⟬⟬⟬A & B⟬⟬⟬A|B⟬⟬⟬<ref>x</ref>⟭⟭⟭A=B⟬⟬⟬[[Lien|Texte]]⟬⟬⟬A & B⟬⟬⟬[[Lien|Texte]]⟬⟬⟬Texte⟬⟬⟬<ref>x</ref>⟬⟬⟬Texte⟬⟬⟬A|B⟬⟬⟬<ref>x</ref>⟬⟬⟬A|B⟬⟬⟬⟬⟬⟬0⟬⟬⟬éàç漢字⟭⟭⟭0⟬⟬⟬⟬⟬⟬A & B⟬⟬⟬0⟬⟬⟬A=B⟬⟬⟬éàç漢字⟬⟬⟬[[Lien|Texte]]⟬⟬⟬0⟬⟬⟬Texte⟬⟬⟬Texte⟬⟬⟬éàç漢字⟬⟬⟬<ref>x</ref>⟬⟬⟬[[Lien|Texte]]",
+					"sections": "Science,Test",
+					"summary": "A & B",
+					"webliography": "⟭⟬<ref>x</ref>⟬<ref>x</ref>⟬A=B⟬A & B⟬A|B⟭A|B⟬<ref>x</ref>⟬0⟬⟬<ref>x</ref>⟬éàç漢字"
+				},
+				"name": "serialized-36",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "b1d6dceb7b8e146a2eddb1fc6058abd3bc5d67b94d5165fbb80f1c7229893a83",
+				"seo": "6b50c130f98c11be42a456529bfa096d199d746d80bb1626303e0a6cf15581fa",
+				"set": "248a25da1c6f370a203d6fe848b0f38293b7b0c380084f0cbfe0fc38be855065",
+				"text": "8295956b3621e6cc41aff3722fe9eaa435fb3416ff79599ffc402fe997a327e1",
+				"variables": "1da9081849df892a2cd37289d65ae999a4fd6a2d5161d93abb08f0f35e0d7d6a"
+			},
+			"input_sha256": "3235f00d6b5c0cf6f74c809f17aaf0fd1d7b65f9de0e1e97bca5f6715bdecc6f",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"creation-date": "2025-01-01",
+					"keywords": "A & B,A|B,",
+					"lang": "fr",
+					"objections": "⟭[[Lien|Texte]]⟬⟬éàç漢字⟭⟬⟬A=B",
+					"quotes": "⟭⟭⟭éàç漢字⟬⟬⟬<ref>x</ref>⟬⟬⟬[[Lien|Texte]]⟬⟬⟬Texte⟬⟬⟬A & B⟬⟬⟬A & B⟬⟬⟬A & B⟬⟬⟬[[Lien|Texte]]⟬⟬⟬A=B⟬⟬⟬⟬⟬⟬A & B⟬⟬⟬éàç漢字⟬⟬⟬A|B",
+					"sections": "Science,Test",
+					"summary": "A & B",
+					"videography": "⟭<ref>x</ref>⟬<ref>x</ref>⟬A=B⟬A|B⟭[[Lien|Texte]]⟬éàç漢字⟬A|B⟬Texte"
+				},
+				"name": "serialized-37",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "7a89ab9999665ff19e127ffbbcfa5afd53f5667ff1e594194074d0a48c7e2b7d",
+				"seo": "5476ec88a147f0d31d09ce07e37b4c54bdc52434bccd62962055df8648946bdb",
+				"set": "3c61fe2c52deb611ddde2e923448fe0b7d54c4d4e14c123a3a24a8485a0b607c",
+				"text": "97bdd4ea4ee9e8cc72f2705a6cfbfc49747973ab2133cde829b9ab13764335da",
+				"variables": "371c6af4aaba6e8152bd3eb5ebfcae3172f301a2490fa9817961f78f7a0442e0"
+			},
+			"input_sha256": "c2405b684a06877456021d5e7abc7fb407a1f5e248886b6d6e25b43efe2d3e8c",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Argument pour=pro\n?Argument contre=con\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Argument pour::Un argument de démonstration]] OR [[Argument contre::Un argument de démonstration]] )\n?Fil d'Ariane=chain\n?Nom de débat=debateName\nlimit=200\nlink=none": [],
+				"[[Argument contre::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Argument pour::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭⟬éàç漢字⟬A=B⟬A & B⟬A & B⟬⟬<ref>x</ref>⟬[[Lien|Texte]]⟬[[Lien|Texte]]⟬Texte⟬⟬A & B",
+					"creation-date": "2025-01-01",
+					"justifications": "⟭A=B⟬<ref>x</ref>⟬éàç漢字⟭éàç漢字⟬[[Lien|Texte]]⟬0⟭A & B⟬A=B⟬A|B",
+					"keywords": "Texte,A & B,A|B",
+					"lang": "fr",
+					"objections": "⟭éàç漢字⟬0⟬Texte⟭A|B⟬[[Lien|Texte]]⟬⟭⟬Texte⟬Texte",
+					"quotes": "⟭⟭⟭A|B⟬⟬⟬[[Lien|Texte]]⟬⟬⟬A=B⟬⟬⟬A & B⟬⟬⟬A|B⟬⟬⟬0⟬⟬⟬Texte⟬⟬⟬⟬⟬⟬<ref>x</ref>⟬⟬⟬A|B⟬⟬⟬Texte⟬⟬⟬<ref>x</ref>⟬⟬⟬éàç漢字⟭⟭⟭<ref>x</ref>⟬⟬⟬Texte⟬⟬⟬[[Lien|Texte]]⟬⟬⟬⟬⟬⟬Texte⟬⟬⟬<ref>x</ref>⟬⟬⟬<ref>x</ref>⟬⟬⟬0⟬⟬⟬A=B⟬⟬⟬⟬⟬⟬<ref>x</ref>⟬⟬⟬A & B⟬⟬⟬0",
+					"sections": "Science,Test",
+					"summary": "<ref>x</ref>",
+					"videography": "⟭éàç漢字⟬A & B⟬A=B⟬A|B⟭<ref>x</ref>⟬A=B⟬[[Lien|Texte]]⟬éàç漢字⟭A & B⟬0⟬⟬Texte"
+				},
+				"name": "serialized-38",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "65f1589fe2200b3d47381e860ded2d995d7520127b592bd7f12762e5f808928f",
+				"preprocess": "d6affb4b49a86b685c936f3e9b617261376820af12c369ca237d779b5db1d85e",
+				"seo": "dc180365f69c542b439c4b6c0d5c0995df73ffd9e52f724cb6a63d3f414fa9c1",
+				"set": "3af2aab2f765d042573fe278d044781468f87cbd77de5411d4365a86c546814a",
+				"text": "02d6e7c5b12887bc02bc332d70d0ed6b78218137c9027ba2dee1349fce725ec5",
+				"variables": "91d9460e5d1878fb7dd5e08d8d8ebbd07298012cf088a440f31cc40953cd0eff"
+			},
+			"input_sha256": "cfdc1d5696cccd18aad6dae3d8fbbbe657ea54ba11d56c2a2ed424db3d841294",
+			"publication_date": "2025-01-01T12:34:56Z"
+		},
+		{
+			"answers": {
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] )\n?Justification=justif\n?Objection=obj\nlimit=200\nlink=none": [],
+				"([[Justification::Un argument de démonstration]] OR [[Objection::Un argument de démonstration]] OR [[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Breadcrumb=chain\n?Debate name=debateName\nlimit=200\nlink=none": [],
+				"([[Pro argument::Un argument de démonstration]] OR [[Con argument::Un argument de démonstration]] )\n?Pro argument=pro\n?Con argument=con\nlimit=200\nlink=none": [],
+				"[[Con argument::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Justification::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Objection::Un argument de démonstration]]\nlimit=200\nlink=none": [],
+				"[[Pro argument::Un argument de démonstration]]\nlimit=200\nlink=none": []
+			},
+			"case": {
+				"args": {
+					"bibliography": "⟭<ref>x</ref>⟬A & B⟬éàç漢字⟬A|B⟬⟬Texte⟬[[Lien|Texte]]⟬<ref>x</ref>⟬⟬⟬[[Lien|Texte]]⟬Texte",
+					"creation-date": "2025-01-01",
+					"justifications": "⟭[[Lien|Texte]]⟬éàç漢字⟬A|B",
+					"keywords": "A=B,A=B,[[Lien|Texte]]",
+					"lang": "en",
+					"objections": "⟭⟬<ref>x</ref>⟬A & B⟭A|B⟬<ref>x</ref>⟬éàç漢字",
+					"sections": "Science,Test",
+					"summary": "éàç漢字",
+					"videography": "⟭<ref>x</ref>⟬A=B⟬A & B⟬⟭<ref>x</ref>⟬éàç漢字⟬[[Lien|Texte]]⟬A & B⟭A & B⟬[[Lien|Texte]]⟬0⟬A & B",
+					"webliography": "⟭[[Lien|Texte]]⟬éàç漢字⟬[[Lien|Texte]]⟬A|B⟬éàç漢字⟬éàç漢字⟭0⟬Texte⟬A & B⟬<ref>x</ref>⟬⟬<ref>x</ref>⟭A=B⟬⟬⟬<ref>x</ref>⟬A & B⟬A|B"
+				},
+				"name": "serialized-39",
+				"title": "Un argument de démonstration"
+			},
+			"expected": {
+				"ask": "b9ede3b235705cbd3cf90d04d7a01267b578cd581e909eaf7a471241291b9f94",
+				"preprocess": "3ff89495f440fa83f3b4aadbab0a71485fd726c3a7228e59a8a25503f9dc85bf",
+				"seo": "a3090c7f9d64ea90d17994f9483f5e6e772faf35b4ce7553756fab0589bd637c",
+				"set": "b3b27f95c28b1464c4bc12b7c5ff45e42c037dd934f30f7ba55447cdcb1b721d",
+				"text": "231c2ca81aa33e9be775ad685d5bec9569b2b040da59a6904a32bc6fb2f87efe",
+				"variables": "c3d40446afc0e37c1098eba4ec80f78bc763621f01d7522a9bcfb4e5378547df"
+			},
+			"input_sha256": "3a6afe416249949c96351ff8279a85e620900031f942515bae0b97235bcc6f45",
+			"publication_date": "2025-01-01T12:34:56Z"
+		}
+	]
+}

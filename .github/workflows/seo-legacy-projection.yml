@@ -6,7 +6,6 @@
 				"debatephp/tests/integration/schema_projection.py",
 				"debatephp/tests/integration/test_schema_projection.py",
 				"debatephp/tests/integration/check_direct_jsonld.py",
-				"debatephp/tests/argument_differential.py",
 				".github/workflows/seo-legacy-projection.yml",
 				"tests/fullstack.php",
 				"tests/mediawikiEnvironment.php",
@@ -33,7 +32,20 @@
 				"lua-archive/**",
 				"tests/mediawikiLuaArchive.php",
 				"tests/mediawikiRegistrationDefaults.php",
-				"src/Registration.php"
+				"src/Registration.php",
+				"debatephp/tests/argument_contract.py",
+				"debatephp/tests/fixtures/argument-cases.json",
+				"debatephp/tests/fixtures/argument-contract.json",
+				"debatephp/src/**",
+				"debatephp/tests/argument_context.php",
+				"debatephp/tests/serialized_contract.py",
+				"debatephp/tests/serialized_native.php",
+				"debatephp/tests/i18n_contract.py",
+				"debatephp/tests/i18n_native.php",
+				"debatephp/tests/fixtures/*-contract.json",
+				"i18n/**",
+				"resources/i18n-map.json",
+				"resources/wiki-names.json"
 			]
 		},
 		"workflow_dispatch": {}
@@ -68,12 +80,16 @@
 					"run": "python3 debatephp/tests/integration/test_schema_projection.py"
 				},
 				{
-					"name": "Install Lua 5.1 Python bridge",
-					"run": "python3 -m pip install --disable-pip-version-check lupa==2.6"
+					"name": "Verify frozen Argument contract without Lua",
+					"run": "python3 debatephp/tests/argument_contract.py php"
 				},
 				{
-					"name": "Re-run original Argument Lua/PHP corpus",
-					"run": "python3 debatephp/tests/argument_differential.py php"
+					"name": "Verify frozen text contract without Lua",
+					"run": "python3 debatephp/tests/serialized_contract.py php"
+				},
+				{
+					"name": "Verify frozen translation contract without Lua",
+					"run": "python3 debatephp/tests/i18n_contract.py php"
 				}
 			]
 		},
