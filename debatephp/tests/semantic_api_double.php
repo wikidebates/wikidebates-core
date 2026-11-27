@@ -17,11 +17,15 @@ namespace {
 	use MediaWiki\Extension\DebatePHP\Tests\SemanticApiDouble;
 
 	define('SMW_OUTPUT_WIKI', 1);
-	function wfMessage($key) {
-		if ($key !== 'smw_true_words') { throw new \LogicException('Unexpected message'); }
-		return new class {
-			public function text() { return SemanticApiDouble::$trueWords; }
-		};
+	// The SQL-recovery suite also tests RecentDebateChanges without MediaWiki
+	// services. Do not make its unrelated message capability appear present.
+	if (!defined('WD_SEMANTIC_DOUBLE_NO_MESSAGES')) {
+		function wfMessage($key) {
+			if ($key !== 'smw_true_words') { throw new \LogicException('Unexpected message'); }
+			return new class {
+				public function text() { return SemanticApiDouble::$trueWords; }
+			};
+		}
 	}
 	final class SMWQuery {
 		public const PROC_CONTEXT = 'context';

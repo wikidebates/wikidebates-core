@@ -59,6 +59,7 @@ namespace {
 	class_alias(\MediaWiki\Parser\Parser::class, 'Parser');
 	class_alias(\MediaWiki\Parser\PPFrame::class, 'PPFrame');
 	require __DIR__ . '/../../tests/bootstrap.php';
+	define('WD_SEMANTIC_DOUBLE_NO_MESSAGES', true);
 	require __DIR__ . '/semantic_api_double.php';
 	\MediaWiki\Extension\DebatePHP\Tests\SemanticApiDouble::$onQuery = static fn() => boundaryFailure();
 	\MediaWiki\Extension\DebatePHP\Tests\SemanticApiDouble::$onWrite = static fn() => boundaryFailure();
