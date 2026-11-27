@@ -107,8 +107,6 @@ foreach (['complete debate en', 'complete argument en', 'complete debate fr', 'c
 	$snapshot = fsSnapshot($data);
 	check($snapshot['properties'] !== [], 'Renderer writes semantic properties: ' . $name);
 }
-require __DIR__ . '/fullstackArgumentMapCases.php';
-fsArgumentMapCases(false);
 if (getenv('WD_FULLSTACK_NATIVE_RENDER') === '1') {
 	$report = [];
 	require __DIR__ . '/fullstackRender.php';
@@ -119,6 +117,8 @@ if (getenv('WD_FULLSTACK_NATIVE_RENDER') === '1') {
 		file_put_contents(getenv('WD_FULLSTACK_OUTPUT'), json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) . "\n");
 	}
 }
+require __DIR__ . '/fullstackArgumentMapCases.php';
+fsArgumentMapCases(false);
 check(!class_exists(\SMW\Scribunto\LibraryFactory::class, false), 'Historical bridge class never loaded');
 check(!class_exists(\MediaWiki\Extension\Scribunto\Engines\LuaCommon\LuaEngine::class, false), 'Lua engine never loaded');
 echo "OK: real SMW deferred writes, typed queries, empty parent proof and Argument/Debate rendering without Lua extensions\n";

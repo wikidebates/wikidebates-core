@@ -36,6 +36,10 @@ fsFlush();
 // Real semantic parent graph, both languages, including a second level and a cycle.
 $i18n = I18n::bundled();
 foreach (['en', 'fr'] as $lang) {
+	// Set actual map fields explicitly in both laboratories, before any render.
+	foreach (['arg_map', 'pro_list', 'con_list', 'justifs_list', 'objs_list'] as $key) {
+		fsSave('Property:' . $i18n->message('ArgumentMap.props', $lang, $key), '[[Has type::Text]]');
+	}
 	foreach (['arg_pro', 'arg_con', 'justif', 'obj', 'parent_debate'] as $key) {
 		fsSave('Property:' . $i18n->message('Argument.props', $lang, $key), '[[Has type::Page]]');
 	}
@@ -178,7 +182,8 @@ foreach ($cases as $case) {
 		try { fsSave($case['title'], 'Stable page identity for the isolated render comparison'); fsFlush(); }
 		finally { if ($seoComparison) { \MWTimestamp::setFakeTime(false); } }
 	}
-	$row = ['title' => $case['title'], 'name' => $case['name'] ?? $case['title'], 'full_stack' => true, 'variants' => []];
+	$row = ['title' => $case['title'], 'name' => $case['name'] ?? $case['title'], 'full_stack' => true,
+		'subject_id' => (int)$title->getArticleID(), 'variants' => []];
 	$modes = getenv('WD_OPTIMIZATION_BASELINE') ? [...$renderModes, 'before-optimized'] : $renderModes;
 	$seoRevision = null;
 	if ($seoComparison) {
