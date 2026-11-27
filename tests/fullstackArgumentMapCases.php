@@ -279,10 +279,15 @@ function fsArgumentMapDirectReadStudy(string $page, array $properties, string $l
 		};
 		$expected = $reference();
 		$candidate = $direct($title, $props);
-		$runtime = $read::readDirect($title, $props);
+		$reason = 'stale';
+		$runtime = $read::readDirect($title, $props, $reason);
 		$eligible = in_array(SMW_VERSION, ['7.3.1', '7.4.1'], true) &&
 			in_array($case, ['full', 'debate', 'argument', 'empty'], true);
 		same($eligible, $runtime !== null, 'Restricted runtime direct-read eligibility: ' . $case);
+		$expectedReason = $eligible ? null : (in_array(SMW_VERSION, ['7.3.1', '7.4.1'], true)
+			? ['missing' => 'missing-page', 'redirect' => 'redirect', 'multiple' => 'multiple-values'][$case]
+			: 'unsupported-smw');
+		same($expectedReason, $reason, 'Restricted runtime diagnostic reason: ' . $case);
 		if ($runtime !== null) {
 			same($expected, array_map(static fn($alias) => $read::field($runtime[$alias] ?? null),
 				array_combine(array_keys($props), array_keys($props))), 'Restricted direct read preserves formatted fields: ' . $case);
@@ -351,7 +356,7 @@ function fsArgumentMapBenchmarkMaintenance(): void {
 			$this->records[] = json_decode(trim($out), true, 512, JSON_THROW_ON_ERROR);
 		}
 	};
-	$audit->loadParamsAndArgs('BenchmarkArgumentMap', ['limit' => 100, 'cache-probe' => true], []);
+	$audit->loadParamsAndArgs('BenchmarkArgumentMap', ['limit' => 100, 'cache-probe' => true, 'report-ineligible' => true], []);
 	$audit->execute();
 	$records = array_column($audit->records, null, 'type');
 	$summary = $records['summary'] ?? [];
@@ -359,8 +364,11 @@ function fsArgumentMapBenchmarkMaintenance(): void {
 	same(0, $summary['errors'], 'Maintenance audit has no read errors');
 	check(!isset($records['mismatch']), 'Maintenance audit finds no mismatches on fixture data');
 	$nonempty = 0;
-	foreach ($summary['modes'] as $mode) {
+	foreach ($summary['modes'] as $name => $mode) {
 		same(0, $mode['mismatches'], 'Maintenance audit verifies real stored fields');
+		same($summary['pages'] - $mode['eligible'], array_sum($mode['ineligible_reasons']), 'Audit accounts for every ineligible read: ' . $name);
+		same($mode['nonempty'] - $mode['eligible_nonempty'], array_sum($mode['ineligible_nonempty_reasons']), 'Audit accounts for every nonempty ineligible read: ' . $name);
+		check(!isset($mode['ineligible_reasons']['unclassified']), 'Every ineligible read has a reason: ' . $name);
 		$nonempty += $mode['eligible_nonempty'];
 	}
 	check($nonempty > 0, 'Maintenance audit actually measures populated eligible map fields');
