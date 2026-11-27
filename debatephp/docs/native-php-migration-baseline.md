@@ -148,6 +148,16 @@ The focused benchmarks still require an appropriate historical checkout
 containing the original operation they compare against. They now measure the
 native array paths, not obsolete compatibility wrappers.
 
+## Native Variables integration
+
+The renderer calls the PHP Variables parser-function API directly and checks
+the Variables extension, not VariablesLua. The isolated MediaWiki integration
+test loads only Variables and Wikidebates, verifies shared template state,
+zero/empty handling, and parser isolation. The separate historical fullstack
+oracle still loads VariablesLua to compare with the original Lua renderers.
+Do not remove the farm's VariablesLua extension until the actual wiki content
+has been audited for remaining Lua consumers.
+
 ## Next gates
 
 1. Native contract validated on PHP 8.3 and 8.4 in PR #130. Retire the
