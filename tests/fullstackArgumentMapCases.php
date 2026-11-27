@@ -97,6 +97,7 @@ function fsArgumentMapCases(bool $legacy): void {
 			fsArgumentMapLazyLookup($parserHtml, $page, $properties, $lang);
 			fsArgumentMapApiEnvelope($page, $lang);
 			fsArgumentMapDirectReadStudy($page, $properties, $lang);
+			fsArgumentMapUpdatedData($parserHtml, $properties, $lang);
 		}
 	}
 	echo "OK: native hover map, FR/EN, full fallback, contextual columns, empty/missing data and encoded titles"
@@ -128,14 +129,15 @@ function fsArgumentMapLazyLookup(callable $render, string $page, array $properti
 			return true;
 		});
 	try {
+		$expectedQueries = $services->getMainConfig()->get('WikidebatesArgumentMapDirectRead') ? 0 : 1;
 		$absent = $render('{{#argumentmap:render|' . $page . '|' . $source . '|debate|lang=' . $lang . '}}');
 		check(str_contains($absent, 'Other label'), 'Nonmatching source still renders the map');
 		same(0, $exists, 'Unmatched source incurs no existence probe');
-		same(1, $queries, 'One semantic query for the contextual map');
+		same($expectedQueries, $queries, 'Selected read mode uses the expected number of SMW queries');
 		$queries = 0;
 		$matched = $render('{{#argumentmap:render|' . $target . '|' . $source . '|debate|lang=' . $lang . '}}');
 		same(1, $exists, 'All three matching cards share one source existence probe');
-		same(1, $queries, 'One semantic query even across two populated columns');
+		same($expectedQueries, $queries, 'Selected read mode works across two populated columns');
 		foreach (['First', 'Second', 'Third'] as $label) {
 			check(str_contains($matched, '<b>' . $label . ' occurrence</b>'), 'All matching cards are highlighted');
 		}
@@ -146,7 +148,7 @@ function fsArgumentMapLazyLookup(callable $render, string $page, array $properti
 	$red = $render('{{#argumentmap:render|' . $page . '|WD Map redlink|debate|lang=' . $lang . '}}');
 	check(str_contains($red, 'class="new"') && !str_contains($red, '<b>Missing</b>'),
 		'Nonexistent matching source remains a red link, not a bold label');
-	echo "OK: one semantic read; source existence probes 0 for no match, 1 for three matches across both columns ($lang)\n";
+	echo "OK: semantic query count $expectedQueries; source existence probes 0 for no match, 1 for three matches across both columns ($lang)\n";
 }
 
 /** Measure real MediaWiki API payloads rather than a synthetic JSON estimate. */
@@ -238,23 +240,41 @@ function fsArgumentMapDirectReadStudy(string $page, array $properties, string $l
 	foreach ($cases as $case => [$name, $props]) {
 		$title = Title::newFromText($name);
 		$reference = static function() use ($read, $title, $props): array {
-			$row = $read::read($title, $props);
+			$row = $read::readQuery($title, $props);
 			return array_map(static fn($alias) => $read::field($row[$alias] ?? null), array_combine(array_keys($props), array_keys($props)));
 		};
 		$expected = $reference();
 		$candidate = $direct($title, $props);
+		$runtime = $read::readDirect($title, $props);
+		$eligible = in_array(SMW_VERSION, ['7.3.1', '7.4.1'], true) &&
+			in_array($case, ['full', 'debate', 'argument', 'empty'], true);
+		same($eligible, $runtime !== null, 'Restricted runtime direct-read eligibility: ' . $case);
+		if ($runtime !== null) {
+			same($expected, array_map(static fn($alias) => $read::field($runtime[$alias] ?? null),
+				array_combine(array_keys($props), array_keys($props))), 'Restricted direct read preserves formatted fields: ' . $case);
+		}
+		$selected = $read::read($title, $props);
+		same($expected, array_map(static fn($alias) => $read::field($selected[$alias] ?? null),
+			array_combine(array_keys($props), array_keys($props))), 'Configured path preserves fields: ' . $case);
 		$equal = $candidate === $expected;
-		$queryNs = $directNs = [];
+		$queryNs = $directNs = $runtimeNs = [];
 		// Alternate order to reduce warming bias. Clear SMW's local store state
 		// before each measurement; database/shared cache state may remain warm.
 		for ($i = 0; $i < 12; $i++) {
-			foreach ($i % 2 === 0 ? ['query', 'direct'] : ['direct', 'query'] as $mode) {
+			foreach ($i % 2 === 0 ? ['query', 'direct', 'runtime'] : ['runtime', 'direct', 'query'] as $mode) {
 				$store->clear();
 				$start = hrtime(true);
-				$result = $mode === 'query' ? $reference() : $direct($title, $props);
+				$result = match ($mode) {
+					'query' => $reference(),
+					'direct' => $direct($title, $props),
+					'runtime' => $read::readDirect($title, $props)
+				};
 				$elapsed = hrtime(true) - $start;
 				if ($mode === 'query') {
 					$queryNs[] = $elapsed;
+				} elseif ($mode === 'runtime') {
+					$runtimeNs[] = $elapsed;
+					same($runtime, $result, 'Restricted lookup remains stable');
 				} else {
 					$directNs[] = $elapsed;
 					$equal = $equal && $result === $expected;
@@ -263,8 +283,27 @@ function fsArgumentMapDirectReadStudy(string $page, array $properties, string $l
 		}
 		sort($queryNs);
 		sort($directNs);
+		sort($runtimeNs);
 		echo 'ARGUMENTMAP_DIRECT_READ ' . json_encode(['lang' => $lang, 'case' => $case,
 			'equal' => $equal, 'query_median_us' => ($queryNs[5] + $queryNs[6]) / 2000,
-			'direct_median_us' => ($directNs[5] + $directNs[6]) / 2000], JSON_THROW_ON_ERROR) . "\n";
+			'direct_median_us' => ($directNs[5] + $directNs[6]) / 2000,
+			'runtime_eligible' => $eligible, 'runtime_median_us' => ($runtimeNs[5] + $runtimeNs[6]) / 2000], JSON_THROW_ON_ERROR) . "\n";
 	}
+}
+
+/** New semantic values must be read after the real deferred update commits. */
+function fsArgumentMapUpdatedData(callable $render, array $properties, string $lang): void {
+	$page = 'WD Map fresh ' . $lang;
+	$source = 'WD Map source';
+	$call = '{{#argumentmap:render|' . $page . '|' . $source . '|debate|lang=' . $lang . '}}';
+	foreach (['Before update', 'After update'] as $label) {
+		fsSave($page, '{{#set:' . $properties['pro_list'] . '=' . $source . '⟬' . $label . '}}');
+		fsFlush();
+		\SMW\Services\ServicesFactory::getInstance()->getStore()->clear();
+		check(str_contains($render($call), '<b>' . $label . '</b>'), 'Selected map path reads newly persisted data: ' . $label);
+	}
+	fsSave($page, 'Removed semantic list');
+	fsFlush();
+	\SMW\Services\ServicesFactory::getInstance()->getStore()->clear();
+	check(!str_contains($render($call), 'After update'), 'Removed semantic value is not retained by the read path');
 }

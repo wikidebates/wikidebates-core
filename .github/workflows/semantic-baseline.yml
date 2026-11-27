@@ -12,7 +12,10 @@
 				"debatephp/src/ArgumentMap.php",
 				"debatephp/src/NativeSemanticApi.php",
 				"tests/fullstackArgumentMapCases.php",
-				"tests/fullstackArgumentMapModern.php"
+				"tests/fullstackArgumentMapModern.php",
+				"debatephp/src/ArgumentMapData.php",
+				"debatephp/src/ApiArgumentMap.php",
+				"extension.json"
 			]
 		},
 		"push": {
@@ -27,7 +30,10 @@
 				"debatephp/src/ArgumentMap.php",
 				"debatephp/src/NativeSemanticApi.php",
 				"tests/fullstackArgumentMapCases.php",
-				"tests/fullstackArgumentMapModern.php"
+				"tests/fullstackArgumentMapModern.php",
+				"debatephp/src/ArgumentMapData.php",
+				"debatephp/src/ApiArgumentMap.php",
+				"extension.json"
 			]
 		}
 	},

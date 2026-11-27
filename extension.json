@@ -616,6 +616,10 @@
 			"value": false,
 			"description": "Log renderer integration diagnostics to the DebatePHP debug channel."
 		},
+		"WikidebatesArgumentMapDirectRead": {
+			"value": false,
+			"description": "Opt-in restricted SMW Text property lookup; keep the exact singleton query as fallback."
+		},
 		"WikidebatesArgumentMapApi": {
 			"value": false,
 			"description": "Opt-in typed ArgumentMap endpoint pending parity and performance validation."

@@ -11,7 +11,8 @@ require __DIR__ . '/fullstackArgumentMapCases.php';
 use MediaWiki\Registration\ExtensionRegistry;
 use SMW\Services\ServicesFactory;
 
-same('7.3.1', SMW_VERSION, 'Exact modern SMW release');
+$expected = getenv('WD_TEST_ARGUMENTMAP_SMW') ?: '7.3.1';
+same($expected, SMW_VERSION, 'Exact modern SMW release');
 foreach (['Scribunto', 'SemanticScribunto', 'VariablesLua'] as $name) {
 	check(!ExtensionRegistry::getInstance()->isLoaded($name), 'No Lua extension: ' . $name);
 }
@@ -25,4 +26,4 @@ $fsUser = \MediaWiki\User\User::newSystemUser('Wikidebates map test', ['steal' =
 check($fsUser !== null, 'Synthetic test author');
 fsArgumentMapCases(false);
 check(!class_exists(\MediaWiki\Extension\Scribunto\Engines\LuaCommon\LuaEngine::class, false), 'No Lua engine loaded');
-echo "OK: native ArgumentMap on SMW 7.3.1 without Lua\n";
+echo "OK: native ArgumentMap on SMW " . SMW_VERSION . " without Lua\n";
