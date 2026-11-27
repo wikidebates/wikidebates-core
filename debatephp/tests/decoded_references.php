@@ -3,7 +3,6 @@ require __DIR__ . '/../../tests/bootstrap.php';
 
 use MediaWiki\Extension\DebatePHP\DecodedReferences;
 use MediaWiki\Extension\DebatePHP\SerializedData;
-use MediaWiki\Extension\DebatePHP\Table;
 
 $formats = [
 	'bibliography' => ['authors', 'article', 'work', 'volume', 'number', 'location', 'page', 'publisher', 'place', 'date', 'link', 'warnings'],
@@ -23,20 +22,22 @@ $decoder = new DecodedReferences;
 $count = 0;
 foreach ($formats as $format => $fields) {
 	foreach ($samples as $text) {
-		$expected = $format === 'quotes' ? SerializedData::quotes($text) : SerializedData::records($text, '⟭', '⟬', $fields);
-		$actual = $decoder->parse($format, $text);
-		same(Table::unwrap($expected), Table::unwrap($actual), 'Decoded record equivalence: ' . $format);
-		same(Table::unwrap($expected), $decoder->values($format, $text), 'Native record equivalence: ' . $format);
+		$expected = $format === 'quotes' ? SerializedData::quotes($text) : SerializedData::recordsValues($text, '⟭', '⟬', $fields);
+		$actual = $decoder->values($format, $text);
+		same($expected, $actual, 'Native decoded record equivalence: ' . $format);
 		$statistics = $decoder->statistics();
-		same($actual, $decoder->parse($format, $text), 'Same read-only records are reused');
+		$copy = $actual;
+		if ($copy !== []) { $copy[1][$fields[0]] = 'caller mutation'; }
+		same($expected, $decoder->values($format, $text), 'Caller mutation cannot alter cached records');
+		same($actual, $decoder->values($format, $text), 'Same read-only records are reused');
 		same($statistics, $decoder->statistics(), 'No second decode for HTML/JSON-LD consumer');
 		$count++;
 	}
 }
 $decoder = new DecodedReferences;
-$decoder->parse('bibliography', 'A⟬B');
-$decoder->parse('bibliography', 'C⟬D');
-$decoder->parse('bibliography', 'A⟬B⟭C⟬D');
+$decoder->values('bibliography', 'A⟬B');
+$decoder->values('bibliography', 'C⟬D');
+$decoder->values('bibliography', 'A⟬B⟭C⟬D');
 same(['decoded_blocks' => 2, 'reused_blocks' => 2], $decoder->statistics(), 'Debate merged JSON-LD reuses HTML-side blocks');
 $other = new DecodedReferences;
 same(['decoded_blocks' => 0, 'reused_blocks' => 0], $other->statistics(), 'Invocation isolation');

@@ -2,7 +2,6 @@
 namespace MediaWiki\Extension\DebatePHP;
 
 /** Debate renderer. This PHP source is authoritative and maintained directly.
- * Legacy Table boundaries remain until their native migration is complete.
  * See docs/native-php-migration-baseline.md for the behavioural contract.
  */
 class ReferenceRenderer {
@@ -91,9 +90,6 @@ class ReferenceRenderer {
 	}
 
 
-	protected function splitCSV($s = null, $sep = null) {
-		return ($this->renderData ??= new RenderData)->csv($s, $sep);
-	}
 
 	/** @return list<string> */
 	protected function wkParseWikipediaMarkers($raw = null): array {
@@ -698,12 +694,8 @@ class ReferenceRenderer {
 	}
 
 
-	protected function wkParseBiblioMarkers($raw = null) {
-		return ($this->decodedReferences ??= new DecodedReferences)->parse('bibliography', $raw);
-	}
 
-	protected function wkRenderOneBiblioLi($pv = null, $item = null, $lang = null, ?array &$categories = null, array &$smwPending = []) {
-		$item = $item instanceof Table ? $item->values : $item;
+	protected function wkRenderOneBiblioLi($pv = null, ?array $item = null, $lang = null, ?array &$categories = null, array &$smwPending = []) {
 		$out = [];
 		$authors = $item['authors'];
 		if (($authors === '')) {
@@ -783,12 +775,8 @@ class ReferenceRenderer {
 		});
 	}
 
-	protected function wkParseWeblioMarkers($raw = null) {
-		return ($this->decodedReferences ??= new DecodedReferences)->parse('webliography', $raw);
-	}
 
-	protected function wkRenderOneWeblioLi($pv = null, $item = null, $lang = null, ?array &$categories = null, array &$smwPending = [], $side = null) {
-		$item = $item instanceof Table ? $item->values : $item;
+	protected function wkRenderOneWeblioLi($pv = null, ?array $item = null, $lang = null, ?array &$categories = null, array &$smwPending = [], $side = null) {
 		$out = [];
 		$page = $item['page'];
 		$site = $item['site'];
@@ -859,12 +847,8 @@ class ReferenceRenderer {
 		});
 	}
 
-	protected function wkParseVideoMarkers($raw = null) {
-		return ($this->decodedReferences ??= new DecodedReferences)->parse('videography', $raw);
-	}
 
-	protected function wkRenderOneVideoLi($pv = null, $item = null, $lang = null, ?array &$categories = null, array &$smwPending = []) {
-		$item = $item instanceof Table ? $item->values : $item;
+	protected function wkRenderOneVideoLi($pv = null, ?array $item = null, $lang = null, ?array &$categories = null, array &$smwPending = []) {
 		$title = $item['title'];
 		if (($title === '')) {
 			return '';

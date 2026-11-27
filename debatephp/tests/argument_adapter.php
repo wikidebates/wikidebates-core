@@ -140,7 +140,7 @@ namespace SMW\Scribunto {
 }
 namespace {
 	require __DIR__ . '/bootstrap.php';
-	use MediaWiki\Extension\DebatePHP\{Hooks,MediaWikiContext,Table};
+	use MediaWiki\Extension\DebatePHP\{Hooks,MediaWikiContext};
 	use MediaWiki\Parser\{Parser,PPFrame};
 	use MediaWiki\Registration\ExtensionRegistry;
 	use SMW\Scribunto\LibraryFactory;

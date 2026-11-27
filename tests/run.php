@@ -4,6 +4,7 @@ require __DIR__ . '/bootstrap.php';
 
 use MediaWiki\Extension\DebatePHP\HtmlBuilder;
 use MediaWiki\Extension\DebatePHP\I18n;
+use MediaWiki\Extension\DebatePHP\JsonData;
 use MediaWiki\Extension\DebatePHP\LiteralData;
 use MediaWiki\Extension\DebatePHP\NativeTags;
 use MediaWiki\Extension\DebatePHP\NativeText;
@@ -93,7 +94,7 @@ same(true, Lua::truth(new Table), 'Lua empty table is truthy');
 same('string', Lua::type('trim'), 'Callable names remain Lua strings');
 $wrapped = Table::wrap(['items' => [1 => 'é', 2 => ['nested' => '0']]]);
 same(['items' => [1 => 'é', 2 => ['nested' => '0']]], Table::unwrap($wrapped), 'Nested table round trip');
-same(['é', '0'], TextEscaper::jsonValue(new Table([1 => 'é', 2 => '0'])), 'One-based arrays encode as JSON lists');
+same(['é', '0'], JsonData::value([1 => 'é', 2 => '0']), 'One-based arrays encode as JSON lists');
 same('A_é', rawurldecode(TextEscaper::uriEncode('A é', 'WIKI')), 'Wiki URL encoding');
 check(!str_contains(TextEscaper::nowiki('{{x}} [[y]] https://example.test', ['https://']), '{{'), 'Escape wikitext delimiters');
 same('mailto&#58;test@example.test', TextEscaper::nowiki('mailto:test@example.test', ['mailto:']), 'Configured protocols');

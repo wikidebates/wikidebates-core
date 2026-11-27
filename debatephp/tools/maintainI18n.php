@@ -7,7 +7,6 @@ require $wikiRoot . '/maintenance/Maintenance.php';
 require __DIR__ . '/I18nCompiler.php';
 
 use MediaWiki\Extension\DebatePHP\I18n;
-use MediaWiki\Extension\DebatePHP\Table;
 use MediaWiki\Extension\DebatePHP\Maintenance\I18nCompiler;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Parser\ParserOptions;
@@ -105,7 +104,7 @@ class MaintainDebateI18n extends Maintenance {
 				}
 			}
 			foreach ($args as $index => $values) {
-				if ($php->language(new Table($values), $services->getContentLanguage()->getCode()) !== $oracle['languages'][$index]) {
+				if ($php->language($values, $services->getContentLanguage()->getCode()) !== $oracle['languages'][$index]) {
 					throw new RuntimeException('Language selection differs at case ' . $index);
 				}
 			}

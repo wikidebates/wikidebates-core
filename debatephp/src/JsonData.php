@@ -13,7 +13,6 @@ final class JsonData {
 	}
 
 	private static function convert($value, ?SeoTextContext $context, bool $schema) {
-		if ($value instanceof Table) { $value = $value->values; }
 		if (!is_array($value)) {
 			return is_string($value) && $context !== null ? $context->resolveSeoMarkers($value) : $value;
 		}

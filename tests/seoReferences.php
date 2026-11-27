@@ -2,7 +2,6 @@
 
 use MediaWiki\Extension\DebatePHP\SchemaData;
 use MediaWiki\Extension\DebatePHP\JsonData;
-use MediaWiki\Extension\DebatePHP\Table;
 
 foreach ([
 	'1994' => '1994', '2026-2' => '2026-02', '2024/2/29' => '2024-02-29',
@@ -28,9 +27,9 @@ $expected = ['@type' => 'Article', 'name' => 'Paper', 'isPartOf' => [
 		'@type' => 'PublicationVolume', 'volumeNumber' => 'IV', 'isPartOf' => ['@type' => 'Periodical', 'name' => 'Journal']
 	]], 'datePublished' => '2017-01-23', 'url' => 'https://example.org/paper',
 	'author' => ['@type' => 'Person', 'name' => 'Ada']];
-foreach ([$article, Table::wrap($article)] as $node) {
-	same($expected, JsonData::value(SchemaData::reference($node)), 'Article, issue, volume, periodical');
-}
+$input = $article;
+same($expected, JsonData::value(SchemaData::reference($input)), 'Article, issue, volume, periodical');
+same($article, $input, 'Citation normalization does not mutate caller metadata');
 $book = ['@type' => 'Book', 'name' => 'Book', 'volumeNumber' => '0', 'issueNumber' => '3', 'url' => 'bad', 'datePublished' => 'unknown'];
 same(['@type' => ['Book', 'PublicationVolume'], 'name' => 'Book', 'volumeNumber' => '0',
 	'identifier' => ['@type' => 'PropertyValue', 'propertyID' => 'number', 'value' => '3']],
@@ -62,10 +61,10 @@ $cleanFields = [
 	'about' => [['@type' => 'Thing', 'name' => 'Science']],
 	'mainEntity' => ['@id' => 'https://example.org/page#claim'],
 ];
-foreach ([$emptyFields, Table::wrap($emptyFields)] as $input) {
-	same($cleanFields, JsonData::schemaValue($input), 'Only empty optional metadata removed; lists reindexed');
-	check(isset(JsonData::value($input)['publisher']), 'Generic JSON conversion unchanged');
-}
+$input = $emptyFields;
+same($cleanFields, JsonData::schemaValue($input), 'Only empty optional metadata removed; lists reindexed');
+check(isset(JsonData::value($input)['publisher']), 'Generic JSON conversion unchanged');
+same($emptyFields, $input, 'Schema filtering does not mutate caller data');
 same(['@type' => 'Person', '@id' => 'https://example.org/person'],
 	JsonData::schemaValue(['@type' => 'Person', '@id' => 'https://example.org/person', 'name' => '']),
 	'An explicit identity is not deleted');

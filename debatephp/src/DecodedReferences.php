@@ -11,25 +11,9 @@ final class DecodedReferences {
 	];
 	private array $lists = [];
 	private array $blocks = [];
-	private array $legacyLists = [];
-	private array $legacyBlocks = [];
 	private int $decodedBlocks = 0;
 	private int $reusedBlocks = 0;
 
-	public function parse(string $format, ?string $raw): Table {
-		$raw = trim($raw ?? '', " \t\r\n\v\f");
-		if (isset($this->legacyLists[$format][$raw])) { return $this->legacyLists[$format][$raw]; }
-		$records = $this->values($format, $raw);
-		$out = [];
-		if ($records) {
-			foreach (explode($format === 'quotes' ? '⟭⟭⟭' : '⟭', $raw) as $block) {
-				$block = trim($block, " \t\r\n\v\f");
-				if ($block === '') { continue; }
-				$out[count($out) + 1] = $this->legacyBlocks[$format][$block] ??= new Table($this->blocks[$format][$block]);
-			}
-		}
-		return $this->legacyLists[$format][$raw] = new Table($out);
-	}
 
 	/** Native records are returned by value; PHP copy-on-write isolates callers. */
 	public function values(string $format, ?string $raw): array {

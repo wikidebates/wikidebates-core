@@ -41,7 +41,7 @@
 				},
 				{
 					"name": "Standalone regression tests",
-					"run": "php tests/run.php"
+					"run": "php debatephp/tools/nativeInventory.php --assert-native && php tests/run.php"
 				},
 				{
 					"name": "Native PHP contract against corrected pre-migration baseline",

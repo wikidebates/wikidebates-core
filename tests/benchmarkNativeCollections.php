@@ -5,7 +5,8 @@ require __DIR__ . '/bootstrap.php';
 
 use MediaWiki\Extension\DebatePHP\ArgumentReferenceRenderer;
 use MediaWiki\Extension\DebatePHP\RenderData;
-use MediaWiki\Extension\DebatePHP\Table;
+use MediaWiki\Extension\DebatePHP\NativeText;
+use MediaWiki\Extension\DebatePHP\SemanticReadResult;
 
 $options = getopt('', ['baseline:', 'output:']);
 $baseline = realpath($options['baseline'] ?? '');
@@ -30,16 +31,15 @@ $before = $beforeClass->newInstanceWithoutConstructor();
 $after = $afterClass->newInstanceWithoutConstructor();
 $values = array_fill(1, 2000, 'value');
 $oldTable = new \NativeCollectionsBefore\Table($values);
-$newTable = new Table($values);
 $operations = ['sequence-2000' => [
 	'before' => static function() use ($oldTable): int {
 		$sum = 0;
 		foreach (\NativeCollectionsBefore\Lua::ipairs($oldTable) as $key => $value) { $sum += $key + strlen($value); }
 		return $sum;
 	},
-	'after' => static function() use ($newTable): int {
+	'after' => static function() use ($values): int {
 		$sum = 0;
-		foreach ($newTable->sequence() as $key => $value) { $sum += $key + strlen($value); }
+		foreach (SemanticReadResult::sequence($values) as $key => $value) { $sum += $key + strlen($value); }
 		return $sum;
 	}
 ]];
@@ -64,7 +64,7 @@ $operations['csv-reused-four-times'] = [
 	},
 	'after' => static function() use ($requests): array {
 		$out = []; $prepared = new RenderData;
-		foreach ($requests as $raw) { $out[] = $prepared->csv($raw)->values; }
+		foreach ($requests as $raw) { $out[] = $prepared->csvValues($raw); }
 		return $out;
 	}
 ];
@@ -77,14 +77,15 @@ $operations['csv-unique-only'] = [
 	},
 	'after' => static function() use ($uniqueRequests): array {
 		$out = []; $prepared = new RenderData;
-		foreach ($uniqueRequests as $raw) { $out[] = $prepared->csv($raw)->values; }
+		foreach ($uniqueRequests as $raw) { $out[] = $prepared->csvValues($raw); }
 		return $out;
 	}
 ];
-foreach (['before' => [$beforeClass, $before, $oldTable], 'after' => [$afterClass, $after, $newTable]] as $mode => [$class, $renderer, $table]) {
-	$join = $class->getMethod('seoJoinList');
-	$operations['seo-join-2000'][$mode] = static fn() => $join->invoke($renderer, $table);
-}
+$join = $beforeClass->getMethod('seoJoinList');
+$operations['seo-join-2000'] = [
+	'before' => static fn() => $join->invoke($before, $oldTable),
+	'after' => static fn() => NativeText::seoKeywords($values)
+];
 $report = ['php' => PHP_VERSION,
 	'scope' => 'Helper operations only; warm shuffled samples; no database or whole-page gain claim', 'repeats' => 21, 'iterations' => 3, 'scenarios' => []];
 $report['baseline_commit'] = trim(shell_exec('git -C ' . escapeshellarg($baseline) . ' rev-parse HEAD'));

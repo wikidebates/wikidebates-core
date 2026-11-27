@@ -3,7 +3,7 @@ require __DIR__ . '/../../tests/bootstrap.php';
 require __DIR__ . '/argument_context.php';
 require __DIR__ . '/../../tests/nativeCandidatePrototypes.php';
 
-use MediaWiki\Extension\DebatePHP\{ArgumentReferenceRenderer, DecodedReferences, Lua, ReferenceRenderer, SerializedData, Table};
+use MediaWiki\Extension\DebatePHP\{ArgumentReferenceRenderer, DecodedReferences, Lua, ReferenceRenderer, SerializedData};
 
 set_error_handler(static function($severity, $message, $file, $line): void { throw new ErrorException($message, 0, $severity, $file, $line); });
 $checks = 0;
@@ -54,18 +54,18 @@ $equal(false, $old === $cacheProperty->getValue($r), 'Title cache lifetime is on
 $decoder = new DecodedReferences;
 for ($i = 0; $i < 1100; $i++) {
 	$raw = 'Author ' . $i . '⟬Article ' . $i . '⟭';
-	$equal(Table::unwrap(SerializedData::records($raw, '⟭', '⟬', ['authors', 'article', 'work', 'volume', 'number', 'location', 'page', 'publisher', 'place', 'date', 'link', 'warnings'])), $decoder->values('bibliography', $raw), 'Cache pressure cannot alter records');
+	$equal(SerializedData::recordsValues($raw, '⟭', '⟬', ['authors', 'article', 'work', 'volume', 'number', 'location', 'page', 'publisher', 'place', 'date', 'link', 'warnings']), $decoder->values('bibliography', $raw), 'Cache pressure cannot alter records');
 	$statistics = $decoder->statistics();
 	$decoder->values('bibliography', $raw);
 	$equal($statistics, $decoder->statistics(), 'Every list is reused without a second decode after 1100 distinct inputs');
 }
 $raw = 'After many inputs⟬Article⟭';
-$a = $decoder->parse('bibliography', $raw);
-$b = $decoder->parse('bibliography', 'Other⟬Book⟭' . $raw);
-$equal(true, $a[1] === $b[2], 'Legacy block identities survive many native lists');
-$a[1]['authors'] = 'Legacy mutation';
-$equal('Legacy mutation', $decoder->parse('bibliography', $raw)[1]['authors'], 'Legacy list identity survives pressure');
-$equal('After many inputs', $decoder->values('bibliography', $raw)[1]['authors'], 'Legacy mutation cannot poison native values');
+$a = $decoder->values('bibliography', $raw);
+$b = $decoder->values('bibliography', 'Other⟬Book⟭' . $raw);
+$equal($a[1], $b[2], 'Native block reuse survives many lists');
+$a[1]['authors'] = 'Caller mutation';
+$equal('After many inputs', $decoder->values('bibliography', $raw)[1]['authors'], 'Native list stays immutable after pressure');
+$equal('After many inputs', $decoder->values('bibliography', 'Other⟬Book⟭' . $raw)[2]['authors'], 'Mutation cannot poison reused blocks');
 $large = new DecodedReferences;
 $raw = str_repeat('a', 600000) . '⟬Article⟭';
 $large->values('bibliography', $raw);
@@ -104,7 +104,7 @@ for ($i = 0; $i < 800; $i++) {
 	$raw = '';
 	for ($j = 0, $n = mt_rand(0, 30); $j < $n; $j++) { $raw .= $parts[mt_rand(0, count($parts) - 1)]; }
 	foreach ([false, true] as $required) { $equal(array_values(NativeCandidatePrototypes::arguments($raw, $required)), SerializedData::argumentItems($raw, $required), 'Native argument decoder preserves the independently retained marker grammar'); }
-	$equal(Table::unwrap(SerializedData::records($raw, '⟭⟭⟭', '⟬⟬⟬', ['title', 'content', 'warnings'], true)), NativeCandidatePrototypes::introductions($raw), 'Experimental native intro decoder preserves marker grammar');
+	$equal(SerializedData::recordsValues($raw, '⟭⟭⟭', '⟬⟬⟬', ['title', 'content', 'warnings'], true), NativeCandidatePrototypes::introductions($raw), 'Experimental native intro decoder preserves marker grammar');
 	$title = '';
 	for ($j = 0, $n = mt_rand(0, 30); $j < $n; $j++) { $title .= $titleParts[mt_rand(0, count($titleParts) - 1)]; }
 	foreach ([$title, '[[' . $title . '|label]]', ': [[' . $title . ']]'] as $text) {

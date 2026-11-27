@@ -34,9 +34,6 @@ final class RenderData {
 		if (count($this->seen) > $this->maxEntries) { unset($this->seen[array_key_first($this->seen)]); }
 	}
 
-	public function csv(?string $text, ?string $separator = null): Table {
-		return new Table($this->csvValues($text, $separator));
-	}
 
 	/** Read-only consumers avoid an envelope; copy-on-write keeps cached values isolated. */
 	public function csvValues(?string $text, ?string $separator = null): array {
