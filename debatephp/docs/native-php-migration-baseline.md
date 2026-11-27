@@ -178,6 +178,13 @@ The synthetic paired renderer benchmark does not exercise the real SMW adapter;
 its timings must not be described as direct SMW query speedups. Audit the actual
 six-language wiki content before disabling Lua extensions in the farm.
 
+## Live Lua retirement inventory
+
+Run the read-only current-slot and stored metadata inventory described in
+[the Lua retirement audit](../../docs/lua-retirement-audit.md) before disabling
+extensions. The scanner intentionally reports review candidates, not proof of
+execution or a safe-removal verdict. Retain historical content readability.
+
 ## Next gates
 
 1. Native contract validated on PHP 8.3 and 8.4 in PR #130. Retire the

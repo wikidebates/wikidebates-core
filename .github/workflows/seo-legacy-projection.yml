@@ -21,7 +21,10 @@
 				"tests/fullstackNativeReads.php",
 				"tests/fullstackDirectApiStudy.php",
 				"debatephp/src/NativeSemanticApi.php",
-				"debatephp/src/TrackedSemanticQuery.php"
+				"debatephp/src/TrackedSemanticQuery.php",
+				"src/LuaUsageAudit.php",
+				"maintenance/AuditLuaUsage.php",
+				"tests/mediawikiLuaUsageAudit.php"
 			]
 		},
 		"workflow_dispatch": {}
@@ -192,6 +195,13 @@
 				{
 					"name": "Install the historical locked SMW dependencies in the disposable laboratory",
 					"run": "composer install --working-dir=.seo-lab/mediawiki --no-interaction --prefer-dist --no-progress\nmkdir -p .seo-lab/dependencies .seo-lab/results\ncp tests/fullstack-dependencies/composer.json tests/fullstack-dependencies/composer.lock .seo-lab/dependencies/\ncomposer --working-dir=.seo-lab/dependencies install --no-dev --no-interaction --no-plugins --no-scripts --prefer-dist --no-progress"
+				},
+				{
+					"name": "Audit real Lua modules and all current wiki slots without parsing during the scan",
+					"env": {
+						"MW_INSTALL_PATH": "${{ github.workspace }}/.seo-lab/mediawiki"
+					},
+					"run": "php tests/mediawikiLuaUsageAudit.php"
 				},
 				{
 					"name": "Verify native Variables without loading any Lua extension",
