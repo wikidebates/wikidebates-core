@@ -102,4 +102,30 @@ foreach ([\MediaWiki\Extension\DebatePHP\ReferenceRenderer::class, \MediaWiki\Ex
 		$checks++;
 	}
 }
+// SEO is an invocation-local effect, not a cached cross-render operation.
+foreach ([ArgumentReferenceRenderer::class, ArgumentRenderer::class,
+	\MediaWiki\Extension\DebatePHP\ReferenceRenderer::class, \MediaWiki\Extension\DebatePHP\Renderer::class] as $class) {
+	$case = ['title' => 'Native SEO reuse', 'smw' => false, 'args' => [
+		'lang' => 'en', 'keywords' => '0, 0, Énergie, A, A, é, , 00',
+		'sections' => 'Énergie, 0, é, B, 00, 0.0'
+	]];
+	$context = new ArgumentTestContext($case);
+	$renderer = new $class($context);
+	foreach ([
+		[$case, '0, Énergie, A, é, 00, B, 0.0'],
+		[$case, '0, Énergie, A, é, 00, B, 0.0'],
+		[array_replace($case, ['args' => ['lang' => 'fr', 'keywords' => '0', 'sections' => '0, B']]), '0, B'],
+		[array_replace($case, ['args' => ['lang' => 'en']]), '']
+	] as [$fixture, $expected]) {
+		$caseProperty->setValue($context, $fixture);
+		foreach ($context->effects as $key => $_) { $context->effects[$key] = []; }
+		$actual = $renderer->render();
+		$fresh = new ArgumentTestContext($fixture);
+		same((new $class($fresh))->render(), $actual, 'Reused SEO renderer matches fresh HTML');
+		same($fresh->effects, $context->effects, 'Reused SEO renderer matches fresh effects');
+		same(1, count($context->effects['seo']), 'Exactly one SEO write per invocation');
+		same($expected, $context->effects['seo'][0]['keywords'], 'Stable ordered keyword union retains zero');
+		$checks += 4;
+	}
+}
 echo "$checks renderer reuse assertions: language changes, text changes, side effects and cache lifetimes\n";
