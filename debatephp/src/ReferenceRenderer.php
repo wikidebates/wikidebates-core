@@ -351,9 +351,9 @@ class ReferenceRenderer {
 			$page = $item['page'];
 			$title = $item['title'];
 			$listLines[] = '* ' . $title;
-			$argsVarParts[] = $page === $title ? $page : $page . $this->FIELD_SEP . $title;
+			$argsVarParts[] = SerializedData::mapItem($page, $title, $this->FIELD_SEP);
 			$mapLines[] = '<div  id="' . $idPrefix . ($index + 1) . '_map" class="argument-title--map wk-icon-before wk-icon-argument">' . $title . '</div>';
-			$hoverLines[] = '<div class="argument-title--map wk-icon-before wk-icon-argument">[[' . $page . '|' . $title . ']]</div>';
+			$hoverLines[] = ArgumentMapMarkup::card('[[' . $page . '|' . $title . ']]');
 		}
 		return [
 			'items' => $items,

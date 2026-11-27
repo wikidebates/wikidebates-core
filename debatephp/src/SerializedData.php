@@ -35,6 +35,31 @@ final class SerializedData {
 		}
 		return $out;
 	}
+	/** Map storage omits the label when it is identical to the page title. */
+	public static function mapItem(string $page, string $title, string $fieldSeparator = '⟬'): string {
+		return $page === $title ? $page : $page . $fieldSeparator . $title;
+	}
+
+	/** @return iterable<array{page:string,title:string}>
+	 * The map projection splits only on the first field separator. Unlike the
+	 * template input format, a single bare title is valid and has no warnings.
+	 */
+	public static function mapItems(string $text, string $separator): iterable {
+		$text = trim($text, self::WHITESPACE);
+		if ($text === '') {
+			return;
+		}
+		foreach (explode($separator, $text) as $item) {
+			[$page, $label] = NativeText::splitOnce($item, '⟬');
+			$page = trim($page, self::WHITESPACE);
+			if ($page === '') {
+				continue;
+			}
+			$label = trim($label, self::WHITESPACE);
+			yield ['page' => $page, 'title' => $label === '' ? $page : $label];
+		}
+	}
+
 	public static function recordValues(string $block, string $fieldSeparator, array $fields): array {
 		$parts = explode($fieldSeparator, $block); $record = [];
 		foreach ($fields as $index => $name) { $record[$name] = trim($parts[$index] ?? '', self::WHITESPACE); }
