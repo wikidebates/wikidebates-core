@@ -16,7 +16,7 @@ use MediaWiki\Parser\ParserOptions;
 use MediaWiki\Title\Title;
 
 $services = MediaWikiServices::getInstance();
-same('optimized', $services->getMainConfig()->get('DebatePHPMode'), 'Optimized is the default mode');
+check(!$services->getMainConfig()->has('DebatePHPMode'), 'No production renderer mode configuration');
 check(!\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('DebatePHP'), 'No standalone DebatePHP extension is loaded');
 if (!getenv('WD_TEST_EXTENSIONS')) {
 	same(['Wikidebates'], array_keys(\MediaWiki\Registration\ExtensionRegistry::getInstance()->getAllThings()), 'One wfLoadExtension call is sufficient');
@@ -89,8 +89,7 @@ $fetch = static function($title) use (&$sources, &$sourceReads, $resources): arr
 		'deps' => [['title' => $title, 'page_id' => 0, 'rev_id' => 0]]
 	];
 };
-$parse = static function(string $text, string $mode) use ($services, $fetch): array {
-	$GLOBALS['wgDebatePHPMode'] = $mode;
+$parse = static function(string $text) use ($services, $fetch): array {
 	$parser = $services->getParserFactory()->create();
 	$options = ParserOptions::newFromAnon();
 	$options->setTemplateCallback($fetch);
@@ -106,27 +105,24 @@ $GLOBALS['wgDebugLogGroups']['DebatePHP'] = $observationLog;
 $fixtures = require __DIR__ . '/renderCases.php';
 $fixtures['argument initialization'] = '{{#argument:render|lang=en|initialization=Pro argument@42|creation-date=2000-01-01}}';
 foreach ($fixtures as $name => $text) {
-	$reference = $parse($text, 'reference');
-	$optimized = $parse($text, 'optimized');
-	same($reference, $optimized, 'Renderer output and parser effects: ' . $name);
+	$canonical = $parse($text);
 	$GLOBALS['wgDebatePHPProfiling'] = true;
 	$GLOBALS['wgDebatePHPDiagnostics'] = true;
 	try {
-		same($reference, $parse($text, 'reference'), 'Observations preserve reference output: ' . $name);
-		same($optimized, $parse($text, 'optimized'), 'Observations preserve optimized output: ' . $name);
+		same($canonical, $parse($text), 'Observations preserve canonical output: ' . $name);
 	} finally {
 		$GLOBALS['wgDebatePHPProfiling'] = false;
 		$GLOBALS['wgDebatePHPDiagnostics'] = false;
 	}
-	check(strlen($reference[0]) > 200, 'Substantial renderer output: ' . $name);
-	check(!str_contains($reference[0], '{{#debate:') && !str_contains($reference[0], '{{#argument:'), 'Functions registered: ' . $name);
-	check(str_contains($reference[0], 'application/ld+json'), 'JSON-LD retained: ' . $name);
+	check(strlen($canonical[0]) > 200, 'Substantial renderer output: ' . $name);
+	check(!str_contains($canonical[0], '{{#debate:') && !str_contains($canonical[0], '{{#argument:'), 'Functions registered: ' . $name);
+	check(str_contains($canonical[0], 'application/ld+json'), 'JSON-LD retained: ' . $name);
 	if (preg_match('/^complete (debate|argument) (fr|en)$/D', $name, $parts)) {
 		$kind = $parts[1];
 		$lang = $parts[2];
 		$credit = $lang === 'fr' ? 'Contributeurs de Wikidébats' : 'Wikidebates contributors';
 		$matches = [];
-		preg_match_all('~<script\b[^>]*\btype="application/ld\+json"[^>]*>(.*?)</script>~is', $reference[0], $matches);
+		preg_match_all('~<script\b[^>]*\btype="application/ld\+json"[^>]*>(.*?)</script>~is', $canonical[0], $matches);
 		$pageNode = null;
 		$graph = [];
 		foreach ($matches[1] as $script) {
@@ -167,14 +163,14 @@ foreach ($fixtures as $name => $text) {
 			}
 		}
 	}
-	check(!array_filter($reference[3], static fn(array $dep): bool => str_starts_with($dep[0], '828:')), 'No artificial Lua dependencies: ' . $name);
+	check(!array_filter($canonical[3], static fn(array $dep): bool => str_starts_with($dep[0], '828:')), 'No artificial Lua dependencies: ' . $name);
 	if (\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('ShortDescription')
 		&& (str_contains($text, '#debate:') || str_contains($text, '{{Débat|'))) {
-		check(isset($reference[1]['shortdesc']), 'ShortDescription callback retained: ' . $name);
+		check(isset($canonical[1]['shortdesc']), 'ShortDescription callback retained: ' . $name);
 	}
 	if (\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('WikiSEO')) {
 		foreach (['wikidebates-test', 'title', 'keywords', 'description', 'image', 'author'] as $legacyKey) {
-			check(!isset($reference[1][$legacyKey]), 'No WikiSEO page property for native page: ' . $legacyKey . ' / ' . $name);
+			check(!isset($canonical[1][$legacyKey]), 'No WikiSEO page property for native page: ' . $legacyKey . ' / ' . $name);
 		}
 	}
 	$count++;
@@ -223,7 +219,7 @@ if (\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('PageForm
 }
 
 // The original parser function remains active alongside the two new functions.
-$original = $parse('{{#recentdebatechanges:}}', 'reference');
+$original = $parse('{{#recentdebatechanges:}}');
 check(!str_contains($original[0], '{{#recentdebatechanges:'), 'Existing parser function remains registered');
 if (!\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('SemanticMediaWiki')) {
 	check(!str_contains($original[0], 'DBQueryError') && !str_contains($original[0], 'SELECT'), 'Missing SMW is handled before any semantic SQL query');
@@ -262,9 +258,8 @@ rejects(static fn() => $context->htmlTag('script', 'alert(1)',
 rejects(static fn() => $context->htmlTag('a', 'body',
 	[], false), 'Generic tag fallback disabled');
 
-rejects(static fn() => $parse('{{#debate:render}}', 'invalid'), 'Invalid mode rejected');
-$GLOBALS['wgDebatePHPMode'] = 'reference';
-same([], array_values(array_filter($sourceReads, static fn(string $name): bool => str_starts_with($name, 'Module:'))), 'No module source read in either mode');
+rejects(static fn() => $parse('{{#debate:invalid}}'), 'Invalid renderer entry rejected');
+same([], array_values(array_filter($sourceReads, static fn(string $name): bool => str_starts_with($name, 'Module:'))), 'No module source read by the canonical renderer');
 check(!class_exists(\MediaWiki\Extension\DebatePHP\LiteralData::class, false), 'Runtime never loads the offline Lua reader');
 require __DIR__ . '/mediawikiOperations.php';
 require __DIR__ . '/mediawikiRevisionVisibility.php';
@@ -403,4 +398,4 @@ foreach (['debate', 'argument'] as $kind) {
 
 
 
-echo "OK: MediaWiki " . MW_VERSION . ", $count render fixtures in both modes, single extension load, hooks, policy and no runtime Lua dependencies\n";
+echo "OK: MediaWiki " . MW_VERSION . ", $count canonical render fixtures, single extension load, hooks, policy and no runtime Lua dependencies\n";

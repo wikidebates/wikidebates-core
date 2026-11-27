@@ -221,7 +221,7 @@ def main():
 	rows = json.loads(args.renders.read_text(encoding='utf-8'))
 	counts, errors, types, props = Counter(), [], set(), set()
 	for row in rows:
-		for mode in ('reference','optimized'):
+		for mode in ('optimized',):
 			for match in SCRIPT.finditer(row['variants'][mode]['html']):
 				doc = json.loads(match[1])
 				bad, stats, used_t, used_p = validate(doc, vocab)

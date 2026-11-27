@@ -40,7 +40,6 @@ PHP général lorsque la lecture directe n’est pas certifiée.
 
 | Paramètre historique | Défaut | Rôle |
 | --- | --- | --- |
-| `$wgDebatePHPMode` | `reference` | `reference` ou `optimized`, pour les deux moteurs |
 | `$wgDebatePHPProfiling` | `false` | Durées et compteurs, canal privé `DebatePHP` |
 | `$wgDebatePHPDiagnostics` | `false` | Erreurs d’intégration sans leurs valeurs sensibles |
 
@@ -50,9 +49,10 @@ n'hérite plus de `$wgHTMLTagsAttributes`. Les anciens usages de cette balise
 présents dans les pages wiki doivent être vérifiés et migrés avant de désactiver
 HTML Tags sur le serveur (voir `docs/html-tags-retirement.md`).
 
-Les deux modes exécutent du PHP ; `optimized` active notamment la mémorisation
-des traductions. Les lectures de marqueurs sont désormais partagées. Une valeur
-de mode inconnue est refusée. Le JSON-LD conserve ses valeurs et protège les
+Argument et Debate utilisent chacun un moteur PHP canonique, avec mémorisation
+des traductions limitée au rendu. Le paramètre historique `$wgDebatePHPMode`
+n’est plus utilisé et peut être retiré de la configuration locale après déploiement.
+Le JSON-LD conserve ses valeurs et protège les
 fermetures de script, sans réinterpréter ses chaînes comme du wiki.
 
 Le profilage fournit `preprocess_executed`, `preprocess_cache_hits`,

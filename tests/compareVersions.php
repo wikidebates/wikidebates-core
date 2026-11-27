@@ -133,7 +133,7 @@ mt_srand(808);
 foreach ($corpus as $index => $case) {
 	$reference = $run($case, '0.6', 'reference');
 	foreach (array_keys($versions) as $version) {
-		foreach (['reference', 'optimized'] as $mode) {
+		foreach ($version === '0.8' ? ['optimized'] : ['reference', 'optimized'] as $mode) {
 			$actual = $run($case, $version, $mode);
 			if ($reference['output'] !== $actual['output']) {
 				$fields = array_keys(array_filter($actual['output'], static fn($value, $key): bool => $value !== $reference['output'][$key], ARRAY_FILTER_USE_BOTH));
@@ -144,7 +144,7 @@ foreach ($corpus as $index => $case) {
 		}
 	}
 	$order = [];
-	foreach (array_keys($versions) as $version) { foreach (['reference', 'optimized'] as $mode) { $order[] = [$version, $mode]; } }
+	foreach (array_keys($versions) as $version) { foreach ($version === '0.8' ? ['optimized'] : ['reference', 'optimized'] as $mode) { $order[] = [$version, $mode]; } }
 	for ($repeat = 0; $repeat < $repeats; $repeat++) {
 		shuffle($order);
 		foreach ($order as [$version, $mode]) {

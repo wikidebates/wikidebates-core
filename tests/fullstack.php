@@ -23,7 +23,7 @@ foreach ([SMW\SQLStore\SQLStore::class, SMW\Scribunto\LibraryFactory::class, Liq
 }
 same($testSocket === null ? 'sqlite' : 'mysql', MediaWikiServices::getInstance()->getMainConfig()->get('DBtype'), 'Isolated test database');
 same($temporary, MediaWikiServices::getInstance()->getMainConfig()->get('SQLiteDataDir'), 'Database belongs to this test invocation');
-same('optimized', MediaWikiServices::getInstance()->getMainConfig()->get('DebatePHPMode'), 'Optimized is the default');
+check(!MediaWikiServices::getInstance()->getMainConfig()->has('DebatePHPMode'), 'No production renderer mode configuration');
 $store = ServicesFactory::getInstance()->getStore();
 check($store instanceof SMW\SQLStore\SQLStore, 'Real SQLStore');
 check($store->setup(false), 'SMW schema initialized');

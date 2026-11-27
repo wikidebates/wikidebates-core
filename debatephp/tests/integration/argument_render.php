@@ -21,8 +21,7 @@ class ArgumentRenderComparison extends Maintenance {
 	foreach($cases as $case) {
 		$title=Title::newFromText($case['title']); if (!$title) { continue; } // Invalid titles cannot exist as wiki pages.
 		$row=['name'=>$case['name'],'title'=>$case['title'],'variants'=>[]];
-		foreach(['lua','reference','optimized'] as $mode) {
-		$GLOBALS['wgDebatePHPMode']=$mode==='optimized'?'optimized':'reference';
+		foreach(['lua','optimized'] as $mode) {
 		$p=MediaWikiServices::getInstance()->getParserFactory()->create();
 		$options=ParserOptions::newFromAnon();$options->setTimestamp('20261018120000');
 		$text=$mode==='lua'?'{{#invoke:Argument|render':'{{#argument:render';
