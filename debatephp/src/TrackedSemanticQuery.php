@@ -7,7 +7,7 @@ use SMW\Query\QueryResult;
 use SMW\Store;
 
 /**
- * Preserve the existing call site and native SemanticScribunto result format.
+ * Preserve the existing query call site and page-owned cache policy.
  *
  * A semantic query may be rendered into a page's anonymous HTML snapshot,
  * but changes to its results must not invalidate that page's cached HTML.
@@ -18,6 +18,6 @@ final class TrackedSemanticQuery {
 	public const OUTPUT_MARKER = 'wikidebates-semantic-query-tracked';
 
 	public static function execute(Parser $parser, array $rawParameters, Store $store): QueryResult|string {
-		return (new \SMW\Scribunto\LibraryFactory($store))->newQueryResultFrom($rawParameters);
+		return NativeSemanticApi::query($store, $rawParameters);
 	}
 }

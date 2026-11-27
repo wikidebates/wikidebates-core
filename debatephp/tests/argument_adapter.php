@@ -119,31 +119,14 @@ namespace MediaWiki\Parser {
 		public function getPreprocessor() { return new class { public function preprocessToObj($text, $flags) { return $text; } public function newFrame() { return new PPFrame; } }; }
 	}
 }
-namespace SMW\Query { final class QueryResult { public function __construct(public array $rows) {} } }
-namespace SMW\Services { final class ServicesFactory {
-	public static function getInstance() { return new self; } public function getStore() { return null; }
-} }
-namespace SMW\Scribunto {
-	final class LibraryFactory {
-		public static array $query = []; public static array $write = []; public static bool $fail = false;
-		public function __construct($store) {}
-		public function newQueryResultFrom($raw) {
-			self::$query = $raw; if (self::$fail) { throw new \RuntimeException('test failure'); }
-			return new \SMW\Query\QueryResult([]);
-		}
-		public function newLuaAskResultProcessor($result) { return new class {
-			public function getProcessedResult() { return [['fulltext' => 'Parent', 'pro' => ['A', ['fulltext' => 'B']]]]; }
-		}; }
-		public function newParserParameterProcessorFrom($raw) { self::$write = $raw; return $raw; }
-		public function newSetParserFunction($parser) { return new class { public function parse($raw) { return ''; } }; }
-	}
-}
 namespace {
 	require __DIR__ . '/bootstrap.php';
+	require __DIR__ . '/semantic_api_double.php';
 	use MediaWiki\Extension\DebatePHP\{Hooks,MediaWikiContext};
 	use MediaWiki\Parser\{Parser,PPFrame};
 	use MediaWiki\Registration\ExtensionRegistry;
-	use SMW\Scribunto\LibraryFactory;
+	use MediaWiki\Extension\DebatePHP\Tests\SemanticApiDouble;
+	SemanticApiDouble::$rows = [[['fulltext', [['_txt', 'Parent']]], ['pro', [['_txt', 'A'], ['_txt', ['fulltext' => 'B']]]]]];
 	set_error_handler(static function($severity, $message, $file, $line) { throw new \ErrorException($message, 0, $severity, $file, $line); });
 	$count = 0;
 	$check = static function($condition, $message) use (&$count) { $count++; if (!$condition) { throw new \RuntimeException($message); } };
@@ -181,9 +164,9 @@ namespace {
 	$c->preprocess('test'); $c->preprocess('test');
 	$check($f->child->expands === 1 && $f->child->reads >= 2, 'Expansion cache did not force frame arguments');
 	$rows = $c->readSemantic([1 => '[[A]]', 2 => '?P=pro'], 'other')->rows;
-	$check(LibraryFactory::$query === ['[[A]]','?P=pro'], 'SMW query parameters changed');
+	$check(SemanticApiDouble::$query === ['[[A]]','?P=pro'], 'SMW query parameters changed');
 	$check($rows[1]['pro'][1] === 'A' && $rows[1]['pro'][2]['fulltext'] === 'B', 'Nested query arrays must be one-based');
-	LibraryFactory::$fail = true; $check($c->readSemantic([1 => '[[A]]'], 'other')->rows === null, 'SMW error must be swallowed'); LibraryFactory::$fail = false;
+	SemanticApiDouble::$fail = true; $check($c->readSemantic([1 => '[[A]]'], 'other')->rows === null, 'SMW error must be swallowed'); SemanticApiDouble::$fail = false;
 	$c->variableSet(' WD_QUOTES_AUTHORS ', ' Alice ');
 	$check(!ExtensionRegistry::getInstance()->isLoaded('VariablesLua'), 'Test does not expose VariablesLua');
 	$check($c->variableGet('WD_QUOTES_AUTHORS') === 'Alice', 'Variable state must use Variables trimming without VariablesLua');
@@ -231,17 +214,17 @@ namespace {
 	$titles = $reflection->getMethod('smwAskTitles');
 	$titles->invoke($renderer, '[[SECRET2]]', 'breadcrumb');
 	$titles->invoke($renderer, '[[SECRET2]]', 'breadcrumb');
-	LibraryFactory::$fail = true;
+	SemanticApiDouble::$fail = true;
 	$ask->invoke($renderer, [1 => '[[SECRET3]]'], 'cards');
 	$ask->invoke($renderer, [1 => '[[SECRET3]]'], 'cards');
-	LibraryFactory::$fail = false;
+	SemanticApiDouble::$fail = false;
 	$profiled->readSemantic([1 => '[[SECRET4]]'], 'other');
 	$profiled->smwSet(['SECRET' => 'VALUE']);
-	$check(LibraryFactory::$write === ['SECRET=VALUE'], 'Native SMW write keeps literal values');
+	$check(SemanticApiDouble::$write === ['SECRET=VALUE'], 'Native SMW write keeps literal values');
 	$profile->report();
 	$write = ['prop' => ['0', 'A|B=C', 'é', '0'], 'zero' => 0, 'missing' => null, 'empty' => []];
 	$c->smwSet($write);
-	$check(LibraryFactory::$write === ['prop=0', 'prop=A|B=C', 'prop=é', 'prop=0', 'zero=0'], 'SMW writes preserve ordered values, delimiters and zero, omit missing properties');
+	$check(SemanticApiDouble::$write === ['prop=0', 'prop=A|B=C', 'prop=é', 'prop=0', 'zero=0'], 'SMW writes preserve ordered values, delimiters and zero, omit missing properties');
 	$check($write['prop'] === ['0', 'A|B=C', 'é', '0'] && array_key_exists('missing', $write), 'Native SMW write leaves caller data unchanged');
 	$event = $events[0];
 	$check($event['semantic']['debate-parents']['read']['calls'] === 1, 'Executed SMW calls counted once');

@@ -66,6 +66,9 @@ $readQueries = [
 	['[[WD FS Text::updated]]', '?WD FS Text=text', '?WD FS Number=number', '?WD FS Page=target', 'mainlabel=page', 'link=none', 'limit=10'],
 	['[[WD FS Text::first]]', '?WD FS Text=text', '?WD FS Number=number', '?WD FS Date=date', 'mainlabel=page', 'link=none', 'limit=10'],
 	$raw, ['[[WD FS Text::updated]]', '?WD FS Text=1', '?WD FS Number=01', 'limit=10'],
+	['[[WD FS native values]]', '?WD FS Text=duplicate', '?WD FS Number=duplicate', 'mainlabel=-', 'limit=10'],
+	['[[WD FS native values]]', '?WD FS Text=', '?WD FS Number=', '?WD FS Parent A=missing', 'limit=10'],
+	['[[WD FS native values]]', '?WD FS Page=pages', 'link=all', 'limit=10'],
 	['[[WD FS native values]]', '?WD FS Text=text', '?WD FS Number=numbers', '?WD FS Flag=flag', '?WD FS Page=pages', '?WD FS Date=date', 'limit=10']
 ];
 foreach ($readQueries as $parameters) {

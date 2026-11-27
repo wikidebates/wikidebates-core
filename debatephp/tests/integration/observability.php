@@ -11,8 +11,8 @@ class DebateObservabilityTest extends Maintenance {
 		$this->addOption('log', 'New local log file', true, true);
 	}
 	public function execute() {
-		if (!class_exists(\SMW\Scribunto\LibraryFactory::class)
-			|| !str_ends_with((new ReflectionClass(\SMW\Scribunto\LibraryFactory::class))->getFileName(), 'SemanticDouble.php')) {
+		if (!class_exists(\SMW\Services\ServicesFactory::class)
+			|| !str_ends_with((new ReflectionClass(\SMW\Services\ServicesFactory::class))->getFileName(), 'SemanticDouble.php')) {
 			throw new RuntimeException('Run only with the disposable semantic double');
 		}
 		$log = $this->getOption('log');
@@ -22,7 +22,7 @@ class DebateObservabilityTest extends Maintenance {
 			if ($GLOBALS['debateSeoFailure'] ?? false) { throw new RuntimeException('SENSITIVE seo value'); }
 		});
 		foreach (['normal', 'exception', 'result', 'seo-exception'] as $scenario) {
-			\SMW\Scribunto\LibraryFactory::$failure = in_array($scenario, ['exception', 'result'], true) ? $scenario : '';
+			\SMW\Services\ServicesFactory::$failure = in_array($scenario, ['exception', 'result'], true) ? $scenario : '';
 			$GLOBALS['debateSeoFailure'] = $scenario === 'seo-exception';
 			$before = $this->one(false); $observed = $this->one(true);
 			if ($before !== $observed) { throw new RuntimeException('Observation changed parser output: ' . $scenario); }

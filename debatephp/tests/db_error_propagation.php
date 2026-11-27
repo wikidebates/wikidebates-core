@@ -5,30 +5,12 @@ namespace Wikimedia\Rdbms {
 	class DBError extends \RuntimeException {}
 }
 
-namespace SMW\Services {
-	class ServicesFactory {
-		public static function getInstance(): self {
-			return new self();
-		}
-
-		public function getStore(): object {
-			return new \stdClass();
-		}
-	}
-}
-
-namespace SMW\Scribunto {
-	class LibraryFactory {
-		public function __construct( object $store ) {}
-
-		public function newQueryResultFrom( array $query ): void {
-			throw new \Wikimedia\Rdbms\DBError( 'Simulated SQL failure' );
-		}
-	}
-}
-
 namespace {
 	require __DIR__ . '/bootstrap.php';
+	require __DIR__ . '/semantic_api_double.php';
+	\MediaWiki\Extension\DebatePHP\Tests\SemanticApiDouble::$onQuery = static function(): void {
+		throw new \Wikimedia\Rdbms\DBError('Simulated SQL failure');
+	};
 
 	use MediaWiki\Extension\DebatePHP\Lua;
 	use MediaWiki\Extension\DebatePHP\MediaWikiContext;

@@ -158,6 +158,26 @@ oracle still loads VariablesLua to compare with the original Lua renderers.
 Do not remove the farm's VariablesLua extension until the actual wiki content
 has been audited for remaining Lua consumers.
 
+## Direct Semantic MediaWiki integration
+
+`NativeSemanticApi` builds and executes queries through SMW's query
+processor and Store, and writes literal parameters using SMW's parser
+function factory. Its formatter preserves the historical SMW printout
+contract (aliases, formatted wiki links, localized booleans, numbers, null
+and multiple values), not raw DataItems. The established SMW query context
+option remains unchanged to avoid a cache/query identity change.
+
+The former SemanticScribunto implementation remains an independent test
+oracle. Real fullstack tests compare exact formatted rows and persisted
+values, including the empty-parent proof and deferred persistence. A separate
+disposable MediaWiki/SMW test loads none of the Lua extensions and exercises
+both native renderer modes. The lexical inventory rejects direct Lua-extension
+references in the runtime renderer source.
+
+The synthetic paired renderer benchmark does not exercise the real SMW adapter;
+its timings must not be described as direct SMW query speedups. Audit the actual
+six-language wiki content before disabling Lua extensions in the farm.
+
 ## Next gates
 
 1. Native contract validated on PHP 8.3 and 8.4 in PR #130. Retire the
