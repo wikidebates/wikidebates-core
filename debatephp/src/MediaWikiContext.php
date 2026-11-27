@@ -9,7 +9,7 @@ use MediaWiki\Parser\PPFrame;
 use MediaWiki\Title\Title;
 
 /** MediaWiki 1.43 legacy parser boundary. No recursive parse/reset of the current Parser. */
-final class MediaWikiContext implements ArgumentContext, SemanticProfilingContext, PreparationProfilingContext, NativeSemanticContext, SeoTextContext {
+final class MediaWikiContext implements ArgumentContext, SemanticProfilingContext, PreparationProfilingContext, SeoTextContext {
 	private Parser $parser;
 	private PPFrame $caller;
 	private PPFrame $module;
@@ -319,32 +319,22 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 		}
 	}
 	public function smwAvailable(): bool { return class_exists(\SMW\Scribunto\LibraryFactory::class); }
-	public function profiledSmwAsk(Table $query, string $origin): ?Table {
-		if (!$this->telemetry?->isProfiling()) { return $this->smwAsk($query); }
-		$previous = $this->semanticOrigin;
-		$this->semanticOrigin = $origin;
-		try { return $this->smwAsk($query); }
-		finally { $this->semanticOrigin = $previous; }
-	}
 	public function smwCacheHit(string $origin, string $layer): void {
 		$this->telemetry?->semanticCacheHit($origin, $layer);
 	}
-	public function smwAsk(Table $query): ?Table {
-		return $this->semanticQuery($query, false);
-	}
-	public function readSemantic(Table $query, string $origin): SemanticReadResult {
+	public function readSemantic(array $query, string $origin): SemanticReadResult {
 		$previous = $this->semanticOrigin;
 		$this->semanticOrigin = $origin;
-		try { return $this->semanticQuery($query, true); }
+		try { return $this->semanticQuery($query); }
 		finally { $this->semanticOrigin = $previous; }
 	}
 	public function skipEmptyParentFallback(string $origin): void {
 		$this->telemetry?->semanticFallbackSkipped($origin);
 	}
-	private function semanticQuery(Table $query, bool $native): Table|SemanticReadResult|null {
+	private function semanticQuery(array $query): SemanticReadResult {
 		if (!$this->smwAvailable()) {
 			$this->telemetry?->problem('semantic-query', 'service-unavailable');
-			return $native ? new SemanticReadResult(null) : null;
+			return new SemanticReadResult(null);
 		}
 		$started = $this->telemetry?->start();
 		$failed = true;
@@ -356,28 +346,18 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 				$enabled = class_exists(MediaWikiServices::class) &&
 					(bool)MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesSemanticCacheTracking');
 				$result = $enabled
-					? TrackedSemanticQuery::execute($this->parser, array_values(Table::unwrap($query)),
+					? TrackedSemanticQuery::execute($this->parser, array_values($query),
 						\SMW\Services\ServicesFactory::getInstance()->getStore())
-					: $factory->newQueryResultFrom(array_values(Table::unwrap($query)));
+					: $factory->newQueryResultFrom(array_values($query));
 				$queryFailed = !$result instanceof \SMW\Query\QueryResult;
 			} finally { $this->telemetry?->semanticFinish($this->semanticOrigin, 'query', $queryStarted, $queryFailed); }
 			// Same conversion and printout formatting as mw.smw.ask, without a Lua engine.
-			if (!$result instanceof \SMW\Query\QueryResult) { return $native ? new SemanticReadResult(null) : null; }
+			if (!$result instanceof \SMW\Query\QueryResult) { return new SemanticReadResult(null); }
 			$resultStarted = $this->telemetry?->start();
 			try {
 				$values = $factory->newLuaAskResultProcessor($result)->getProcessedResult();
-				if ($native) {
-					$converted = new SemanticReadResult(SemanticReadResult::values($values),
-						$values === null && EmptyParentQuery::certified($result, $query));
-					$failed = false;
-					return $converted;
-				}
-				$toTable = static function($value) use (&$toTable) {
-					if (!is_array($value)) { return $value; }
-					array_unshift($value, ''); unset($value[0]);
-					return new Table(array_map($toTable, $value));
-				};
-				$converted = $toTable($values);
+				$converted = new SemanticReadResult(SemanticReadResult::values($values),
+					$values === null && EmptyParentQuery::certified($result, $query));
 				$failed = false;
 				return $converted;
 			} finally { $this->telemetry?->semanticFinish($this->semanticOrigin, 'result', $resultStarted, $failed); }
@@ -389,7 +369,7 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 			}
 			DatabaseFailure::rethrow($e);
 			$this->telemetry?->problem('semantic-query', 'exception', $e);
-			return $native ? new SemanticReadResult(null) : null;
+			return new SemanticReadResult(null);
 		}
 		finally {
 			$this->telemetry?->semanticFinish($this->semanticOrigin, 'read', $started, $failed);

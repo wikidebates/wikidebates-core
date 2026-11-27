@@ -3,8 +3,8 @@ namespace MediaWiki\Extension\DebatePHP;
 
 /** A proven empty, untruncated union cannot gain parents by querying its two branches. */
 final class EmptyParentQuery {
-	public static function certified(\SMW\Query\QueryResult $result, Table $parameters): bool {
-		if (array_keys($parameters->values) !== [1, 2, 3, 4, 5] || $parameters[4] !== 'limit=200' || $parameters[5] !== 'link=none') { return false; }
+	public static function certified(\SMW\Query\QueryResult $result, array $parameters): bool {
+		if (array_keys($parameters) !== [1, 2, 3, 4, 5] || $parameters[4] !== 'limit=200' || $parameters[5] !== 'link=none') { return false; }
 		// A cached union can predate newer data visible to its individual fallback queries.
 		if ($result->getCount() !== 0 || $result->hasFurtherResults() || $result->isFromCache()) { return false; }
 		$query = $result->getQuery();

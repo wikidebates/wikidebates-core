@@ -22,7 +22,10 @@ $legacyJson = static function($v) use (&$legacyJson) {
 	return $sequence ? array_values($a) : $a;
 };
 $checks = 0;
-foreach ([null, false, true, 0, '0', '', 'é', "\0:\n"] as $input) { same($legacyKey($input), CacheKey::semantic($input), 'Scalar query key'); $checks++; }
+foreach ([null, false, true, 0, '0', '', 'é', "\0:\n"] as $input) {
+	try { CacheKey::semantic($input); throw new LogicException('Scalar query should be rejected'); }
+	catch (TypeError $error) { $checks++; }
+}
 mt_srand(805);
 $keys = [-5, -1, 0, 1, 2, 3, 20, '', '01', '02', '-0', '0.0', '1e0', '2x', 'name', '@type', 'a', ' 0', "\0", 'é'];
 $values = [null, false, true, 0, '0', '', 'name', 'é', "a\nb:c\0", 1.25];
@@ -34,7 +37,7 @@ for ($sample = 0; $sample < 2000; $sample++) {
 		$node[$key] = $i % 3 ? $a[$key] : new Table([3 => new Table(['name' => 'é']), 1 => '0', 2 => false]);
 	}
 	$table = new Table($a);
-	same($legacyKey($table), CacheKey::semantic($table), 'Mixed, sparse and numeric-string query keys');
+	same($legacyKey($table), CacheKey::semantic($a), 'Mixed, sparse and numeric-string query keys');
 	$table = new Table($node); $before = Table::unwrap($table);
 	$expected = $legacyJson($table); $actual = TextEscaper::jsonValue($table);
 	same($expected, $actual, 'JSON fallback and native shapes preserve values and ordering');

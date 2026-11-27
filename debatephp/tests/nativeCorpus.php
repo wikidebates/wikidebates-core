@@ -4,7 +4,7 @@
  * The same driver can load the production source of a pinned checkout.
  * No MediaWiki installation, network or live semantic database is used.
  */
-use MediaWiki\Extension\DebatePHP\{ArgumentReferenceRenderer, ArgumentRenderer, Context, JsonData, NativeJsonContext, NativeSemanticContext, ReferenceRenderer, Renderer, SemanticReadResult, Table};
+use MediaWiki\Extension\DebatePHP\{ArgumentContext, ArgumentReferenceRenderer, ArgumentRenderer, Context, JsonData, NativeJsonContext, NativeSemanticContext, ReferenceRenderer, Renderer, SemanticReadResult, Table};
 
 $options = getopt('', ['root:', 'repeats:', 'warmup:', 'context:']);
 $root = realpath($options['root'] ?? dirname(__DIR__, 2));
@@ -28,39 +28,43 @@ set_error_handler(static function($severity, $message, $file, $line) {
 	throw new ErrorException($message, 0, $severity, $file, $line);
 });
 
-class NativeCorpusContext extends ArgumentTestContext {
+trait NativeCorpusFixtures {
 	public function __construct(private array $fixture) {
 		parent::__construct($fixture);
 	}
 
-	private static function rows($value) {
+	protected static function legacyRows($value) {
 		if (!is_array($value)) {
 			return $value;
 		}
 		$rows = [];
 		foreach ($value as $key => $item) {
-			$rows[is_int($key) ? $key + 1 : $key] = self::rows($item);
+			$rows[is_int($key) ? $key + 1 : $key] = self::legacyRows($item);
 		}
 		return new Table($rows);
 	}
 
-	public function smwAsk(Table $query): ?Table {
-		return self::rows($this->fixtureRows($query));
+	protected static function nativeRows(array $rows): array {
+		$out = [];
+		foreach ($rows as $key => $item) {
+			$out[is_int($key) ? $key + 1 : $key] = is_array($item) ? self::nativeRows($item) : $item;
+		}
+		return $out;
 	}
 
-	protected function fixtureRows(Table $query): array {
-		$this->effects['ask'][] = $query->values;
+	protected function fixtureRows(array $query): array {
+		$this->effects['ask'][] = $query;
 		if ($this->fixture['ask_error'] ?? false) {
 			throw new RuntimeException('fixture query failed');
 		}
-		$fields = implode("\n", $query->values);
+		$fields = implode("\n", $query);
 		$key = match (true) {
 			str_contains($fields, '=pro'), str_contains($fields, '=con') => 'debate_rows',
 			str_contains($fields, '=justif'), str_contains($fields, '=obj') => 'argument_rows',
 			str_contains($fields, '=pdeb') => 'inherited_rows',
 			str_contains($fields, '=chain') => 'breadcrumb_rows',
 			str_contains($fields, '=map') => 'dedicated_rows',
-			in_array('limit=1', $query->values, true) => 'init_rows',
+			in_array('limit=1', $query, true) => 'init_rows',
 			default => ''
 		};
 		$rows = $this->fixture[$key] ?? [];
@@ -76,6 +80,24 @@ class NativeCorpusContext extends ArgumentTestContext {
 	}
 }
 
+// Only the independently pinned source checkout needs the historical query adapter.
+$mandatorySemantic = method_exists(ArgumentContext::class, 'readSemantic');
+if ($mandatorySemantic) {
+	class NativeCorpusContext extends ArgumentTestContext {
+		use NativeCorpusFixtures;
+		public function readSemantic(array $query, string $origin): SemanticReadResult {
+			return new SemanticReadResult(self::nativeRows($this->fixtureRows($query)));
+		}
+	}
+} else {
+	class NativeCorpusContext extends ArgumentTestContext {
+		use NativeCorpusFixtures;
+		public function smwAsk(Table $query): ?Table {
+			return self::legacyRows($this->fixtureRows($query->values));
+		}
+	}
+}
+
 // Keep the historical trace encoder unchanged. Only old source revisions have
 // an optional JSON boundary; the current Context always receives native arrays.
 // Define these contexts only on request so the pinned historical driver works.
@@ -86,21 +108,17 @@ if ($contextMode !== 'legacy') {
 		}
 	}
 
-	class NativeCorpusReadContext extends NativeCorpusJsonContext implements NativeSemanticContext {
-		private static function nativeRows(array $rows): array {
-			$out = [];
-			foreach ($rows as $key => $item) {
-				$out[is_int($key) ? $key + 1 : $key] = is_array($item) ? self::nativeRows($item) : $item;
+	if ($mandatorySemantic) {
+		class NativeCorpusReadContext extends NativeCorpusJsonContext {}
+	} else {
+		class NativeCorpusReadContext extends NativeCorpusJsonContext implements NativeSemanticContext {
+			public function readSemantic(Table $query, string $origin): SemanticReadResult {
+				return new SemanticReadResult(self::nativeRows($this->fixtureRows($query->values)));
 			}
-			return $out;
-		}
 
-		public function readSemantic(Table $query, string $origin): SemanticReadResult {
-			return new SemanticReadResult(self::nativeRows($this->fixtureRows($query)));
-		}
-
-		public function skipEmptyParentFallback(string $origin): void {
-			throw new LogicException('Mock rows cannot certify a complete empty semantic union');
+			public function skipEmptyParentFallback(string $origin): void {
+				throw new LogicException('Mock rows cannot certify a complete empty semantic union');
+			}
 		}
 	}
 
@@ -236,7 +254,8 @@ if ($repeats) {
 		'environment' => ['php' => PHP_VERSION, 'os' => PHP_OS_FAMILY, 'opcache_cli' => ini_get('opcache.enable_cli'),
 			'opcache_status' => function_exists('opcache_get_status') && opcache_get_status(false) !== false,
 			'cases' => count($cases), 'warmup' => $warmup, 'repeats' => $repeats, 'context' => $contextMode,
-			'json_boundary' => $contextMode === 'legacy' && !method_exists(Context::class, 'jsonLdData') ? 'table' : 'native'],
+			'json_boundary' => $contextMode === 'legacy' && !method_exists(Context::class, 'jsonLdData') ? 'table' : 'native',
+			'semantic_boundary' => $mandatorySemantic ? 'native' : (in_array($contextMode, ['native', 'native-schema'], true) ? 'mixed' : 'table')],
 		'cases' => $output,
 	];
 }

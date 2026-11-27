@@ -24,7 +24,6 @@ class ArgumentReferenceRenderer {
 	protected array $SUMMARY_WARNING_BANNER_KEYS;
 	protected ?array $SUMMARY_WARNING_ALIASES;
 	protected array $DISPLAYED_TITLE_WARNING_BANNER_KEYS;
-	protected $SMW_ASK_CACHE;
 	protected $SMW_TITLES_CACHE;
 	protected $URLENC_CACHE;
 	protected $CARD_CACHE;
@@ -477,7 +476,7 @@ class ArgumentReferenceRenderer {
 	}
 
 
-	protected function smwKeyFromArray($q = null) {
+	protected function smwKeyFromArray(array $q): string {
 		return CacheKey::semantic($q);
 	}
 
@@ -589,7 +588,7 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function smwAskTitles(string $condition, string $origin): array {
-		$query = new Table([1 => $condition, 2 => 'limit=200', 3 => 'link=none']);
+		$query = [1 => $condition, 2 => 'limit=200', 3 => 'link=none'];
 		$key = "TITLES\n" . $this->smwKeyFromArray($query);
 		$hit = $this->cacheGet($this->SMW_TITLES_CACHE, $key);
 		if ($hit !== null) {
@@ -634,9 +633,6 @@ class ArgumentReferenceRenderer {
 		$checkOne = function($value) use ($target, &$checkOne): bool {
 			if (is_string($value)) {
 				return $this->normTitle($value) === $target;
-			}
-			if ($value instanceof Table) {
-				$value = Table::unwrap($value);
 			}
 			if (!is_array($value)) {
 				return false;
@@ -692,9 +688,9 @@ class ArgumentReferenceRenderer {
 		}
 		$firstCondition = '[[' . $firstProperty . '::' . $title . ']]';
 		$secondCondition = '[[' . $secondProperty . '::' . $title . ']]';
-		$query = new Table([1 => '(' . $firstCondition . ' OR ' . $secondCondition . ' )',
+		$query = [1 => '(' . $firstCondition . ' OR ' . $secondCondition . ' )',
 			2 => '?' . $firstProperty . '=' . $firstAlias,
-			3 => '?' . $secondProperty . '=' . $secondAlias, 4 => 'limit=200', 5 => 'link=none']);
+			3 => '?' . $secondProperty . '=' . $secondAlias, 4 => 'limit=200', 5 => 'link=none'];
 		$result = $this->readSemantic($query, $origin);
 		$first = [];
 		$second = [];
@@ -717,7 +713,7 @@ class ArgumentReferenceRenderer {
 		if ($first === [] && $second === [] && !$result->completeEmpty) {
 			$first = $this->uniqueStrings($this->smwAskTitles($firstCondition, $origin));
 			$second = $this->uniqueStrings($this->smwAskTitles($secondCondition, $origin));
-		} elseif ($result->completeEmpty && $this->context instanceof NativeSemanticContext) {
+		} elseif ($result->completeEmpty) {
 			$this->context->skipEmptyParentFallback($origin);
 		}
 		return [$this->uniqueParentTitles($first), $this->uniqueParentTitles($second)];
@@ -1015,15 +1011,15 @@ class ArgumentReferenceRenderer {
 		if (preg_match('/([0-9]+)/', $parentId, $matches) && $this->context->smwAvailable()) {
 			$parentId = $matches[1];
 			$PF['prop_debate_number'] = $this->L($lang, 'props', 'debate_number');
-			$query = new Table([1 => '[[' . $PF['prop_debate_number'] . '::' . $parentId . ']] OR [[' . $PF['prop_arg_number'] . '::' . $parentId . ']]',
-				2 => 'limit=1', 3 => 'link=none']);
+			$query = [1 => '[[' . $PF['prop_debate_number'] . '::' . $parentId . ']] OR [[' . $PF['prop_arg_number'] . '::' . $parentId . ']]',
+				2 => 'limit=1', 3 => 'link=none'];
 			try {
-				$result = $this->smwAskUncached($query, 'initialization');
+				$result = $this->context->readSemantic($query, 'initialization')->rows;
 			} catch (\Throwable $error) {
 				DatabaseFailure::rethrow($error);
 				$result = null;
 			}
-			if ($result !== null && $result[1] !== null && $result[1] !== false) {
+			if (isset($result[1]) && $result[1] !== false) {
 				$title = $this->semanticRowTitle($result[1]);
 				if (is_string($title)) {
 					$parentPage = trim($title, NativeText::ASCII_WHITESPACE);
@@ -1114,7 +1110,7 @@ class ArgumentReferenceRenderer {
 			$query[4] = 'limit=200';
 			$query[5] = 'link=none';
 		}
-		$result = $this->readSemantic(new Table($query), 'breadcrumb');
+		$result = $this->readSemantic($query, 'breadcrumb');
 		$best = [];
 		foreach (SemanticReadResult::sequence($result->rows ?? []) as $row) {
 			$chain = $row['chain'] ?? null;
@@ -1321,7 +1317,7 @@ class ArgumentReferenceRenderer {
 		if ($this->hasSMW() && NativeText::field($PF['prop_argument_map'] ?? null) !== '') {
 			$debatSafe = $this->smwSafeTitle($debat);
 			if (($debatSafe !== '')) {
-				$semantic = $this->readSemantic(new Table([1 => ('[[' . $debatSafe . ']]'), 2 => ('?' . $PF['prop_argument_map'] . '=map'), 3 => 'limit=1', 4 => 'link=none']), 'cards');
+				$semantic = $this->readSemantic([1 => ('[[' . $debatSafe . ']]'), 2 => ('?' . $PF['prop_argument_map'] . '=map'), 3 => 'limit=1', 4 => 'link=none'], 'cards');
 				$res = $semantic->rows;
 				$v = $res[1]['map'] ?? null;
 				if ($v !== null && $v !== false) {
@@ -2176,7 +2172,6 @@ class ArgumentReferenceRenderer {
 		$this->vset('WD_QUOTE_3', '');
 		$this->vset('WD_QUOTE_4', '');
 		$this->CARD_CACHE = $this->cacheMake(600);
-		$this->SMW_ASK_CACHE = $this->cacheMake(250);
 		$this->SMW_TITLES_CACHE = $this->cacheMake(250);
 		$args = $this->getArgs($frame);
 		// Missing parameters stay absent; explicit "0" is not an empty field.
@@ -2503,19 +2498,7 @@ class ArgumentReferenceRenderer {
 	protected function vget($name) { return $this->context->variableGet($name); }
 	protected function titleNewCached($text) { return $this->context->titleInfo($text); }
 	protected function absUrlFromTitle($title, $query) { return $this->context->fullUrl($title, $query) ?? $this->context->localUrl($title, $query) ?? ''; }
-	protected function smwAskSafe($query, string $origin = 'other') {
-		if (!$this->hasSMW()) { return null; }
-		$key = $this->smwKeyFromArray($query);
-		$hit = $this->cacheGet($this->SMW_ASK_CACHE, $key);
-		if ($hit !== null) { $this->smwCacheHit($origin, 'query'); return $hit === false ? null : $hit; }
-		$result = $this->smwAskUncached($query, $origin);
-		$this->cachePut($this->SMW_ASK_CACHE, $key, $result ?? false);
-		return $result;
-	}
-	protected function readSemantic(Table $query, string $origin): SemanticReadResult {
-		if (!$this->context instanceof NativeSemanticContext) {
-			return new SemanticReadResult(Table::unwrap($this->smwAskSafe($query, $origin)));
-		}
+	protected function readSemantic(array $query, string $origin): SemanticReadResult {
 		if (!$this->hasSMW()) { return new SemanticReadResult(null); }
 		$cache = $this->nativeSemanticCache ??= new FifoCache(250);
 		$key = $this->smwKeyFromArray($query);
@@ -2524,10 +2507,6 @@ class ArgumentReferenceRenderer {
 		$result = $this->context->readSemantic($query, $origin);
 		$cache->put($key, $result);
 		return $result;
-	}
-	protected function smwAskUncached(Table $query, string $origin): ?Table {
-		return $this->context instanceof SemanticProfilingContext
-			? $this->context->profiledSmwAsk($query, $origin) : $this->context->smwAsk($query);
 	}
 	protected function smwCacheHit(string $origin, string $layer): void {
 		if ($this->context instanceof SemanticProfilingContext) { $this->context->smwCacheHit($origin, $layer); }

@@ -32,7 +32,6 @@ namespace {
 
 	use MediaWiki\Extension\DebatePHP\Lua;
 	use MediaWiki\Extension\DebatePHP\MediaWikiContext;
-	use MediaWiki\Extension\DebatePHP\Table;
 	use Wikimedia\Rdbms\DBError;
 
 	[ $success, $result ] = Lua::pcall( static fn() => 'ok' );
@@ -67,12 +66,12 @@ namespace {
 
 	$rethrows = false;
 	try {
-		$context->smwAsk( new Table( [ 1 => '[[Test::value]]' ] ) );
+		$context->readSemantic( [ 1 => '[[Test::value]]' ], 'other' );
 	} catch ( DBError $e ) {
 		$rethrows = true;
 	}
 	if ( !$rethrows ) {
-		throw new \RuntimeException( 'MediaWikiContext::smwAsk swallowed database error' );
+		throw new \RuntimeException( 'MediaWikiContext::readSemantic swallowed database error' );
 	}
 
 	echo "Database failures propagate through Lua::pcall and SMW query boundary; ordinary fallback preserved\n";

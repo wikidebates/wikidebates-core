@@ -1,6 +1,6 @@
 <?php
 require __DIR__ . '/bootstrap.php';
-use MediaWiki\Extension\DebatePHP\{ArgumentContext,ArgumentRenderer,ArgumentReferenceRenderer,Table,I18n,JsonData,SemanticProperties,TextEscaper};
+use MediaWiki\Extension\DebatePHP\{ArgumentContext,ArgumentRenderer,ArgumentReferenceRenderer,Table,I18n,JsonData,SemanticProperties,SemanticReadResult,TextEscaper};
 
 class ArgumentTestContext implements ArgumentContext {
 	public array $effects = ['preprocess' => [], 'ask' => [], 'set' => [], 'seo' => [], 'variables' => []];
@@ -50,16 +50,19 @@ class ArgumentTestContext implements ArgumentContext {
 	public function uriEncode(string $text, string $mode = 'QUERY'): string { return TextEscaper::uriEncode($text, $mode); }
 	public function fullUrl(string $page, ?array $query = null): ?string { return 'https://wiki.example/wiki/' . $this->uriEncode($page, 'WIKI') . ($query !== null ? '?' . http_build_query($query, '', '&', PHP_QUERY_RFC1738) : ''); }
 	public function localUrl(string $page, ?array $query = null): ?string { return substr($this->fullUrl($page, $query), strlen('https://wiki.example')); }
-	private static function answerTable($data) {
+	private static function answerRows($data) {
 		if (!is_array($data)) { return $data; }
 		$out = [];
-		foreach ($data as $key => $value) { $out[is_int($key) ? $key + 1 : $key] = self::answerTable($value); }
-		return new Table($out);
+		foreach ($data as $key => $value) { $out[is_int($key) ? $key + 1 : $key] = self::answerRows($value); }
+		return $out;
 	}
 	public function smwAvailable(): bool { return $this->case['smw'] ?? true; }
-	public function smwAsk(Table $query): ?Table {
-		$key = implode("\n", $query->values); $this->effects['ask'][] = $query->values;
-		return isset($this->case['answers'][$key]) ? self::answerTable($this->case['answers'][$key]) : null;
+	public function readSemantic(array $query, string $origin): SemanticReadResult {
+		$key = implode("\n", $query); $this->effects['ask'][] = $query;
+		return new SemanticReadResult(isset($this->case['answers'][$key]) ? self::answerRows($this->case['answers'][$key]) : null);
+	}
+	public function skipEmptyParentFallback(string $origin): void {
+		throw new LogicException('Uncertified test rows cannot skip a parent fallback');
 	}
 	public function smwSet(array $data): void { if ($this->smwAvailable()) { $this->effects['set'][] = JsonData::value(SemanticProperties::present($data)); } }
 	public function seoSet(array $data): void { if ($this->case['seo'] ?? true) { $this->effects['seo'][] = JsonData::value($data); } }

@@ -3,12 +3,7 @@ namespace MediaWiki\Extension\DebatePHP;
 
 /** Byte-for-byte compatibility with the former query-key builder. */
 final class CacheKey {
-	public static function semantic($query): string {
-		if (!$query instanceof Table) {
-			$text = ($query === true ? 'true' : ($query === null || $query === false ? '' : (string)$query));
-			return strlen($text) . ':' . $text;
-		}
-		$values = $query->values;
+	public static function semantic(array $values): string {
 		$indices = [];
 		foreach ($values as $key => $_) { if (is_int($key)) { $indices[] = $key; } }
 		sort($indices, SORT_NUMERIC);
