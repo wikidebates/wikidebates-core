@@ -3,9 +3,6 @@
 	"on": {
 		"pull_request": {
 			"paths": [
-				"debatephp/tests/integration/schema_projection.py",
-				"debatephp/tests/integration/test_schema_projection.py",
-				"debatephp/tests/integration/check_direct_jsonld.py",
 				".github/workflows/seo-legacy-projection.yml",
 				"tests/fullstack.php",
 				"tests/mediawikiEnvironment.php",
@@ -52,7 +49,11 @@
 				"tests/fullstackParentLink.php",
 				"tests/renderCases.php",
 				"tests/nativeOptimizationCases.php",
-				"debatephp/tests/fixtures/**"
+				"debatephp/tests/fixtures/**",
+				"debatephp/tests/integration/html_contract.py",
+				"tests/run.php",
+				"tests/i18n.php",
+				"debatephp/resources/**"
 			]
 		},
 		"workflow_dispatch": {}
@@ -81,10 +82,6 @@
 					"with": {
 						"python-version": "3.12"
 					}
-				},
-				{
-					"name": "Projection mutation tests",
-					"run": "python3 debatephp/tests/integration/test_schema_projection.py"
 				},
 				{
 					"name": "Verify frozen Argument contract without Lua",

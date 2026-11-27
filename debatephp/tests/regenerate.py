@@ -16,19 +16,13 @@ from nativeContract import compare_corpora
 ROOT = Path(__file__).resolve().parents[2]
 BASELINE = '2439e0749bcdc9ab81aeb20a902f8b6845a744e4'
 DRIVER = ROOT / 'debatephp/tests/nativeCorpus.php'
-SNAPSHOTS = (
-	'Module-Argument.reference.lua',
-	'Module-Debate.reference.lua',
-	'WD-I18N.reference.lua',
-	'WD-I18N-Data.snapshot.lua',
-)
-
-
 def git(*args):
 	return subprocess.run(['git', '-C', str(ROOT), *args], check=True)
 
 
 def compare(php, baseline):
+	for path in (ROOT / 'debatephp').rglob('*.lua'):
+		raise SystemExit('Retired executable Lua source restored: ' + str(path.relative_to(ROOT)))
 	expected = subprocess.check_output([php, str(DRIVER), '--root=' + str(baseline)])
 	actual = subprocess.check_output([php, str(DRIVER)])
 	try:
@@ -40,11 +34,8 @@ def compare(php, baseline):
 		):
 			print(line)
 		raise SystemExit(f'Native renderer behaviour differs from baseline: {error}')
-	for name in SNAPSHOTS:
-		path = Path('debatephp/resources') / name
-		if (baseline / path).read_bytes() != (ROOT / path).read_bytes():
-			raise SystemExit('Historical oracle changed: ' + name)
-	print('Native renderer behaviour and historical Lua snapshots match the pinned baseline (except the four explicitly retired parent queries per mode)')
+
+	print('Native renderer behaviour matches the pinned PHP baseline; no bundled Lua sources remain')
 
 
 def main():

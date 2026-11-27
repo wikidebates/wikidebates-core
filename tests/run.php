@@ -5,7 +5,6 @@ require __DIR__ . '/bootstrap.php';
 use MediaWiki\Extension\DebatePHP\HtmlBuilder;
 use MediaWiki\Extension\DebatePHP\I18n;
 use MediaWiki\Extension\DebatePHP\JsonData;
-use MediaWiki\Extension\DebatePHP\LiteralData;
 use MediaWiki\Extension\DebatePHP\NativeTags;
 use MediaWiki\Extension\DebatePHP\NativeText;
 use MediaWiki\Extension\DebatePHP\Lua;
@@ -44,20 +43,10 @@ same([], SemanticCacheHooks::changedIds(['', '-1', false, null, 'oops']),
 	'No purge jobs for invalid or empty SMW change sets');
 
 $resources = __DIR__ . '/../debatephp/resources/';
-$data = file_get_contents($resources . 'WD-I18N-Data.snapshot.lua');
-$logic = file_get_contents($resources . 'WD-I18N.reference.lua');
 $compiled = require $resources . 'I18nData.php';
-$historical = (new LiteralData)->read($data);
 foreach (['Debate', 'Argument'] as $kind) {
-	check(isset($historical[$kind]['categories']['creation_date_missing']), 'Immutable Lua oracle retains historical category: ' . $kind);
-	check(!isset($compiled['data'][$kind]['categories']['creation_date_missing']), 'Native catalogue no longer contains obsolete category: ' . $kind);
-	unset($historical[$kind]['categories']['creation_date_missing']);
+	check(!isset($compiled['data'][$kind]['categories']['creation_date_missing']), 'Obsolete category remains absent: ' . $kind);
 }
-same('https://en.wikidebates.org/w/resources/assets/logo-Wikidebates-Twitter.png',
-	$historical['Debate']['seo']['image']['en'], 'Immutable Lua oracle retains historical broken URL');
-$historical['Debate']['seo']['image']['en'] =
-	'https://en.wikidebates.org/w/resources/assets/logo-wikidebates-twitter.png';
-same($compiled['data'], $historical, 'Compiled translations match Lua except explicitly retired or corrected entries');
 $reference = I18n::bundled(false);
 $optimized = I18n::bundled(true);
 $messages = 0;
@@ -78,10 +67,6 @@ same('fr', $reference->language(['lang' => ' FR-ca '], 'en'), 'Explicit language
 same('en', $reference->language([], 'de'), 'English fallback');
 same('fr', $reference->language(['language' => 'fr'], 'en'), 'Secondary language parameter');
 same('en', $reference->language(['lang' => 'en', 'language' => 'fr'], 'fr'), 'Primary language parameter takes precedence');
-same($compiled['sha256'], hash('sha256', $data), 'Offline snapshot data hash');
-same($compiled['logic_sha256'], hash('sha256', rtrim($logic, "\r\n")), 'Offline snapshot logic hash');
-rejects(static fn() => (new LiteralData)->read('return os.execute("false")'), 'Never execute Lua');
-
 // Native wiki field conversions must not adopt PHP's falsey-zero semantics.
 foreach ([[null, ''], [false, ''], [true, 'true'], [0, '0'], [0.0, '0'], [1.25, '1.25'],
 	['0', '0'], ['', ''], ["\0é\0", "\0é\0"], ["\vA\f", "\vA\f"]] as [$value, $expected]) {
@@ -132,7 +117,7 @@ foreach (['en', 'fr'] as $language) {
 	check(!isset($messagesFile['htmltags-notagname']) && !isset($messagesFile['htmltags-unsupportedtag']), 'Obsolete HTML Tags messages removed');
 }
 
-echo "OK: $messages translation comparisons, offline snapshot checks, Lua semantics, escaping and telemetry\n";
+echo "OK: $messages translation comparisons, catalogue, scalar compatibility, escaping and telemetry\n";
 (static function(): void { require __DIR__ . '/i18n.php'; })();
 
 require __DIR__ . '/luaUsageAudit.php';

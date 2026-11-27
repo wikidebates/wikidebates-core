@@ -32,7 +32,7 @@ fixtures. Les messages installés passent par `wfMessage()` sous MediaWiki ;
 les tests autonomes lisent les mêmes JSON. Les paramètres peuvent être réordonnés,
 répétés, contenir des signes `%` ou des chaînes comme `$2`, sans substitution
 récursive. Les appels hérités qui attendent encore un modèle `printf` restent
-compatibles. Les snapshots Lua sont des oracles de test, sans lecture à l’exécution.
+compatibles. Les anciens snapshots Lua ont été retirés de la branche active après validation des contrats figés.
 
 La table historique entière n’est pas reconstruite pour chaque rendu. Les JSON
 immuables sont chargés à la demande pendant la requête ; MediaWiki fournit son
@@ -108,16 +108,12 @@ pour les nouveaux messages du moteur, comme pour les messages natifs de
 l’extension. Elles sont sélectionnées dans la langue du rendu ; les libellés
 JavaScript suivent la langue de l’interface.
 
-Les commandes historiques de compilation restent utilisables pour produire un
-candidat PHP séparé. Lorsque le compilateur historique vise l’ancien fichier
-actif, il importe maintenant dans les catalogues JSON et préserve le point
-d’entrée de compatibilité. `maintainI18n.php --rebuild` sans `--output` applique
-également l’import JSON après ses validations Lua/PHP. Une réimportation explicite
-peut actualiser des identifiants techniques : son diff doit être examiné comme
-une modification de configuration. Aucune synchronisation depuis le wiki
-n’est effectuée automatiquement pendant les rendus.
+Les anciens outils d’import et leurs dictionnaires sources sont désormais
+conservés uniquement dans [l’historique Git](https://github.com/wikidebates/wikidebates-core/tree/3e2d4fa7d83fbe3476696c7fdd65ca50cbd6cd49). Maintenir directement les JSON et vérifier
+les catalogues avec `php tools/buildI18n.php --check`, `python3 tests/checkI18n.py`
+et `python3 debatephp/tests/i18n_contract.py php`.
 
-## Validation
+## Validation historique
 
 Les résultats structurés sont dans
 [tests/results/i18n-migration.json](../tests/results/i18n-migration.json) et

@@ -32,7 +32,7 @@
 		"resources/WD-I18N.reference.lua": "7975891b1cd0c797f7e97df1fcbbc735e3626164cb42e587be58d0b16e4f691a"
 	},
 	"local_adaptations": {
-		"description": "The sha256 map above records the original 0.8 import. Local adaptations include the shared MediaWiki i18n catalogues and PR #3 SQL error propagation, semantic profiling, per-render decoded references and verified native accumulators. Lua oracle snapshots remain unchanged; see docs/native-php-optimizations.md. The six-point follow-up adds snapshot sequence iteration, a native FIFO, per-render pure CSV preprocessing, normalized-record consumers and lexical closure captures; see docs/native-php-followup.md. The five-path follow-up adds byte-identical native query keys, shared native HTML fragments, pure JSON conversion without unconditional sorting, native record views with lazy legacy envelopes and a byte-bounded adaptive CSV cache with numeric-only profiling; see docs/native-php-further-optimizations.md. Native read/JSON paths, certified empty parent-query fallbacks and read-only CSV/HTML follow-up: see docs/native-php-read-optimizations.md. Measured local argument/HTML passes and native card-title normalization: see docs/native-php-measured-optimizations.md. The evaluated reference-cache cap was withdrawn; the original per-render shared cache is restored, see docs/native-php-reference-cache.md.",
+		"description": "The sha256 map above records the original 0.8 import. Local adaptations include the shared MediaWiki i18n catalogues and PR #3 SQL error propagation, semantic profiling, per-render decoded references and verified native accumulators. Lua oracle snapshots are preserved in Git history at 3e2d4fa7d83fbe3476696c7fdd65ca50cbd6cd49; the active tree uses frozen native contracts. See docs/native-php-optimizations.md for the historical comparison. The six-point follow-up adds snapshot sequence iteration, a native FIFO, per-render pure CSV preprocessing, normalized-record consumers and lexical closure captures; see docs/native-php-followup.md. The five-path follow-up adds byte-identical native query keys, shared native HTML fragments, pure JSON conversion without unconditional sorting, native record views with lazy legacy envelopes and a byte-bounded adaptive CSV cache with numeric-only profiling; see docs/native-php-further-optimizations.md. Native read/JSON paths, certified empty parent-query fallbacks and read-only CSV/HTML follow-up: see docs/native-php-read-optimizations.md. Measured local argument/HTML passes and native card-title normalization: see docs/native-php-measured-optimizations.md. The evaluated reference-cache cap was withdrawn; the original per-render shared cache is restored, see docs/native-php-reference-cache.md.",
 		"sha256": {
 			"src/I18n.php": "12aa6f46ef463e8aa215e98dd41be20751d54fe4dd519f358bd3a4c28f0b1427",
 			"src/MessageCatalog.php": "270f5d9758308416cf2dd0576ec03ecf119185666a0534412c50d4c03aecfe0d",
@@ -69,5 +69,14 @@
 			"tools/nativeReadPass.py": "d8703ac21d4701b231c41475536eae6992f07302d407508370b5c868770c9c69",
 			"tools/nativeMeasuredPass.py": "b95542f0b3121abfb751895a72efb96c17b44bc23ac26a655e0960c7f2697b19"
 		}
+	},
+	"retired_oracles": {
+		"archived_commit": "3e2d4fa7d83fbe3476696c7fdd65ca50cbd6cd49",
+		"reference_contracts": [
+			"debatephp/tests/fixtures/argument-contract.json",
+			"debatephp/tests/fixtures/serialized-contract.json",
+			"debatephp/tests/fixtures/i18n-contract.json",
+			"debatephp/tests/fixtures/fullstack-contract.json"
+		]
 	}
 }
