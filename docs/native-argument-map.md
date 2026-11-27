@@ -152,7 +152,7 @@ compte les cas éligibles et les divergences, et mesure les lectures
 non vides. Par exemple (adapter l'identifiant du wiki à la ferme) :
 
 ```bash
-php maintenance/run.php Wikidebates:benchmarkArgumentMap --wiki=fr --limit=200 --cache-probe
+php maintenance/run.php Wikidebates:BenchmarkArgumentMap --wiki=fr --limit=200 --cache-probe
 ```
 
 Utiliser aussi le wiki EN et plusieurs plages d'identifiants. Une

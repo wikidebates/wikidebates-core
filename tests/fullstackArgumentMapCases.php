@@ -100,6 +100,9 @@ function fsArgumentMapCases(bool $legacy): void {
 			fsArgumentMapUpdatedData($parserHtml, $properties, $lang);
 		}
 	}
+	if (!$legacy && in_array(SMW_VERSION, ['7.3.1', '7.4.1'], true)) {
+		fsArgumentMapBenchmarkMaintenance();
+	}
 	echo "OK: native hover map, FR/EN, full fallback, contextual columns, empty/missing data and encoded titles"
 		. ($legacy ? '; exact historical Lua HTML comparison' : '; no Lua extensions loaded') . "\n";
 }
@@ -337,4 +340,32 @@ function fsArgumentMapUpdatedData(callable $render, array $properties, string $l
 	fsFlush();
 	\SMW\Services\ServicesFactory::getInstance()->getStore()->clear();
 	check(!str_contains($render($call), 'After update'), 'Removed semantic value is not retained by the read path');
+}
+
+/** Execute the same maintenance audit on the isolated wiki, not merely php -l. */
+function fsArgumentMapBenchmarkMaintenance(): void {
+	require_once dirname(__DIR__) . '/maintenance/BenchmarkArgumentMap.php';
+	$audit = new class extends BenchmarkArgumentMap {
+		public array $records = [];
+		protected function output($out, $channel = null) {
+			$this->records[] = json_decode(trim($out), true, 512, JSON_THROW_ON_ERROR);
+		}
+	};
+	$audit->loadParamsAndArgs('BenchmarkArgumentMap', ['limit' => 100, 'cache-probe' => true], []);
+	$audit->execute();
+	$records = array_column($audit->records, null, 'type');
+	$summary = $records['summary'] ?? [];
+	check(($summary['pages'] ?? 0) > 0 && $summary['pages'] <= 100, 'Maintenance audit is bounded and finds real fixture pages');
+	same(0, $summary['errors'], 'Maintenance audit has no read errors');
+	check(!isset($records['mismatch']), 'Maintenance audit finds no mismatches on fixture data');
+	$nonempty = 0;
+	foreach ($summary['modes'] as $mode) {
+		same(0, $mode['mismatches'], 'Maintenance audit verifies real stored fields');
+		$nonempty += $mode['eligible_nonempty'];
+	}
+	check($nonempty > 0, 'Maintenance audit actually measures populated eligible map fields');
+	$probe = $records['cache_probe'] ?? [];
+	same(100, ($probe['hits'] ?? 0) + ($probe['misses'] ?? 0), 'Synthetic WAN probe accounts for all lookups');
+	same(100, $probe['round_trip']['count'], 'Synthetic WAN probe times all lookups');
+	echo "OK: bounded real-data audit and synthetic WAN cache probe\n";
 }
