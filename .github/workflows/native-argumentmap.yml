@@ -1,0 +1,114 @@
+{
+	"name": "ArgumentMap exact MW 1.43.12 / SMW 7.4.1 (without Lua)",
+	"on": {
+		"pull_request": {
+			"paths": [
+				"debatephp/src/ArgumentMap*.php",
+				"debatephp/src/ApiArgumentMap.php",
+				"debatephp/src/NativeSemanticApi.php",
+				"debatephp/src/SerializedData.php",
+				"tests/fullstackArgumentMap*.php",
+				"tests/mediawikiEnvironment.php",
+				"tests/fullstackSupport.php",
+				"extension.json",
+				".github/workflows/native-argumentmap.yml"
+			]
+		},
+		"push": {
+			"branches": [
+				"main"
+			],
+			"paths": [
+				"debatephp/src/ArgumentMap*.php",
+				"debatephp/src/ApiArgumentMap.php",
+				"debatephp/src/NativeSemanticApi.php",
+				"debatephp/src/SerializedData.php",
+				"tests/fullstackArgumentMap*.php",
+				"tests/mediawikiEnvironment.php",
+				"tests/fullstackSupport.php",
+				"extension.json",
+				".github/workflows/native-argumentmap.yml"
+			]
+		}
+	},
+	"permissions": {
+		"contents": "read"
+	},
+	"jobs": {
+		"argument-map": {
+			"runs-on": "ubuntu-24.04",
+			"timeout-minutes": 30,
+			"strategy": {
+				"fail-fast": false,
+				"matrix": {
+					"database": [
+						"sqlite",
+						"mariadb"
+					]
+				}
+			},
+			"steps": [
+				{
+					"uses": "actions/checkout@v7.0.1"
+				},
+				{
+					"uses": "shivammathur/setup-php@v2",
+					"with": {
+						"php-version": "8.4",
+						"extensions": "mbstring, intl, xml, pdo_sqlite, sqlite3, mysqli, pdo_mysql",
+						"coverage": "none",
+						"tools": "composer"
+					}
+				},
+				{
+					"name": "Audit PHP syntax",
+					"run": "php -l debatephp/src/ArgumentMapData.php\nphp -l tests/fullstackArgumentMapCases.php"
+				},
+				{
+					"name": "MediaWiki 1.43.12",
+					"uses": "actions/checkout@v7.0.1",
+					"with": {
+						"repository": "wikimedia/mediawiki",
+						"ref": "1.43.12",
+						"path": ".mw-lab"
+					}
+				},
+				{
+					"name": "Vector for isolated ApiParse responses",
+					"uses": "actions/checkout@v7.0.1",
+					"with": {
+						"repository": "wikimedia/mediawiki-skins-Vector",
+						"ref": "REL1_43",
+						"path": ".mw-lab/skins/Vector"
+					}
+				},
+				{
+					"name": "SMW 7.4.1",
+					"uses": "actions/checkout@v7.0.1",
+					"with": {
+						"repository": "SemanticMediaWiki/SemanticMediaWiki",
+						"ref": "7.4.1",
+						"path": ".mw-lab/extensions/SemanticMediaWiki"
+					}
+				},
+				{
+					"name": "Isolated PHP dependencies",
+					"run": "composer install --working-dir=.mw-lab --no-interaction --prefer-dist --no-progress\nphp -r '$p=\".mw-lab/extensions/SemanticMediaWiki/composer.json\"; $data=json_decode(file_get_contents($p), true, 512, JSON_THROW_ON_ERROR); unset($data[\"require-dev\"]); file_put_contents($p, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . \"\\n\");'\ncomposer install --working-dir=.mw-lab/extensions/SemanticMediaWiki --no-dev --no-interaction --prefer-dist --no-progress"
+				},
+				{
+					"name": "Disposable MariaDB via private Unix socket",
+					"if": "matrix.database == 'mariadb'",
+					"run": "LAB=\"$(mktemp -d /tmp/wikidebates-lab-XXXXXXXX)\"\nchmod 777 \"$LAB\"\ncontainer=\"$(docker run -d --rm --name \"wd-baseline-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}\" --network none -e MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1 -v \"$LAB:/run/mysqld\" mariadb:11.4 --skip-networking --socket=/run/mysqld/mariadb.sock)\"\nready=0\nfor i in $(seq 1 120); do\n\tif docker logs \"$container\" 2>&1 | grep -q 'MariaDB init process done' && [ -S \"$LAB/mariadb.sock\" ] && php -r 'mysqli_report(MYSQLI_REPORT_OFF); $m = @new mysqli(\"localhost\", \"root\", \"\", \"\", 0, $argv[1]); exit($m->connect_errno ? 1 : 0);' \"$LAB/mariadb.sock\"; then\n\t\tready=1\n\t\tbreak\n\tfi\n\tsleep 1\ndone\nif [ \"$ready\" -ne 1 ]; then docker logs \"$container\"; exit 1; fi\necho \"WD_TEST_MARIADB_SOCKET=$LAB/mariadb.sock\" >> \"$GITHUB_ENV\"\necho \"WD_TEST_DISPOSABLE_MARIADB=1\" >> \"$GITHUB_ENV\""
+				},
+				{
+					"name": "Reference and restricted direct reader (no Lua)",
+					"env": {
+						"MW_INSTALL_PATH": "${{ github.workspace }}/.mw-lab",
+						"WD_TEST_ARGUMENTMAP_SMW": "7.4.1"
+					},
+					"run": "php -d memory_limit=768M tests/fullstackArgumentMapModern.php\nWD_TEST_ARGUMENTMAP_DIRECT=1 php -d memory_limit=768M tests/fullstackArgumentMapModern.php"
+				}
+			]
+		}
+	}
+}

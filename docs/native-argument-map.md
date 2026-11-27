@@ -119,3 +119,21 @@ SMW après commit, les suppressions et déplacements (chemins distincts),
 les changements de propriétés, la visibilité et les lectures concurrentes.
 Ne pas réactiver les anciens purges sémantiques de pages ni stocker
 des réponses dépendantes du visiteur dans un cache partagé.
+
+## Lecture directe : chemin restreint et validation sur la version de production
+
+Le paramètre opt-in `$wgWikidebatesArgumentMapDirectRead = true;` autorise
+la lecture directe des cinq propriétés Text historiques sur les sujets
+ordinaires de l'espace principal, non redirigés, avec SMW 7.3.1 ou 7.4.1.
+Le cas général (titre ambigu, page inexistante, redirection, propriété
+non textuelle ou multivaluée, version différente) garde la requête
+singleton existante. Les listes, leur ordre, le formatage SMW et le
+surlignage restent inchangés. Pas de SQL ni de cache persistant ajouté.
+
+Le workflow native-argumentmap teste MediaWiki 1.43.12 et SMW 7.4.1
+sur SQLite et MariaDB, sans Scribunto : modes de lecture de référence
+et direct, égalité du HTML API et des champs, compteurs de requêtes,
+cas de repli et édition/suppression de valeurs sémantiques. La mesure
+runtime inclut les garde-fous de sélection : elle est distincte du
+prototype brut. Le chemin reste désactivé tant que les contrôles
+et l'échantillonnage de la ferme ne sont pas validés.
