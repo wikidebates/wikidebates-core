@@ -341,15 +341,10 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 			$queryFailed = true;
 			try {
 				$store = \SMW\Services\ServicesFactory::getInstance()->getStore();
-				$enabled = class_exists(MediaWikiServices::class) &&
-					(bool)MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesSemanticCacheTracking');
-				$result = $enabled
-					? TrackedSemanticQuery::execute($this->parser, array_values($query), $store)
-					: NativeSemanticApi::query($store, array_values($query));
-				$queryFailed = !$result instanceof \SMW\Query\QueryResult;
+				$result = NativeSemanticApi::query($store, array_values($query));
+				$queryFailed = false;
 			} finally { $this->telemetry?->semanticFinish($this->semanticOrigin, 'query', $queryStarted, $queryFailed); }
 			// Keep SMW's formatted printouts and the established one-based row shape.
-			if (!$result instanceof \SMW\Query\QueryResult) { return new SemanticReadResult(null); }
 			$resultStarted = $this->telemetry?->start();
 			try {
 				$values = NativeSemanticApi::format($result);

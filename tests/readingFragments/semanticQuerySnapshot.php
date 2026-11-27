@@ -6,12 +6,11 @@ namespace {
 	require dirname(__DIR__) . '/bootstrap.php';
 	require dirname(__DIR__, 2) . '/debatephp/tests/semantic_api_double.php';
 
-	use MediaWiki\Extension\DebatePHP\TrackedSemanticQuery;
+	use MediaWiki\Extension\DebatePHP\NativeSemanticApi;
 	use MediaWiki\Extension\DebatePHP\Tests\SemanticApiDouble;
-	use MediaWiki\Parser\Parser;
 
 	$params = ['[[Some relation::A]]', 'format=count', 'limit=200', 'link=none'];
-	$actual = TrackedSemanticQuery::execute(new Parser(), $params, new \SMW\Store());
+	$actual = NativeSemanticApi::query(new \SMW\Store(), $params);
 	same(0, $actual->getCount(), 'Actual query result returned');
 	same($params, SemanticApiDouble::$lastQuery->raw, 'Raw SMW parameters retain exact order');
 	same(\SMW\Query\QueryContext::SPECIAL_PAGE, SemanticApiDouble::$lastQuery->context, 'Historical query context');

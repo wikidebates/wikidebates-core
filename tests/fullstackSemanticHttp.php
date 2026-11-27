@@ -1008,7 +1008,7 @@ try {
 					$refreshParseEvents[] = [
 						'title' => $title->getPrefixedText(),
 						'tracked_query_marker' => $output->getExtensionData(
-							\MediaWiki\Extension\DebatePHP\TrackedSemanticQuery::OUTPUT_MARKER) === true,
+							\MediaWiki\Extension\Wikidebates\Reading\SemanticPageCacheHooks::LEGACY_QUERY_MARKER) === true,
 						'output_profile_count' => $semanticData instanceof \SMW\SemanticData ?
 							count($semanticData->getPropertyValues(new Property('_ASK'))) : -1,
 					];
