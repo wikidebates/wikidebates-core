@@ -1,6 +1,6 @@
 <?php
 require __DIR__ . '/bootstrap.php';
-use MediaWiki\Extension\DebatePHP\{SerializedData,ReferenceRenderer,ArgumentReferenceRenderer};
+use MediaWiki\Extension\DebatePHP\{SerializedData,DebateRenderer,ArgumentRenderer};
 function plain($value) {
 	if (!is_array($value)) { return $value; }
 	$out = array_map('plain', $value);
@@ -8,7 +8,7 @@ function plain($value) {
 }
 $out = [];
 foreach (json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR) as $case) {
-	$class = new ReflectionClass($case['module'] === 'Argument' ? ArgumentReferenceRenderer::class : ReferenceRenderer::class);
+	$class = new ReflectionClass($case['module'] === 'Argument' ? ArgumentRenderer::class : DebateRenderer::class);
 	$object = $class->newInstanceWithoutConstructor();
 	foreach (['ITEM_SEP' => '⟭', 'FIELD_SEP' => '⟬', 'REF_SEP' => '⟭', 'REF_FIELD_SEP' => '⟬', 'INTRO_SUB_SEP' => '⟭⟭⟭', 'INTRO_FIELD_SEP' => '⟬⟬⟬'] as $name => $value) {
 		if ($class->hasProperty($name)) { $class->getProperty($name)->setValue($object, $value); }
