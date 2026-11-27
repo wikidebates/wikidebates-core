@@ -246,7 +246,8 @@ function fsArgumentMapDirectReadStudy(string $page, array $properties, string $l
 		$expected = $reference();
 		$candidate = $direct($title, $props);
 		$runtime = $read::readDirect($title, $props);
-		$eligible = in_array($case, ['full', 'debate', 'argument', 'empty'], true);
+		$eligible = in_array(SMW_VERSION, ['7.3.1', '7.4.1'], true) &&
+			in_array($case, ['full', 'debate', 'argument', 'empty'], true);
 		same($eligible, $runtime !== null, 'Restricted runtime direct-read eligibility: ' . $case);
 		if ($runtime !== null) {
 			same($expected, array_map(static fn($alias) => $read::field($runtime[$alias] ?? null),
