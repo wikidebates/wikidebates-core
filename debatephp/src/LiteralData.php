@@ -31,7 +31,7 @@ final class LiteralData {
 	}
 	private function value() {
 		$this->skip(); $c = $this->text[$this->offset] ?? '';
-		if ($c === '{') { $v = $this->table(); }
+		if ($c === '{') { $v = $this->readTable(); }
 		elseif ($c === '"' || $c === "'") { $v = $this->string(); }
 		elseif ($c === '[') { $v = $this->longString(); }
 		elseif (preg_match('/\G(true|false|nil|-?\d+(?:\.\d+)?)(?![\w])/A', $this->text, $m, 0, $this->offset)) {
@@ -45,7 +45,7 @@ final class LiteralData {
 		}
 		return $v;
 	}
-	private function table(): array {
+	private function readTable(): array {
 		$this->expect('{'); $out = []; $index = 1;
 		while (true) {
 			$this->skip(); if (($this->text[$this->offset] ?? '') === '}') { $this->offset++; return $out; }
