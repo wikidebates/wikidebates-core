@@ -13,18 +13,22 @@ use MediaWiki\Title\Title;
 
 $phase = $argv[1] ?? '';
 $lab = realpath($argv[2] ?? '');
-if (!in_array($phase, ['seed', 'verify'], true) || !$lab ||
+if (!in_array($phase, ['seed', 'verify', 'verify-integrated', 'verify-both'], true) || !$lab ||
 	dirname($lab) !== realpath(sys_get_temp_dir()) ||
 	!preg_match('/^wd-lua-archive-test\.[A-Za-z0-9]+$/D', basename($lab)) ||
 	getenv('WD_TEST_MARIADB_SOCKET')) {
 	throw new RuntimeException('Use only a private disposable SQLite archive test directory');
 }
 define('WD_FULLSTACK_TEST', true);
-define('WD_TEST_WITHOUT_WIKIDEBATES', true);
+if (in_array($phase, ['seed', 'verify'], true)) {
+	define('WD_TEST_WITHOUT_WIKIDEBATES', true);
+}
 putenv('WD_TEST_LANGUAGE=fr');
 putenv('WD_TEST_EXTENSIONS=' . ($phase === 'seed' ? 'Scribunto' : ''));
-if ($phase === 'verify') {
+if (in_array($phase, ['verify', 'verify-both'], true)) {
 	define('WD_TEST_LUA_ARCHIVE', true);
+}
+if ($phase !== 'seed') {
 	define('WD_TEST_LUA_ARCHIVE_FIXTURE', $lab . '/fixture.sqlite');
 }
 require __DIR__ . '/mediawikiEnvironment.php';
@@ -78,7 +82,8 @@ if ($phase === 'seed') {
 foreach (['Scribunto', 'SemanticScribunto', 'VariablesLua'] as $name) {
 	check(!$registry->isLoaded($name), 'No runtime extension: ' . $name);
 }
-check($registry->isLoaded('WikidebatesLuaArchive'), 'Archive loads independently');
+same($phase !== 'verify-integrated', $registry->isLoaded('WikidebatesLuaArchive'), 'Standalone loader only when explicitly requested');
+same($phase !== 'verify', $registry->isLoaded('Wikidebates'), 'Core loader selected as requested');
 $handler = $services->getContentHandlerFactory()->getContentHandler('Scribunto');
 check($handler instanceof ArchiveContentHandler, 'Original stored model has an inert handler');
 check($handler->isSupportedFormat(CONTENT_FORMAT_TEXT) && $handler->isSupportedFormat('CONTENT_FORMAT_TEXT'), 'Both historical format spellings remain readable');

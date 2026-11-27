@@ -73,15 +73,15 @@ Les lignes ARGUMENTMAP_API_BYTES mesurent la taille JSON non compressée
 des réponses du laboratoire ; elles ne mesurent pas le trafic gzip,
 les temps réseau ni les gains PHP-FPM réels de la production.
 
-## Transport typé et cache navigateur (étape expérimentale)
+## Transport typé et cache navigateur
 
 Le point d'entrée en lecture seule `action=wikidebatesargumentmap` accepte
 page, source, mode (full/debate/argument) et l'option lang historique.
 Il garde le parseur pour les liens et les libellés stockés en wikicode,
 sans passer par le module générique ApiParse. La configuration
 `$wgWikidebatesArgumentMapApi = true;` active le transport GET.
-Par défaut il reste désactivé : parité du HTML et performance doivent
-être vérifiées avant activation en production. Un ancien backend qui
+Après validation en production FR/EN, le transport est activé par défaut
+sur ces deux langues. Une valeur explicite false reste possible. Un ancien backend qui
 ne connaît pas l'action conserve le transport précédent ; une erreur
 métier ne provoque pas de deuxième requête.
 
@@ -122,7 +122,8 @@ des réponses dépendantes du visiteur dans un cache partagé.
 
 ## Lecture directe : chemin restreint et validation sur la version de production
 
-Le paramètre opt-in `$wgWikidebatesArgumentMapDirectRead = true;` autorise
+La lecture directe est activée par défaut sur FR/EN (désactivation explicite
+possible avec `$wgWikidebatesArgumentMapDirectRead = false;`). Elle autorise
 la lecture directe des cinq propriétés Text historiques sur les sujets
 ordinaires de l'espace principal, non redirigés, avec SMW 7.3.1 ou 7.4.1.
 Le cas général (titre ambigu, page inexistante, redirection, propriété
@@ -135,8 +136,9 @@ sur SQLite et MariaDB, sans Scribunto : modes de lecture de référence
 et direct, égalité du HTML API et des champs, compteurs de requêtes,
 cas de repli et édition/suppression de valeurs sémantiques. La mesure
 runtime inclut les garde-fous de sélection : elle est distincte du
-prototype brut. Le chemin reste désactivé tant que les contrôles
-et l'échantillonnage de la ferme ne sont pas validés.
+prototype brut. L'échantillonnage de production (2 000 pages FR/EN) a confirmé zéro
+divergence et zéro erreur ; les quatre autres langues gardent les anciens
+défauts. Le repli sémantique reste indispensable.
 
 ## Mesurer les gains de bout en bout et décider du cache partagé
 
