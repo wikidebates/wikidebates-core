@@ -103,12 +103,12 @@
 					"run": "LAB=\"$(mktemp -d /tmp/wikidebates-lab-XXXXXXXX)\"\nchmod 777 \"$LAB\"\ncontainer=\"$(docker run -d --rm --name \"wd-baseline-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}\" --network none -e MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1 -v \"$LAB:/run/mysqld\" mariadb:11.4 --skip-networking --socket=/run/mysqld/mariadb.sock)\"\nready=0\nfor i in $(seq 1 120); do\n\tif docker logs \"$container\" 2>&1 | grep -q 'MariaDB init process done' && [ -S \"$LAB/mariadb.sock\" ] && php -r 'mysqli_report(MYSQLI_REPORT_OFF); $m = @new mysqli(\"localhost\", \"root\", \"\", \"\", 0, $argv[1]); exit($m->connect_errno ? 1 : 0);' \"$LAB/mariadb.sock\"; then\n\t\tready=1\n\t\tbreak\n\tfi\n\tsleep 1\ndone\nif [ \"$ready\" -ne 1 ]; then docker logs \"$container\"; exit 1; fi\necho \"WD_TEST_MARIADB_SOCKET=$LAB/mariadb.sock\" >> \"$GITHUB_ENV\"\necho \"WD_TEST_DISPOSABLE_MARIADB=1\" >> \"$GITHUB_ENV\""
 				},
 				{
-					"name": "Reference and restricted direct reader (no Lua)",
+					"name": "Automatic direct reader and singleton reference (no Lua)",
 					"env": {
 						"MW_INSTALL_PATH": "${{ github.workspace }}/.mw-lab",
 						"WD_TEST_ARGUMENTMAP_SMW": "7.4.1"
 					},
-					"run": "php -d memory_limit=768M tests/fullstackArgumentMapModern.php\nWD_TEST_ARGUMENTMAP_DIRECT=1 php -d memory_limit=768M tests/fullstackArgumentMapModern.php"
+					"run": "php -d memory_limit=768M tests/fullstackArgumentMapModern.php"
 				}
 			]
 		}
