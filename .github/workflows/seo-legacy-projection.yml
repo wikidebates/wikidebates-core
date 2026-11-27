@@ -33,7 +33,10 @@
 				"lua-archive/**",
 				"tests/mediawikiLuaArchive.php",
 				"tests/mediawikiRegistrationDefaults.php",
-				"src/Registration.php"
+				"src/Registration.php",
+				"debatephp/tests/argument_contract.py",
+				"debatephp/tests/fixtures/argument-cases.json",
+				"debatephp/tests/fixtures/argument-contract.json"
 			]
 		},
 		"workflow_dispatch": {}

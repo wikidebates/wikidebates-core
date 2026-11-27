@@ -207,6 +207,10 @@ def cases():
 
 if __name__=='__main__':
 	corpus=cases(); expected=[]
+	from argument_contract import capture_snapshot, load_cases
+	original_cases = load_cases()
+	if corpus != original_cases:
+		raise ValueError('Stored Argument fixtures differ from the historical generator')
 	for c in corpus:
 		result = oracle(c)
 		# Keep the original Lua answers for the PHP harness, but compare the
@@ -252,4 +256,6 @@ if __name__=='__main__':
 	report={'cases':len(corpus),'renderer_comparisons':tested,'passed':not bad,'failures':bad,'scope':'Lua 5.1 versus PHP, mocked MediaWiki boundary; not a live wiki benchmark'}
 	if len(sys.argv) > 2:
 		pathlib.Path(sys.argv[2]).write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+	if not bad:
+		capture_snapshot(original_cases, corpus, actual)
 	print(json.dumps(report));sys.exit(bool(bad))
