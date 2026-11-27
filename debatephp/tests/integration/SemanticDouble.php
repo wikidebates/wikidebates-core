@@ -1,23 +1,27 @@
 <?php
-// This double tests the exact native adapter parameter path without an SMW database.
-// Real store updates MUST also be verified in a clone of production.
-namespace SMW\Services {
-	final class ServicesFactory {
-		public static function getInstance() { return new self; }
-		public function getStore() { return null; }
+// Test-only write recorder for a disposable MediaWiki without real SMW.
+namespace {
+	final class SMWQueryProcessor {}
+}
+namespace SMW {
+	final class ParameterProcessorFactory {
+		public static function newFromArray(array $raw): array { return $raw; }
 	}
 }
-namespace SMW\Scribunto {
-	final class LibraryFactory {
+namespace SMW\Services {
+	final class ServicesFactory {
 		public static string $failure = '';
-		public function __construct($store) {}
-		public function newParserParameterProcessorFrom($raw) { return $raw; }
-		public function newSetParserFunction($parser) {
+		public static function getInstance() { return new self; }
+		public function newParserFunctionFactory() {
 			return new class {
-				public function parse($raw) {
-					if (LibraryFactory::$failure === 'exception') { throw new \RuntimeException('SENSITIVE semantic value'); }
-					\MediaWiki\Extension\DebatePHP\Tests\CaptureLibrary::$semantic[] = $raw;
-					return LibraryFactory::$failure === 'result' ? '<span>SENSITIVE semantic error</span>' : '';
+				public function newSetParserFunction($parser) {
+					return new class {
+						public function parse($raw) {
+							if (ServicesFactory::$failure === 'exception') { throw new \RuntimeException('SENSITIVE semantic value'); }
+							\MediaWiki\Extension\DebatePHP\Tests\CaptureLibrary::$semantic[] = $raw;
+							return ServicesFactory::$failure === 'result' ? '<span>SENSITIVE semantic error</span>' : '';
+						}
+					};
 				}
 			};
 		}

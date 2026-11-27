@@ -39,7 +39,7 @@ class ArgumentComparison extends Maintenance {
 		$this->fullStack = true; // Argument requires real query results; do not use the Debate-only semantic double.
 		if ($this->fullStack) {
 			if (!class_exists(\SMW\ParserData::class) || !class_exists(\SMW\Scribunto\LibraryFactory::class)) { throw new \RuntimeException('Full-stack comparison requires real SMW and SemanticScribunto.'); }
-			if (str_contains((new \ReflectionClass(\SMW\Scribunto\LibraryFactory::class))->getFileName(), 'SemanticDouble.php')) { throw new \RuntimeException('Remove the semantic double before full-stack validation.'); }
+			if (str_contains((new \ReflectionClass(\SMW\Services\ServicesFactory::class))->getFileName(), 'SemanticDouble.php')) { throw new \RuntimeException('Remove the semantic double before full-stack validation.'); }
 			if (class_exists(CaptureLibrary::class)) { throw new \RuntimeException('Remove the capture library and its Scribunto hook before full-stack validation.'); }
 		}
 		$cases = json_decode(file_get_contents($this->getOption('corpus')), true, 512, JSON_THROW_ON_ERROR);

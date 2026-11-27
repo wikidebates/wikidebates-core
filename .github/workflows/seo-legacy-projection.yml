@@ -16,7 +16,12 @@
 				"debatephp/src/SchemaData.php",
 				"debatephp/src/ReferenceRenderer.php",
 				"debatephp/src/ArgumentReferenceRenderer.php",
-				"tests/mediawikiVariables.php"
+				"tests/mediawikiVariables.php",
+				"tests/fullstackNativeSemantic.php",
+				"tests/fullstackNativeReads.php",
+				"tests/fullstackDirectApiStudy.php",
+				"debatephp/src/NativeSemanticApi.php",
+				"debatephp/src/TrackedSemanticQuery.php"
 			]
 		},
 		"workflow_dispatch": {}
@@ -194,6 +199,14 @@
 						"MW_INSTALL_PATH": "${{ github.workspace }}/.seo-lab/mediawiki"
 					},
 					"run": "php tests/mediawikiVariables.php"
+				},
+				{
+					"name": "Verify real SMW and both native renderers without loading Lua extensions",
+					"env": {
+						"MW_INSTALL_PATH": "${{ github.workspace }}/.seo-lab/mediawiki",
+						"WD_FULLSTACK_AUTOLOAD": "${{ github.workspace }}/.seo-lab/dependencies/vendor/autoload.php"
+					},
+					"run": "php -d memory_limit=768M tests/fullstackNativeSemantic.php"
 				},
 				{
 					"name": "Render the complete corpus against actual MediaWiki, Lua and SMW",

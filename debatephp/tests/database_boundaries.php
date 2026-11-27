@@ -17,21 +17,6 @@ namespace SMW\MediaWiki\Connection {
 		}
 	}
 }
-namespace SMW\Services {
-	class ServicesFactory {
-		public static function getInstance(): self { return new self; }
-		public function getStore(): object { return new \stdClass; }
-	}
-}
-namespace SMW\Scribunto {
-	class LibraryFactory {
-		public function __construct(object $store) {}
-		public function newQueryResultFrom(array $query): void { \boundaryFailure(); }
-		public function newSetParserFunction($parser): self { return $this; }
-		public function newParserParameterProcessorFrom($raw): array { return $raw; }
-		public function parse($params): void { \boundaryFailure(); }
-	}
-}
 namespace MediaWiki\Extension\WikiSEO {
 	class Validator {
 		public static function validateParams($params): void { \boundaryFailure(); }
@@ -74,6 +59,9 @@ namespace {
 	class_alias(\MediaWiki\Parser\Parser::class, 'Parser');
 	class_alias(\MediaWiki\Parser\PPFrame::class, 'PPFrame');
 	require __DIR__ . '/../../tests/bootstrap.php';
+	require __DIR__ . '/semantic_api_double.php';
+	\MediaWiki\Extension\DebatePHP\Tests\SemanticApiDouble::$onQuery = static fn() => boundaryFailure();
+	\MediaWiki\Extension\DebatePHP\Tests\SemanticApiDouble::$onWrite = static fn() => boundaryFailure();
 	use MediaWiki\Extension\DebatePHP\Lua;
 	use MediaWiki\Extension\DebatePHP\MediaWikiContext;
 	use MediaWiki\Extension\DebatePHP\Telemetry;

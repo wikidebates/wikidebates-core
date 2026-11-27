@@ -250,18 +250,17 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 	public function fullUrl(string $page, ?array $query = null): ?string { return $this->url($page, $query, 'getFullURL'); }
 	public function localUrl(string $page, ?array $query = null): ?string { return $this->url($page, $query, 'getLocalURL'); }
 	public function smwSet(array $data): void {
-		if (!class_exists(\SMW\Scribunto\LibraryFactory::class)) { $this->telemetry?->problem('semantic', 'service-unavailable'); return; }
+		if (!$this->smwAvailable()) { $this->telemetry?->problem('semantic', 'service-unavailable'); return; }
 		$started = $this->telemetry?->start();
 		$failed = true;
 		try {
-			// Same path as SemanticScribunto 2.3.3. Values are parameters, never rebuilt wikitext.
+			// Direct SMW parser-function parameters, never rebuilt wikitext.
 			$raw = [];
 			foreach (SemanticProperties::present($data) as $key => $value) {
 				if (is_array($value)) { foreach ($value as $item) { $raw[] = $key . '=' . $item; } }
 				else { $raw[] = (!is_int($key) && !preg_match('/^[0-9]+$/D', (string)$key)) ? $key . '=' . $value : $value; }
 			}
-			$factory = new \SMW\Scribunto\LibraryFactory(\SMW\Services\ServicesFactory::getInstance()->getStore());
-			$result = $factory->newSetParserFunction($this->parser)->parse($factory->newParserParameterProcessorFrom($raw));
+			$result = NativeSemanticApi::write($this->parser, $raw);
 			if (is_array($result) && !($result['noparse'] ?? true)) { $this->parser->recursiveTagParseFully($result[0]); }
 			$error = is_array($result) ? ($result[0] ?? '') : $result;
 			$failed = is_string($error) && trim($error) !== '';
@@ -318,7 +317,7 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 			$this->telemetry?->finish('seo', $started);
 		}
 	}
-	public function smwAvailable(): bool { return class_exists(\SMW\Scribunto\LibraryFactory::class); }
+	public function smwAvailable(): bool { return NativeSemanticApi::available(); }
 	public function smwCacheHit(string $origin, string $layer): void {
 		$this->telemetry?->semanticCacheHit($origin, $layer);
 	}
@@ -342,20 +341,19 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 			$queryStarted = $this->telemetry?->start();
 			$queryFailed = true;
 			try {
-				$factory = new \SMW\Scribunto\LibraryFactory(\SMW\Services\ServicesFactory::getInstance()->getStore());
+				$store = \SMW\Services\ServicesFactory::getInstance()->getStore();
 				$enabled = class_exists(MediaWikiServices::class) &&
 					(bool)MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesSemanticCacheTracking');
 				$result = $enabled
-					? TrackedSemanticQuery::execute($this->parser, array_values($query),
-						\SMW\Services\ServicesFactory::getInstance()->getStore())
-					: $factory->newQueryResultFrom(array_values($query));
+					? TrackedSemanticQuery::execute($this->parser, array_values($query), $store)
+					: NativeSemanticApi::query($store, array_values($query));
 				$queryFailed = !$result instanceof \SMW\Query\QueryResult;
 			} finally { $this->telemetry?->semanticFinish($this->semanticOrigin, 'query', $queryStarted, $queryFailed); }
-			// Same conversion and printout formatting as mw.smw.ask, without a Lua engine.
+			// Keep SMW's formatted printouts and the established one-based row shape.
 			if (!$result instanceof \SMW\Query\QueryResult) { return new SemanticReadResult(null); }
 			$resultStarted = $this->telemetry?->start();
 			try {
-				$values = $factory->newLuaAskResultProcessor($result)->getProcessedResult();
+				$values = NativeSemanticApi::format($result);
 				$converted = new SemanticReadResult(SemanticReadResult::values($values),
 					$values === null && EmptyParentQuery::certified($result, $query));
 				$failed = false;
