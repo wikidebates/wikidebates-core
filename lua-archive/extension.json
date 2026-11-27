@@ -1,0 +1,43 @@
+{
+	"name": "WikidebatesLuaArchive",
+	"version": "1.0.0",
+	"descriptionmsg": "wikidebates-lua-archive-desc",
+	"license-name": "GPL-2.0-or-later",
+	"type": "other",
+	"requires": {
+		"MediaWiki": ">= 1.43"
+	},
+	"AutoloadNamespaces": {
+		"MediaWiki\\Extension\\WikidebatesLuaArchive\\": "src/"
+	},
+	"ContentHandlers": {
+		"Scribunto": "MediaWiki\\Extension\\WikidebatesLuaArchive\\ArchiveContentHandler"
+	},
+	"ExtensionMessagesFiles": {
+		"WikidebatesLuaArchiveNamespaces": "namespaces.php"
+	},
+	"MessagesDirs": {
+		"WikidebatesLuaArchive": [
+			"i18n"
+		]
+	},
+	"namespaces": [
+		{
+			"id": 828,
+			"constant": "NS_MODULE",
+			"name": "Module",
+			"subpages": true
+		},
+		{
+			"id": 829,
+			"constant": "NS_MODULE_TALK",
+			"name": "Module_talk",
+			"subpages": true
+		}
+	],
+	"callback": "MediaWiki\\Extension\\WikidebatesLuaArchive\\ArchiveHooks::onRegistration",
+	"Hooks": {
+		"ContentHandlerDefaultModelFor": "MediaWiki\\Extension\\WikidebatesLuaArchive\\ArchiveHooks::onContentHandlerDefaultModelFor"
+	},
+	"manifest_version": 2
+}

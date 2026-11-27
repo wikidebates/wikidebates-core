@@ -24,7 +24,9 @@
 				"debatephp/src/TrackedSemanticQuery.php",
 				"src/LuaUsageAudit.php",
 				"maintenance/AuditLuaUsage.php",
-				"tests/mediawikiLuaUsageAudit.php"
+				"tests/mediawikiLuaUsageAudit.php",
+				"lua-archive/**",
+				"tests/mediawikiLuaArchive.php"
 			]
 		},
 		"workflow_dispatch": {}
@@ -202,6 +204,13 @@
 						"MW_INSTALL_PATH": "${{ github.workspace }}/.seo-lab/mediawiki"
 					},
 					"run": "php tests/mediawikiLuaUsageAudit.php"
+				},
+				{
+					"name": "Verify historical Scribunto revisions after replacing the runtime with an inert archive",
+					"env": {
+						"MW_INSTALL_PATH": "${{ github.workspace }}/.seo-lab/mediawiki"
+					},
+					"run": "find lua-archive -name '*.php' -print0 | xargs -0 -n1 php -l\nlab=$(mktemp -d \"${TMPDIR:-/tmp}/wd-lua-archive-test.XXXXXXXX\")\ntrap 'rm -rf \"$lab\"' EXIT\nphp tests/mediawikiLuaArchive.php seed \"$lab\"\nphp tests/mediawikiLuaArchive.php verify \"$lab\""
 				},
 				{
 					"name": "Verify native Variables without loading any Lua extension",
