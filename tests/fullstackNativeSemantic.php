@@ -18,6 +18,9 @@ use SMW\Services\ServicesFactory;
 use Wikimedia\ScopedCallback;
 
 $registry = ExtensionRegistry::getInstance();
+if (($expectedSMW = getenv('WD_TEST_EXPECTED_SMW')) !== false && $expectedSMW !== '') {
+	same($expectedSMW, SMW_VERSION, 'Exact SMW release for the full native contract');
+}
 check($registry->isLoaded('SemanticMediaWiki') && NativeSemanticApi::available(), 'Real SMW native API available');
 foreach (['Scribunto', 'SemanticScribunto', 'VariablesLua'] as $name) {
 	check(!$registry->isLoaded($name), 'Independent of ' . $name);
@@ -123,7 +126,8 @@ if (getenv('WD_FULLSTACK_NATIVE_RENDER') === '1') {
 	require __DIR__ . '/fullstackNativeReads.php';
 	// Preserve the asynchronous store-update assertion from the old harness.
 	$beforeJob = fsStored('WD FS query target');
-	$services->getJobQueueGroup()->push(new \SMW\MediaWiki\Jobs\UpdateJob(Title::newFromText('WD FS query target'), ['forcedUpdate' => true]));
+	$services->getJobQueueGroup()->push($services->getJobFactory()->newJob('smw.update',
+		['namespace' => NS_MAIN, 'title' => 'WD_FS_query_target', 'forcedUpdate' => true]));
 	$jobs = fsFlush();
 	check(($jobs['smw.update'] ?? 0) === 1, 'Genuine asynchronous SMW update job executes');
 	same($beforeJob, fsStored('WD FS query target'), 'SMW update job preserves typed native properties');

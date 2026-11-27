@@ -1,0 +1,166 @@
+{
+	"name": "Complete native render contract on SMW 7.4.1",
+	"on": {
+		"pull_request": {
+			"paths": [
+				"debatephp/**",
+				"src/**",
+				"i18n/**",
+				"tests/fullstack*.php",
+				"tests/renderCases.php",
+				"tests/nativeOptimization*.php",
+				"tests/mediawikiEnvironment.php",
+				"tests/bootstrap.php",
+				"extension.json",
+				".github/workflows/native-fullstack-modern.yml"
+			]
+		},
+		"push": {
+			"branches": [
+				"main"
+			],
+			"paths": [
+				"debatephp/**",
+				"src/**",
+				"i18n/**",
+				"tests/fullstack*.php",
+				"tests/renderCases.php",
+				"tests/nativeOptimization*.php",
+				"tests/mediawikiEnvironment.php",
+				"tests/bootstrap.php",
+				"extension.json",
+				".github/workflows/native-fullstack-modern.yml"
+			]
+		},
+		"workflow_dispatch": {}
+	},
+	"permissions": {
+		"contents": "read"
+	},
+	"jobs": {
+		"modern-fullstack": {
+			"runs-on": "ubuntu-24.04",
+			"timeout-minutes": 30,
+			"steps": [
+				{
+					"uses": "actions/checkout@v7.0.1"
+				},
+				{
+					"uses": "shivammathur/setup-php@v2",
+					"with": {
+						"php-version": "8.4",
+						"extensions": "mbstring, intl, xml, pdo_sqlite, sqlite3, curl",
+						"coverage": "none",
+						"tools": "composer"
+					}
+				},
+				{
+					"uses": "actions/checkout@v7.0.1",
+					"name": "MediaWiki 1.43.12",
+					"with": {
+						"repository": "wikimedia/mediawiki",
+						"ref": "1.43.12",
+						"path": ".seo-lab/mediawiki"
+					}
+				},
+				{
+					"uses": "actions/checkout@v7.0.1",
+					"name": "Pinned ParserFunctions",
+					"with": {
+						"repository": "wikimedia/mediawiki-extensions-ParserFunctions",
+						"ref": "f1a2626836e3b4448e5ceeb4eca20880e6357b87",
+						"path": ".seo-lab/mediawiki/extensions/ParserFunctions"
+					}
+				},
+				{
+					"uses": "actions/checkout@v7.0.1",
+					"name": "Pinned Cite",
+					"with": {
+						"repository": "wikimedia/mediawiki-extensions-Cite",
+						"ref": "77ddf98f9ea40e8baf57660ff5ae760831f6700a",
+						"path": ".seo-lab/mediawiki/extensions/Cite"
+					}
+				},
+				{
+					"uses": "actions/checkout@v7.0.1",
+					"name": "SMW 7.4.1",
+					"with": {
+						"repository": "SemanticMediaWiki/SemanticMediaWiki",
+						"ref": "7.4.1",
+						"path": ".seo-lab/mediawiki/extensions/SemanticMediaWiki"
+					}
+				},
+				{
+					"uses": "actions/checkout@v7.0.1",
+					"name": "Pinned Variables",
+					"with": {
+						"repository": "wikimedia/mediawiki-extensions-Variables",
+						"ref": "12ad832a68e1a002c821f5d1c127b04ac047181e",
+						"path": ".seo-lab/mediawiki/extensions/Variables"
+					}
+				},
+				{
+					"uses": "actions/checkout@v7.0.1",
+					"name": "Pinned PageForms",
+					"with": {
+						"repository": "wikimedia/mediawiki-extensions-PageForms",
+						"ref": "619e233c9ec66a69dfc2c8d50d8d1ce4c6e84484",
+						"path": ".seo-lab/mediawiki/extensions/PageForms"
+					}
+				},
+				{
+					"uses": "actions/checkout@v7.0.1",
+					"name": "Pinned ShortDescription",
+					"with": {
+						"repository": "StarCitizenTools/mediawiki-extensions-ShortDescription",
+						"ref": "683dde18ac00fcfebde0fbfb59fe1552c171386c",
+						"path": ".seo-lab/mediawiki/extensions/ShortDescription"
+					}
+				},
+				{
+					"uses": "actions/checkout@v7.0.1",
+					"name": "Pinned WikiSEO",
+					"with": {
+						"repository": "wikidebates/WikiSEO",
+						"ref": "ca976844f6a8c038080684cf566aaaa4093cef9c",
+						"path": ".seo-lab/mediawiki/extensions/WikiSEO"
+					}
+				},
+				{
+					"name": "Install isolated modern SMW dependencies",
+					"run": "composer install --working-dir=.seo-lab/mediawiki --no-interaction --prefer-dist --no-progress\nphp -r '$p=\".seo-lab/mediawiki/extensions/SemanticMediaWiki/composer.json\"; $data=json_decode(file_get_contents($p), true, 512, JSON_THROW_ON_ERROR); unset($data[\"require-dev\"]); file_put_contents($p, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . \"\\n\");'\ncomposer install --working-dir=.seo-lab/mediawiki/extensions/SemanticMediaWiki --no-dev --no-interaction --prefer-dist --no-progress\nmkdir -p .seo-lab/results"
+				},
+				{
+					"name": "Exercise the complete native render corpus without any Lua extensions",
+					"env": {
+						"MW_INSTALL_PATH": "${{ github.workspace }}/.seo-lab/mediawiki",
+						"WD_FULLSTACK_NATIVE_RENDER": "1",
+						"WD_FULLSTACK_RENDER_OUTPUT": "${{ github.workspace }}/.seo-lab/results/native-renders.json",
+						"WD_FULLSTACK_OUTPUT": "${{ github.workspace }}/.seo-lab/results/native-summary.json",
+						"WD_TEST_EXPECTED_SMW": "7.4.1"
+					},
+					"run": "php -d memory_limit=768M tests/fullstackNativeSemantic.php"
+				},
+				{
+					"name": "Verify frozen complete native render contract",
+					"run": "python3 debatephp/tests/integration/fullstack_contract.py .seo-lab/results/native-renders.json"
+				},
+				{
+					"name": "Check native graph vocabulary against official Schema.org 30.1",
+					"run": "curl --fail --silent --show-error --location --retry 3 --max-time 60 https://raw.githubusercontent.com/schemaorg/schemaorg/5f2d8cdec99b7329459ef6584e94b6a840f88471/data/releases/30.1/schemaorg-current-https.jsonld -o .seo-lab/schemaorg-30.1.jsonld\ntest \"$(git hash-object .seo-lab/schemaorg-30.1.jsonld)\" = d04621d491eff20f3a8defe7bd4351a16db75e42\npython3 debatephp/tests/integration/check_schema_vocabulary.py .seo-lab/schemaorg-30.1.jsonld .seo-lab/results/native-renders.json .seo-lab/results/native-schema-vocabulary.json"
+				},
+				{
+					"name": "Retain isolated diagnostics even on comparison failure",
+					"uses": "actions/upload-artifact@v7.0.2",
+					"if": "always()",
+					"with": {
+						"name": "native-fullstack-smw-7.4.1",
+						"path": ".seo-lab/results/*.json",
+						"if-no-files-found": "ignore",
+						"include-hidden-files": true
+					}
+				}
+			]
+		}
+	}
+}
