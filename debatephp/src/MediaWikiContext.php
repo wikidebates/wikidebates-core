@@ -383,11 +383,10 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 		return $this->titles[$text] = $title ? ['prefixedText' => $title->getPrefixedText()] : null;
 	}
 	public function variableSet(string $name, string $value): void {
-		if (!class_exists(\ExtVariables::class) || !\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('VariablesLua')) { return; }
+		if (!class_exists(\ExtVariables::class) || !\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('Variables')) { return; }
 		try {
-			if (method_exists(\ExtVariables::class, 'pfObj_vardefine')) {
-				\ExtVariables::pfObj_vardefine($this->parser, $this->parser->getPreprocessor()->newFrame(), [$name, $value]);
-			} else { \ExtVariables::pf_vardefine($this->parser, $name, $value); }
+			// Variables owns parser-local state; VariablesLua is not involved.
+			\ExtVariables::pfObj_vardefine($this->parser, $this->parser->getPreprocessor()->newFrame(), [$name, $value]);
 		}
 		catch (\Throwable $e) {
 			DatabaseFailure::rethrow($e);
@@ -395,7 +394,7 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 		}
 	}
 	public function variableGet(string $name): ?string {
-		if (!class_exists(\ExtVariables::class) || !\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('VariablesLua')) { return null; }
+		if (!class_exists(\ExtVariables::class) || !\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('Variables')) { return null; }
 		try { return \ExtVariables::pfObj_var($this->parser, $this->parser->getPreprocessor()->newFrame(), [$name]); }
 		catch (\Throwable $e) {
 			DatabaseFailure::rethrow($e);

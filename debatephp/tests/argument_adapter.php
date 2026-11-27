@@ -16,7 +16,7 @@ namespace MediaWiki\Registration {
 	final class ExtensionRegistry {
 		public static bool $variables = true;
 		public static function getInstance() { return new self; }
-		public function isLoaded($name) { return $name === 'VariablesLua' && self::$variables; }
+		public function isLoaded($name) { return $name === 'Variables' && self::$variables; }
 	}
 }
 namespace MediaWiki {
@@ -185,11 +185,15 @@ namespace {
 	$check($rows[1]['pro'][1] === 'A' && $rows[1]['pro'][2]['fulltext'] === 'B', 'Nested query arrays must be one-based');
 	LibraryFactory::$fail = true; $check($c->readSemantic([1 => '[[A]]'], 'other')->rows === null, 'SMW error must be swallowed'); LibraryFactory::$fail = false;
 	$c->variableSet(' WD_QUOTES_AUTHORS ', ' Alice ');
-	$check($c->variableGet('WD_QUOTES_AUTHORS') === 'Alice', 'Variable state must use Variables trimming');
+	$check(!ExtensionRegistry::getInstance()->isLoaded('VariablesLua'), 'Test does not expose VariablesLua');
+	$check($c->variableGet('WD_QUOTES_AUTHORS') === 'Alice', 'Variable state must use Variables trimming without VariablesLua');
+	$c->variableSet('WD_TEST_ZERO', '0');
+	$check($c->variableGet('WD_TEST_ZERO') === '0', 'Variable zero is not missing');
+	$check($c->variableGet('WD_TEST_MISSING') === '', 'Variables defines the missing-value fallback');
 	$p->variables->setVarValue('WD_QUOTES_AUTHORS', 'Bob');
 	$check($c->variableGet('WD_QUOTES_AUTHORS') === 'Bob', 'External template variable writes must remain visible');
 	ExtensionRegistry::$variables = false; $c->variableSet('absent', 'value');
-	$check($c->variableGet('absent') === null, 'Missing VariablesLua must be a no-op'); ExtensionRegistry::$variables = true;
+	$check($c->variableGet('absent') === null, 'Missing Variables must be a no-op'); ExtensionRegistry::$variables = true;
 	$check($c->titleInfo('A_B')['prefixedText'] === 'A B' && $c->titleInfo('[') === null, 'Title normalization changed');
 	$check($c->pageVars()['pageId'] === '42' && in_array('vary-page-id', $p->getOutput()->flags), 'Page id cache dependency missing');
 	$p2 = new Parser; $p2->changed = 'Module:Argument';

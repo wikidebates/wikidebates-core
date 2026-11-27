@@ -15,7 +15,8 @@
 				"debatephp/src/MediaWikiContext.php",
 				"debatephp/src/SchemaData.php",
 				"debatephp/src/ReferenceRenderer.php",
-				"debatephp/src/ArgumentReferenceRenderer.php"
+				"debatephp/src/ArgumentReferenceRenderer.php",
+				"tests/mediawikiVariables.php"
 			]
 		},
 		"workflow_dispatch": {}
@@ -186,6 +187,13 @@
 				{
 					"name": "Install the historical locked SMW dependencies in the disposable laboratory",
 					"run": "composer install --working-dir=.seo-lab/mediawiki --no-interaction --prefer-dist --no-progress\nmkdir -p .seo-lab/dependencies .seo-lab/results\ncp tests/fullstack-dependencies/composer.json tests/fullstack-dependencies/composer.lock .seo-lab/dependencies/\ncomposer --working-dir=.seo-lab/dependencies install --no-dev --no-interaction --no-plugins --no-scripts --prefer-dist --no-progress"
+				},
+				{
+					"name": "Verify native Variables without loading any Lua extension",
+					"env": {
+						"MW_INSTALL_PATH": "${{ github.workspace }}/.seo-lab/mediawiki"
+					},
+					"run": "php tests/mediawikiVariables.php"
 				},
 				{
 					"name": "Render the complete corpus against actual MediaWiki, Lua and SMW",
