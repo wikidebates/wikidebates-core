@@ -79,10 +79,12 @@ final class NativeSemanticApi {
 
 	/** Preserve formatted values, scalar/multiple cardinality, aliases and row order. */
 	public static function format(QueryResult $result): ?array {
-		$trueWords = explode(',', wfMessage('smw_true_words')->text() . ',true,t,yes,y');
 		if (!$result->getCount()) {
 			return null;
 		}
+		// Most map printouts are text. Resolve boolean translations only when needed.
+		$trueWords = null;
+		$linker = null;
 		$rows = [];
 		$numericIndex = 1;
 		while ($fields = $result->getNext()) {
@@ -94,6 +96,7 @@ final class NativeSemanticApi {
 				while (($value = $field->getNextDataValue()) !== false) {
 					switch ($value->getTypeID()) {
 						case '_boo':
+							$trueWords ??= explode(',', wfMessage('smw_true_words')->text() . ',true,t,yes,y');
 							$values[] = in_array(strtolower($value->getWikiValue() ?? 'null'), $trueWords);
 							break;
 						case '_num':
@@ -102,7 +105,7 @@ final class NativeSemanticApi {
 							break;
 						default:
 							// Keep wiki output formatting (including links), not raw DataItems.
-							$values[] = $value->getShortText(SMW_OUTPUT_WIKI, new Linker());
+							$values[] = $value->getShortText(SMW_OUTPUT_WIKI, $linker ??= new Linker());
 					}
 				}
 				$row[$key] = match (count($values)) {

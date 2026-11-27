@@ -25,7 +25,8 @@ final class ArgumentMap {
 		if (!$target || !$parser->incrementExpensiveFunctionCount()) {
 			return self::output('');
 		}
-		$i18n = I18n::bundled(true);
+		// Each map message is read at most once; no per-render message memo is needed.
+		$i18n = I18n::bundled();
 		$lang = $i18n->language($args, MediaWikiServices::getInstance()->getContentLanguage()->getCode());
 		$property = static fn(string $key): string => $i18n->message('ArgumentMap.props', $lang, $key);
 		$text = static fn(string $key): string => $i18n->message('ArgumentMap.text', $lang, $key);
@@ -38,9 +39,9 @@ final class ArgumentMap {
 		}
 
 		$sourceTitle = self::localTitle($source);
-		if ($sourceTitle && !$sourceTitle->exists()) {
-			$sourceTitle = null;
-		}
+		// Resolve source existence only if a card actually matches its identity.
+		// Share the answer across both columns, including a negative lookup.
+		$sourceExists = null;
 		$debate = trim($args[3] ?? '', NativeText::ASCII_WHITESPACE) !== '';
 		if ($debate) {
 			$row = self::read($target, ['left' => $property('pro_list'), 'right' => $property('con_list')]);
@@ -55,7 +56,7 @@ final class ArgumentMap {
 		}
 		$columns = [];
 		foreach (['left', 'right'] as $i => $key) {
-			$cards = self::cards(self::field($row[$key] ?? null), $separator, $sourceTitle);
+			$cards = self::cards(self::field($row[$key] ?? null), $separator, $sourceTitle, $sourceExists);
 			$columns[] = '<div class="wk-arg-map__col ' . ($i === 0 ? 'is-pro' : 'is-con') . '">'
 				. '<div class="wk-arg-map__th">' . $text($heads[$i]) . '</div>'
 				. '<div class="wk-arg-map__td">' . ($cards !== '' ? $cards
@@ -98,21 +99,23 @@ final class ArgumentMap {
 		return is_string($value) ? $value : '';
 	}
 
-	private static function cards(string $list, string $separator, ?Title $source): string {
+	private static function cards(string $list, string $separator, ?Title $source, ?bool &$sourceExists): string {
+		$list = trim($list, NativeText::ASCII_WHITESPACE);
+		if ($list === '') {
+			return '';
+		}
 		$cards = [];
-		foreach (explode($separator, trim($list, NativeText::ASCII_WHITESPACE)) as $item) {
+		foreach (explode($separator, $list) as $item) {
 			[$page, $label] = NativeText::splitOnce($item, '⟬');
 			$page = trim($page, NativeText::ASCII_WHITESPACE);
-			$label = trim($label, NativeText::ASCII_WHITESPACE);
 			$title = self::localTitle($page);
 			if (!$title) {
 				continue;
 			}
+			$label = trim($label, NativeText::ASCII_WHITESPACE);
 			$display = $label !== '' ? $label : $page;
-			// A canonical local title comparison plus one existence check
-			// on the source is enough: distinct live titles have distinct IDs.
-			// Redirects are not resolved, just as with the original module.
-			if ($source && $title->equals($source)) {
+			// Distinct live titles have distinct IDs. Do not follow redirects.
+			if ($source && $title->equals($source) && ($sourceExists ??= $source->exists())) {
 				$link = "'''" . $display . "'''";
 			} else {
 				$target = $title->getFullText();
