@@ -6,6 +6,7 @@ This command compares exact behaviour against the corrected native baseline.
 """
 import argparse
 import difflib
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -36,6 +37,13 @@ def compare(php, baseline):
 		raise SystemExit(f'Native renderer behaviour differs from baseline: {error}')
 
 	print('Native renderer behaviour matches the pinned PHP baseline; no bundled Lua sources remain')
+	# Capture the candidate only after strict independent historical parity.
+	rows = list(json.loads(actual).items())
+	blocks = []
+	for index in range(0, len(rows), 10):
+		block = json.dumps(rows[index:index + 10], ensure_ascii=True, separators=(',', ':')).encode('ascii')
+		blocks.append(hashlib.sha256(block).hexdigest())
+	print('FROZEN_NATIVE_RENDER_CORPUS ' + json.dumps({'cases': len(rows), 'block_size': 10, 'blocks': blocks}, separators=(',', ':')))
 
 
 def main():

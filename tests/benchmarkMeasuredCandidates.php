@@ -5,7 +5,7 @@ require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/../debatephp/tests/native_context.php';
 require __DIR__ . '/nativeCandidatePrototypes.php';
 
-use MediaWiki\Extension\DebatePHP\{ArgumentRenderer, DebateRenderer, JsonData, RenderData, SemanticReadResult, Table, TextEscaper};
+use MediaWiki\Extension\DebatePHP\{ArgumentRenderer, DebateRenderer, JsonData, RenderData, SemanticReadResult, TextEscaper};
 
 $options = getopt('', ['baseline:', 'output:']);
 $baseline = realpath($options['baseline'] ?? '');
@@ -99,16 +99,8 @@ $operations['prototype-introductions-native-40'] = [
 	'before' => static fn() => \NativeReadBefore\SerializedData::records($intro, '⟭⟭⟭', '⟬⟬⟬', ['title', 'content', 'warnings'], true),
 	'after' => static fn() => NativeCandidatePrototypes::introductions($intro)
 ];
-$operations['prototype-arguments-compatibility-roundtrip-100'] = [
-	'before' => $operations['prototype-arguments-native-100']['before'],
-	'after' => static fn() => Table::wrap(NativeCandidatePrototypes::arguments($rawItems, false))
-];
-$operations['prototype-introductions-compatibility-roundtrip-40'] = [
-	'before' => $operations['prototype-introductions-native-40']['before'],
-	'after' => static fn() => Table::wrap(NativeCandidatePrototypes::introductions($intro))
-];
 $plain = static function($value) use (&$plain) {
-	if ($value instanceof Table || $value instanceof \NativeReadBefore\Table) { $value = $value->values; }
+	if ($value instanceof \NativeReadBefore\Table) { $value = $value->values; }
 	if ($value instanceof \MediaWiki\Extension\DebatePHP\DecodedReferences || $value instanceof \NativeReadBefore\DecodedReferences) { return null; }
 	return is_array($value) ? array_map($plain, $value) : $value;
 };

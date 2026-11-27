@@ -3,15 +3,6 @@
 // Standalone tests use the same namespace mappings as the extension loader.
 $manifest = json_decode(file_get_contents(__DIR__ . '/../extension.json'), true, 512, JSON_THROW_ON_ERROR);
 spl_autoload_register(static function(string $class) use ($manifest): void {
-	// These frozen helpers are deliberately outside the extension's runtime autoload tree.
-	$prefix = 'MediaWiki\\Extension\\DebatePHP\\';
-	if (str_starts_with($class, $prefix)) {
-		$name = substr($class, strlen($prefix));
-		if (in_array($name, ['Table', 'Lua', 'LegacyJson'], true)) {
-			require_once __DIR__ . '/../debatephp/tests/legacy/' . $name . '.php';
-			return;
-		}
-	}
 	foreach ($manifest['AutoloadNamespaces'] as $prefix => $path) {
 		if (str_starts_with($class, $prefix)) {
 			$file = __DIR__ . '/../' . $path . str_replace('\\', '/', substr($class, strlen($prefix))) . '.php';
