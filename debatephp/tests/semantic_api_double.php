@@ -10,7 +10,7 @@ namespace MediaWiki\Extension\DebatePHP\Tests {
 		public static ?\Closure $onWrite = null;
 		public static bool $fail = false;
 		public static string $trueWords = 'true,t,yes,y';
-		public static ?\SMWQuery $lastQuery = null;
+		public static ?\SMW\Query\Query $lastQuery = null;
 	}
 }
 namespace {
@@ -27,13 +27,17 @@ namespace {
 			};
 		}
 	}
-	final class SMWQuery {
+}
+namespace SMW\Query {
+	use MediaWiki\Extension\DebatePHP\Tests\SemanticApiDouble;
+
+	final class Query {
 		public const PROC_CONTEXT = 'context';
 		public array $options = [];
 		public function __construct(public array $raw, public string $context, public string $format, public array $printouts) {}
 		public function setOption($key, $value) { $this->options[$key] = $value; }
 	}
-	final class SMWQueryProcessor {
+	final class QueryProcessor {
 		public static function getComponentsFromFunctionParams(array $raw, bool $showMode): array {
 			if ($showMode) { throw new \LogicException('Unexpected query mode'); }
 			SemanticApiDouble::$query = $raw;
@@ -43,8 +47,8 @@ namespace {
 			$printouts[] = 'main';
 		}
 		public static function getProcessedParams(array $params, array $printouts): array { return $params; }
-		public static function createQuery($raw, $params, $context, $format, $printouts): SMWQuery {
-			return new SMWQuery($raw, $context, $format, $printouts);
+		public static function createQuery($raw, $params, $context, $format, $printouts): Query {
+			return new Query($raw, $context, $format, $printouts);
 		}
 	}
 }
@@ -55,7 +59,7 @@ namespace SMW {
 	use MediaWiki\Extension\DebatePHP\Tests\SemanticApiDouble;
 
 	class Store {
-		public function getQueryResult(\SMWQuery $query): \SMW\Query\QueryResult {
+		public function getQueryResult(\SMW\Query\Query $query): \SMW\Query\QueryResult {
 			SemanticApiDouble::$lastQuery = $query;
 			if (SemanticApiDouble::$onQuery !== null) { (SemanticApiDouble::$onQuery)(); }
 			if (SemanticApiDouble::$fail) { throw new \RuntimeException('test failure'); }

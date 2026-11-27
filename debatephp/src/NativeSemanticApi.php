@@ -5,14 +5,15 @@ namespace MediaWiki\Extension\DebatePHP;
 use MediaWiki\Linker\Linker;
 use MediaWiki\Parser\Parser;
 use MediaWiki\Title\Title;
+use SMW\DataItems\WikiPage;
 use SMW\Query\Language\ValueDescription;
+use SMW\Query\Query;
+use SMW\Query\QueryProcessor;
 use SMW\ParameterProcessorFactory;
 use SMW\Query\QueryContext;
 use SMW\Query\QueryResult;
 use SMW\Services\ServicesFactory;
 use SMW\Store;
-use SMWQuery;
-use SMWQueryProcessor;
 
 /**
  * Direct SMW integration for MediaWiki 1.43.
@@ -27,7 +28,7 @@ use SMWQueryProcessor;
 final class NativeSemanticApi {
 	public static function available(): bool {
 		return class_exists(ServicesFactory::class) &&
-			class_exists(SMWQueryProcessor::class) &&
+			class_exists(QueryProcessor::class) &&
 			class_exists(ParameterProcessorFactory::class);
 	}
 
@@ -42,10 +43,7 @@ final class NativeSemanticApi {
 	 * executing it, including for titles resembling SMW operators.
 	 */
 	public static function querySubject(Store $store, Title $subject, array $printouts): ?QueryResult {
-		// SMW 6.0 uses DIWikiPage; SMW 7.3 moved the concrete class.
-		$wikiPage = class_exists(\SMW\DataItems\WikiPage::class)
-			? \SMW\DataItems\WikiPage::newFromTitle($subject)
-			: \SMW\DIWikiPage::newFromTitle($subject);
+		$wikiPage = WikiPage::newFromTitle($subject);
 		$value = new ValueDescription($wikiPage);
 		$query = self::buildQuery([$value->getQueryString(), ...$printouts,
 			'mainlabel=-', 'headers=hide', 'link=none', 'limit=1']);
@@ -57,17 +55,15 @@ final class NativeSemanticApi {
 		return $store->getQueryResult($query);
 	}
 
-	private static function buildQuery(array $raw): SMWQuery {
-		[$queryString, $parameters, $printouts] = SMWQueryProcessor::getComponentsFromFunctionParams($raw, false);
-		SMWQueryProcessor::addThisPrintout($printouts, $parameters);
-		$query = SMWQueryProcessor::createQuery(
-			$queryString, SMWQueryProcessor::getProcessedParams($parameters, $printouts),
+	private static function buildQuery(array $raw): Query {
+		[$queryString, $parameters, $printouts] = QueryProcessor::getComponentsFromFunctionParams($raw, false);
+		QueryProcessor::addThisPrintout($printouts, $parameters);
+		$query = QueryProcessor::createQuery(
+			$queryString, QueryProcessor::getProcessedParams($parameters, $printouts),
 			QueryContext::SPECIAL_PAGE, '', $printouts
 		);
 		// Keep the existing SMW context identity, not a dependency on the former class.
-		if (defined('SMWQuery::PROC_CONTEXT')) {
-			$query->setOption(SMWQuery::PROC_CONTEXT, 'SSC.LibraryFactory');
-		}
+		$query->setOption(Query::PROC_CONTEXT, 'SSC.LibraryFactory');
 		return $query;
 	}
 

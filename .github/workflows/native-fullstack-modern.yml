@@ -12,7 +12,11 @@
 				"tests/mediawikiEnvironment.php",
 				"tests/bootstrap.php",
 				"extension.json",
-				".github/workflows/native-fullstack-modern.yml"
+				".github/workflows/native-fullstack-modern.yml",
+				"resources/**",
+				"tests/nativeOptimizationSupport.php",
+				"tests/nativeOptimizationBenchmarks.php",
+				"tests/fullstack.py"
 			]
 		},
 		"push": {
@@ -29,7 +33,11 @@
 				"tests/mediawikiEnvironment.php",
 				"tests/bootstrap.php",
 				"extension.json",
-				".github/workflows/native-fullstack-modern.yml"
+				".github/workflows/native-fullstack-modern.yml",
+				"resources/**",
+				"tests/nativeOptimizationSupport.php",
+				"tests/nativeOptimizationBenchmarks.php",
+				"tests/fullstack.py"
 			]
 		},
 		"workflow_dispatch": {}

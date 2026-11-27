@@ -7,28 +7,18 @@ use Wikimedia\Rdbms\DBError;
 
 $failure = null;
 try {
-	$connection = $store->getConnection();
-	if (method_exists($connection, 'newSelectQueryBuilder')) {
-		$connection->newSelectQueryBuilder()->select('missing')->from('wd_deliberately_missing_table')
-			->caller(__METHOD__)->fetchResultSet();
-	} else {
-		$connection->select('wd_deliberately_missing_table', ['missing'], [], __FILE__);
-	}
+	$store->getConnection()->newSelectQueryBuilder()->select('missing')->from('wd_deliberately_missing_table')
+		->caller(__METHOD__)->fetchResultSet();
 } catch (Throwable $e) {
 	$failure = $e;
 }
 check($failure instanceof Throwable, 'Real SMW SELECT failure propagates');
-if (SMW_VERSION === '6.0.1') {
-	check($failure instanceof RuntimeException && !$failure instanceof DBError && $failure->getPrevious() === null,
-		'SMW 6.0.1 discards the original SQL exception type/cause');
-} else {
-	$cause = $failure;
-	while ($cause !== null && !$cause instanceof DBError) { $cause = $cause->getPrevious(); }
-	check($cause instanceof DBError, 'Modern SMW preserves the real database error');
-}
+$cause = $failure;
+while ($cause !== null && !$cause instanceof DBError) { $cause = $cause->getPrevious(); }
+check($cause instanceof DBError, 'Modern SMW preserves the real database error');
 try { DatabaseFailure::rethrow($failure); throw new LogicException('Lost real SMW SQL failure'); }
 catch (Throwable $e) { same($failure, $e, 'Original SMW wrapper preserved by native guard'); }
-$report['sql_failures'] = ['smw_select_exception' => get_class($failure), 'original_type_lost_by_smw' => SMW_VERSION === '6.0.1'];
+$report['sql_failures'] = ['smw_select_exception' => get_class($failure), 'original_type_lost_by_smw' => false];
 $transaction = new TransactionHandler($services->getDBLoadBalancerFactory());
 $transaction->markSectionTransaction('isolated-section');
 foreach ([static fn() => $transaction->markSectionTransaction('nested'), static fn() => $transaction->detachSectionTransaction('wrong-section')] as $operation) {

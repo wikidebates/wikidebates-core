@@ -224,41 +224,27 @@ Les titres, délimiteurs, longueurs, cardinalités, types et relations doivent
 rester cohérents lors de l'anonymisation. Sans ces éléments, les tests signalés
 comme non effectués ci-dessus restent tels quels.
 
-## Reproduction sans configuration de site
+## Reproduction actuelle sans configuration de site
 
-Le banc nécessite Python 3, Git, Composer et un PHP CLI MediaWiki 1.43 avec
-notamment PDO SQLite, sqlite3, mbstring, intl, DOM/XML/SimpleXML, ctype, fileinfo,
-curl, Phar et tokenizer. Le binaire LuaStandalone Scribunto doit pouvoir s'exécuter.
-Il n'y a pas de dépendance Python supplémentaire pour ce banc.
+Les mesures et versions ci-dessus décrivent le laboratoire historique. Le contrat
+figé a depuis été vérifié sans modification sur MediaWiki 1.43.12, PHP 8.4 et
+SMW 7.4.1 (Core #179). Le laboratoire SMW 6.0.1 et ses dépendances dédiées sont
+retirés. Les sources historiques restent dans Git.
 
-Créer un laboratoire neuf avec `mediawiki/` et `dependencies/` côte à côte.
-Cloner le cœur, son `vendor/` et les extensions du tableau aux commits indiqués.
-Les dépôts sont `wikimedia/mediawiki`, `wikimedia/mediawiki-vendor`,
-`wikimedia/mediawiki-extensions-NOM` pour les extensions Wikimedia,
-`SemanticMediaWiki/SemanticMediaWiki`, `SemanticMediaWiki/SemanticScribunto`,
-`Liquipedia/VariablesLua` et `StarCitizenTools/mediawiki-extensions-ShortDescription`.
-Les extensions doivent se trouver dans `mediawiki/extensions/NOM`.
-
-Depuis le dépôt Wikidebates, pour un laboratoire situé à `/path/to/lab` :
+Le workflow [native-fullstack-modern.yml](../.github/workflows/native-fullstack-modern.yml)
+définit les versions et l'installation des extensions ainsi que les commandes de
+validation reproductibles. Utiliser un laboratoire neuf avec les dépendances
+Composer de MediaWiki et de SMW installées conformément à ce workflow.
 
 ```sh
-mkdir -p /path/to/lab/dependencies
-cp tests/fullstack-dependencies/composer.json /path/to/lab/dependencies/composer.json
-cp tests/fullstack-dependencies/composer.lock /path/to/lab/dependencies/composer.lock
-composer --working-dir=/path/to/lab/dependencies install --no-dev --no-interaction --no-plugins --no-scripts
-MW_INSTALL_PATH=/path/to/lab/mediawiki WD_FULLSTACK_AUTOLOAD=/path/to/lab/dependencies/vendor/autoload.php python3 tests/fullstack.py --php php --output /path/to/lab/results.json
+MW_INSTALL_PATH=/path/to/lab/mediawiki WD_TEST_EXPECTED_SMW=7.4.1 python3 tests/fullstack.py --php php --output /path/to/lab/results.json
 php tests/run.php
 MW_INSTALL_PATH=/path/to/lab/mediawiki php tests/mediawiki.php
 ```
 
-Le fichier Composer de test contient l'autoload SMW relatif à ce laboratoire et
-les dépendances du paquet 6.0.1, verrouillées dans le fichier associé. Il ne
-remplace pas le `composer.json` d'un wiki. Une installation SMW effectuée par son
-procédé Composer habituel peut utiliser son propre autoload ; la variable
-`WD_FULLSTACK_AUTOLOAD` est alors optionnelle si le `vendor/` MediaWiki le fournit.
-
-`tests/fullstack.py` exécute le PHP puis compare les sorties fraîchement créées
-avec l'oracle Lua. Son code de retour est non nul dès qu'une assertion, un job ou
-une comparaison échoue. Le rapport n'est écrit qu'après réussite de l'ensemble.
-Les artefacts intermédiaires et la base sont supprimés à la fin. Le manifeste
-Wikidebates ne charge aucun de ces fichiers de test.
+Le banc complet compare les 144 rendus et 14 états persistés au contrat figé,
+sans oracle ni interpréteur Lua. Le contrôle du vocabulaire Schema.org est
+également conservé dans le workflow moderne. Les tests de conservation des
+anciennes révisions Scribunto sont indépendants et restent dans
+`.github/workflows/seo-legacy-projection.yml`. Aucun fichier de test n'est
+chargé en production.

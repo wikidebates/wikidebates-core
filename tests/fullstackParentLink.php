@@ -21,7 +21,7 @@ same([[9, 'WD_FS_auto_child#0##']], $values, 'Automatic parent edit reaches the 
 $report['automatic_parent_link'] = ['child_inserted' => true, 'semantic_value' => $values];
 echo "OK: existing automatic parent link hook edits and persists the synthetic parent\n";
 
-// Exercise the existing direct SQL reader against the genuine SMW 6 schema.
+// Exercise the existing direct SQL reader against the genuine SMW SQLStore schema.
 fsSave('WD FS recent child', '{{#set:Parent debate=WD FS auto parent|Breadcrumb=WD FS auto parent⟭WD FS auto child⟭WD FS recent child}}');
 fsFlush();
 $parser = MediaWikiServices::getInstance()->getParserFactory()->create();

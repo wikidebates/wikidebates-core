@@ -8,13 +8,9 @@ final class DatabaseFailure {
 			if ($cause instanceof \Wikimedia\Rdbms\DBError || $cause instanceof \PDOException || $cause instanceof \mysqli_sql_exception) {
 				throw $exception;
 			}
-			// SMW 6.0.1 Database::select discards both DBError's type and previous
-			// exception. Match the throwing boundary, never SQL/error-message text.
+			// Transaction-section failures remain untyped in modern SMW.
+			// Match the throwing boundary, never exception-message text.
 			foreach ($cause->getTrace() as $frame) {
-				if (($frame['class'] ?? '') === 'SMW\\MediaWiki\\Connection\\Database'
-					&& ($frame['function'] ?? '') === 'select') {
-					throw $exception;
-				}
 				if (($frame['class'] ?? '') === 'SMW\\MediaWiki\\Connection\\TransactionHandler'
 					&& in_array($frame['function'] ?? '', ['markSectionTransaction', 'detachSectionTransaction'], true)) {
 					throw $exception;
