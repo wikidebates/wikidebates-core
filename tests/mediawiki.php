@@ -258,7 +258,14 @@ rejects(static fn() => $context->htmlTag('script', 'alert(1)',
 rejects(static fn() => $context->htmlTag('a', 'body',
 	[], false), 'Generic tag fallback disabled');
 
-rejects(static fn() => $parse('{{#debate:invalid}}'), 'Invalid renderer entry rejected');
+foreach (['argument', 'debate'] as $function) {
+	try {
+		$parse('{{#' . $function . ':invalid}}');
+		throw new RuntimeException('Invalid renderer entry was accepted: ' . $function);
+	} catch (InvalidArgumentException $e) {
+		same('#' . $function . ': expected render', $e->getMessage(), 'Invalid renderer entry rejected');
+	}
+}
 same([], array_values(array_filter($sourceReads, static fn(string $name): bool => str_starts_with($name, 'Module:'))), 'No module source read by the canonical renderer');
 check(!class_exists(\MediaWiki\Extension\DebatePHP\LiteralData::class, false), 'Runtime never loads the offline Lua reader');
 require __DIR__ . '/mediawikiOperations.php';
