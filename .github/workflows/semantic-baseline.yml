@@ -8,7 +8,11 @@
 				"maintenance/AuditSemanticFreshness.php",
 				"docs/semantic-baseline-audit.md",
 				".github/workflows/semantic-baseline.yml",
-				"tests/fullstackPageOwnedCache.php"
+				"tests/fullstackPageOwnedCache.php",
+				"debatephp/src/ArgumentMap.php",
+				"debatephp/src/NativeSemanticApi.php",
+				"tests/fullstackArgumentMapCases.php",
+				"tests/fullstackArgumentMapModern.php"
 			]
 		},
 		"push": {
@@ -19,7 +23,11 @@
 				"tests/fullstackSemanticBaseline.php",
 				"tests/mediawikiEnvironment.php",
 				"maintenance/AuditSemanticFreshness.php",
-				".github/workflows/semantic-baseline.yml"
+				".github/workflows/semantic-baseline.yml",
+				"debatephp/src/ArgumentMap.php",
+				"debatephp/src/NativeSemanticApi.php",
+				"tests/fullstackArgumentMapCases.php",
+				"tests/fullstackArgumentMapModern.php"
 			]
 		}
 	},
@@ -117,6 +125,13 @@
 						"WD_SEMANTIC_BASELINE_REPORT": "${{ github.workspace }}/tests/results/semantic-baseline-${{ matrix.database }}.json"
 					},
 					"run": "php -d memory_limit=768M tests/fullstackSemanticBaseline.php"
+				},
+				{
+					"name": "Native hover maps on SMW 7.3.1 without loading Lua",
+					"env": {
+						"MW_INSTALL_PATH": "${{ github.workspace }}/.mw-lab"
+					},
+					"run": "php -d memory_limit=768M tests/fullstackArgumentMapModern.php"
 				},
 				{
 					"name": "Verify Vector HTML snapshot after unrelated SMW changes",

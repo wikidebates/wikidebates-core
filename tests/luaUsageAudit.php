@@ -13,7 +13,8 @@ foreach (['Module', 'Modul', 'Módulo', 'Modulo'] as $ns) {
 	check(in_array('module_reference', Audit::signals('[[:' . $ns . ':A]]', 'wikitext', 0), true), 'Localized module reference');
 }
 same(['native_argument', 'native_debate'], Audit::signals('{{#argument:render}}{{#debate:render}}', 'wikitext', 10), 'Native marker classification');
-check(!Audit::needsReview(['native_argument', 'native_debate']), 'Native render markers are informational');
+check(!Audit::needsReview(['native_argument', 'native_debate', 'native_argument_map']), 'Native render markers are informational');
+same(['native_argument_map'], Audit::signals('{{#argumentmap:render|WD map}}', 'wikitext', 10), 'Native map marker is informational');
 check(Audit::needsReview(['native_argument', 'invoke']), 'Mixed legacy and native content is not safe by default');
 same([], Audit::signals('Ordinary text #invoked and a normal link [[Article]]', 'wikitext', 0), 'Ordinary text');
 same(['module_namespace'], Audit::signals('Documentation', 'wikitext', 829), 'Module discussion is a namespace candidate, not a Lua model');

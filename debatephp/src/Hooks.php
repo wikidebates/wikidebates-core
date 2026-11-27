@@ -10,6 +10,7 @@ final class Hooks {
 	public static function onParserFirstCallInit(Parser $parser): void {
 		$parser->setFunctionHook('argument', [self::class, 'argument'], Parser::SFH_OBJECT_ARGS);
 		$parser->setFunctionHook('debate', [self::class, 'debate'], Parser::SFH_OBJECT_ARGS);
+		$parser->setFunctionHook('argumentmap', [ArgumentMap::class, 'render'], Parser::SFH_OBJECT_ARGS);
 	}
 	public static function debate(Parser $parser, PPFrame $frame, array $args): array {
 		return self::execute($parser, $frame, $args, 'Debate');

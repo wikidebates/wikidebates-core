@@ -64,3 +64,13 @@ revoir les candidats et les configurations chargées, vérifier les extensions
 dépendantes, décider comment conserver l'accès aux anciennes révisions et
 tester une copie des six wikis sans les extensions Lua. Ne pas déployer ni
 modifier les caches dans cette étape.
+
+## Consommateur dynamique identifié
+
+Le survol dans `modules/features/hover.js` construisait un appel à `ArgumentMap`
+à la volée et l'envoyait à `action=parse`. Une absence de transclusions en base
+n'était donc pas une preuve de retrait possible. Le nouveau point d'entrée
+`#argumentmap:render` remplace cet appel, sans modifier les propriétés stockées.
+Voir `docs/native-argument-map.md`. Conserver les modules et extensions Lua
+jusqu'à validation du déploiement, du JavaScript historique encore en cache et
+une solution testée de consultation de l'historique.
