@@ -139,10 +139,16 @@ foreach ([new class extends \MediaWiki\Extension\DebatePHP\ReferenceRenderer { u
 	$probe->append($parts, $categories);
 	same(['prefix', '<banner>', '<banner>'], $parts, 'Banner append mutates caller native fragments');
 	same(['category effect', 'category effect'], $categories, 'Banner category effects stay ordered');
-	$legacyParts = new Table([1 => 'prefix']); $categories = [];
-	$alias = $legacyParts; $probe->append($legacyParts, $categories);
-	same($alias, $legacyParts, 'Legacy fragment Table keeps shared identity');
-	same([1 => 'prefix', 2 => '<banner>', 3 => '<banner>'], $alias->values, 'Legacy fragment append compatibility');
+	$empty = []; $categories = [];
+	$probe->append($empty, $categories);
+	same(['<banner>', '<banner>'], $empty, 'Native fragment list preserves duplicates and order');
+	$legacyParts = new Table([1 => 'prefix']);
+	try {
+		$probe->append($legacyParts, $categories);
+		throw new LogicException('Legacy fragment Table must be rejected');
+	} catch (TypeError $error) {
+		same([1 => 'prefix'], $legacyParts->values, 'No mutation through retired Table boundary');
+	}
 	$checks += 4;
 }
 echo "$checks native-path assertions: exact cache keys, JSON shape/order, native/legacy isolation and byte-bounded selective CSV\n";

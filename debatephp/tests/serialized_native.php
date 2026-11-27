@@ -2,8 +2,9 @@
 require __DIR__ . '/bootstrap.php';
 use MediaWiki\Extension\DebatePHP\{Table,ReferenceRenderer,ArgumentReferenceRenderer};
 function plain($value) {
-	if (!$value instanceof Table) { return $value; }
-	$out = array_map('plain', $value->values);
+	if ($value instanceof Table) { $value = $value->values; }
+	if (!is_array($value)) { return $value; }
+	$out = array_map('plain', $value);
 	return $out && array_keys($out) === range(1, count($out)) ? array_values($out) : $out;
 }
 $out = [];

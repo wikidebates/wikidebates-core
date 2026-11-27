@@ -174,11 +174,11 @@ $equal([], $relations->proDebates, 'Loaded empty parent relation');
 
 $parentRenderer = new ArgumentReferenceRenderer($parentContext);
 $parentRenderer->render();
-$parentFields = new Table([
+$parentFields = [
 	'prop_arg_pro' => 'Pro', 'prop_arg_con' => 'Con',
 	'prop_justif' => 'Justif', 'prop_obj' => 'Obj',
 	'prop_breadcrumb' => 'Chain', 'prop_debate_name' => 'Debate'
-]);
+];
 $pv = $parentContext->pageVars();
 $relations = new \MediaWiki\Extension\DebatePHP\ParentRelations;
 (new ReflectionMethod($parentRenderer, 'ensureDebateParents'))->invoke($parentRenderer, $pv, $relations, $parentFields);
