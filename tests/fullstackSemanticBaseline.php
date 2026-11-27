@@ -8,10 +8,11 @@
 define( 'WD_FULLSTACK_TEST', true );
 putenv( 'WD_TEST_LANGUAGE=en' );
 putenv( 'WD_TEST_SEMANTIC_BASELINE=1' );
-putenv( 'WD_TEST_EXTENSIONS=Scribunto,SemanticMediaWiki,SemanticScribunto' );
+putenv( 'WD_TEST_EXTENSIONS=SemanticMediaWiki' );
 require __DIR__ . '/mediawikiEnvironment.php';
 
 use MediaWiki\Extension\DebatePHP\MediaWikiContext;
+use MediaWiki\Extension\DebatePHP\NativeSemanticApi;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Parser\ParserOptions;
 use MediaWiki\Title\Title;
@@ -25,7 +26,9 @@ use SMW\SQLStore\QueryDependencyLinksStoreFactory;
 
 check( str_starts_with( MW_VERSION, '1.43.' ), 'MediaWiki 1.43 required' );
 check( SMW_VERSION === '7.3.1', 'Exact Semantic MediaWiki version' );
-check( SMW_SCRIBUNTO_VERSION === '2.3.3', 'Exact SemanticScribunto version' );
+foreach ( [ 'Scribunto', 'SemanticScribunto', 'VariablesLua' ] as $extension ) {
+	check( !\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded( $extension ), 'No runtime dependency on ' . $extension );
+}
 $services = MediaWikiServices::getInstance();
 $store = ServicesFactory::getInstance()->getStore();
 check( $store instanceof \SMW\SQLStore\SQLStore, 'Real SMW SQLStore' );
@@ -76,7 +79,7 @@ $profiles = static function ( string $name ) use ( $store, $linkStore ): array {
 
 $directMembers = static function ( string $parent ) use ( $store ): array {
 	$store->clear();
-	$result = ( new \SMW\Scribunto\LibraryFactory( $store ) )->newQueryResultFrom( [
+	$result = NativeSemanticApi::query( $store, [
 			'[[WD Baseline Parent::' . $parent . ']]', 'limit=200', 'link=none'
 	] );
 	check( $result instanceof \SMW\Query\QueryResult, 'Direct semantic query works' );
@@ -137,7 +140,8 @@ check( $directMembers( 'WD Baseline B' ) === [], 'Initial empty semantic relatio
 $report = [
 	'mediawiki' => MW_VERSION,
 	'smw' => SMW_VERSION,
-	'semantic_scribunto' => SMW_SCRIBUNTO_VERSION,
+	'semantic_scribunto' => null,
+	'lua_extensions_loaded' => false,
 	'php' => PHP_VERSION,
 	'configuration' => [
 		'query_dependency_links' => $GLOBALS['smwgEnabledQueryDependencyLinksStore'] ?? null,
