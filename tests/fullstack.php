@@ -152,6 +152,8 @@ same('MISSING', $fresh, 'Variables do not leak between page parses');
 $report['variables'] = ['lua_to_php' => $seen, 'php_to_lua' => $text, 'fresh_parser' => $fresh];
 echo "OK: real Lua/native deferred persistence, typed properties, updates/removal, queries and VariablesLua sharing\n";
 require __DIR__ . '/fullstackRender.php';
+require __DIR__ . '/fullstackArgumentMapCases.php';
+fsArgumentMapCases(true);
 require __DIR__ . '/fullstackParentLink.php';
 $report['queues_empty'] = !$services->getJobQueueGroup()->queuesHaveJobs();
 check($report['queues_empty'], 'Queues remain empty after the automatic parent hook');

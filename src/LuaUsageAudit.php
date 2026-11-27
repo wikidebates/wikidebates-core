@@ -40,6 +40,7 @@ final class LuaUsageAudit {
 			'module_reference' => '~(?:\[\[\s*:?\s*|\{\{\s*:?\s*)(?:Module|Modul|Módulo|Modulo)\s*:~iu',
 			'native_argument' => '~#\s*argument\s*:\s*render\b~iu',
 			'native_debate' => '~#\s*debate\s*:\s*render\b~iu',
+			'native_argument_map' => '~#\s*argumentmap\s*:\s*render\b~iu',
 			'semantic_lua_api' => '~\bmw\s*(?:\.\s*smw\b|\[\s*["\x27]smw["\x27]\s*\])~iu',
 			'variables_lua_api' => '~\bmw\s*\.\s*ext\s*\.\s*(?:VariablesLua|variables)\b~iu',
 			'seo_lua_api' => '~\bmw\s*\.\s*ext\s*\.\s*seo\b~iu'
@@ -61,7 +62,7 @@ final class LuaUsageAudit {
 
 	/** Native parser calls are informational; everything else requires review. */
 	public static function needsReview(array $signals): bool {
-		return array_diff($signals, ['native_argument', 'native_debate']) !== [];
+		return array_diff($signals, ['native_argument', 'native_debate', 'native_argument_map']) !== [];
 	}
 
 	/**

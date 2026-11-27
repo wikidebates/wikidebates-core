@@ -12,8 +12,6 @@
 	var WK_CLOSE = '}}';
 	var WK_SEP = '|';
 
-	var WK_HOVER_MAP = { module: 'ArgumentMap', fn: 'main' };
-
 	var wkHoverCurrent = null;
 	var wkHoverTimer = 0;
 	var wkHoverToken = 0;
@@ -24,7 +22,7 @@
 
 		function wkGetHoverTypeAndTpl( $wrap ) {
 			if ( $wrap.hasClass( 'hover-map' ) ) {
-				return { type: 'map', invoke: 1, module: WK_HOVER_MAP.module, fn: WK_HOVER_MAP.fn };
+				return { type: 'map' };
 			}
 			if ( $wrap.hasClass( 'hover-wikipedia' ) ) {
 				return { type: 'wikipedia', template: WK.WK_T.hoverWP };
@@ -92,13 +90,20 @@
 				p2 = ds.argument;
 			}
 
+			// data-debate/data-argument are QUERY-encoded by the renderers,
+			// including existing cached HTML. Decode once, then encode both
+			// titles as literal URI components so wiki parameter delimiters
+			// cannot change the parser function call.
+			var source = p2;
+			try { source = decodeURIComponent( p2.replace( /\+/g, ' ' ) ); } catch ( e ) {}
+
 			return {
 				query: WK_OPEN
-					+ '#invoke:' + info.module
-					+ WK_SEP + info.fn
-					+ WK_SEP + p1m
-					+ WK_SEP + ( p2 || '' )
+					+ '#argumentmap:render'
+					+ WK_SEP + encodeURIComponent( p1m )
+					+ WK_SEP + encodeURIComponent( source )
 					+ WK_SEP + ( p3 || '' )
+					+ WK_SEP + 'encoding=uri'
 					+ WK_CLOSE,
 				key: 'map|' + p1m + '|' + ( p2 || '' ) + '|' + ( p3 || '' )
 			};
