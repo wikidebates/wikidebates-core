@@ -97,21 +97,15 @@ check($empty->completeEmpty, 'Parsed-query proof works without SemanticScribunto
 // Exercise both actual render entry points with a genuine SMW parser, not only adapter calls.
 $cases = require __DIR__ . '/renderCases.php';
 foreach (['complete debate en', 'complete argument en', 'complete debate fr', 'complete argument fr'] as $name) {
-	$reference = null;
-	foreach (['reference', 'optimized'] as $mode) {
-		$GLOBALS['wgDebatePHPMode'] = $mode;
-		$options = ParserOptions::newFromAnon();
-		$options->setTimestamp('20261018000000');
-		$out = $services->getParserFactory()->create()->parse($cases[$name], Title::newFromText('WD native ' . $name), $options);
-		check(str_contains($out->getText(), 'application/ld+json') && !str_contains($out->getText(), 'scribunto-error'),
-			'Native renderer produces structured data without a Lua engine: ' . $name);
-		$data = $out->getExtensionData(\SMW\ParserData::DATA_ID);
-		check($data instanceof \SMW\SemanticData, 'Renderer produces real semantic parser data: ' . $name);
-		$snapshot = fsSnapshot($data);
-		check($snapshot['properties'] !== [], 'Renderer writes semantic properties: ' . $name);
-		if ($mode === 'reference') { $reference = $snapshot; }
-		else { same($reference, $snapshot, 'Native render modes retain semantic effects: ' . $name); }
-	}
+	$options = ParserOptions::newFromAnon();
+	$options->setTimestamp('20261018000000');
+	$out = $services->getParserFactory()->create()->parse($cases[$name], Title::newFromText('WD native ' . $name), $options);
+	check(str_contains($out->getText(), 'application/ld+json') && !str_contains($out->getText(), 'scribunto-error'),
+		'Native renderer produces structured data without a Lua engine: ' . $name);
+	$data = $out->getExtensionData(\SMW\ParserData::DATA_ID);
+	check($data instanceof \SMW\SemanticData, 'Renderer produces real semantic parser data: ' . $name);
+	$snapshot = fsSnapshot($data);
+	check($snapshot['properties'] !== [], 'Renderer writes semantic properties: ' . $name);
 }
 require __DIR__ . '/fullstackArgumentMapCases.php';
 fsArgumentMapCases(false);

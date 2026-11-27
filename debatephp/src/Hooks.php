@@ -25,17 +25,13 @@ final class Hooks {
 		// are resolved by a genuine child frame, never split on an expanded '=' or '|'.
 		unset($args[0]);
 		$config = MediaWikiServices::getInstance()->getMainConfig();
-		$mode = $config->get('DebatePHPMode');
-		if (!in_array($mode, ['reference', 'optimized'], true)) { throw new \RuntimeException('Invalid DebatePHPMode'); }
 		$profile = $config->get('DebatePHPProfiling'); $diagnostics = $config->get('DebatePHPDiagnostics');
 		$telemetry = $profile || $diagnostics ? new Telemetry($profile, $diagnostics,
-			['page' => $parser->getTitle()->getPrefixedText(), 'mode' => $mode, 'module' => $moduleName]) : null;
+			['page' => $parser->getTitle()->getPrefixedText(), 'module' => $moduleName]) : null;
 		try {
 			$started = $telemetry?->start();
 			try {
-				$context = new MediaWikiContext($parser, $frame, $args, $mode === 'optimized', false, $telemetry, $moduleName);
-				// The two renderer implementations are identical; only the context's
-				// message memoization differs during comparative validation.
+				$context = new MediaWikiContext($parser, $frame, $args, true, false, $telemetry, $moduleName);
 				$renderer = $moduleName === 'Argument'
 					? new ArgumentReferenceRenderer($context)
 					: new ReferenceRenderer($context);

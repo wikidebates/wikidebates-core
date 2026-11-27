@@ -11,13 +11,12 @@ use MediaWiki\Parser\ParserOptions;
 use MediaWiki\Title\Title;
 use MediaWiki\Extension\DebatePHP\MediaWikiContext;
 use MediaWiki\Extension\DebatePHP\ReferenceRenderer;
-use MediaWiki\Extension\DebatePHP\Renderer;
 use MediaWiki\Extension\DebatePHP\Tests\CaptureLibrary;
 
 class DebateComparison extends Maintenance {
 	private bool $fullStack = false;
 	private string $timestamp;
-	private array $modes = ['lua', 'reference', 'optimized'];
+	private array $modes = ['lua', 'optimized'];
 	public function __construct() {
 		parent::__construct();
 		$this->addOption('wiki-root', 'MediaWiki root', true, true);
@@ -34,7 +33,7 @@ class DebateComparison extends Maintenance {
 	public function execute() {
 		// Compare CURRENT* magic words at the same instant across all variants.
 		$this->timestamp = wfTimestampNow();
-		if ($this->hasOption('native-only')) { $this->modes = ['reference', 'optimized']; }
+		if ($this->hasOption('native-only')) { $this->modes = ['optimized']; }
 		if ($this->hasOption('legacy-renderer')) {
 			require $this->getOption('legacy-renderer');
 			$this->modes[] = 'legacy-php';
@@ -82,7 +81,7 @@ class DebateComparison extends Maintenance {
 		file_put_contents($this->getOption('output'), json_encode($results, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_PRETTY_PRINT));
 	}
 	private function one(array $case, string $mode, bool $trace): array {
-		$GLOBALS['wgDebatePHPMode'] = in_array($mode, ['optimized','legacy-php'], true) ? 'optimized' : 'reference';
+		if ($mode === 'legacy-php') { $GLOBALS['wgDebatePHPMode'] = 'optimized'; }
 		if ($this->fullStack) { $trace = false; }
 		else { CaptureLibrary::$semantic = []; CaptureLibrary::$trace = []; }
 		$phpTrace = [];
@@ -91,8 +90,8 @@ class DebateComparison extends Maintenance {
 			$parser->setFunctionHook('debate', [\MediaWiki\Extension\DebatePHP\LegacyHooks::class, 'debate'], Parser::SFH_OBJECT_ARGS);
 		} elseif ($trace && $mode !== 'lua') {
 			$parser->setFunctionHook('debate', static function($p, $f, $args) use ($mode, &$phpTrace) {
-				$f->expand($args[0]); unset($args[0]); $c = new MediaWikiContext($p, $f, $args, $mode === 'optimized', true);
-				$r = $mode === 'optimized' ? new Renderer($c) : new ReferenceRenderer($c);
+				$f->expand($args[0]); unset($args[0]); $c = new MediaWikiContext($p, $f, $args, true, true);
+				$r = new ReferenceRenderer($c);
 				$out = \UtfNormal\Validator::cleanUp($r->render()); $phpTrace = array_merge($phpTrace, $c->trace());
 				return [$out, 'noparse' => true, 'isHTML' => false];
 			}, Parser::SFH_OBJECT_ARGS);

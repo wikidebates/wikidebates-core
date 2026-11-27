@@ -78,14 +78,11 @@ class PreprocessingTest extends Maintenance {
 			}
 			$profiles[$case] = $profile;
 		}
-		foreach (['reference', 'optimized'] as $mode) {
-			$GLOBALS['wgDebatePHPMode'] = $mode;
-			foreach (['argument', 'debate'] as $function) {
-				$p = $services->getParserFactory()->create();
-				$out = $p->parse('{{#' . $function . ':render}}', Title::newFromText('Autonomous PHP test'), ParserOptions::newFromAnon());
-				$check(!isset($out->getTemplates()[828]) && !str_contains($out->getText(), 'scribunto-error'), 'Native render depends on source modules');
-				$check(str_contains($out->getText(), 'application/ld+json'), 'Native JSON-LD missing');
-			}
+		foreach (['argument', 'debate'] as $function) {
+			$p = $services->getParserFactory()->create();
+			$out = $p->parse('{{#' . $function . ':render}}', Title::newFromText('Autonomous PHP test'), ParserOptions::newFromAnon());
+			$check(!isset($out->getTemplates()[828]) && !str_contains($out->getText(), 'scribunto-error'), 'Native render depends on source modules');
+			$check(str_contains($out->getText(), 'application/ld+json'), 'Native JSON-LD missing');
 		}
 		$withoutScribunto = !ExtensionRegistry::getInstance()->isLoaded('Scribunto');
 		if (getenv('DEBATEPHP_WITHOUT_SCRIBUNTO')) { $check($withoutScribunto, 'Scribunto unexpectedly loaded'); }

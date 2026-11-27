@@ -5,7 +5,6 @@ use MediaWiki\MediaWikiServices;
 use MediaWiki\Revision\SlotRecord;
 use MediaWiki\Title\Title;
 
-$GLOBALS['wgDebatePHPMode'] = 'reference';
 fsSave('Template:Debate', '<includeonly>{{#debate:render|lang=en|topic={{{topic|}}}|pro-arguments={{{pro-arguments|}}}}}</includeonly>');
 fsSave('Template:Pro argument', '<includeonly>{{{page|}}}⟬{{{displayed-title|}}}⟬{{{warnings|}}}⟭</includeonly>');
 fsSave('WD FS auto parent', '{{Debate|topic=Synthetic parent}}');

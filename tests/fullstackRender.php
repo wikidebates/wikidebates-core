@@ -1,6 +1,6 @@
 <?php
 
-/** Compare the retained Lua oracle and both native modes against real extension APIs. */
+/** Compare the retained Lua oracle and the canonical native renderer against real extension APIs. */
 use MediaWiki\Extension\DebatePHP\I18n;
 use MediaWiki\Extension\DebatePHP\MediaWikiContext;
 use MediaWiki\MediaWikiServices;
@@ -70,7 +70,7 @@ function fsSeoMarkerMap(\MediaWiki\Parser\Parser $parser, array $values): array 
 }
 
 function fsRender(string $title, string $source, string $mode, bool $profile = false, ?callable $parseObserver = null, ?int $seoRevision = null): array {
-	$GLOBALS['wgDebatePHPMode'] = str_ends_with($mode, 'optimized') ? 'optimized' : 'reference';
+	if (str_starts_with($mode, 'before-')) { $GLOBALS['wgDebatePHPMode'] = 'optimized'; }
 	$parser = MediaWikiServices::getInstance()->getParserFactory()->create();
 	$events = [];
 	nativeOptimizationHooks($parser, $mode, $profile, $events);
@@ -171,7 +171,7 @@ foreach ($cases as $case) {
 		finally { if ($seoComparison) { \MWTimestamp::setFakeTime(false); } }
 	}
 	$row = ['title' => $case['title'], 'name' => $case['name'] ?? $case['title'], 'full_stack' => true, 'variants' => []];
-	$modes = getenv('WD_OPTIMIZATION_BASELINE') ? ['lua', 'reference', 'optimized', 'before-reference', 'before-optimized'] : ['lua', 'reference', 'optimized'];
+	$modes = getenv('WD_OPTIMIZATION_BASELINE') ? ['lua', 'optimized', 'before-optimized'] : ['lua', 'optimized'];
 	$seoRevision = null;
 	if ($seoComparison) {
 		$record = $services->getWikiPageFactory()->newFromTitle($title)->getRevisionRecord();
@@ -186,14 +186,12 @@ foreach ($cases as $case) {
 		$row['variants'][$mode] = fsRender($case['title'], $case['text'], $mode, false, null, $seoRevision);
 	}
 	if (getenv('WD_OPTIMIZATION_BASELINE')) {
-		foreach (['reference', 'optimized'] as $mode) {
-			$before = $row['variants']['before-' . $mode]; $after = $row['variants'][$mode];
-			unset($before['milliseconds'], $after['milliseconds']);
-			same($before, $after, 'Exact native before/after HTML, JSON-LD, semantics, variables and dependencies: ' . $row['name'] . '/' . $mode);
-		}
+		$before = $row['variants']['before-optimized']; $after = $row['variants']['optimized'];
+		unset($before['milliseconds'], $after['milliseconds']);
+		same($before, $after, 'Exact native before/after HTML, JSON-LD, semantics, variables and dependencies: ' . $row['name']);
 	}
 	if (str_contains($row['name'], 'semantic parent graph')) {
-		$props = $row['variants']['reference']['semantic_snapshot']['properties'];
+		$props = $row['variants']['optimized']['semantic_snapshot']['properties'];
 		check(isset($props['Breadcrumb']) || isset($props["Fil_d'Ariane"]), 'Parent graph produces real breadcrumb properties');
 	}
 	$results[] = $row;
@@ -205,11 +203,11 @@ $persisted = 0;
 foreach ($cases as $index => $case) {
 	$name = $case['name'] ?? $case['title'];
 	if (!str_contains($name, 'complete debate') && !str_contains($name, 'complete argument') && !str_contains($name, 'semantic parent graph') && !str_contains($name, 'rich native') && !str_contains($name, 'measured lists')) { continue; }
-	$modes = getenv('WD_OPTIMIZATION_BASELINE') ? ['lua', 'reference', 'optimized', 'before-reference', 'before-optimized'] : ['lua', 'reference', 'optimized'];
+	$modes = getenv('WD_OPTIMIZATION_BASELINE') ? ['lua', 'optimized', 'before-optimized'] : ['lua', 'optimized'];
 	foreach ($modes as $mode) {
 		fsSave($case['title'], 'Reset semantic state ' . $mode);
 		fsFlush();
-		$GLOBALS['wgDebatePHPMode'] = str_ends_with($mode, 'optimized') ? 'optimized' : 'reference';
+		if (str_starts_with($mode, 'before-')) { $GLOBALS['wgDebatePHPMode'] = 'optimized'; }
 		$source = fsSource($case['text'], $mode);
 		$isBefore = str_starts_with($mode, 'before-');
 		if ($isBefore) {
@@ -231,7 +229,7 @@ foreach ($cases as $index => $case) {
 }
 $report['persisted_render_variants'] = $persisted;
 $report['render_cases'] = count($results);
-$report['native_before_after_comparisons'] = getenv('WD_OPTIMIZATION_BASELINE') ? count($results) * 2 : 0;
+$report['native_before_after_comparisons'] = getenv('WD_OPTIMIZATION_BASELINE') ? count($results) : 0;
 if (getenv('WD_FULLSTACK_RENDER_OUTPUT')) {
 	// Stream complete rows before the benchmarks: avoid duplicating the whole corpus.
 	$artifact = fopen(getenv('WD_FULLSTACK_RENDER_OUTPUT'), 'wb');
@@ -252,10 +250,10 @@ fsSave('Template:WD FS cache', 'WD FS cache BEFORE');
 fsFlush();
 $cacheSource = '{{#debate:render|lang=en|topic={{WD FS cache}}|introduction=Intro⟬⟬⟬{{WD FS cache}}⟬⟬⟬⟭⟭⟭|creation-date=2026-01-01}}';
 $cacheBefore = [];
-foreach (['lua', 'reference', 'optimized'] as $mode) { $cacheBefore[$mode] = fsRender('WD FS cache probe', $cacheSource, $mode); }
+foreach (['lua', 'optimized'] as $mode) { $cacheBefore[$mode] = fsRender('WD FS cache probe', $cacheSource, $mode); }
 fsSave('Template:WD FS cache', 'WD FS cache AFTER');
 fsFlush();
-foreach (['lua', 'reference', 'optimized'] as $mode) {
+foreach (['lua', 'optimized'] as $mode) {
 	$after = fsRender('WD FS cache probe', $cacheSource, $mode);
 	$before = $cacheBefore[$mode];
 	check(str_contains($before['html'], 'WD FS cache BEFORE') && str_contains($after['html'], 'WD FS cache AFTER'), 'Template update is rendered: ' . $mode);
@@ -266,9 +264,9 @@ foreach (['lua', 'reference', 'optimized'] as $mode) {
 // Warm parse-only measurements: real Lua/SMW stack, randomized order, same content.
 $timings = [];
 foreach (['debate' => $cases[1], 'argument' => ['title' => 'WD FS related argument', 'text' => $quote]] as $kind => $case) {
-	foreach (['lua', 'reference', 'optimized'] as $mode) { fsRender($case['title'], $case['text'], $mode); }
+	foreach (['lua', 'optimized'] as $mode) { fsRender($case['title'], $case['text'], $mode); }
 	for ($repeat = 0; $repeat < 9; $repeat++) {
-		$modes = ['lua', 'reference', 'optimized'];
+		$modes = ['lua', 'optimized'];
 		shuffle($modes);
 		foreach ($modes as $mode) { $timings[$kind][$mode][] = fsRender($case['title'], $case['text'], $mode)['milliseconds']; }
 	}

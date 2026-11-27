@@ -11,7 +11,6 @@ use MediaWiki\Parser\ParserOptions;
 use MediaWiki\Title\Title;
 use MediaWiki\Extension\DebatePHP\MediaWikiContext;
 use MediaWiki\Extension\DebatePHP\ArgumentReferenceRenderer as ReferenceRenderer;
-use MediaWiki\Extension\DebatePHP\ArgumentRenderer as Renderer;
 use MediaWiki\Extension\DebatePHP\Tests\CaptureLibrary;
 
 class ArgumentComparison extends Maintenance {
@@ -46,14 +45,14 @@ class ArgumentComparison extends Maintenance {
 		$results = []; $repeats = (int)$this->getOption('repeats', 0);
 		foreach ($cases as $case) {
 			$row = ['title' => $case['title'], 'full_stack' => $this->fullStack, 'timestamp' => $this->timestamp, 'variants' => []];
-			foreach (['lua', 'reference', 'optimized'] as $mode) {
+			foreach (['lua', 'optimized'] as $mode) {
 				$row['variants'][$mode] = $this->one($case, $mode, !$this->hasOption('no-trace'));
 			}
 			if ($repeats > 0) {
-				foreach (['lua', 'reference', 'optimized'] as $mode) { $this->one($case, $mode, false); }
-				$row['timings_ms'] = ['lua' => [], 'reference' => [], 'optimized' => []];
+				foreach (['lua', 'optimized'] as $mode) { $this->one($case, $mode, false); }
+				$row['timings_ms'] = ['lua' => [], 'optimized' => []];
 				for ($i = 0; $i < $repeats; $i++) {
-					$modes = ['lua', 'reference', 'optimized']; shuffle($modes);
+					$modes = ['lua', 'optimized']; shuffle($modes);
 					foreach ($modes as $mode) { $row['timings_ms'][$mode][] = $this->one($case, $mode, false)['milliseconds']; }
 				}
 			}
@@ -63,15 +62,14 @@ class ArgumentComparison extends Maintenance {
 		file_put_contents($this->getOption('output'), json_encode($results, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_PRETTY_PRINT));
 	}
 	private function one(array $case, string $mode, bool $trace): array {
-		$GLOBALS['wgDebatePHPMode'] = $mode === 'optimized' ? 'optimized' : 'reference';
 		if ($this->fullStack) { $trace = false; }
 		else { CaptureLibrary::$semantic = []; CaptureLibrary::$trace = []; }
 		$phpTrace = [];
 		$parser = MediaWikiServices::getInstance()->getParserFactory()->create();
 		if ($trace && $mode !== 'lua') {
 			$parser->setFunctionHook('argument', static function($p, $f, $args) use ($mode, &$phpTrace) {
-				$f->expand($args[0]); unset($args[0]); $c = new MediaWikiContext($p, $f, $args, $mode === 'optimized', true, null, 'Argument');
-				$r = $mode === 'optimized' ? new Renderer($c) : new ReferenceRenderer($c);
+				$f->expand($args[0]); unset($args[0]); $c = new MediaWikiContext($p, $f, $args, true, true, null, 'Argument');
+				$r = new ReferenceRenderer($c);
 				$out = \UtfNormal\Validator::cleanUp($r->render()); $phpTrace = array_merge($phpTrace, $c->trace());
 				return [$out, 'noparse' => true, 'isHTML' => false];
 			}, Parser::SFH_OBJECT_ARGS);

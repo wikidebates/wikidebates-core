@@ -23,7 +23,7 @@ $withoutDurations = static function(array $value) use (&$withoutDurations): arra
 $benchmark['effect_profile_comparisons'] = 0;
 mt_srand(803);
 foreach ($scenarios as $name => $case) {
-	foreach (['before-reference', 'before-optimized', 'reference', 'optimized'] as $mode) {
+	foreach (['before-optimized', 'optimized'] as $mode) {
 		fsRender($case['title'], $case['text'], $mode);
 		$plain = fsRender($case['title'], $case['text'], $mode);
 		$profiled = fsRender($case['title'], $case['text'], $mode, true);
@@ -31,7 +31,7 @@ foreach ($scenarios as $name => $case) {
 		unset($plain['milliseconds'], $profiled['milliseconds'], $plain['profiles'], $profiled['profiles']);
 		same($plain, $profiled, 'Profiling cannot change rendered output or properties: ' . $name . '/' . $mode);
 	}
-	foreach (['reference', 'optimized'] as $mode) {
+	foreach (['optimized'] as $mode) {
 		$beforeProfile = $withoutDurations($benchmark['profiles'][$name]['before-' . $mode]);
 		$afterProfile = $withoutDurations($benchmark['profiles'][$name][$mode]);
 		foreach ($afterProfile as $i => &$event) {
@@ -53,14 +53,14 @@ foreach ($scenarios as $name => $case) {
 		$benchmark['effect_profile_comparisons']++;
 	}
 	for ($repeat = 0; $repeat < $repeats; $repeat++) {
-		$modes = ['before-reference', 'before-optimized', 'reference', 'optimized'];
+		$modes = ['before-optimized', 'optimized'];
 		shuffle($modes);
 		foreach ($modes as $mode) {
 			$benchmark['samples_ms'][$name][$mode][] = fsRender($case['title'], $case['text'], $mode)['milliseconds'];
 		}
 	}
 	for ($repeat = 0; $repeat < $repeats; $repeat++) {
-		$modes = ['reference', 'optimized']; shuffle($modes);
+		$modes = ['optimized']; shuffle($modes);
 		foreach ($modes as $mode) {
 			$benchmark['profile_samples_ms'][$name][$mode][] = fsRender($case['title'], $case['text'], $mode, true)['milliseconds'];
 		}
@@ -68,7 +68,7 @@ foreach ($scenarios as $name => $case) {
 }
 $origins = [];
 foreach ($benchmark['profiles'] as $modes) {
-	foreach (['reference', 'optimized'] as $mode) {
+	foreach (['optimized'] as $mode) {
 		foreach ($modes[$mode] as $event) {
 			foreach ($event['semantic'] as $origin => $phases) { $origins[$origin] = true; }
 			check(isset($event['preparation']), 'Real renderer emits CSV observations when profiling is enabled');
