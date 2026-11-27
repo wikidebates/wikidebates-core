@@ -9,7 +9,7 @@ define('WD_FULLSTACK_TEST', true);
 define('WD_TEST_PAGE_OWNED_CACHE', true);
 putenv('WD_TEST_LANGUAGE=en');
 putenv('WD_TEST_SEMANTIC_TRACKING=1');
-putenv('WD_TEST_EXTENSIONS=Scribunto,SemanticMediaWiki,SemanticScribunto');
+putenv('WD_TEST_EXTENSIONS=SemanticMediaWiki');
 require __DIR__ . '/mediawikiEnvironment.php';
 require __DIR__ . '/fullstackSupport.php';
 
@@ -23,6 +23,9 @@ use SMW\Services\ServicesFactory;
 
 check(str_starts_with(MW_VERSION, '1.43.'), 'Disposable MediaWiki 1.43');
 check(SMW_VERSION === '7.3.1', 'SMW 7.3.1 query integration');
+foreach (['Scribunto', 'SemanticScribunto', 'VariablesLua'] as $extension) {
+	check(!\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded($extension), 'No runtime dependency on ' . $extension);
+}
 $services = MediaWikiServices::getInstance();
 $store = ServicesFactory::getInstance()->getStore();
 check($store instanceof \SMW\SQLStore\SQLStore && $store->setup(false), 'Real SMW SQL store');
