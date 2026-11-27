@@ -2,9 +2,9 @@
 
 require_once __DIR__ . '/argument_context.php';
 
-use MediaWiki\Extension\DebatePHP\{JsonData, NativeJsonContext, NativeSemanticContext, SemanticReadResult, Table};
+use MediaWiki\Extension\DebatePHP\{NativeSemanticContext, SemanticReadResult, Table};
 
-class NativeReadTestContext extends ArgumentTestContext implements NativeSemanticContext, NativeJsonContext {
+class NativeReadTestContext extends ArgumentTestContext implements NativeSemanticContext {
 	public bool $certify = false;
 	public bool $failJson = false;
 	public array $skipped = [];
@@ -15,6 +15,6 @@ class NativeReadTestContext extends ArgumentTestContext implements NativeSemanti
 	public function skipEmptyParentFallback(string $origin): void { $this->skipped[$origin] = ($this->skipped[$origin] ?? 0) + 2; }
 	public function jsonLdData(array $data): string {
 		if ($this->failJson) { throw new RuntimeException('Synthetic JSON insertion failure'); }
-		return $this->jsonLd(json_encode(JsonData::value($data), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+		return parent::jsonLdData($data);
 	}
 }

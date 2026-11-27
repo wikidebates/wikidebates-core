@@ -96,7 +96,12 @@ Do not change the production caches or extension dependencies during this phase.
 
 ## Adjacent-revision native-boundary comparison
 
-The historical benchmark above still defaults to the compatibility context.
+The historical benchmark above still defaults to the legacy semantic mock.
+JSON encoding now depends on the source revision: old checkouts use the
+Table compatibility boundary, while current Context implementations always
+receive native arrays. Raw artifacts record `json_boundary` separately from
+`context`, and summaries explicitly label this change. The immutable baseline
+and exact output/effect checks are unchanged.
 Use the same current driver against two adjacent PHP revisions to isolate a
 specific refactor (for example, the JSON graph construction change in #144):
 
@@ -106,8 +111,9 @@ python3 debatephp/tests/benchmarkNativeContexts.py --base-root=/tmp/wd-native-ba
 ```
 
 The candidate defaults to the current checkout. The four contexts are
-`legacy` (compatibility Table API and trace encoder), `native-json` (native
-JSON interface with the same trace), `native` (also supplies array-backed
+`legacy` (compatibility semantic API and trace encoder; JSON boundary
+selected by the source revision), `native-json` (native JSON interface with the
+same trace; equivalent JSON path to `legacy` on current revisions), `native` (also supplies array-backed
 semantic results), and `native-schema` (also uses production schema filtering).
 The last context intentionally has a different encoder contract; compare it
 only across revisions. The synthetic semantic provider cannot certify complete

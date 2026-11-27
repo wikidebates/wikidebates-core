@@ -1,6 +1,6 @@
 <?php
 require __DIR__ . '/bootstrap.php';
-use MediaWiki\Extension\DebatePHP\{ArgumentContext,ArgumentRenderer,ArgumentReferenceRenderer,Table,I18n,TextEscaper};
+use MediaWiki\Extension\DebatePHP\{ArgumentContext,ArgumentRenderer,ArgumentReferenceRenderer,Table,I18n,JsonData,TextEscaper};
 
 class ArgumentTestContext implements ArgumentContext {
 	public array $effects = ['preprocess' => [], 'ask' => [], 'set' => [], 'seo' => [], 'variables' => []];
@@ -22,7 +22,10 @@ class ArgumentTestContext implements ArgumentContext {
 	}
 	public function expandField(string $text): string { return $this->preprocess($text); }
 	// The pure renderer oracle retains the legacy trace format. Integration tests exercise raw scripts.
-	public function jsonLd(string $json): string {
+	public function jsonLdData(array $data): string {
+		return $this->jsonLd(json_encode(JsonData::value($data), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+	}
+	protected function jsonLd(string $json): string {
 		$protected=str_replace(['|','='],['&#124;','&#61;'],$json);
 		$protected=str_replace('/','\\/',$protected);
 		$protected=str_replace('}}','} }',$protected);
@@ -44,7 +47,6 @@ class ArgumentTestContext implements ArgumentContext {
 		return str_replace('{{CURRENTYEAR}}-{{CURRENTMONTH}}-{{CURRENTDAY2}}', '2026-10-18', $text);
 	}
 	public function nowiki(string $text): string { return '<nowiki>' . $text . '</nowiki>'; }
-	public function jsonEncode(Table $data): string { return json_encode(TextEscaper::jsonValue($data), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR); }
 	public function uriEncode(string $text, string $mode = 'QUERY'): string { return TextEscaper::uriEncode($text, $mode); }
 	public function fullUrl(string $page, ?Table $query = null): ?string { return 'https://wiki.example/wiki/' . $this->uriEncode($page, 'WIKI') . ($query ? '?' . http_build_query(Table::unwrap($query), '', '&', PHP_QUERY_RFC1738) : ''); }
 	public function localUrl(string $page, ?Table $query = null): ?string { return substr($this->fullUrl($page, $query), strlen('https://wiki.example')); }

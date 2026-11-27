@@ -1,7 +1,7 @@
 <?php
 namespace MediaWiki\Extension\DebatePHP;
 
-/** Encode internal renderer data and insert it in one operation; external JSON stays validated. */
+/** Mandatory renderer boundary: encode native schema data and insert it safely. */
 interface NativeJsonContext {
 	public function jsonLdData(array $data): string;
 }

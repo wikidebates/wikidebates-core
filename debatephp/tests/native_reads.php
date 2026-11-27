@@ -3,7 +3,7 @@
 require __DIR__ . '/../../tests/bootstrap.php';
 require __DIR__ . '/argument_context.php';
 
-use MediaWiki\Extension\DebatePHP\{ArgumentReferenceRenderer, JsonData, NativeJsonContext, NativeSemanticContext, RenderData, SemanticReadResult, Table, TextEscaper};
+use MediaWiki\Extension\DebatePHP\{ArgumentReferenceRenderer, Context, JsonData, NativeJsonContext, NativeSemanticContext, RenderData, SemanticReadResult, Table, TextEscaper};
 
 set_error_handler(static function($severity, $message, $file, $line): void { throw new ErrorException($message, 0, $severity, $file, $line); });
 $assertions = 0;
@@ -398,6 +398,9 @@ $equal(false, str_contains($edit->invoke($argumentForm, 'Edit', 'Child', '', '')
 
 
 // Native JSON context receives a recursively native graph, including documentary references.
+$equal(true, is_subclass_of(Context::class, NativeJsonContext::class), 'Native JSON is a mandatory Context contract');
+$equal(false, method_exists(Context::class, 'jsonEncode'), 'Renderer interface does not accept Table JSON encoding');
+$equal(false, method_exists(Context::class, 'jsonLd'), 'Renderer interface does not accept externally encoded JSON');
 $graphIsNative = static function($value) use (&$graphIsNative): bool {
 	if (is_object($value)) {
 		return false;
@@ -426,7 +429,7 @@ foreach ([ArgumentReferenceRenderer::class, \MediaWiki\Extension\DebatePHP\Refer
 		}
 	};
 	$legacy = new ArgumentTestContext($fixture);
-	$equal((new $class($legacy))->render(), (new $class($context))->render(), 'Native graph and compatibility context render identical bytes');
+	$equal((new $class($legacy))->render(), (new $class($context))->render(), 'Native graph renders identical bytes with either semantic adapter');
 	$equal($legacy->effects, $context->effects, 'Native graph preserves all renderer effects');
 	$equal(true, $graphIsNative($context->graph), 'Entire JSON graph consists of native arrays and scalar values');
 	$equal($isArgument ? 5 : 4, count($context->graph['@graph']), 'Graph retains all top-level nodes');
