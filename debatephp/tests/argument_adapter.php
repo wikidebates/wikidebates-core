@@ -132,7 +132,7 @@ namespace {
 	$check = static function($condition, $message) use (&$count) { $count++; if (!$condition) { throw new \RuntimeException($message); } };
 	$node = static fn($name, $value) => (object)['name' => $name, 'value' => $value];
 	$p = new Parser; Hooks::onParserFirstCallInit($p);
-	$check(array_keys($p->hooks) === ['argument', 'debate'], 'Both parser functions must be registered');
+	$check(array_keys($p->hooks) === ['argument', 'debate', 'argumentmap'], 'All three parser functions must be registered');
 	$check($p->hooks['argument'][1] === Parser::SFH_OBJECT_ARGS, 'Arguments must remain parser nodes');
 	$f = new PPFrame(['summary' => 'inherited', 'keywords' => 'mot']);
 	$c = new MediaWikiContext($p, $f, [$node('summary', 'A=B|C'), $node('creation-date', ' 2025-01-01 ')], true, true, null, 'Argument');

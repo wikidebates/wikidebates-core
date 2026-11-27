@@ -5,7 +5,6 @@ namespace MediaWiki\Extension\DebatePHP;
 use MediaWiki\Linker\Linker;
 use MediaWiki\Parser\Parser;
 use MediaWiki\Title\Title;
-use SMW\DataItems\WikiPage;
 use SMW\Query\Language\ValueDescription;
 use SMW\ParameterProcessorFactory;
 use SMW\Query\QueryContext;
@@ -43,7 +42,11 @@ final class NativeSemanticApi {
 	 * executing it, including for titles resembling SMW operators.
 	 */
 	public static function querySubject(Store $store, Title $subject, array $printouts): ?QueryResult {
-		$value = new ValueDescription(WikiPage::newFromTitle($subject));
+		// SMW 6.0 uses DIWikiPage; SMW 7.3 moved the concrete class.
+		$wikiPage = class_exists(\SMW\DataItems\WikiPage::class)
+			? \SMW\DataItems\WikiPage::newFromTitle($subject)
+			: \SMW\DIWikiPage::newFromTitle($subject);
+		$value = new ValueDescription($wikiPage);
 		$query = self::buildQuery([$value->getQueryString(), ...$printouts,
 			'mainlabel=-', 'headers=hide', 'link=none', 'limit=1']);
 		$description = $query->getDescription();
