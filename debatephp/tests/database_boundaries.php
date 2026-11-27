@@ -1,18 +1,16 @@
 <?php
 
-/** Every broad recovery boundary, including exceptions whose SQL type is lost. */
+/** Every broad recovery boundary, including untyped transaction-section errors. */
 namespace Wikimedia\Rdbms {
 	class DBError extends \RuntimeException {}
 	class DBTransactionStateError extends DBError {}
 }
 namespace SMW\MediaWiki\Connection {
-	class Database {
-		public static function select(): void {
-			throw new \RuntimeException('SECRET SQL discarded by SMW');
-		}
-	}
 	class TransactionHandler {
 		public static function markSectionTransaction(): void {
+			throw new \RuntimeException('Invalid transaction section');
+		}
+		public static function detachSectionTransaction(): void {
 			throw new \RuntimeException('Invalid transaction section');
 		}
 	}
@@ -95,7 +93,7 @@ namespace {
 	$failures = [new \Wikimedia\Rdbms\DBError('SECRET SQL'), new \Wikimedia\Rdbms\DBTransactionStateError('SECRET SQL'), new PDOException('SECRET SQL')];
 	if (class_exists('mysqli_sql_exception')) { $failures[] = new mysqli_sql_exception('SECRET SQL'); }
 	$failures[] = new RuntimeException('Wrapper', 0, $failures[0]);
-	foreach ([['SMW\\MediaWiki\\Connection\\Database', 'select'], ['SMW\\MediaWiki\\Connection\\TransactionHandler', 'markSectionTransaction']] as $thrower) {
+	foreach ([['SMW\\MediaWiki\\Connection\\TransactionHandler', 'detachSectionTransaction'], ['SMW\\MediaWiki\\Connection\\TransactionHandler', 'markSectionTransaction']] as $thrower) {
 		try { $thrower(); } catch (RuntimeException $e) { $failures[] = $e; }
 	}
 	$count = 0;
@@ -126,5 +124,5 @@ namespace {
 	}
 	$telemetry->report();
 	check(!str_contains(json_encode($events), 'SECRET'), 'Diagnostics omit SQL, query and values');
-	echo "$count SQL boundary checks: original exceptions/causes, lost SMW types, transactions, ordinary recovery and redacted logs\n";
+	echo "$count SQL boundary checks: original exceptions/causes, untyped transactions, ordinary recovery and redacted logs\n";
 }

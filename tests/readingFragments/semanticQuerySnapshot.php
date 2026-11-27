@@ -15,6 +15,6 @@ namespace {
 	same($params, SemanticApiDouble::$lastQuery->raw, 'Raw SMW parameters retain exact order');
 	same(\SMW\Query\QueryContext::SPECIAL_PAGE, SemanticApiDouble::$lastQuery->context, 'Historical query context');
 	same(['main'], SemanticApiDouble::$lastQuery->printouts, 'Main printout retained');
-	same([\SMWQuery::PROC_CONTEXT => 'SSC.LibraryFactory'], SemanticApiDouble::$lastQuery->options, 'Query context identity preserved');
+	same([\SMW\Query\Query::PROC_CONTEXT => 'SSC.LibraryFactory'], SemanticApiDouble::$lastQuery->options, 'Query context identity preserved');
 	echo "OK: native query preserves page-owned snapshot semantics\n";
 }

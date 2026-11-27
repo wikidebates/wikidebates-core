@@ -59,8 +59,8 @@ function fsSave(string $name, string $text, ?string $model = null): void {
 function fsValues(string $name, string $property): array {
 	$store = \SMW\Services\ServicesFactory::getInstance()->getStore();
 	$store->clear();
-	$subject = \SMW\DIWikiPage::newFromTitle(Title::newFromText($name));
-	$values = array_map(static fn($item): array => [$item->getDIType(), $item->getSerialization()], $store->getPropertyValues($subject, new \SMW\DIProperty(str_replace(' ', '_', $property))));
+	$subject = \SMW\DataItems\WikiPage::newFromTitle(Title::newFromText($name));
+	$values = array_map(static fn($item): array => [$item->getDIType(), $item->getSerialization()], $store->getPropertyValues($subject, new \SMW\DataItems\Property(str_replace(' ', '_', $property))));
 	sort($values);
 	return $values;
 }
@@ -86,7 +86,7 @@ function fsSnapshot(\SMW\SemanticData $data, bool $includeInternal = false): arr
 function fsStored(string $title): array {
 	$store = \SMW\Services\ServicesFactory::getInstance()->getStore();
 	$store->clear();
-	return fsSnapshot($store->getSemanticData(\SMW\DIWikiPage::newFromTitle(Title::newFromText($title))));
+	return fsSnapshot($store->getSemanticData(\SMW\DataItems\WikiPage::newFromTitle(Title::newFromText($title))));
 }
 
 function fsPayload(string $variant): array {

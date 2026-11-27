@@ -8,13 +8,13 @@ final class EmptyParentQuery {
 		// A cached union can predate newer data visible to its individual fallback queries.
 		if ($result->getCount() !== 0 || $result->hasFurtherResults() || $result->isFromCache()) { return false; }
 		$query = $result->getQuery();
-		if ($query->querymode !== \SMWQuery::MODE_INSTANCES || $query->getOffset() !== 0 || $query->getLimit() !== 200) { return false; }
+		if ($query->querymode !== \SMW\Query\Query::MODE_INSTANCES || $query->getOffset() !== 0 || $query->getLimit() !== 200) { return false; }
 		// Restrict this proof to the exact internal two-parent query, not arbitrary ask syntax.
 		if (!is_string($parameters[1]) || !preg_match('/^\(\[\[[^\[\]{}|<>]+::[^\[\]{}|<>]+\]\] OR \[\[[^\[\]{}|<>]+::[^\[\]{}|<>]+\]\] \)$/uD', $parameters[1])) { return false; }
 		$errors = $result->getErrors();
 		if ($errors) {
-			// SMW 6 parses this historical syntax as the intended union but warns about
-			// its two outer parentheses. No other error/warning may be ignored.
+			// Accept only the two harmless delimiter warnings of this exact union.
+			// No other error/warning may be ignored.
 			$warnings = [];
 			foreach ($errors as $error) {
 				$warning = is_string($error) ? json_decode($error, true) : null;
@@ -35,8 +35,7 @@ final class EmptyParentQuery {
 			$value = $branch->getDescription();
 			if (!$value instanceof \SMW\Query\Language\ValueDescription || $value->getComparator() !== SMW_CMP_EQ) { return false; }
 			$item = $value->getDataItem();
-			// SMW 7 moved the concrete data item; the old alias need not exist.
-			if (!$item instanceof \SMW\DataItems\WikiPage && !$item instanceof \SMW\DIWikiPage) { return false; }
+			if (!$item instanceof \SMW\DataItems\WikiPage) { return false; }
 			$page = $item->getSerialization();
 			if ($target !== null && $target !== $page) { return false; }
 			$target = $page;
