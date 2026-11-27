@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/../../tests/bootstrap.php';
+require __DIR__ . '/frozen_contract.php';
 
 use MediaWiki\Extension\DebatePHP\{CacheKey, DecodedReferences, JsonData, Lua, RenderData, Table};
 
@@ -26,6 +27,7 @@ foreach ([null, false, true, 0, '0', '', 'é', "\0:\n"] as $input) {
 	try { CacheKey::semantic($input); throw new LogicException('Scalar query should be rejected'); }
 	catch (TypeError $error) { $checks++; }
 }
+$contract = new FrozenNativeContract('cache-key-json');
 mt_srand(805);
 $keys = [-5, -1, 0, 1, 2, 3, 20, '', '01', '02', '-0', '0.0', '1e0', '2x', 'name', '@type', 'a', ' 0', "\0", 'é'];
 $values = [null, false, true, 0, '0', '', 'name', 'é', "a\nb:c\0", 1.25];
@@ -43,8 +45,10 @@ for ($sample = 0; $sample < 2000; $sample++) {
 	same($expected, $actual, 'JSON fallback and native shapes preserve values and ordering');
 	same(json_encode($expected, JSON_THROW_ON_ERROR), json_encode($actual, JSON_THROW_ON_ERROR), 'Exact encoded JSON bytes');
 	same($before, Table::unwrap($table), 'The independent oracle and native conversion preserve input');
+	$contract->add([$a, $before], [$legacyKey(new Table($a)), $expected, json_encode($expected, JSON_THROW_ON_ERROR)]);
 	$checks += 4;
 }
+$contract->report();
 foreach ([new Table, new Table([1 => 'é', 2 => '0']), new Table(['@type' => 'Thing', 'name' => new Table(['@id' => 'x'])])] as $table) {
 	same($legacyJson($table), JsonData::value(Table::unwrap($table)), 'Dense and mapping fast paths'); $checks++;
 }

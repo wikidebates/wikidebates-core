@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/../../tests/bootstrap.php';
+require __DIR__ . '/frozen_contract.php';
 require __DIR__ . '/argument_context.php';
 require __DIR__ . '/../../tests/nativeCandidatePrototypes.php';
 
@@ -86,6 +87,7 @@ $first[1]['title'] = 'Caller mutation';
 $equal('Video 1', $distinct->values('videography', $raw)[1]['title'], 'Large native lists remain isolated from caller mutations');
 $equal($statistics, $distinct->statistics(), 'A second large-list consumer performs no additional block decode');
 
+$contract = new FrozenNativeContract('title-decoding');
 mt_srand(809);
 $parts = ['', '0', 'é', ' [[Page|label]] ', '\0', '⟬', '⟭', '⟬⟬⟬', '⟭⟭⟭', "\t\n", "\xc2\xa0"];
 $titleParts = array_merge($parts, [':', '[', ']', '|', '<', '&nbsp;', '&#160;', '&amp;quot;', '&amp;lt;', '&#39;', '&gt;', 'false']);
@@ -108,7 +110,10 @@ for ($i = 0; $i < 800; $i++) {
 	$title = '';
 	for ($j = 0, $n = mt_rand(0, 30); $j < $n; $j++) { $title .= $titleParts[mt_rand(0, count($titleParts) - 1)]; }
 	foreach ([$title, '[[' . $title . '|label]]', ': [[' . $title . ']]'] as $text) {
-		$equal($legacyTitle($text), $normalize->invoke($r, $text), 'Native title decoding against frozen compatibility algorithm');
+		$expected = $legacyTitle($text);
+		$equal($expected, $normalize->invoke($r, $text), 'Native title decoding against frozen compatibility algorithm');
+		$contract->add($text, $expected);
 	}
 }
+$contract->report();
 echo "$checks measured-candidate assertions: map isolation/bytes, title decoding, reference-cache reuse and experimental record views\n";

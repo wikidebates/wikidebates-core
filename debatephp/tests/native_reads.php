@@ -1,6 +1,7 @@
 <?php
 
 require __DIR__ . '/../../tests/bootstrap.php';
+require __DIR__ . '/frozen_contract.php';
 require __DIR__ . '/argument_context.php';
 
 use MediaWiki\Extension\DebatePHP\{ArgumentContext, ArgumentRenderer, Context, JsonData, NativeJsonContext, NativeSemanticContext, RenderData, SemanticReadResult, Table, LegacyJson};
@@ -13,6 +14,7 @@ $legacyValues = static function($value) use (&$legacyValues) {
 	array_unshift($value, ''); unset($value[0]);
 	return new Table(array_map($legacyValues, $value));
 };
+$contract = new FrozenNativeContract('semantic-values-json-sequence');
 mt_srand(806);
 $keys = [0, 1, 2, 7, -1, '01', '1e2', '2x', 'name', 'fulltext', 'page', '0.0', 'é'];
 $make = static function(int $depth = 0) use (&$make, $keys) {
@@ -29,7 +31,12 @@ for ($i = 0; $i < 2500; $i++) {
 		$equal(iterator_to_array((new Table($data))->sequence()), iterator_to_array(SemanticReadResult::sequence($data)), 'First-hole/nil sequence semantics');
 		$equal(json_encode(LegacyJson::jsonValue(Table::wrap($data)), JSON_THROW_ON_ERROR), json_encode(JsonData::value($data), JSON_THROW_ON_ERROR), 'Exact JSON byte/key order');
 	}
+	$json = LegacyJson::jsonValue(Table::wrap($data));
+	$contract->add($data, [Table::unwrap($legacyValues($data)), $json,
+		is_array($data) ? iterator_to_array((new Table($data))->sequence()) : null,
+		json_encode($json, JSON_THROW_ON_ERROR)]);
 }
+$contract->report();
 $data = ['@graph' => [1 => ['name' => 'é', 'values' => [1 => '0', 2 => false]]]];
 $originalData = $data;
 $equal(LegacyJson::jsonValue(Table::wrap($data)), JsonData::value($data), 'Native nested graph matches frozen conversion');

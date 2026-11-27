@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/../../tests/bootstrap.php';
+require __DIR__ . '/frozen_contract.php';
 
 use MediaWiki\Extension\DebatePHP\FifoCache;
 use MediaWiki\Extension\DebatePHP\Lua;
@@ -29,6 +30,8 @@ for ($sample = 0; $sample < 400; $sample++) {
 }
 
 // Independent copy of the former Table FIFO algorithm, including nil/duplicate quirks.
+$contract = new FrozenNativeContract('fifo-states');
+$contractValue = static fn($value) => $value === $nested ? ['shared-object'] : $value;
 $keys = [null, false, true, '', '0', 0, 1, 'a', 'b', 'é'];
 foreach ([null, false, -1, 0, 1, 2, 5, '2', 2.5] as $limit) {
 	$cache = new FifoCache($limit);
@@ -47,9 +50,16 @@ foreach ([null, false, -1, 0, 1, 2, 5, '2', 2.5] as $limit) {
 		}
 		$alias = $cache;
 		$alias->put($key, $value);
-		foreach ($keys as $probe) { same($data[$probe], $cache->get($probe), 'FIFO exact behavior and shared identity'); $checks++; }
+		$expected = [];
+		foreach ($keys as $probe) {
+			same($data[$probe], $cache->get($probe), 'FIFO exact behavior and shared identity'); $checks++;
+			$expected[] = $contractValue($data[$probe]);
+		}
+		$contract->add([$limit, $key, $contractValue($value)], $expected);
 	}
 }
+
+$contract->report();
 
 // Explicit serialized data contracts, independent of the implementation.
 same([1 => '0', 2 => "\0A\0", 3 => " B "], SerializedData::csvValues("\v0\f, \t\0A\0\r, B ,, "), 'CSV trims ASCII whitespace, not NUL or NBSP');
