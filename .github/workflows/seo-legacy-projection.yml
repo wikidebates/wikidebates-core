@@ -6,7 +6,6 @@
 				"debatephp/tests/integration/schema_projection.py",
 				"debatephp/tests/integration/test_schema_projection.py",
 				"debatephp/tests/integration/check_direct_jsonld.py",
-				"debatephp/tests/argument_differential.py",
 				".github/workflows/seo-legacy-projection.yml",
 				"tests/fullstack.php",
 				"tests/mediawikiEnvironment.php",
@@ -71,12 +70,8 @@
 					"run": "python3 debatephp/tests/integration/test_schema_projection.py"
 				},
 				{
-					"name": "Install Lua 5.1 Python bridge",
-					"run": "python3 -m pip install --disable-pip-version-check lupa==2.6"
-				},
-				{
-					"name": "Re-run original Argument Lua/PHP corpus",
-					"run": "python3 debatephp/tests/argument_differential.py php"
+					"name": "Verify frozen Argument contract without Lua",
+					"run": "python3 debatephp/tests/argument_contract.py php"
 				}
 			]
 		},

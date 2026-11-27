@@ -24,18 +24,6 @@ def fingerprint(result):
 		**{name: digest(value) for name, value in result['effects'].items()}}
 
 
-def capture_snapshot(original, enriched, actual):
-	"""Capture only after independent historical comparisons pass."""
-	if len(original) != len(enriched) or len(enriched) != len(actual):
-		raise ValueError('Unexpected fixture count')
-	for source, case, row in zip(original, enriched, actual, strict=True):
-		entry = {'case': source, 'input_sha256': digest(source),
-			'answers': case['answers'], 'publication_date': case['publication_date'],
-			'expected': fingerprint(row[0])}
-		print('WD_ARG_SNAPSHOT ' + json.dumps(entry, ensure_ascii=True,
-			sort_keys=True, separators=(',', ':')))
-
-
 def verify(php):
 	snapshot = json.loads(SNAPSHOT.read_text(encoding='utf-8'))
 	if snapshot['baseline'] != BASELINE or snapshot['format'] != 1:
