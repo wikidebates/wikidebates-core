@@ -184,7 +184,7 @@ foreach (file($observationLog, FILE_IGNORE_NEW_LINES) as $line) {
 	same($event['counters']['preprocess_executed'], array_sum(array_column($event['preprocessing'], 'calls')), 'Production hook reason counters agree');
 	$profileEvents[] = $event;
 }
-same(2 * $count, count($profileEvents), 'Each observed invocation emits one profile');
+same($count, count($profileEvents), 'Each observed canonical invocation emits one profile');
 if (\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('WikiSEO')) {
 	same(0, $legacySeoPagePropHooks, 'Native SEO never invokes the WikiSEO parser page-property hook');
 }
