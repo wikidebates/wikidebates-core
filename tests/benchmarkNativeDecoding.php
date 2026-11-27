@@ -4,7 +4,6 @@
 require __DIR__ . '/bootstrap.php';
 
 use MediaWiki\Extension\DebatePHP\DecodedReferences;
-use MediaWiki\Extension\DebatePHP\Table;
 
 $options = getopt('', ['baseline:', 'output:']);
 $baseline = realpath($options['baseline'] ?? '');
@@ -51,7 +50,7 @@ foreach (['bibliography', 'webliography', 'videography'] as $format) {
 }
 $scenarios['debate'] = $debate;
 $plain = static function($value) use (&$plain) {
-	return $value instanceof Table || $value instanceof \WikidebatesDecodingBefore\Table ? array_map($plain, $value->values) : $value;
+	return $value instanceof \WikidebatesDecodingBefore\Table ? array_map($plain, $value->values) : $value;
 };
 $report = ['php' => PHP_VERSION, 'baseline_source_sha256' => hash_file('sha256', $baseline . '/debatephp/src/SerializedData.php'),
 	'scope' => 'Pure per-render reference decoding only; no HTML rendering, database, or whole-page speed claim',
@@ -64,7 +63,7 @@ $cpu = static function(): float {
 mt_srand(803);
 foreach ($scenarios as $name => $requests) {
 	$decoder = new DecodedReferences;
-	foreach ($requests as [$format, $raw]) { same($plain($oldParse($format, $raw)), $plain($decoder->parse($format, $raw)), 'Old/new records exactly equal'); }
+	foreach ($requests as [$format, $raw]) { same($plain($oldParse($format, $raw)), $decoder->values($format, $raw), 'Old/new records exactly equal'); }
 	$report['scenarios'][$name]['decoding'] = $decoder->statistics();
 	$operations = [
 		'before' => static function() use ($requests, $oldParse): void {
@@ -72,7 +71,7 @@ foreach ($scenarios as $name => $requests) {
 		},
 		'after' => static function() use ($requests): void {
 			$decoder = new DecodedReferences;
-			foreach ($requests as [$format, $raw]) { $decoder->parse($format, $raw); }
+			foreach ($requests as [$format, $raw]) { $decoder->values($format, $raw); }
 		}
 	];
 	foreach ($operations as $operation) { $operation(); }

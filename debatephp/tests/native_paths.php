@@ -1,7 +1,7 @@
 <?php
 require __DIR__ . '/../../tests/bootstrap.php';
 
-use MediaWiki\Extension\DebatePHP\{CacheKey, DecodedReferences, Lua, RenderData, Table, TextEscaper};
+use MediaWiki\Extension\DebatePHP\{CacheKey, DecodedReferences, JsonData, Lua, RenderData, Table};
 
 // Frozen algorithms used before this phase, independent of the native helpers.
 $legacyKey = static function($q): string {
@@ -39,40 +39,41 @@ for ($sample = 0; $sample < 2000; $sample++) {
 	$table = new Table($a);
 	same($legacyKey($table), CacheKey::semantic($a), 'Mixed, sparse and numeric-string query keys');
 	$table = new Table($node); $before = Table::unwrap($table);
-	$expected = $legacyJson($table); $actual = TextEscaper::jsonValue($table);
+	$expected = $legacyJson($table); $actual = JsonData::value($before);
 	same($expected, $actual, 'JSON fallback and native shapes preserve values and ordering');
 	same(json_encode($expected, JSON_THROW_ON_ERROR), json_encode($actual, JSON_THROW_ON_ERROR), 'Exact encoded JSON bytes');
-	same($before, Table::unwrap($table), 'JSON conversion never mutates shared Tables');
+	same($before, Table::unwrap($table), 'The independent oracle and native conversion preserve input');
 	$checks += 4;
 }
 foreach ([new Table, new Table([1 => 'é', 2 => '0']), new Table(['@type' => 'Thing', 'name' => new Table(['@id' => 'x'])])] as $table) {
-	same($legacyJson($table), TextEscaper::jsonValue($table), 'Dense and mapping fast paths'); $checks++;
+	same($legacyJson($table), JsonData::value(Table::unwrap($table)), 'Dense and mapping fast paths'); $checks++;
 }
 
 $decoder = new DecodedReferences;
 $native = $decoder->values('bibliography', 'A⟬B⟭C⟬D');
 check(is_array($native[1]), 'Native records have no Table wrapper');
 $native[1]['authors'] = 'mutation'; $native[3] = ['authors' => 'new'];
-$legacy = $decoder->parse('bibliography', 'A⟬B⟭C⟬D');
-same('A', $legacy[1]['authors'], 'Native caller cannot poison cache or compatibility records');
-$legacy[1]['authors'] = 'legacy mutation';
-$combined = $decoder->parse('bibliography', 'A⟬B');
-same($legacy[1], $combined[1], 'Legacy records keep shared identity across lists');
-same('A', $decoder->values('bibliography', 'A⟬B')[1]['authors'], 'Legacy mutation cannot poison native view');
-$checks += 4;
+$again = $decoder->values('bibliography', 'A⟬B⟭C⟬D');
+same('A', $again[1]['authors'], 'Caller cannot poison native cached list');
+same(2, count($again), 'Caller cannot add records to the cached list');
+$again[1]['authors'] = 'second mutation';
+$combined = $decoder->values('bibliography', 'A⟬B');
+same('A', $combined[1]['authors'], 'Cached blocks are isolated across lists');
+same(['decoded_blocks' => 2, 'reused_blocks' => 1], $decoder->statistics(), 'Native lists still share decoded blocks');
+$checks += 5;
 
 $prepared = new RenderData(3, 80, 60);
-$first = $prepared->csv('one,two');
+$first = $prepared->csvValues('one,two');
 same(1, $prepared->statistics()['entries'], 'Small reusable fields retain immediate admission');
-$prepared->csv('one,two');
+$prepared->csvValues('one,two');
 same(1, $prepared->statistics()['entries'], 'Repeated read reuses the entry');
 $first[1] = 'mutated';
-same('one', $prepared->csv('one,two')[1], 'Cache read returns a fresh mutable wrapper');
-$prepared->expectReuse(['three,four']); $prepared->csv('three,four');
+same('one', $prepared->csvValues('one,two')[1], 'Cache read returns an independent array');
+$prepared->expectReuse(['three,four']); $prepared->csvValues('three,four');
 same(2, $prepared->statistics()['entries'], 'Known reuse admits on first read');
-for ($i = 0; $i < 200; $i++) { $raw = $i . ',' . str_repeat('x', $i % 35); $prepared->csv($raw); $prepared->csv($raw); }
-$prepared->csv(str_repeat('huge,', 100)); $prepared->csv("\0 a\0"); $prepared->csv('');
-try { $prepared->csv('a', ''); throw new LogicException('Empty separator accepted'); }
+for ($i = 0; $i < 200; $i++) { $raw = $i . ',' . str_repeat('x', $i % 35); $prepared->csvValues($raw); $prepared->csvValues($raw); }
+$prepared->csvValues(str_repeat('huge,', 100)); $prepared->csvValues("\0 a\0"); $prepared->csvValues('');
+try { $prepared->csvValues('a', ''); throw new LogicException('Empty separator accepted'); }
 catch (ValueError $e) {}
 $s = $prepared->statistics();
 check($s['entries'] <= 3 && $s['admission_entries'] <= 3 && $s['peak_payload_bytes'] <= 80 && $s['evicted'] > 0, 'Entry and byte bounds enforced under pressure');
@@ -81,18 +82,18 @@ same(1, $s['failures'], 'Errors counted without poisoning cache');
 check($s['bypassed'] >= 2 && !str_contains(json_encode($s), 'huge'), 'Empty/oversized texts bypass caching and observations contain no text');
 foreach ([[0, 80, 60], [3, 0, 60], [3, 80, 0]] as $limits) {
 	$disabled = new RenderData(...$limits);
-	for ($i = 0; $i < 3; $i++) { same([1 => 'a', 2 => 'b'], $disabled->csv('a,b')->values, 'Disabled cache retains CSV results'); }
+	for ($i = 0; $i < 3; $i++) { same([1 => 'a', 2 => 'b'], $disabled->csvValues('a,b'), 'Disabled cache retains CSV results'); }
 	same(0, $disabled->statistics()['entries'], 'Disabled cache keeps no payload');
 }
 $checks += 20;
 $largeText = str_repeat('large,', 200);
-$large = new RenderData(1, 6000, 6000); $large->csv('seed');
-$large->csv($largeText);
+$large = new RenderData(1, 6000, 6000); $large->csvValues('seed');
+$large->csvValues($largeText);
 same(1, $large->statistics()['entries'], 'Large unique text keeps existing entry under pressure');
 same(0, $large->statistics()['evicted'], 'First large read does not evict hot data');
-$large->csv($largeText);
+$large->csvValues($largeText);
 same(1, $large->statistics()['entries'], 'Second read admits large text');
-$hinted = new RenderData(1, 6000, 6000); $hinted->csv('seed'); $hinted->expectReuse([$largeText]); $hinted->csv($largeText);
+$hinted = new RenderData(1, 6000, 6000); $hinted->csvValues('seed'); $hinted->expectReuse([$largeText]); $hinted->csvValues($largeText);
 same(1, $hinted->statistics()['entries'], 'Known large keyword/section reuse admits immediately');
 $checks += 4;
 

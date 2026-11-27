@@ -41,7 +41,7 @@ final class SchemaData {
 	 * Normalize one documentary reference, not the enclosing page.
 	 * Preserve the reference's visible data; never fetch a remote URL.
 	 */
-	public static function reference(Table|array $node, ?Context $context = null): Table|array {
+	public static function reference(array $node, ?Context $context = null): array {
 		if ($context instanceof SeoTextContext) {
 			$node = self::resolveMarkerTree($node, $context);
 		}
@@ -49,25 +49,24 @@ final class SchemaData {
 		$volume = $node['volumeNumber'] ?? '';
 		$number = $node['issueNumber'] ?? '';
 		unset($node['volumeNumber'], $node['issueNumber']);
-		$wrap = static fn(array $value) => $node instanceof Table ? Table::wrap($value) : $value;
 		if ($type === 'Article' && isset($node['isPartOf'])) {
 			$container = $node['isPartOf'];
 			if ($volume !== '') {
-				$container = $wrap(['@type' => 'PublicationVolume', 'volumeNumber' => $volume, 'isPartOf' => $container]);
+				$container = ['@type' => 'PublicationVolume', 'volumeNumber' => $volume, 'isPartOf' => $container];
 			}
 			if ($number !== '') {
-				$container = $wrap(['@type' => 'PublicationIssue', 'issueNumber' => $number, 'isPartOf' => $container]);
+				$container = ['@type' => 'PublicationIssue', 'issueNumber' => $number, 'isPartOf' => $container];
 			}
 			$node['isPartOf'] = $container;
 		} elseif ($type === 'Book') {
 			if ($volume !== '') {
-				$node['@type'] = $wrap([1 => 'Book', 2 => 'PublicationVolume']);
+				$node['@type'] = [1 => 'Book', 2 => 'PublicationVolume'];
 				$node['volumeNumber'] = $volume;
 			}
 			if ($number !== '') {
 				// A book's number may identify its series or collection; do not
 				// assert that the book is an issue of a periodical.
-				$node['identifier'] = $wrap(['@type' => 'PropertyValue', 'propertyID' => 'number', 'value' => $number]);
+				$node['identifier'] = ['@type' => 'PropertyValue', 'propertyID' => 'number', 'value' => $number];
 			}
 		}
 		if (isset($node['datePublished'])) {
@@ -143,9 +142,6 @@ final class SchemaData {
 	private static function resolveMarkerTree(mixed $value, SeoTextContext $context): mixed {
 		if (is_string($value)) {
 			return $context->resolveSeoMarkers($value);
-		}
-		if ($value instanceof Table) {
-			return new Table(array_map(static fn($item) => self::resolveMarkerTree($item, $context), $value->values));
 		}
 		if (is_array($value)) {
 			return array_map(static fn($item) => self::resolveMarkerTree($item, $context), $value);

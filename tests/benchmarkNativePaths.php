@@ -4,7 +4,7 @@
 require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/../debatephp/tests/argument_context.php';
 
-use MediaWiki\Extension\DebatePHP\{ArgumentReferenceRenderer, DecodedReferences, RenderData, Table, TextEscaper};
+use MediaWiki\Extension\DebatePHP\{ArgumentReferenceRenderer, DecodedReferences, JsonData, RenderData};
 
 $options = getopt('', ['baseline:', 'output:']);
 $baseline = realpath($options['baseline'] ?? '');
@@ -34,7 +34,7 @@ $before = new \NativePathsBefore\ArgumentReferenceRenderer(new \NativePathsBefor
 $after = new ArgumentReferenceRenderer(new ArgumentTestContext($case));
 $oldClass = new ReflectionClass($before); $newClass = new ReflectionClass($after);
 $operations = [];
-foreach (['before' => [$oldClass, $before, \NativePathsBefore\Table::class], 'after' => [$newClass, $after, Table::class]] as $mode => [$class, $renderer, $table]) {
+foreach (['before' => [$oldClass, $before, \NativePathsBefore\Table::class], 'after' => [$newClass, $after, null]] as $mode => [$class, $renderer, $table]) {
 	$queries = [];
 	$key = $class->getMethod('smwKeyFromArray');
 	$nativeKeys = $key->getParameters()[0]->getType()?->getName() === 'array';
@@ -52,7 +52,7 @@ for ($i = 0; $i < 40; $i++) { $rows[] = implode('⟬', ['Author ' . $i, 'Article
 $raw = implode('⟭', $rows);
 $oldRecords = (new \NativePathsBefore\DecodedReferences)->parse('bibliography', $raw);
 $newRecords = (new DecodedReferences)->values('bibliography', $raw);
-foreach (['before' => [$oldClass, $before, \NativePathsBefore\Table::class, $oldRecords->values], 'after' => [$newClass, $after, Table::class, $newRecords]] as $mode => [$class, $renderer, $table, $records]) {
+foreach (['before' => [$oldClass, $before, \NativePathsBefore\Table::class, $oldRecords->values], 'after' => [$newClass, $after, null, $newRecords]] as $mode => [$class, $renderer, $table, $records]) {
 	$render = $class->getMethod('wkRenderOneBiblioLi');
 	$fields = ['unknown_author' => '?', 'volume_label' => 'vol', 'issue_label' => 'no'];
 	$pf = $render->getParameters()[4]->getType()?->getName() === 'array' ? $fields : new $table($fields);
@@ -75,10 +75,10 @@ for ($i = 1; $i <= 40; $i++) {
 }
 $graph = ['@context' => 'https://schema.org', '@type' => 'Claim', 'name' => 'Title', 'citation' => $citations];
 foreach (['graph' => $graph, 'mixed-fallback' => ['3x' => 'x', 5 => 'five', '01' => ['b' => 'x', 'a' => 'y'], -1 => false, 'name' => 'n']] as $name => $data) {
-	$old = \NativePathsBefore\Table::wrap($data); $new = Table::wrap($data);
+	$old = \NativePathsBefore\Table::wrap($data);
 	$operations['json-' . $name] = [
 		'before' => static fn() => \NativePathsBefore\TextEscaper::jsonValue($old),
-		'after' => static fn() => TextEscaper::jsonValue($new)
+		'after' => static fn() => JsonData::value($data)
 	];
 }
 $unique = [];
@@ -95,27 +95,27 @@ foreach (['unique' => $unique, 'four-reads' => array_merge($unique, $unique, $un
 		'after' => static function() use ($requests, $name): array {
 			$d = new RenderData; $out = [];
 			if (str_contains($name, 'hinted')) { $d->expectReuse(array_slice($requests, 0, 40)); }
-			foreach ($requests as $text) { $out[] = $d->csv($text)->values; } return $out;
+			foreach ($requests as $text) { $out[] = $d->csvValues($text); } return $out;
 		}
 	];
 }
 $stress = [];
 for ($i = 0; $i < 64; $i++) { $stress[] = implode(',', array_fill(0, 200, ' stress ' . $i)); }
 foreach (['before' => \NativePathsBefore\RenderData::class, 'after' => RenderData::class] as $mode => $class) {
-	$operations['csv-pressure-unique-64'][$mode] = static function() use ($class, $stress): int {
+	$operations['csv-pressure-unique-64'][$mode] = static function() use ($class, $stress, $mode): int {
 		$d = new $class; $sum = 0;
-		foreach ($stress as $text) { $sum += count($d->csv($text)); }
+		foreach ($stress as $text) { $sum += count($mode === 'before' ? $d->csv($text) : $d->csvValues($text)); }
 		return $sum;
 	};
 }
 $plain = static function($value) use (&$plain) {
-	if ($value instanceof Table || $value instanceof \NativePathsBefore\Table) { $value = $value->values; }
+	if ($value instanceof \NativePathsBefore\Table) { $value = $value->values; }
 	return is_array($value) ? array_map($plain, $value) : $value;
 };
 $report = ['php' => PHP_VERSION, 'baseline_commit' => trim(shell_exec('git -C ' . escapeshellarg($baseline) . ' rev-parse HEAD')),
 	'scope' => 'Pure helper operations against the actual previous caches; no whole-page performance claim', 'repeats' => 31, 'iterations' => 5, 'scenarios' => []];
 $observed = new RenderData;
-foreach ($stress as $text) { $observed->csv($text); }
+foreach ($stress as $text) { $observed->csvValues($text); }
 $report['cache_pressure_observation'] = $observed->statistics();
 $cpu = static function(): float {
 	$u = getrusage(); return ($u['ru_utime.tv_sec'] + $u['ru_stime.tv_sec']) * 1000 + ($u['ru_utime.tv_usec'] + $u['ru_stime.tv_usec']) / 1000;

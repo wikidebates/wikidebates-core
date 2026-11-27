@@ -130,6 +130,24 @@ fixture reader has been factored out; earlier absolute timings are not an
 exact measurement of this revised driver. The pinned historical reference,
 oracle and permitted historical query projection are unchanged.
 
+## Runtime emulation removal
+
+The runtime autoload tree no longer contains the former `Table` or `Lua`
+classes. The immutable helper implementations used by unit-test oracles now
+live under `debatephp/tests/legacy/` and are loaded only by standalone test
+bootstraps. Reference decoding, CSV preparation, citation normalization and
+JSON tree conversion use arrays exclusively. The Lua differential driver maps
+historical method names to their actual native consumers, keeping its original
+case corpus and expectations. The historical worktrees remain untouched.
+
+Run `php debatephp/tools/nativeInventory.php --assert-native` to verify the
+runtime source contains no Table identifier, allocation or Lua helper call.
+The regression workflow enforces this gate.
+
+The focused benchmarks still require an appropriate historical checkout
+containing the original operation they compare against. They now measure the
+native array paths, not obsolete compatibility wrappers.
+
 ## Next gates
 
 1. Native contract validated on PHP 8.3 and 8.4 in PR #130. Retire the

@@ -2,7 +2,6 @@
 namespace MediaWiki\Extension\DebatePHP;
 
 /** Argument renderer. This PHP source is authoritative and maintained directly.
- * Legacy Table boundaries remain until their native migration is complete.
  * See docs/native-php-migration-baseline.md for the behavioural contract.
  */
 class ArgumentReferenceRenderer {
@@ -97,13 +96,7 @@ class ArgumentReferenceRenderer {
 	}
 
 
-	protected function splitCSV($s = null, $sep = null) {
-		return ($this->renderData ??= new RenderData)->csv($s, $sep);
-	}
 
-	protected function splitByLiteral($s = null, $sep = null, $maxParts = null) {
-		return SerializedData::split($s, $sep, $maxParts);
-	}
 
 	protected function wkSplit2($s = null, $sep = null) {
 		return NativeText::splitOnce($s, $sep);
@@ -306,17 +299,8 @@ class ArgumentReferenceRenderer {
 		return $html;
 	}
 
-	protected function wkParseBiblioMarkers($raw = null) {
-		return ($this->decodedReferences ??= new DecodedReferences)->parse('bibliography', $raw);
-	}
 
-	protected function wkParseWeblioMarkers($raw = null) {
-		return ($this->decodedReferences ??= new DecodedReferences)->parse('webliography', $raw);
-	}
 
-	protected function wkParseVideoMarkers($raw = null) {
-		return ($this->decodedReferences ??= new DecodedReferences)->parse('videography', $raw);
-	}
 
 	protected function renderReferenceItemBanners($itemWarnings = null, $pv = null, $lang = null, ?array &$cats = null, ?array &$out = null) {
 		$warnsRef = trim(NativeText::field($itemWarnings), NativeText::ASCII_WHITESPACE);
@@ -333,8 +317,7 @@ class ArgumentReferenceRenderer {
 		}
 	}
 
-	protected function wkRenderOneBiblioLi($item = null, $pv = null, $lang = null, ?array &$cats = null, ?array $PF = null) {
-		$item = $item instanceof Table ? $item->values : $item;
+	protected function wkRenderOneBiblioLi(?array $item = null, $pv = null, $lang = null, ?array &$cats = null, ?array $PF = null) {
 		$out = [];
 		$authors = $item['authors'];
 		if (($authors === '')) {
@@ -397,8 +380,7 @@ class ArgumentReferenceRenderer {
 		return ('<li>' . implode('', $out) . '</li>');
 	}
 
-	protected function wkRenderOneWeblioLi($item = null, $pv = null, $lang = null, ?array &$cats = null, ?array $PF = null) {
-		$item = $item instanceof Table ? $item->values : $item;
+	protected function wkRenderOneWeblioLi(?array $item = null, $pv = null, $lang = null, ?array &$cats = null, ?array $PF = null) {
 		$out = [];
 		$page = $item['page'];
 		$site = $item['site'];
@@ -435,8 +417,7 @@ class ArgumentReferenceRenderer {
 		return ('<li>' . implode('', $out) . '</li>');
 	}
 
-	protected function wkRenderOneVideoLi($item = null, $pv = null, $lang = null, ?array &$cats = null, ?array $PF = null) {
-		$item = $item instanceof Table ? $item->values : $item;
+	protected function wkRenderOneVideoLi(?array $item = null, $pv = null, $lang = null, ?array &$cats = null, ?array $PF = null) {
 		$out = [];
 		$title = $item['title'];
 		$link = $item['link'];
@@ -1388,12 +1369,8 @@ class ArgumentReferenceRenderer {
 		}
 	}
 
-	protected function wkParseQuoteMarkers($raw = null) {
-		return ($this->decodedReferences ??= new DecodedReferences)->parse('quotes', $raw);
-	}
 
-	protected function wkRenderOneQuoteHtml($item = null, $idx = null, $pv = null, $lang = null, ?array &$cats = null, ?array $PF = null) {
-		$item = $item instanceof Table ? $item->values : $item;
+	protected function wkRenderOneQuoteHtml(?array $item = null, $idx = null, $pv = null, $lang = null, ?array &$cats = null, ?array $PF = null) {
 		$quote = NativeText::field($item['quote']);
 		$authors = $item['authors'];
 		$article = $item['article'];

@@ -3,7 +3,7 @@
 require __DIR__ . '/../../tests/bootstrap.php';
 require __DIR__ . '/argument_context.php';
 
-use MediaWiki\Extension\DebatePHP\{ArgumentContext, ArgumentReferenceRenderer, Context, JsonData, NativeJsonContext, NativeSemanticContext, RenderData, SemanticReadResult, Table, TextEscaper};
+use MediaWiki\Extension\DebatePHP\{ArgumentContext, ArgumentReferenceRenderer, Context, JsonData, NativeJsonContext, NativeSemanticContext, RenderData, SemanticReadResult, Table, LegacyJson};
 
 set_error_handler(static function($severity, $message, $file, $line): void { throw new ErrorException($message, 0, $severity, $file, $line); });
 $assertions = 0;
@@ -24,21 +24,21 @@ $make = static function(int $depth = 0) use (&$make, $keys) {
 for ($i = 0; $i < 2500; $i++) {
 	$data = $make();
 	$equal(Table::unwrap($legacyValues($data)), SemanticReadResult::values($data), 'SMW numeric reindexing, null and named fields');
-	$equal(TextEscaper::jsonValue(Table::wrap($data)), JsonData::value($data), 'Internal JSON native/Table equivalence');
+	$equal(LegacyJson::jsonValue(Table::wrap($data)), JsonData::value($data), 'Internal JSON native/Table equivalence');
 	if (is_array($data)) {
 		$equal(iterator_to_array((new Table($data))->sequence()), iterator_to_array(SemanticReadResult::sequence($data)), 'First-hole/nil sequence semantics');
-		$equal(json_encode(TextEscaper::jsonValue(Table::wrap($data)), JSON_THROW_ON_ERROR), json_encode(JsonData::value($data), JSON_THROW_ON_ERROR), 'Exact JSON byte/key order');
+		$equal(json_encode(LegacyJson::jsonValue(Table::wrap($data)), JSON_THROW_ON_ERROR), json_encode(JsonData::value($data), JSON_THROW_ON_ERROR), 'Exact JSON byte/key order');
 	}
 }
-$data = ['@graph' => [1 => new Table(['name' => 'é', 'values' => new Table([1 => '0', 2 => false])])]];
-$originalData = Table::unwrap(Table::wrap($data));
-$equal(TextEscaper::jsonValue(Table::wrap($data)), JsonData::value($data), 'Mixed internal native/legacy graph');
-$equal($originalData, Table::unwrap(Table::wrap($data)), 'JSON leaves remain unmodified');
+$data = ['@graph' => [1 => ['name' => 'é', 'values' => [1 => '0', 2 => false]]]];
+$originalData = $data;
+$equal(LegacyJson::jsonValue(Table::wrap($data)), JsonData::value($data), 'Native nested graph matches frozen conversion');
+$equal($originalData, $data, 'JSON leaves remain unmodified');
 $cache = new RenderData;
 $first = $cache->csvValues(' a,0,é,,b '); $first[1] = 'mutated'; unset($first[2]);
-$legacy = $cache->csv(' a,0,é,,b '); $legacy[1] = 'legacy mutation';
-$equal([1 => 'a', 2 => '0', 3 => 'é', 4 => 'b'], $cache->csvValues(' a,0,é,,b '), 'Native and legacy CSV views cannot poison cache');
-$equal(2, $cache->statistics()['hits'], 'Both CSV APIs share one cache');
+$again = $cache->csvValues(' a,0,é,,b '); $again[1] = 'second mutation';
+$equal([1 => 'a', 2 => '0', 3 => 'é', 4 => 'b'], $cache->csvValues(' a,0,é,,b '), 'Independent native CSV views cannot poison cache');
+$equal(2, $cache->statistics()['hits'], 'Repeated native CSV reads share one cache');
 $cache->csvValues('empty', 'no match');
 try { $cache->csvValues('x', ''); throw new RuntimeException('Expected ValueError'); }
 catch (ValueError $e) { $equal(1, $cache->statistics()['failures'], 'Native CSV failure counted'); }

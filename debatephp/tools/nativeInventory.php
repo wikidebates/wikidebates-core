@@ -40,3 +40,9 @@ foreach ($files as $file) {
 	$rows[basename($file)] = $row;
 }
 echo json_encode(['files' => $rows, 'total' => $total], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n";
+if (in_array('--assert-native', $argv, true)) {
+	if (array_sum($total) !== 0 || is_file($root . '/Lua.php') || is_file($root . '/Table.php')) {
+		fwrite(STDERR, "Legacy emulation in runtime source\n");
+		exit(1);
+	}
+}
