@@ -1,0 +1,58 @@
+{
+	"name": "Native text and translation contracts",
+	"on": {
+		"pull_request": {
+			"paths": [
+				"debatephp/src/**",
+				"debatephp/tests/serialized*",
+				"debatephp/tests/*i18n*",
+				"debatephp/tests/fixtures/*-contract.json",
+				"i18n/**",
+				"resources/i18n-map.json",
+				"resources/wiki-names.json",
+				".github/workflows/native-text-contracts.yml"
+			]
+		},
+		"workflow_dispatch": {}
+	},
+	"permissions": {
+		"contents": "read"
+	},
+	"jobs": {
+		"native-text-contracts": {
+			"runs-on": "ubuntu-24.04",
+			"timeout-minutes": 10,
+			"steps": [
+				{
+					"uses": "actions/checkout@v7.0.1"
+				},
+				{
+					"uses": "shivammathur/setup-php@v2",
+					"with": {
+						"php-version": "8.4",
+						"extensions": "mbstring, intl, xml",
+						"coverage": "none"
+					}
+				},
+				{
+					"uses": "actions/setup-python@v7.1.0",
+					"with": {
+						"python-version": "3.12"
+					}
+				},
+				{
+					"name": "Install Lua for final independent comparisons",
+					"run": "python3 -m pip install --disable-pip-version-check lupa==2.6"
+				},
+				{
+					"name": "Capture validated serialized text contract",
+					"run": "python3 debatephp/tests/serialized_differential.py php"
+				},
+				{
+					"name": "Capture validated translation contract",
+					"run": "python3 debatephp/tests/differential_i18n.py php"
+				}
+			]
+		}
+	}
+}

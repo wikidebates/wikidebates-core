@@ -59,4 +59,7 @@ actual = json.loads(result.stdout)
 failures = [dict(case=case, expected=a, actual=b) for case,a,b in zip(cases,expected,actual) if a != b]
 report = dict(comparisons=len(cases), passed=len(actual)==len(cases) and not failures, failures=failures[:10])
 print(json.dumps(report, ensure_ascii=False))
+if report['passed']:
+	from serialized_contract import capture
+	capture(cases, actual)
 sys.exit(not report['passed'])

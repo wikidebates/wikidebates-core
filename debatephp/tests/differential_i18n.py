@@ -27,7 +27,11 @@ for domain in ['Missing','Debate.missing','Common.text']:
 		q=[domain,lang,'missing-key','PAGE'];queries.append(q);expected.append(i18n.msg(*q))
 r=subprocess.run([sys.argv[1] if len(sys.argv)>1 else 'php',str(root/'tests/i18n_native.php')],input=json.dumps(queries),text=True,capture_output=True,check=True)
 actual=json.loads(r.stdout)
+if len(actual) != 2 or any(len(row) != len(expected) for row in actual):
+	raise ValueError('Unexpected translation response shape')
 for mode,values in zip(['reference','memoized'],actual):
 	bad=[{'query':q,'lua':x,'php':y} for q,x,y in zip(queries,expected,values) if x!=y]
 	if bad:print(json.dumps(bad[:10],ensure_ascii=False,indent=2));sys.exit(1)
 	print(mode,len(values),'i18n comparisons passed')
+for query, value in sorted(zip(queries, expected, strict=True)):
+	print('WD_I18N_CONTRACT ' + json.dumps({'query': query, 'expected': value}, ensure_ascii=True, separators=(',', ':')))
