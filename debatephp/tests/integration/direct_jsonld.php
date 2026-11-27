@@ -5,7 +5,7 @@ require $wikiRoot.'/maintenance/Maintenance.php';
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Parser\{Parser,ParserOptions};
 use MediaWiki\Title\Title;
-use MediaWiki\Extension\DebatePHP\{MediaWikiContext,Table};
+use MediaWiki\Extension\DebatePHP\{MediaWikiContext};
 class DirectJsonLdTest extends Maintenance {
 	public function __construct() { parent::__construct();$this->addOption('wiki-root','Wiki root',true,true); }
 	public function execute() {
@@ -21,7 +21,7 @@ class DirectJsonLdTest extends Maintenance {
 		$p=MediaWikiServices::getInstance()->getParserFactory()->create();$trace=[];
 		$p->setFunctionHook('argument',static function($parser,$frame,$args) use($value,&$trace) {
 			unset($args[0]);$c=new MediaWikiContext($parser,$frame,$args,true,true,null,'Argument');
-			$text=$c->jsonLd($c->jsonEncode(new Table(['@context'=>'https://schema.org','@type'=>'Thing','name'=>$value])));$trace=$c->trace();
+			$text=$c->jsonLdData(['@context'=>'https://schema.org','@type'=>'Thing','name'=>$value]);$trace=$c->trace();
 			return [$text,'noparse'=>true,'isHTML'=>false];
 		},Parser::SFH_OBJECT_ARGS);
 		$options=ParserOptions::newFromAnon();$title=Title::newFromText('JSON direct test');

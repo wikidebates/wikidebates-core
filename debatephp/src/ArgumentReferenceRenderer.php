@@ -2167,9 +2167,7 @@ class ArgumentReferenceRenderer {
 			$claimNode['citation'] = $citations;
 		}
 		$data = (['@context' => 'https://schema.org', '@graph' => ([1 => $websiteNode, 2 => $organizationNode, 3 => $breadcrumbNode, 4 => $pageNode, 5 => $claimNode])]);
-		if ($this->context instanceof NativeJsonContext) { return $this->context->jsonLdData($data); }
-		$json = $this->context->jsonEncode(Table::wrap($data));
-		return $this->context->jsonLd($json);
+		return $this->context->jsonLdData($data);
 	}
 
 	protected function canonicalTitle($s = null) {

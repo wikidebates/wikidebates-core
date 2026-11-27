@@ -43,7 +43,8 @@ def run(root, output, label, context, opcache, repeats, warmup):
 	with path.open(encoding='utf-8') as stream:
 		result = json.load(stream)
 	env, cases = result['environment'], result['cases']
-	if (env['context'] != context or env['repeats'] != repeats
+	if (env['context'] != context or env['json_boundary'] not in ('table', 'native')
+		or (context != 'legacy' and env['json_boundary'] != 'native') or env['repeats'] != repeats
 		or env['warmup'] != warmup or env['cases'] != len(cases)
 		or bool(env['opcache_status']) != bool(opcache)):
 		raise ValueError(f'{path}: invalid benchmark environment')
@@ -99,7 +100,7 @@ def main():
 			for label in order:
 				results[label, context] = run(roots[label], args.output, label, context,
 					opcache, args.repeats, args.warmup)
-		envs = [{k: v for k, v in result['environment'].items() if k != 'context'}
+		envs = [{k: v for k, v in result['environment'].items() if k not in ('context', 'json_boundary')}
 			for result in results.values()]
 		if any(env != envs[0] for env in envs):
 			raise ValueError('Benchmark environments differ')
@@ -108,13 +109,15 @@ def main():
 			before = results['base', context]['cases']
 			after = results['candidate', context]['cases']
 			compare(before, after, context)
-			report(before, after, f'base -> candidate / {context}', args.repeats)
+			boundaries = ' -> '.join(results[label, context]['environment']['json_boundary'] for label in roots)
+			report(before, after, f'base -> candidate / {context} (JSON: {boundaries})', args.repeats)
 		for label in roots:
 			legacy = results[label, 'legacy']['cases']
 			for context in ('native-json', 'native'):
 				native = results[label, context]['cases']
 				compare(legacy, native, f'{label}/{context} vs legacy')
-				report(legacy, native, f'{label}: legacy -> {context}', args.repeats)
+				boundary = results[label, 'legacy']['environment']['json_boundary']
+				report(legacy, native, f'{label}: legacy -> {context} (JSON: {boundary} -> native)', args.repeats)
 		print('PASS: exact adjacent-revision fingerprints in all contexts; legacy/native trace parity.')
 
 

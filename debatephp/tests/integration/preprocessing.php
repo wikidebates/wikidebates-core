@@ -35,7 +35,7 @@ class PreprocessingTest extends Maintenance {
 				$c = new MediaWikiContext($parser, $frame, [], true, true, $telemetry, 'Argument');
 				if ($case === 'literal') {
 					$c->expandField("A\r\nB"); $c->expandField("A\r\nB");
-					$c->jsonLd($c->jsonEncode(new Table(['nested' => new Table(['text' => '{{literal}} </script>'])])));
+					$c->jsonLdData(['nested' => ['text' => '{{literal}} </script>']]);
 				} elseif ($case === 'tags') {
 					NativeTags::observe($telemetry, static function() use ($parser, $frame) {
 						return NativeTags::render($parser, $frame, 'a', '{{#if:1|BODY}}', ['title' => '{{#if:1|TITLE}}'], false, ['a' => ['title']]);

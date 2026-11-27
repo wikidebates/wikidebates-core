@@ -1315,9 +1315,7 @@ class ReferenceRenderer {
 			$pageNode['citation'] = $citations;
 		}
 		$data = (['@context' => 'https://schema.org', '@graph' => ([1 => $websiteNode, 2 => $organizationNode, 3 => $breadcrumbNode, 4 => $pageNode])]);
-		if ($this->context instanceof NativeJsonContext) { return $this->context->jsonLdData($data); }
-		$json = $this->context->jsonEncode(Table::wrap($data));
-		return $this->context->jsonLd($json);
+		return $this->context->jsonLdData($data);
 	}
 
 	protected function renderKeywords($args = null, $pv = null, ?array &$cats = null, $lang = null) {

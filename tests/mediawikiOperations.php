@@ -2,7 +2,6 @@
 
 use MediaWiki\Extension\DebatePHP\MediaWikiContext;
 use MediaWiki\Extension\DebatePHP\NativeTags;
-use MediaWiki\Extension\DebatePHP\Table;
 use MediaWiki\Extension\DebatePHP\Telemetry;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Parser\Parser;
@@ -11,7 +10,7 @@ use MediaWiki\Title\Title;
 
 $operationCount = 0;
 foreach (['reference', 'optimized'] as $mode) {
-	foreach (['literal', 'dynamic', 'volatile', 'nested', 'json', 'json-native', 'json-invalid', 'date', 'quotes'] as $case) {
+	foreach (['literal', 'dynamic', 'volatile', 'nested', 'json-native', 'json-recovery', 'json-invalid', 'date', 'quotes'] as $case) {
 		$events = [];
 		$values = [];
 		$parser = MediaWikiServices::getInstance()->getParserFactory()->create();
@@ -40,12 +39,23 @@ foreach (['reference', 'optimized'] as $mode) {
 				});
 				// A completed observer must not retain state for the next invocation.
 				NativeTags::argument($parser, $frame, '{{!}}');
-			} elseif ($case === 'json' || $case === 'json-native') {
-				$values[] = ['outer' => ['inner' => ['text' => '{{literal}} </script><script> " &=| é']]];
-				$text = $case === 'json-native' ? $context->jsonLdData($values[0]) : $context->jsonLd($context->jsonEncode(Table::wrap($values[0])));
-			} elseif ($case === 'json-invalid') {
-				try { $context->jsonLd('{invalid'); throw new RuntimeException('Invalid external JSON was accepted'); }
-				catch (JsonException $e) { $values[] = 'rejected'; }
+			} elseif ($case === 'json-native' || $case === 'json-recovery' || $case === 'json-invalid') {
+				if ($case !== 'json-native') {
+					foreach ([INF, "\xFF"] as $invalid) {
+						try {
+							$context->jsonLdData(['invalid' => $invalid]);
+							throw new LogicException('Invalid native JSON data was accepted');
+						} catch (RuntimeException $e) {
+							same('Unable to encode JSON-LD', $e->getMessage(), 'Encoding failure propagates');
+						}
+					}
+				}
+				if ($case === 'json-invalid') {
+					$values[] = 'rejected';
+				} else {
+					$values[] = ['outer' => ['inner' => ['text' => '{{literal}} </script><script> " &=| é']]];
+					$text = $context->jsonLdData($values[0]);
+				}
 			} elseif ($case === 'date') {
 				$values[] = $context->currentDate();
 				$values[] = $context->preprocess('{{CURRENTYEAR}}-{{CURRENTMONTH}}-{{CURRENTDAY2}}');
@@ -60,7 +70,7 @@ foreach (['reference', 'optimized'] as $mode) {
 		$options->setTimestamp('20261018120000');
 		$output = $parser->parse('{{#argument:render}}', Title::newFromText('Operation test'), $options);
 		$profile = $events[0];
-		$expected = ['literal' => 0, 'dynamic' => 1, 'volatile' => 2, 'nested' => 1, 'json' => 0, 'json-native' => 0, 'json-invalid' => 0, 'date' => 0, 'quotes' => 1][$case];
+		$expected = ['literal' => 0, 'dynamic' => 1, 'volatile' => 2, 'nested' => 1, 'json-recovery' => 0, 'json-native' => 0, 'json-invalid' => 0, 'date' => 0, 'quotes' => 1][$case];
 		same($expected, $profile['counters']['preprocess_executed'], 'Actual preprocessing count: ' . $case);
 		same($expected, array_sum(array_column($profile['preprocessing'], 'calls')), 'Per-reason counter sum: ' . $case);
 		if ($case === 'literal') {
@@ -70,12 +80,13 @@ foreach (['reference', 'optimized'] as $mode) {
 		} elseif ($case === 'dynamic' || $case === 'volatile') {
 			same($case === 'dynamic' ? ['|', '|'] : ['VOLATILE', 'VOLATILE'], $values, 'Dynamic values');
 			same($case === 'dynamic' ? 1 : 0, $profile['counters']['preprocess_cache_hits'], 'Volatile frames bypass cache');
-		} elseif ($case === 'json' || $case === 'json-native') {
+		} elseif ($case === 'json-recovery' || $case === 'json-native') {
 			preg_match('~<script[^>]+>(.*?)</script>~s', $output->getText(), $match);
 			same($values[0], json_decode($match[1], true, 512, JSON_THROW_ON_ERROR), 'Direct JSON preserves values');
 			same(1, substr_count($output->getText(), '<script'), 'JSON cannot close the script element');
 		} elseif ($case === 'json-invalid') {
-			same(['rejected'], $values, 'External JSON remains strictly validated');
+			same(['rejected'], $values, 'Invalid native JSON data is rejected');
+			check(!str_contains($output->getText(), '<script'), 'Failed encoding inserts no script');
 		} elseif ($case === 'date') {
 			same(['2026-10-18', '2026-10-18'], $values, 'Native current date equals MediaWiki expansion');
 			same(1, $profile['counters']['preprocess_cache_hits'], 'Native date shares the invocation cache');

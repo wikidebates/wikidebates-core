@@ -48,7 +48,8 @@ def main(root):
 		before = read(root, 'before', opcache)
 		after = read(root, 'after', opcache)
 		env = before['environment']
-		if env != after['environment']:
+		if ({k: v for k, v in env.items() if k != 'json_boundary'} !=
+			{k: v for k, v in after['environment'].items() if k != 'json_boundary'}):
 			raise ValueError('Benchmark environments differ')
 		rows = before['cases']
 		other = after['cases']
@@ -61,6 +62,8 @@ def main(root):
 				check_sample_counts(other[name][mode])
 		print(f"\nPHP {env['php']} {env['os']}; CLI OPcache requested={opcache}, active={env['opcache_status']}; "
 			f"cases={env['cases']}; repetitions={env['repeats']}; warmup={env['warmup']}")
+		print(f"  JSON boundary: {env.get('json_boundary', 'unrecorded')} -> "
+			f"{after['environment'].get('json_boundary', 'unrecorded')}")
 		if bool(env['opcache_status']) != bool(opcache):
 			print('WARNING: actual OPcache status differs from requested; do not label this a valid OPcache comparison.')
 		for module in ('Argument', 'Debate'):
