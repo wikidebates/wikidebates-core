@@ -16,7 +16,7 @@ use MediaWiki\Parser\ParserOptions;
 use MediaWiki\Title\Title;
 
 $services = MediaWikiServices::getInstance();
-same('reference', $services->getMainConfig()->get('DebatePHPMode'), 'Reference is the default mode');
+same('optimized', $services->getMainConfig()->get('DebatePHPMode'), 'Optimized is the default mode');
 check(!\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('DebatePHP'), 'No standalone DebatePHP extension is loaded');
 if (!getenv('WD_TEST_EXTENSIONS')) {
 	same(['Wikidebates'], array_keys(\MediaWiki\Registration\ExtensionRegistry::getInstance()->getAllThings()), 'One wfLoadExtension call is sufficient');
