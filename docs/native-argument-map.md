@@ -81,9 +81,11 @@ Il garde le parseur pour les liens et les libellés stockés en wikicode,
 sans passer par le module générique ApiParse. La configuration
 `$wgWikidebatesArgumentMapApi = true;` active le transport GET.
 Après validation en production FR/EN, le transport est activé par défaut
-sur ces deux langues. Une valeur explicite false reste possible. Un ancien backend qui
-ne connaît pas l'action conserve le transport précédent ; une erreur
-métier ne provoque pas de deuxième requête.
+sur ces deux langues. Une valeur explicite false reste possible. Une erreur du point d'entrée dédié ne provoque plus de seconde requête
+vers action=parse et ne désactive pas l'API pour les cartes suivantes.
+Le transport PHP compact reste utilisable uniquement sur les autres
+langues ou par désactivation explicite du paramètre ; il ne contient
+aucun appel à Lua.
 
 Les cartes utilisent une seule entrée LRU partagée par requête et langue,
 avec une durée de vie de 60 secondes (pas de prolongation à la lecture).

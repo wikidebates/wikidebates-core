@@ -1,7 +1,7 @@
 <?php
 namespace MediaWiki\Extension\DebatePHP\Maintenance;
 
-require_once __DIR__ . '/../src/LiteralData.php';
+require_once __DIR__ . '/LiteralData.php';
 
 /** Offline compilation and same-directory atomic replacement, shared by both commands. */
 final class I18nCompiler {

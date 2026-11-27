@@ -116,9 +116,11 @@ Ce contrôle vérifie le chargement natif FR/EN, l’absence de dépendance enve
 
 ## Maintenance et observations depuis 0.3.0
 
-`tools/maintainI18n.php --wiki-root=/srv/mediawiki` utilise les callbacks MediaWiki pour lire les sources de référence du wiki de test. Il compare les requêtes FR/EN et les replis avec Scribunto, ainsi que sept cas de sélection de langue, dans les deux stratégies PHP. Avec les sources fournies, cela donne 2 510 comparaisons de traductions et 14 comparaisons de langue. Le module utilisé pour effectuer ces appels est remplacé uniquement dans le callback du parseur de contrôle ; aucune page de module n’est enregistrée.
-
-Sans option, la commande vérifie ensuite que la table installée est synchronisée. Avec `--rebuild`, elle régénère la table PHP et la source de test après réussite des comparaisons. `--source=... --rebuild --output=...` prépare un candidat local sans toucher aux fichiers installés. Le rechargement OPcache et l’invalidation du cache de page suivent ensuite la procédure habituelle de déploiement ; cette commande ne les déclenche pas.
+La commande historique de maintenance basée sur Scribunto a été retirée
+après la migration. Elle reste reproductible dans le commit
+`d97cc610ad6793033f002d3dc4ace70abc7cd3f2` en environnement de test uniquement.
+Les traductions courantes se maintiennent dans les catalogues JSON.
+Les tests hors ligne de compilation vérifient toujours les anciens dictionnaires.
 
 Sur le wiki jetable uniquement, vérifier également les échecs simulés et la maintenance :
 

@@ -154,8 +154,8 @@ test( 'other hover parse clients keep their existing API parameters', async ( t 
 	assert.equal( await pending, '<div>preview</div>' );
 } );
 
-test( 'typed map API falls back when the action is unavailable', async ( t ) => {
-	const { calls, enter, leave, contents, reply, window } = await fixture( t, true );
+test( 'typed map API failure never switches transport or retries the generic parser', async ( t ) => {
+	const { calls, enter, leave, contents, window } = await fixture( t, true );
 	await enter();
 	assert.equal( calls[ 0 ].method, 'GET' );
 	assert.equal( calls[ 0 ].params.action, 'wikidebatesargumentmap' );
@@ -164,16 +164,17 @@ test( 'typed map API falls back when the action is unavailable', async ( t ) => 
 	assert.equal( calls[ 0 ].params.mode, 'argument' );
 	calls[ 0 ].pending.reject( 'unknown_action' );
 	await tick();
-	assert.equal( calls[ 1 ].method, 'POST' );
-	assert.match( calls[ 1 ].params.text, /#argumentmap:render/ );
-	await reply( 1, '<b>Fallback</b>' );
-	await tick();
-	assert.match( contents(), /Fallback/ );
+	assert.equal( calls.length, 1, 'no automatic fallback request' );
+	assert.doesNotMatch( contents(), /Fallback/ );
 	leave();
 	window.document.getElementById( 'hover' ).dataset.argument = 'Context B';
 	await enter();
-	assert.equal( calls[ 2 ].method, 'POST' );
-	await reply( 2, '<b>Old backend</b>' );
+	assert.equal( calls.length, 2 );
+	assert.equal( calls[ 1 ].method, 'GET', 'a previous failure cannot disable the dedicated API' );
+	assert.equal( calls[ 1 ].params.action, 'wikidebatesargumentmap' );
+	calls[ 1 ].pending.resolve( { wikidebatesargumentmap: { html: '<b>New map</b>' } } );
+	await tick();
+	assert.match( contents(), /New map/ );
 } );
 
 test( 'typed API returns HTML without a generic parse request', async ( t ) => {

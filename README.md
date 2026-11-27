@@ -18,24 +18,23 @@ wfLoadExtension( 'Wikidebates' );
 ```
 
 Ne pas charger en plus le paquet autonome DebatePHP. Le composant `debatephp/`
-n’a pas de manifeste indépendant. Scribunto et HTML Tags ne sont plus requis
-pour le rendu PHP. Les quatre anciennes pages de modules Lua ne sont plus lues
-et ne créent plus de dépendance de cache. Les modèles utilisant encore `#invoke`
-ont toujours besoin de Scribunto ; l’extension ne réécrit aucune page du wiki.
+n’a pas de manifeste indépendant. Les trois moteurs Argument, Debate et
+ArgumentMap sont exclusivement natifs. Aucun interpréteur ni adaptateur
+d’exécution Lua n’est requis. Sur les wikis historiques FR/EN, Wikidebates
+conserve la lecture des révisions archivées sans exécuter leur source.
+Voir [le gestionnaire de contenu historique](docs/lua-archive.md).
 
 | Fonction tierce | Extensions nécessaires à cette fonction |
 | --- | --- |
-| Données et requêtes sémantiques | Semantic MediaWiki et SemanticScribunto, via sa `LibraryFactory` |
+| Données et requêtes sémantiques | Semantic MediaWiki (API PHP native) |
 | Formulaires et boutons `#autoedit` | Page Forms |
 | Descriptions | ShortDescription |
 | Métadonnées SEO | WikiSEO |
-| Variables partagées | Variables et VariablesLua |
-| Autres modèles Lua du site | Scribunto |
+| Variables partagées | Variables |
 
-SemanticScribunto et VariablesLua peuvent eux-mêmes requérir Scribunto.
-Le chargement unique concerne Wikidebates/DebatePHP ; il ne remplace pas les
-extensions tierces du site. Leur absence conserve les mécanismes de repli du
-paquet et peut retirer la fonction tierce correspondante.
+Le chargement unique ne remplace pas les extensions fonctionnelles du site.
+Les lectures sémantiques gardent leurs contrôles de validité et leur chemin
+PHP général lorsque la lecture directe n’est pas certifiée.
 
 ## Configuration
 
@@ -147,7 +146,7 @@ node tests/i18n.js
 MW_INSTALL_PATH=/path/to/mediawiki-1.43 php tests/mediawikiI18n.php
 ```
 
-L’interface de compilation de la première intégration est conservée :
+L’importateur hors ligne des anciens dictionnaires est conservé uniquement pour les tests et la reproduction historique. Le texte courant se maintient directement dans les catalogues JSON ; l’ancien outil de synchronisation nécessitant Scribunto a été retiré.
 
 ```sh
 php tools/compileI18n.php debatephp/resources/WD-I18N-Data.snapshot.lua debatephp/resources/WD-I18N.reference.lua > /tmp/I18nData.php

@@ -7,6 +7,10 @@ spl_autoload_register(static function(string $class) use ($manifest): void {
 	$prefix = 'MediaWiki\\Extension\\DebatePHP\\';
 	if (str_starts_with($class, $prefix)) {
 		$name = substr($class, strlen($prefix));
+		if ($name === 'LiteralData') {
+			require_once __DIR__ . '/../debatephp/tools/LiteralData.php';
+			return;
+		}
 		if (in_array($name, ['Table', 'Lua', 'LegacyJson'], true)) {
 			require_once __DIR__ . '/../debatephp/tests/legacy/' . $name . '.php';
 			return;
