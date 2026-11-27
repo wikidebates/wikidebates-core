@@ -117,7 +117,9 @@ function wikidebatesTestConfig($settings): void {
 	if ((getenv('WD_TEST_SEMANTIC_BASELINE') === '1' || getenv('WD_TEST_SEMANTIC_TRACKING') === '1')) {
 		wfLoadSkin('Vector');
 	}
-	wfLoadExtension('Wikidebates', dirname(__DIR__) . '/extension.json');
+	if (!defined('WD_TEST_WITHOUT_WIKIDEBATES')) {
+		wfLoadExtension('Wikidebates', dirname(__DIR__) . '/extension.json');
+	}
 }
 if (defined('WD_FULLSTACK_TEST') && getenv('WD_FULLSTACK_AUTOLOAD')) {
 	// Optional dependency autoloader for manual isolated SMW installations.

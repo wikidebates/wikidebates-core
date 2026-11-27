@@ -13,7 +13,7 @@ class AuditLuaUsage extends Maintenance {
 	public function __construct() {
 		parent::__construct();
 		$this->addDescription('Read-only Lua usage and stored content-model inventory (all namespaces and current slots).');
-		$this->requireExtension('Wikidebates');
+		// This inventory only needs MediaWiki core and its explicitly included scanner.
 		$this->addOption('after', 'Resume after this page ID; default 0', false, true);
 		$this->addOption('limit', 'Maximum current pages; default all', false, true);
 		$this->addOption('batch-size', 'Page IDs per SELECT (1-1000; default 200)', false, true);
@@ -32,7 +32,7 @@ class AuditLuaUsage extends Maintenance {
 			$this->output(json_encode($row, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR) . "\n");
 		};
 		$loaded = [];
-		foreach (['Scribunto', 'SemanticScribunto', 'VariablesLua', 'SemanticMediaWiki', 'Variables', 'WikiSEO'] as $extension) {
+		foreach (['Wikidebates', 'Scribunto', 'SemanticScribunto', 'VariablesLua', 'SemanticMediaWiki', 'Variables', 'WikiSEO'] as $extension) {
 			$loaded[$extension] = ExtensionRegistry::getInstance()->isLoaded($extension);
 		}
 		$emit(['type' => 'environment', 'wiki' => $db->getDBname(),

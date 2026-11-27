@@ -2,6 +2,7 @@
 
 /** Disposable wiki with actual Scribunto modules, revision storage and template links. */
 define('WD_FULLSTACK_TEST', true);
+define('WD_TEST_WITHOUT_WIKIDEBATES', true);
 putenv('WD_TEST_LANGUAGE=en');
 putenv('WD_TEST_EXTENSIONS=Scribunto');
 require __DIR__ . '/mediawikiEnvironment.php';
@@ -9,6 +10,14 @@ require __DIR__ . '/fullstackSupport.php';
 
 use MediaWiki\Extension\Wikidebates\LuaUsageAudit;
 use MediaWiki\MediaWikiServices;
+
+check(!\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('Wikidebates'), 'Lab intentionally has no Wikidebates extension');
+// Include within a function to prevent MediaWiki from treating this as a direct CLI entry point.
+(static function(): void {
+	require_once __DIR__ . '/../maintenance/AuditLuaUsage.php';
+})();
+$audit = new AuditLuaUsage();
+$audit->checkRequiredExtensions();
 
 $services = MediaWikiServices::getInstance();
 $fsUser = \MediaWiki\User\User::newSystemUser('Wikidebates Lua inventory lab', ['steal' => false]);
@@ -37,7 +46,7 @@ foreach (['Module:WD audit', 'WD Lua caller', 'Template:WD localized caller', 'M
 	same('main', $matches[$title]['slot'], 'Slot identified');
 	check($matches[$title]['revision_id'] > 0, 'Exact current revision identified');
 }
-check(!isset($matches['WD native marker'], $matches['WD ordinary page']), 'Only review candidates emitted');
+check(!isset($matches['WD native marker']) && !isset($matches['WD ordinary page']), 'Only review candidates emitted');
 $evidence = LuaUsageAudit::storedEvidence($db, $emit);
 check(($evidence['stored_lua_content_rows_by_model']['Scribunto'] ?? 0) >= 2, 'Historical content model rows are not mistaken for current modules');
 check($evidence['stored_module_links'] >= 1 && $evidence['stored_module_link_sources'] >= 1, 'Actual module transclusion recorded');

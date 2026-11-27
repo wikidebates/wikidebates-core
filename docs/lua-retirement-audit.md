@@ -18,6 +18,14 @@ done
 printf '%s\n' "$reports"
 ```
 
+Le raccourci `Wikidebates:AuditLuaUsage` nécessite que l'extension soit chargée.
+Sur un wiki où elle ne l'est pas, utiliser le chemin PHP explicite :
+`MW_INSTALL_PATH="$PWD" php maintenance/run.php "$PWD/extensions/Wikidebates/maintenance/AuditLuaUsage.php" --wiki=de`.
+Une extraction privée des deux fichiers `maintenance/AuditLuaUsage.php` et
+`src/LuaUsageAudit.php` depuis une révision vérifiée fonctionne également.
+Ne pas activer l'extension uniquement pour lancer l'audit. Vérifier le nom de
+base, la langue et l'état des extensions dans l'événement `environment`.
+
 Ne pas exécuter en root. Les rapports restent privés. Ils comportent les titres,
 identifiants de page et de révision, slots, types de contenu et catégories de
 signal, sans extrait de source ni contenu masqué.
