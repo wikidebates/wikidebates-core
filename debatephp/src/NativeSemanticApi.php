@@ -32,7 +32,7 @@ final class NativeSemanticApi {
 			class_exists(ParameterProcessorFactory::class);
 	}
 
-	/** Preserve parameter order, parser context and the established query option. */
+	/** Preserve parameter order and parser context. */
 	public static function query(Store $store, array $raw): QueryResult {
 		return $store->getQueryResult(self::buildQuery($raw));
 	}
@@ -62,8 +62,8 @@ final class NativeSemanticApi {
 			$queryString, QueryProcessor::getProcessedParams($parameters, $printouts),
 			QueryContext::SPECIAL_PAGE, '', $printouts
 		);
-		// Keep the existing SMW context identity, not a dependency on the former class.
-		$query->setOption(Query::PROC_CONTEXT, 'SSC.LibraryFactory');
+		// SMW uses this label for cache statistics, not the result-cache key.
+		$query->setOption(Query::PROC_CONTEXT, 'WikidebatesNativeSemanticApi');
 		return $query;
 	}
 

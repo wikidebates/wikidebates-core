@@ -13,8 +13,8 @@ namespace {
 	$actual = NativeSemanticApi::query(new \SMW\Store(), $params);
 	same(0, $actual->getCount(), 'Actual query result returned');
 	same($params, SemanticApiDouble::$lastQuery->raw, 'Raw SMW parameters retain exact order');
-	same(\SMW\Query\QueryContext::SPECIAL_PAGE, SemanticApiDouble::$lastQuery->context, 'Historical query context');
+	same(\SMW\Query\QueryContext::SPECIAL_PAGE, SemanticApiDouble::$lastQuery->context, 'Native special-page query context');
 	same(['main'], SemanticApiDouble::$lastQuery->printouts, 'Main printout retained');
-	same([\SMW\Query\Query::PROC_CONTEXT => 'SSC.LibraryFactory'], SemanticApiDouble::$lastQuery->options, 'Query context identity preserved');
+	same([\SMW\Query\Query::PROC_CONTEXT => 'WikidebatesNativeSemanticApi'], SemanticApiDouble::$lastQuery->options, 'Native cache statistics label');
 	echo "OK: native query preserves page-owned snapshot semantics\n";
 }

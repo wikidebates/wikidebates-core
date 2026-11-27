@@ -13,6 +13,15 @@ $raw = ['([[WD FS Parent A::WD FS never a parent target]] OR [[WD FS Parent B::W
 $oneBased = static fn(array $values): array => array_combine(range(1, count($values)), $values);
 $query = $oneBased($raw);
 $probe = $queryStore($raw);
+$builtQuery = $probe->getQuery();
+same('WikidebatesNativeSemanticApi', $builtQuery->getOption(\SMW\Query\Query::PROC_CONTEXT), 'Native SMW statistics label');
+$relabeled = clone $builtQuery;
+$relabeled->setOption(\SMW\Query\Query::PROC_CONTEXT, 'DifferentStatisticsLabel');
+same($builtQuery->getHash(), $relabeled->getHash(), 'Statistics label does not affect the result-cache key');
+same($builtQuery->getQueryId(), $relabeled->getQueryId(), 'Statistics label does not affect query identity');
+$relabeledResult = $store->getQueryResult($relabeled);
+same($probe->getCount(), $relabeledResult->getCount(), 'Statistics label does not affect result count');
+same($probe->getErrors(), $relabeledResult->getErrors(), 'Statistics label does not affect parser errors');
 check(EmptyParentQuery::certified($probe, $query), 'Real typed empty parent union certifies unnecessary fallback reads');
 $report['native_reads'] = ['empty_union' => ['description' => get_class($probe->getQuery()->getDescription()), 'errors' => count($probe->getErrors()),
 	'count' => $probe->getCount(), 'further' => $probe->hasFurtherResults(), 'certified' => EmptyParentQuery::certified($probe, $query)]];
