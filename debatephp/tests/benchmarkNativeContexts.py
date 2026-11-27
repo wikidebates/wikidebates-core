@@ -44,6 +44,7 @@ def run(root, output, label, context, opcache, repeats, warmup):
 		result = json.load(stream)
 	env, cases = result['environment'], result['cases']
 	if (env['context'] != context or env['json_boundary'] not in ('table', 'native')
+		or env['semantic_boundary'] not in ('table', 'mixed', 'native')
 		or (context != 'legacy' and env['json_boundary'] != 'native') or env['repeats'] != repeats
 		or env['warmup'] != warmup or env['cases'] != len(cases)
 		or bool(env['opcache_status']) != bool(opcache)):
@@ -100,7 +101,7 @@ def main():
 			for label in order:
 				results[label, context] = run(roots[label], args.output, label, context,
 					opcache, args.repeats, args.warmup)
-		envs = [{k: v for k, v in result['environment'].items() if k not in ('context', 'json_boundary')}
+		envs = [{k: v for k, v in result['environment'].items() if k not in ('context', 'json_boundary', 'semantic_boundary')}
 			for result in results.values()]
 		if any(env != envs[0] for env in envs):
 			raise ValueError('Benchmark environments differ')
@@ -110,14 +111,16 @@ def main():
 			after = results['candidate', context]['cases']
 			compare(before, after, context)
 			boundaries = ' -> '.join(results[label, context]['environment']['json_boundary'] for label in roots)
-			report(before, after, f'base -> candidate / {context} (JSON: {boundaries})', args.repeats)
+			semantic = ' -> '.join(results[label, context]['environment']['semantic_boundary'] for label in roots)
+			report(before, after, f'base -> candidate / {context} (JSON: {boundaries}; SMW: {semantic})', args.repeats)
 		for label in roots:
 			legacy = results[label, 'legacy']['cases']
 			for context in ('native-json', 'native'):
 				native = results[label, context]['cases']
 				compare(legacy, native, f'{label}/{context} vs legacy')
 				boundary = results[label, 'legacy']['environment']['json_boundary']
-				report(legacy, native, f'{label}: legacy -> {context} (JSON: {boundary} -> native)', args.repeats)
+				semantic = ' -> '.join(results[label, item]['environment']['semantic_boundary'] for item in ('legacy', context))
+				report(legacy, native, f'{label}: legacy -> {context} (JSON: {boundary} -> native; SMW: {semantic})', args.repeats)
 		print('PASS: exact adjacent-revision fingerprints in all contexts; legacy/native trace parity.')
 
 

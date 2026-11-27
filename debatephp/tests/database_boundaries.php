@@ -76,7 +76,6 @@ namespace {
 	require __DIR__ . '/../../tests/bootstrap.php';
 	use MediaWiki\Extension\DebatePHP\Lua;
 	use MediaWiki\Extension\DebatePHP\MediaWikiContext;
-	use MediaWiki\Extension\DebatePHP\Table;
 	use MediaWiki\Extension\DebatePHP\Telemetry;
 	use MediaWiki\Extension\Wikidebates\RecentDebateChanges;
 
@@ -92,20 +91,16 @@ namespace {
 	$reflection->getProperty('telemetry')->setValue($context, $telemetry);
 	$renderer = new \MediaWiki\Extension\DebatePHP\ArgumentReferenceRenderer($context);
 	$rendererReflection = new ReflectionClass($renderer);
-	$queryCache = $rendererReflection->getMethod('cacheMake')->invoke($renderer, 250);
-	$rendererReflection->getProperty('SMW_ASK_CACHE')->setValue($renderer, $queryCache);
-	$ask = $rendererReflection->getMethod('smwAskSafe');
 	$read = $rendererReflection->getMethod('readSemantic');
 	$operations = [
-		'query' => static fn() => $context->smwAsk(new Table([1 => '[[SECRET]]'])),
-		'native read' => static fn() => $context->readSemantic(new Table([1 => '[[SECRET]]']), 'cards'),
-		'cached native read' => static fn() => $read->invoke($renderer, new Table([1 => '[[SECRET]]']), 'cards'),
+		'initialization read' => static fn() => $context->readSemantic([1 => '[[SECRET]]'], 'initialization'),
+		'native read' => static fn() => $context->readSemantic([1 => '[[SECRET]]'], 'cards'),
+		'cached native read' => static fn() => $read->invoke($renderer, [1 => '[[SECRET]]'], 'cards'),
 		'set' => static fn() => $context->smwSet(['SECRET' => 'VALUE']),
 		'seo' => static fn() => $context->seoSet([]),
 		'variable write' => static fn() => $context->variableSet('SECRET', 'VALUE'),
 		'variable read' => static fn() => $context->variableGet('SECRET'),
 		'pcall' => static fn() => Lua::pcall('boundaryFailure'),
-		'cached query' => static fn() => $ask->invoke($renderer, new Table([1 => '[[SECRET]]']), 'cards'),
 		'recent changes' => static fn() => RecentDebateChanges::render($parser, new PPFrame, ['test'])
 	];
 	$failures = [new \Wikimedia\Rdbms\DBError('SECRET SQL'), new \Wikimedia\Rdbms\DBTransactionStateError('SECRET SQL'), new PDOException('SECRET SQL')];
@@ -123,8 +118,7 @@ namespace {
 			$count++;
 		}
 	}
-	$key = $rendererReflection->getMethod('smwKeyFromArray')->invoke($renderer, new Table([1 => '[[SECRET]]']));
-	same(null, $queryCache->get($key), 'SQL exceptions are not memoized as empty query results');
+	$key = $rendererReflection->getMethod('smwKeyFromArray')->invoke($renderer, [1 => '[[SECRET]]']);
 	same(null, $rendererReflection->getProperty('nativeSemanticCache')->getValue($renderer)->get($key), 'SQL exceptions cannot poison the native result cache');
 	$GLOBALS['boundaryFailure'] = new RuntimeException('Recoverable');
 	foreach ($operations as $name => $operation) {
@@ -134,7 +128,7 @@ namespace {
 			check(str_contains($value, 'class="error"') && !str_contains($value, 'Recoverable'),
 				'Recoverable error is generic and does not reveal exception text');
 		}
-		elseif ($name === 'native read' || $name === 'cached native read') {
+		elseif (in_array($name, ['initialization read', 'native read', 'cached native read'], true)) {
 			same(null, $value->rows, 'Recoverable native read retains null rows');
 			same(false, $value->completeEmpty, 'An exception never certifies empty parents');
 		}

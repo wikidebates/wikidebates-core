@@ -180,10 +180,10 @@ namespace {
 
 	$c->preprocess('test'); $c->preprocess('test');
 	$check($f->child->expands === 1 && $f->child->reads >= 2, 'Expansion cache did not force frame arguments');
-	$rows = $c->smwAsk(new Table([1=>'[[A]]', 2=>'?P=pro']));
+	$rows = $c->readSemantic([1 => '[[A]]', 2 => '?P=pro'], 'other')->rows;
 	$check(LibraryFactory::$query === ['[[A]]','?P=pro'], 'SMW query parameters changed');
 	$check($rows[1]['pro'][1] === 'A' && $rows[1]['pro'][2]['fulltext'] === 'B', 'Nested query arrays must be one-based');
-	LibraryFactory::$fail = true; $check($c->smwAsk(new Table([1=>'[[A]]'])) === null, 'SMW error must be swallowed'); LibraryFactory::$fail = false;
+	LibraryFactory::$fail = true; $check($c->readSemantic([1 => '[[A]]'], 'other')->rows === null, 'SMW error must be swallowed'); LibraryFactory::$fail = false;
 	$c->variableSet(' WD_QUOTES_AUTHORS ', ' Alice ');
 	$check($c->variableGet('WD_QUOTES_AUTHORS') === 'Alice', 'Variable state must use Variables trimming');
 	$p->variables->setVarValue('WD_QUOTES_AUTHORS', 'Bob');
@@ -218,20 +218,20 @@ namespace {
 	$renderer = new \MediaWiki\Extension\DebatePHP\ArgumentReferenceRenderer($profiled);
 	$reflection = new \ReflectionClass($renderer);
 	$makeCache = $reflection->getMethod('cacheMake');
-	foreach (['SMW_ASK_CACHE', 'SMW_TITLES_CACHE', 'CARD_CACHE'] as $name) {
+	foreach (['SMW_TITLES_CACHE', 'CARD_CACHE'] as $name) {
 		$reflection->getProperty($name)->setValue($renderer, $makeCache->invoke($renderer, 250));
 	}
-	$ask = $reflection->getMethod('smwAskSafe');
-	$ask->invoke($renderer, new Table([1 => '[[SECRET]]']), 'debate-parents');
-	$ask->invoke($renderer, new Table([1 => '[[SECRET]]']), 'argument-parents');
+	$ask = $reflection->getMethod('readSemantic');
+	$ask->invoke($renderer, [1 => '[[SECRET]]'], 'debate-parents');
+	$ask->invoke($renderer, [1 => '[[SECRET]]'], 'argument-parents');
 	$titles = $reflection->getMethod('smwAskTitles');
 	$titles->invoke($renderer, '[[SECRET2]]', 'breadcrumb');
 	$titles->invoke($renderer, '[[SECRET2]]', 'breadcrumb');
 	LibraryFactory::$fail = true;
-	$ask->invoke($renderer, new Table([1 => '[[SECRET3]]']), 'cards');
-	$ask->invoke($renderer, new Table([1 => '[[SECRET3]]']), 'cards');
+	$ask->invoke($renderer, [1 => '[[SECRET3]]'], 'cards');
+	$ask->invoke($renderer, [1 => '[[SECRET3]]'], 'cards');
 	LibraryFactory::$fail = false;
-	$profiled->smwAsk(new Table([1 => '[[SECRET4]]']));
+	$profiled->readSemantic([1 => '[[SECRET4]]'], 'other');
 	$profiled->smwSet(['SECRET' => 'VALUE']);
 	$check(LibraryFactory::$write === ['SECRET=VALUE'], 'Native SMW write keeps literal values');
 	$profile->report();

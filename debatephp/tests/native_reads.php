@@ -3,7 +3,7 @@
 require __DIR__ . '/../../tests/bootstrap.php';
 require __DIR__ . '/argument_context.php';
 
-use MediaWiki\Extension\DebatePHP\{ArgumentReferenceRenderer, Context, JsonData, NativeJsonContext, NativeSemanticContext, RenderData, SemanticReadResult, Table, TextEscaper};
+use MediaWiki\Extension\DebatePHP\{ArgumentContext, ArgumentReferenceRenderer, Context, JsonData, NativeJsonContext, NativeSemanticContext, RenderData, SemanticReadResult, Table, TextEscaper};
 
 set_error_handler(static function($severity, $message, $file, $line): void { throw new ErrorException($message, 0, $severity, $file, $line); });
 $assertions = 0;
@@ -47,8 +47,8 @@ require_once __DIR__ . '/native_context.php';
 $cases = json_decode(file_get_contents(__DIR__ . '/fixtures/argument-cases.json'), true, 512, JSON_THROW_ON_ERROR);
 foreach ($cases as $case) {
 	$legacy = new ArgumentTestContext($case); $native = new NativeReadTestContext($case);
-	$equal((new ArgumentReferenceRenderer($legacy))->render(), (new ArgumentReferenceRenderer($native))->render(), 'Optional native context exact HTML/JSON: ' . $case['title']);
-	$equal($legacy->effects, $native->effects, 'Optional native context exact effects');
+	$equal((new ArgumentReferenceRenderer($legacy))->render(), (new ArgumentReferenceRenderer($native))->render(), 'Native context with optional completeness proof exact HTML/JSON: ' . $case['title']);
+	$equal($legacy->effects, $native->effects, 'Native contexts preserve exact effects');
 }
 $case = ['title' => 'An isolated orphan', 'args' => ['lang' => 'en', 'summary' => 'Summary', 'creation-date' => '2026-01-01']];
 $old = new ArgumentTestContext($case); $native = new NativeReadTestContext($case); $native->certify = true;
@@ -64,8 +64,9 @@ catch (RuntimeException $e) { $equal('Synthetic JSON insertion failure', $e->get
 $native->failJson = false;
 $equal((new ArgumentReferenceRenderer(new ArgumentTestContext($case)))->render(), $renderer->render(), 'Native JSON render recovers without retained construction state');
 $probe = new ReflectionMethod($renderer, 'containsTitle');
-foreach ([['label' => 'Target'], [1 => 'no', 3 => 'Target'], [1 => null, 2 => 'Target'], ['fulltext' => 'Target'], [1 => false, 2 => 'Target']] as $value) {
-	$equal($probe->invoke($renderer, Table::wrap($value), 'Target'), $probe->invoke($renderer, $value, 'Target'), 'Native title lookup matches legacy table');
+foreach ([[['label' => 'Target'], false], [[1 => 'no', 3 => 'Target'], false],
+	[[1 => null, 2 => 'Target'], false], [['fulltext' => 'Target'], true], [[1 => false, 2 => 'Target'], true]] as [$value, $expected]) {
+	$equal($expected, $probe->invoke($renderer, $value, 'Target'), 'Native title lookup preserves historical sequence and named-field rules');
 }
 
 // The Lua bridge must respect one-based inclusive bounds, including an empty range.
@@ -109,14 +110,14 @@ foreach (['fr' => ' et ', 'en' => ' and '] as $language => $conjunction) {
 
 // Equivalent raw SMW forms must produce one link per relation, preserving order.
 $parentContext = new class(['title' => 'Child', 'args' => ['lang' => 'en']]) extends ArgumentTestContext {
-	public function smwAsk(Table $query): ?Table {
-		$this->effects['ask'][] = $query->values;
-		$fields = implode("\n", $query->values);
+	public function readSemantic(array $query, string $origin): SemanticReadResult {
+		$this->effects['ask'][] = $query;
+		$fields = implode("\n", $query);
 		if (str_contains($fields, '=pdeb')) {
 			throw new LogicException('Unused inherited-parent query must not run');
 		}
 		if (str_contains($fields, '=pro')) {
-			return Table::wrap([
+			return new SemanticReadResult([
 				1 => ['fulltext' => 'Debate A', 'pro' => 'Child', 'con' => 'Child'],
 				2 => ['fulltext' => 'Debate_A', 'pro' => 'Child'],
 				3 => ['fulltext' => 'Debate B', 'pro' => 'Child'],
@@ -124,7 +125,7 @@ $parentContext = new class(['title' => 'Child', 'args' => ['lang' => 'en']]) ext
 			]);
 		}
 		if (str_contains($fields, '=justif')) {
-			return Table::wrap([
+			return new SemanticReadResult([
 				1 => ['fulltext' => 'Parent &amp; A', 'justif' => 'Child', 'obj' => 'Child'],
 				2 => ['fulltext' => 'Parent & A', 'justif' => 'Child'],
 				3 => ['fulltext' => 'Parent B', 'justif' => 'Child'],
@@ -132,7 +133,7 @@ $parentContext = new class(['title' => 'Child', 'args' => ['lang' => 'en']]) ext
 			]);
 		}
 		if (str_contains($fields, '=chain')) {
-			return Table::wrap([
+			return new SemanticReadResult([
 				1 => ['chain' => 'Debate A⟭Parent A'],
 				2 => ['chain' => 'Debate_A⟭Parent B'],
 				3 => ['chain' => 'Debate &amp; B⟭Parent A'],
@@ -140,7 +141,7 @@ $parentContext = new class(['title' => 'Child', 'args' => ['lang' => 'en']]) ext
 				5 => ['chain' => 'Debate C⟭Parent C']
 			]);
 		}
-		return null;
+		return new SemanticReadResult(null);
 	}
 };
 foreach ([ArgumentReferenceRenderer::class, \MediaWiki\Extension\DebatePHP\ArgumentRenderer::class] as $class) {
@@ -241,15 +242,15 @@ $initContext = new class(['title' => 'Child argument test', 'args' => ['lang' =>
 	public ?Throwable $urlFailure = null;
 	public int $initQueries = 0;
 	public int $edits = 0;
-	public function smwAsk(Table $query): ?Table {
-		if (!in_array('limit=1', $query->values, true)) {
-			return parent::smwAsk($query);
+	public function readSemantic(array $query, string $origin): SemanticReadResult {
+		if (!in_array('limit=1', $query, true)) {
+			return parent::readSemantic($query, $origin);
 		}
 		$this->initQueries++;
 		if ($this->queryFailure) {
 			throw $this->queryFailure;
 		}
-		return Table::wrap([1 => ['fulltext' => 'Parent title']]);
+		return new SemanticReadResult([1 => ['fulltext' => 'Parent title']]);
 	}
 	public function autoEdit(array $params): string {
 		$this->edits++;
@@ -399,6 +400,9 @@ $equal(false, str_contains($edit->invoke($argumentForm, 'Edit', 'Child', '', '')
 
 // Native JSON context receives a recursively native graph, including documentary references.
 $equal(true, is_subclass_of(Context::class, NativeJsonContext::class), 'Native JSON is a mandatory Context contract');
+$equal(true, is_subclass_of(ArgumentContext::class, NativeSemanticContext::class), 'Native semantic reads are mandatory');
+$equal(false, method_exists(ArgumentContext::class, 'smwAsk'), 'No renderer-facing legacy SMW result API');
+$equal('array', (new ReflectionMethod(NativeSemanticContext::class, 'readSemantic'))->getParameters()[0]->getType()->getName(), 'Semantic queries require native arrays');
 $equal(false, method_exists(Context::class, 'jsonEncode'), 'Renderer interface does not accept Table JSON encoding');
 $equal(false, method_exists(Context::class, 'jsonLd'), 'Renderer interface does not accept externally encoded JSON');
 $graphIsNative = static function($value) use (&$graphIsNative): bool {

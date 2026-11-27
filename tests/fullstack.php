@@ -58,8 +58,7 @@ $report = ['tested_at_utc' => gmdate('c'), 'php' => PHP_VERSION, 'sqlite' => $te
 	'baseline_deferred_write' => ['pending' => $pending, 'before' => $before, 'after' => $after], 'writes' => []];
 
 use MediaWiki\Extension\DebatePHP\MediaWikiContext;
-use MediaWiki\Extension\DebatePHP\Table;
-use MediaWiki\Extension\DebatePHP\TextEscaper;
+use MediaWiki\Extension\DebatePHP\JsonData;
 use MediaWiki\Parser\ParserOptions;
 use MediaWiki\Title\Title;
 
@@ -117,9 +116,9 @@ foreach (['reference', 'optimized'] as $mode) {
 	$parser = $services->getParserFactory()->create();
 	$parser->startExternalParse(Title::newFromText('WD FS query'), ParserOptions::newFromAnon(), $parser::OT_HTML);
 	$context = new MediaWikiContext($parser, $parser->getPreprocessor()->newFrame(), [], $mode === 'optimized');
-	$result = $context->smwAsk(Table::wrap(['[[WD FS Text::updated]]', '?WD FS Text=text', '?WD FS Number=number',
-		'?WD FS Page=target', 'mainlabel=page', 'link=none', 'limit=10']));
-	$native = TextEscaper::jsonValue($result);
+	$result = $context->readSemantic(['[[WD FS Text::updated]]', '?WD FS Text=text', '?WD FS Number=number',
+		'?WD FS Page=target', 'mainlabel=page', 'link=none', 'limit=10'], 'other');
+	$native = JsonData::value($result->rows);
 	same(fsCanonical($luaQuery), fsCanonical($native), 'Real semantic query matches Lua: ' . $mode);
 }
 $report['query'] = $luaQuery;

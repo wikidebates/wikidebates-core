@@ -36,8 +36,12 @@ $oldClass = new ReflectionClass($before); $newClass = new ReflectionClass($after
 $operations = [];
 foreach (['before' => [$oldClass, $before, \NativePathsBefore\Table::class], 'after' => [$newClass, $after, Table::class]] as $mode => [$class, $renderer, $table]) {
 	$queries = [];
-	for ($i = 0; $i < 100; $i++) { $queries[] = new $table([4 => '?Author=a', 1 => '[[Page::' . $i . ']]', 2 => 'limit=200', 8 => 'link=none', 'ignored' => false]); }
 	$key = $class->getMethod('smwKeyFromArray');
+	$nativeKeys = $key->getParameters()[0]->getType()?->getName() === 'array';
+	for ($i = 0; $i < 100; $i++) {
+		$query = [4 => '?Author=a', 1 => '[[Page::' . $i . ']]', 2 => 'limit=200', 8 => 'link=none', 'ignored' => false];
+		$queries[] = $nativeKeys ? $query : new $table($query);
+	}
 	$operations['query-keys-100'][$mode] = static function() use ($queries, $key, $renderer): array {
 		$out = []; foreach ($queries as $query) { $out[] = $key->invoke($renderer, $query); } return $out;
 	};
@@ -50,10 +54,15 @@ $oldRecords = (new \NativePathsBefore\DecodedReferences)->parse('bibliography', 
 $newRecords = (new DecodedReferences)->values('bibliography', $raw);
 foreach (['before' => [$oldClass, $before, \NativePathsBefore\Table::class, $oldRecords->values], 'after' => [$newClass, $after, Table::class, $newRecords]] as $mode => [$class, $renderer, $table, $records]) {
 	$render = $class->getMethod('wkRenderOneBiblioLi');
-	$pf = new $table(['unknown_author' => '?', 'volume_label' => 'vol', 'issue_label' => 'no']);
-	$categories = new $table;
-	$operations['html-bibliography-40'][$mode] = static function() use ($records, $render, $renderer, $pf, $categories): array {
-		$out = []; foreach ($records as $record) { $out[] = $render->invoke($renderer, $record, null, 'en', $categories, $pf, null, null); } return $out;
+	$fields = ['unknown_author' => '?', 'volume_label' => 'vol', 'issue_label' => 'no'];
+	$pf = $render->getParameters()[4]->getType()?->getName() === 'array' ? $fields : new $table($fields);
+	$operations['html-bibliography-40'][$mode] = static function() use ($records, $render, $renderer, $pf, $table): array {
+		$categories = $render->getParameters()[3]->getType()?->getName() === 'array' ? [] : new $table;
+		$out = [];
+		foreach ($records as $record) {
+			$out[] = $render->invokeArgs($renderer, [$record, null, 'en', &$categories, $pf, null, null]);
+		}
+		return $out;
 	};
 }
 $operations['records-two-consumers'] = [
