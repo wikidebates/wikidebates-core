@@ -20,7 +20,6 @@
 				"debatephp/DebatePHP.i18n.magic.php",
 				"tests/fullstackNativeReads.php",
 				"debatephp/src/NativeSemanticApi.php",
-				"debatephp/src/TrackedSemanticQuery.php",
 				"src/LuaUsageAudit.php",
 				"maintenance/AuditLuaUsage.php",
 				"tests/mediawikiLuaUsageAudit.php",

@@ -25,5 +25,6 @@ check(\SMW\Site::isReady(), 'SMW is ready');
 $fsUser = \MediaWiki\User\User::newSystemUser('Wikidebates map test', ['steal' => false]);
 check($fsUser !== null, 'Synthetic test author');
 fsArgumentMapCases();
+require __DIR__ . '/fullstackParentQueryModern.php';
 check(!class_exists(\MediaWiki\Extension\Scribunto\Engines\LuaCommon\LuaEngine::class, false), 'No Lua engine loaded');
 echo "OK: native ArgumentMap on SMW " . SMW_VERSION . " without Lua\n";

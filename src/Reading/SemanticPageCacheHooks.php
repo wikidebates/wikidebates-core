@@ -17,6 +17,8 @@ use SMW\Services\ServicesFactory as SemanticServices;
  */
 final class SemanticPageCacheHooks {
 	public const OUTPUT_REVISION = 'wikidebates-semantic-revision';
+	/** Old ParserOutputs may still carry this marker; native reads no longer set it. */
+	public const LEGACY_QUERY_MARKER = 'wikidebates-semantic-query-tracked';
 	private static bool $readingFragment = false;
 
 	/** Temporarily bypass semantic freshness checks only for a reader fragment lookup. */
@@ -94,7 +96,7 @@ final class SemanticPageCacheHooks {
 		// there is no full-page ParserOutput to bind to a semantic signature.
 		if (self::$readingFragment) { return true; }
 		if (!self::enabled() ||
-			$parser->getOutput()->getExtensionData(\MediaWiki\Extension\DebatePHP\TrackedSemanticQuery::OUTPUT_MARKER) !== true) {
+			$parser->getOutput()->getExtensionData(self::LEGACY_QUERY_MARKER) !== true) {
 			return true;
 		}
 
