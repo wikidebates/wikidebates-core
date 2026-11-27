@@ -199,24 +199,27 @@ foreach ([
 	$equal($expected, $rowTitle->invoke($parentRenderer, $row), 'Preserve semantic title field precedence');
 }
 
-// Compare the literal title grammar against the retained compatibility helpers.
+// Explicit canonical and safe title results from the validated byte grammar.
 $canonical = new ReflectionMethod($parentRenderer, 'canonicalTitle');
 $safe = new ReflectionMethod($parentRenderer, 'smwSafeTitle');
-foreach (['', '0', " \t: [[Title|label]]\f", '[[A_B]]', 'Title#section',
-	"Title#fragment\nline", "Title#fragment\n", '[[A|B]]', 'A]B|C', 'A<B',
-	" A ", "\0A\0", 'Title{bad}', '[[Title|0]]', '::A'] as $input) {
-	$expected = trim($input, " \t\r\n\v\f");
-	if ($expected !== '') {
-		$expected = $concat::gsub($expected, '^:%s*', '');
-		$expected = $concat::gsub($concat::gsub($expected, '^%[%[%s*', ''), '%s*%]%]$', '');
-		$expected = $concat::match($expected, '^([^%]|]+)%|') ?? $expected;
-		$expected = str_replace('_', ' ', trim($expected, " \t\r\n\v\f"));
-	}
+foreach ([
+	['', '', ''],
+	['0', '0', '0'],
+	[" \t: [[Title|label]]\f", 'Title', 'Title'],
+	['[[A_B]]', 'A B', 'A B'],
+	['Title#section', 'Title#section', 'Title'],
+	["Title#fragment\nline", "Title#fragment\nline", "Title#fragment\nline"],
+	["Title#fragment\n", 'Title#fragment', 'Title'],
+	['[[A|B]]', 'A', 'A'],
+	['A]B|C', 'A]B|C', ''],
+	['A<B', 'A<B', ''],
+	["\xc2\xa0A\xc2\xa0", "\xc2\xa0A\xc2\xa0", "\xc2\xa0A\xc2\xa0"],
+	["\0A\0", "\0A\0", "\0A\0"],
+	['Title{bad}', 'Title{bad}', ''],
+	['[[Title|0]]', 'Title', 'Title'],
+	['::A', ':A', ':A']
+] as [$input, $expected, $smw]) {
 	$equal($expected, $canonical->invoke($parentRenderer, $input), 'Canonical title retains the historical byte grammar');
-	$smw = trim($concat::gsub($expected, '#.*$', ''), " \t\r\n\v\f");
-	if ($concat::truth($concat::find($smw, '[%[%]{}|<>]'))) {
-		$smw = '';
-	}
 	$equal($smw, $safe->invoke($parentRenderer, $input), 'SMW title filtering remains unchanged');
 }
 
