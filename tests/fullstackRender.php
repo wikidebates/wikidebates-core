@@ -1,6 +1,6 @@
 <?php
 
-/** Exercise the full corpus against real extension APIs, with optional historical comparison. */
+/** Exercise the complete native corpus against real MediaWiki and SMW. */
 use MediaWiki\Extension\DebatePHP\I18n;
 use MediaWiki\Extension\DebatePHP\MediaWikiContext;
 use MediaWiki\MediaWikiServices;
@@ -10,14 +10,7 @@ use MediaWiki\Title\Title;
 
 require __DIR__ . '/nativeOptimizationSupport.php';
 $resources = dirname(__DIR__) . '/debatephp/resources/';
-$nativeOnly = !\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('Scribunto');
-$renderModes = $nativeOnly ? ['optimized'] : ['lua', 'optimized'];
-if (!$nativeOnly) {
-	foreach (['Module:Debate' => 'Module-Debate.reference.lua', 'Module:Argument' => 'Module-Argument.reference.lua',
-		'Module:WD/I18N' => 'WD-I18N.reference.lua', 'Module:WD/I18N/Data' => 'WD-I18N-Data.snapshot.lua'] as $title => $file) {
-		fsSave($title, file_get_contents($resources . $file), CONTENT_MODEL_SCRIBUNTO);
-	}
-}
+$renderModes = ['optimized'];
 // Public snapshots already retained in the repository; no live wiki is contacted.
 foreach (['wiki-snapshot.xml', 'helpers.xml'] as $file) {
 	$xml = simplexml_load_file(dirname(__DIR__) . '/debatephp/tests/fixtures/' . $file);
@@ -25,7 +18,7 @@ foreach (['wiki-snapshot.xml', 'helpers.xml'] as $file) {
 		if ((int)$page->ns !== NS_TEMPLATE) { continue; }
 		$name = preg_replace('/^[^:]+:/', '', (string)$page->title);
 		$source = (string)$page->revision->text;
-		fsSave(Title::makeTitle(NS_TEMPLATE, $name)->getPrefixedText(), $nativeOnly ? fsSource($source, 'optimized') : $source);
+		fsSave(Title::makeTitle(NS_TEMPLATE, $name)->getPrefixedText(), fsSource($source));
 	}
 }
 foreach (['Débat' => 'Template-Debat.php.wikitext', 'Argument' => 'Template-Argument.php.wikitext'] as $name => $file) {
@@ -56,28 +49,6 @@ foreach (['en', 'fr'] as $lang) {
 }
 fsFlush();
 
-/** Export only the old oracle's actual marker contents, not native results. */
-function fsSeoMarkerMap(\MediaWiki\Parser\Parser $parser, array $values): array {
-	$map = [];
-	$strip = $parser->getStripState();
-	$pattern = '/' . preg_quote($parser::MARKER_PREFIX, '/') . '[^\x7f<>&\'"]+' .
-		preg_quote($parser::MARKER_SUFFIX, '/') . '/';
-	$visit = static function($value) use (&$visit, &$map, $strip, $pattern): void {
-		if (is_array($value)) {
-			foreach ($value as $part) { $visit($part); }
-		} elseif (is_string($value) && preg_match_all($pattern, $value, $matches)) {
-			foreach ($matches[0] as $marker) {
-				if (!array_key_exists($marker, $map)) {
-					$map[$marker] = html_entity_decode($strip->killMarkers($strip->unstripNoWiki($marker)),
-						ENT_QUOTES | ENT_HTML5, 'UTF-8');
-				}
-			}
-		}
-	};
-	$visit($values);
-	return $map;
-}
-
 function fsRender(string $title, string $source, string $mode, bool $profile = false, ?callable $parseObserver = null, ?int $seoRevision = null): array {
 	if (str_starts_with($mode, 'before-')) { $GLOBALS['wgDebatePHPMode'] = 'optimized'; }
 	$parser = MediaWikiServices::getInstance()->getParserFactory()->create();
@@ -86,19 +57,19 @@ function fsRender(string $title, string $source, string $mode, bool $profile = f
 	$options = ParserOptions::newFromAnon();
 	$options->setTimestamp('20261018000000');
 	$normal = $options->getTemplateCallback();
-	$options->setTemplateCallback(static function($title, $parser) use ($normal, $mode) {
+	$options->setTemplateCallback(static function($title, $parser) use ($normal) {
 		$value = $normal($title, $parser);
 		if (is_string($value['text']) && $title->getNamespace() === NS_TEMPLATE) {
-			$value['text'] = fsSource($value['text'], $mode);
+			$value['text'] = fsSource($value['text']);
 		}
 		return $value;
 	});
 	$gcBefore = $parseObserver ? gc_status() : null;
 	$start = hrtime(true);
-	$out = $parser->parse(fsSource($source, $mode), Title::newFromText($title), $options, true, true, $seoRevision);
+	$out = $parser->parse(fsSource($source), Title::newFromText($title), $options, true, true, $seoRevision);
 	$ms = (hrtime(true) - $start) / 1e6;
 	if ($parseObserver) { $parseObserver($gcBefore, gc_status()); }
-	check(!str_contains($out->getText(), 'scribunto-error'), 'Real Lua renderer succeeds: ' . $title . '/' . $mode
+	check(!str_contains($out->getText(), 'scribunto-error'), 'Native renderer succeeds: ' . $title . '/' . $mode
 		. (str_contains($out->getText(), 'scribunto-error') ? ' ' . substr(strip_tags($out->getText()), 0, 1200) : ''));
 	check(str_contains($out->getText(), 'application/ld+json'), 'Real renderer emits JSON-LD: ' . $title . '/' . $mode);
 	$data = $out->getExtensionData(\SMW\ParserData::DATA_ID);
@@ -108,21 +79,12 @@ function fsRender(string $title, string $source, string $mode, bool $profile = f
 	foreach ($out->getLinkList(ParserOutputLinkTypes::TEMPLATE) as $entry) {
 		$templates[$entry['link']->getNamespace()][$entry['link']->getDBkey()] = [$entry['pageid'], $entry['revid']];
 	}
-	if (!\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('Scribunto')) {
-		check(!isset($templates[828]), 'No dependency on historical modules: ' . $title);
-	}
+	check(!isset($templates[828]), 'No dependency on historical modules: ' . $title);
 	$variables = [];
 	foreach (['MAX', 'AUTHORS', 'ARTICLES', 'WORKS', 'PUBLISHERS', 'PLACES'] as $key) {
 		$variables[$key] = $context->variableGet('WD_QUOTES_' . $key);
 	}
-	$markerMap = [];
-	if ($seoRevision !== null && $mode === 'lua') {
-		preg_match_all('~<script\b[^>]*\btype="application/ld\+json"[^>]*>(.*?)</script>~is', $out->getText(), $matches);
-		$graphs = array_map(static fn($json) => json_decode($json, true, 512, JSON_THROW_ON_ERROR), $matches[1]);
-		$markerMap = fsSeoMarkerMap($parser, [$graphs, $out->getPageProperties()]);
-	}
 	return [
-		'seo_marker_map' => $markerMap,
 		'milliseconds' => $ms, 'html' => $out->getText(), 'categories' => $out->getCategoryMap(),
 		'properties' => $out->getPageProperties(), 'templates' => $templates,
 		'links' => array_map(static fn($entry) => [$entry['link']->getNamespace(), $entry['link']->getDBkey(), $entry['pageid']], $out->getLinkList(ParserOutputLinkTypes::LOCAL)),
@@ -135,10 +97,8 @@ function fsRender(string $title, string $source, string $mode, bool $profile = f
 	];
 }
 
-function fsSource(string $source, string $mode): string {
-	return $mode === 'lua'
-		? str_replace(['{{#debate:render', '{{#argument:render'], ['{{#invoke:Debate|render', '{{#invoke:Argument|render'], $source)
-		: str_replace(['{{#invoke:Debate|render', '{{#invoke:Argument|render'], ['{{#debate:render', '{{#argument:render'], $source);
+function fsSource(string $source): string {
+	return str_replace(['{{#invoke:Debate|render', '{{#invoke:Argument|render'], ['{{#debate:render', '{{#argument:render'], $source);
 }
 
 $cases = json_decode(file_get_contents(dirname(__DIR__) . '/debatephp/tests/fixtures/debate-v070.json'), true, 512, JSON_THROW_ON_ERROR);
@@ -166,8 +126,7 @@ $quote = '{{#argument:render|lang=en|quotes=Quote⟬⟬⟬Author⟬⟬⟬Article
 $cases[] = ['title' => 'WD FS repeated quotes', 'text' => $quote . $quote];
 $results = [];
 foreach ($cases as $case) {
-	$seoComparison = $nativeOnly || getenv('WD_FULLSTACK_LEGACY_HTMLTAGS') === '1';
-	$seoSameDay = $seoComparison && ($case['name'] ?? '') === 'argument init-today';
+	$seoSameDay = ($case['name'] ?? '') === 'argument init-today';
 	if ($seoSameDay) {
 		// The original fixture shares a title with many older arguments.
 		// Give only this case its own genuinely same-day stored page.
@@ -178,23 +137,20 @@ foreach ($cases as $case) {
 	if (!$title->exists()) {
 		// A stable, genuine historical revision anchors the legacy and native
 		// orphan grace-period comparison; the ordinary suite is unchanged.
-		if ($seoComparison) { \MWTimestamp::setFakeTime($seoSameDay ? '20261018000000' : '20251018000000'); }
+		\MWTimestamp::setFakeTime($seoSameDay ? '20261018000000' : '20251018000000');
 		try { fsSave($case['title'], 'Stable page identity for the isolated render comparison'); fsFlush(); }
-		finally { if ($seoComparison) { \MWTimestamp::setFakeTime(false); } }
+		finally { \MWTimestamp::setFakeTime(false); }
 	}
 	$row = ['title' => $case['title'], 'name' => $case['name'] ?? $case['title'], 'full_stack' => true,
 		'subject_id' => (int)$title->getArticleID(), 'source_sha256' => hash('sha256', $case['text']), 'variants' => []];
 	$modes = getenv('WD_OPTIMIZATION_BASELINE') ? [...$renderModes, 'before-optimized'] : $renderModes;
-	$seoRevision = null;
-	if ($seoComparison) {
-		$record = $services->getWikiPageFactory()->newFromTitle($title)->getRevisionRecord();
-		check($record && $record->getId(), 'Stored fixture revision: ' . $row['name']);
-		$seoRevision = $record->getId();
-		$row['seo_fixture'] = [
-			'preview' => false,
-			'modified' => wfTimestamp(TS_ISO_8601, $record->getTimestamp())
-		];
-	}
+	$record = $services->getWikiPageFactory()->newFromTitle($title)->getRevisionRecord();
+	check($record && $record->getId(), 'Stored fixture revision: ' . $row['name']);
+	$seoRevision = $record->getId();
+	$row['seo_fixture'] = [
+		'preview' => false,
+		'modified' => wfTimestamp(TS_ISO_8601, $record->getTimestamp())
+	];
 	foreach ($modes as $mode) {
 		$row['variants'][$mode] = fsRender($case['title'], $case['text'], $mode, false, null, $seoRevision);
 	}
@@ -221,7 +177,7 @@ foreach ($cases as $index => $case) {
 		fsSave($case['title'], 'Reset semantic state ' . $mode);
 		fsFlush();
 		if (str_starts_with($mode, 'before-')) { $GLOBALS['wgDebatePHPMode'] = 'optimized'; }
-		$source = fsSource($case['text'], $mode);
+		$source = fsSource($case['text']);
 		$isBefore = str_starts_with($mode, 'before-');
 		if ($isBefore) {
 			$GLOBALS['wdTestPersistBaseline'] = true;

@@ -100,31 +100,12 @@ def validate_rows(rows):
 	return entries
 
 
-def capture(historical_path, native_path, comparison_path, parity_path, schema_path):
-	historical = json.loads(historical_path.read_text(encoding='utf-8'))
-	native = json.loads(native_path.read_text(encoding='utf-8'))
-	comparison = json.loads(comparison_path.read_text(encoding='utf-8'))
-	parity = json.loads(parity_path.read_text(encoding='utf-8'))
-	schema = json.loads(schema_path.read_text(encoding='utf-8'))
-	if (comparison.get('passed') is not True or comparison.get('comparisons') != 144
-		or parity.get('equal_cases') != 144 or parity.get('field_differences') != {}
-		or schema.get('passed') is not True or schema.get('counts', {}).get('graphs') != 146):
-		raise ValueError('Historical, native parity or vocabulary validation incomplete')
-	if any(set(row['variants']) != {'optimized'} for row in native):
-		raise ValueError('Unexpected native-only variant')
-	expected, actual = validate_rows(historical), validate_rows(native)
-	if expected != actual:
-		raise ValueError('Frozen field contract does not match validated historical environment')
-	for row in expected:
-		print('WD_FULLSTACK_CONTRACT ' + json.dumps(row, ensure_ascii=True, sort_keys=True, separators=(',', ':')))
-
-
 def verify(renders_path, snapshot_path=SNAPSHOT):
 	contract = json.loads(snapshot_path.read_text(encoding='utf-8'))
 	if contract['format'] != 1 or contract['baseline'] != BASELINE:
 		raise ValueError('Invalid baseline provenance')
 	rows = json.loads(renders_path.read_text(encoding='utf-8'))
-	if any(set(row['variants']) != {'optimized'} for row in rows):
+	if any(set(row['variants']) not in ({'optimized'}, {'optimized', 'before-optimized'}) for row in rows):
 		raise ValueError('Unexpected native-only variant')
 	actual = validate_rows(rows)
 	expected = contract['cases']
@@ -151,9 +132,7 @@ def self_test():
 
 if __name__ == '__main__':
 	self_test()
-	if len(sys.argv) == 7 and sys.argv[1] == '--capture':
-		capture(*map(Path, sys.argv[2:]))
-	elif len(sys.argv) == 2:
+	if len(sys.argv) == 2:
 		verify(Path(sys.argv[1]))
 	else:
 		raise SystemExit('Usage: fullstack_contract.py renders.json')
