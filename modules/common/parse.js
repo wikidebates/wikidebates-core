@@ -7,6 +7,7 @@
 
 	var wkApi = null;
 	var wkReadingEndpointUnavailable = false;
+	var wkArgumentMapApiUnavailable = false;
 
 	var WK_PARSE_CONCURRENCY = 2;
 
@@ -29,6 +30,8 @@
 	var wkParseInFlight = new Map();
 	var wkParseQueue = [];
 	var wkParseActive = 0;
+	var wkParseActiveMap = 0;
+	var WK_MAP_CACHE_TTL_MS = 60000;
 	var wkParsePumping = false;
 	var wkPageParseCache = new Map();
 	var wkPageParseInFlight = new Map();
@@ -92,6 +95,27 @@
 			if ( typeof firstKey === 'undefined' ) break;
 			cache.delete( firstKey );
 		}
+	}
+
+	function wkIsMapQuery( bucket, text ) {
+		return bucket === 'hover' && text.indexOf( '{{#argumentmap:render|' ) === 0;
+	}
+
+	function wkCachedParse( bucket, text, language ) {
+		if ( bucket === 'latest' ) return null;
+		var cache = wkGetBucketCache( bucket );
+		var key = JSON.stringify( [ language, text ] );
+		var cached = wkCacheGetLRU( cache, key );
+		if ( cached === null || !wkIsMapQuery( bucket, text ) ) return cached;
+		if ( cached.expires <= Date.now() ) {
+			cache.delete( key );
+			return null;
+		}
+		return cached.html;
+	}
+
+	function wkGetCachedMap( text ) {
+		return wkCachedParse( 'hover', text, mw.config.get( 'wgUserLanguage' ) );
 	}
 
 	function wkPageParseKey( params ) {
@@ -268,13 +292,12 @@
 		bucket = bucket || 'def';
 
 		// Recent changes must not extend the server's 60-second data cache.
-		var cache = bucket === 'latest' ? null : wkGetBucketCache( bucket );
 		var keyLocal = String( wikitext || '' );
 		var language = mw.config.get( 'wgUserLanguage' );
 		var cacheKey = JSON.stringify( [ language, keyLocal ] );
 		var inFlightKey = JSON.stringify( [ bucket, cacheKey ] );
 
-		var cached = wkCacheGetLRU( cache, cacheKey );
+		var cached = wkCachedParse( bucket, keyLocal, language );
 		if ( cached !== null ) return Promise.resolve( cached );
 		// Explicit user retries must not be blocked by the 15-second failure throttle.
 		// Background and speculative requests still respect the throttle.
@@ -284,7 +307,8 @@
 
 		var job = {
 			inFlightKey: inFlightKey, keyLocal: keyLocal, cacheKey: cacheKey,
-			bucket: bucket, language: language, finished: false
+			bucket: bucket, language: language, finished: false,
+			isMap: wkIsMapQuery( bucket, keyLocal ), map: options && options.map
 		};
 		job.promise = new Promise( function ( resolve, reject ) {
 			job.resolve = resolve;
@@ -306,7 +330,7 @@
 
 		for ( var i = 0; i < wkParseQueue.length; i++ ) {
 			var job = wkParseQueue[ i ];
-			if ( !job ) continue;
+			if ( !job || ( job.isMap && wkParseActiveMap >= 1 ) ) continue;
 
 			var b = job.bucket || 'def';
 			var pri = ( typeof WK_PARSE_PRIORITY[ b ] === 'number' ) ? WK_PARSE_PRIORITY[ b ] : WK_PARSE_PRIORITY.def;
@@ -328,6 +352,7 @@
 		job.finished = true;
 		if ( wkParseInFlight.get( job.inFlightKey ) === job ) wkParseInFlight.delete( job.inFlightKey );
 		wkParseActive--;
+		if ( job.isMap ) wkParseActiveMap--;
 		try {
 			if ( success ) {
 				job.resolve( value );
@@ -342,6 +367,7 @@
 
 	function wkParseStart( job ) {
 		wkParseActive++;
+		if ( job.isMap ) wkParseActiveMap++;
 		try {
 			var params = {
 				action: 'parse',
@@ -356,11 +382,30 @@
 			// The map consumes only HTML. Skip MediaWiki's default link, section,
 			// category, template and other metadata, and the discarded debug report.
 			// Other parse clients (including Wikipedia hovers) keep their contract.
-			if ( job.bucket === 'hover' && job.keyLocal.indexOf( '{{#argumentmap:render|' ) === 0 ) {
+			if ( job.isMap ) {
 				params.prop = 'text';
 				params.disablelimitreport = 1;
 			}
-			wkGetApi().post( params ).done( function ( data ) {
+			var request;
+			if ( job.isMap && job.map && mw.config.get( 'wgWikidebatesArgumentMapApi' ) === true && !wkArgumentMapApiUnavailable ) {
+				request = wkGetApi().get( {
+					action: 'wikidebatesargumentmap', page: job.map.page, source: job.map.source,
+					mode: job.map.mode, uselang: job.language, formatversion: 2
+				} ).then( function ( data ) {
+					return { parse: { text: data && data.wikidebatesargumentmap && data.wikidebatesargumentmap.html } };
+				}, function ( code, details ) {
+					var error = details && details.error;
+					if ( code === 'unknown_action' || ( code === 'badvalue' && error &&
+						( error.parameter === 'action' || /action.*wikidebatesargumentmap/.test( error.info || '' ) ) ) ) {
+						wkArgumentMapApiUnavailable = true;
+						return wkGetApi().post( params );
+					}
+					return jQuery.Deferred().reject( code, details ).promise();
+				} );
+			} else {
+				request = wkGetApi().post( params );
+			}
+			request.done( function ( data ) {
 				if ( job.finished ) return;
 				var html;
 				try {
@@ -371,7 +416,8 @@
 					var cache = job.bucket === 'latest' ? null : wkGetBucketCache( job.bucket );
 					var max = WK_PARSE_CACHE_MAX[ job.bucket ];
 					if ( typeof max !== 'number' ) max = WK_PARSE_CACHE_MAX.def;
-					wkCacheSetLRU( cache, max, job.cacheKey, html );
+					wkCacheSetLRU( cache, max, job.cacheKey, job.isMap ?
+						{ html: html, expires: Date.now() + WK_MAP_CACHE_TTL_MS } : html );
 				} catch ( error ) {
 					wkParseFinish( job, false, error );
 					return;
@@ -446,6 +492,7 @@
 
 	WK.wkGetApi = wkGetApi;
 	WK.wkParseWikitext = wkParseWikitext;
+	WK.wkGetCachedMap = wkGetCachedMap;
 	WK.wkExpandWikitext = wkExpandWikitext;
 	WK.wkParseCancel = wkParseCancel;
 	WK.wkParsePage = wkParsePage;

@@ -5,8 +5,8 @@ const { environment, tick } = require( './fixture.cjs' );
 const markup = '<div id="hover" class="hover-map" data-argument="Context A">' +
 	'<a href="/wiki/Argument_A">Argument A</a></div>';
 
-async function fixture( t ) {
-	const env = await environment( markup );
+async function fixture( t, useMapApi = false ) {
+	const env = await environment( markup, { wgWikidebatesArgumentMapApi: useMapApi } );
 	t.after( env.close );
 	const { window, $, run } = env;
 	const el = window.document.getElementById( 'hover' );
@@ -22,11 +22,13 @@ async function fixture( t ) {
 	window.mw.config.get = ( key ) => key === 'wgUserLanguage' ? language : get( key );
 	const calls = [];
 	window.mw.Api = function () {
-		this.post = ( params ) => {
+		const request = ( method, params ) => {
 			const pending = $.Deferred();
-			calls.push( { params, pending } );
+			calls.push( { method, params, pending } );
 			return pending.promise();
 		};
+		this.post = ( params ) => request( 'POST', params );
+		this.get = ( params ) => request( 'GET', params );
 	};
 	run( 'modules/common/i18n.js' );
 	run( 'modules/common/parse.js' );
@@ -150,4 +152,53 @@ test( 'other hover parse clients keep their existing API parameters', async ( t 
 	assert.equal( Object.hasOwn( calls[ 0 ].params, 'disablelimitreport' ), false );
 	await reply( 0, '<div>preview</div>' );
 	assert.equal( await pending, '<div>preview</div>' );
+} );
+
+test( 'typed map API falls back when the action is unavailable', async ( t ) => {
+	const { calls, enter, leave, contents, reply, window } = await fixture( t, true );
+	await enter();
+	assert.equal( calls[ 0 ].method, 'GET' );
+	assert.equal( calls[ 0 ].params.action, 'wikidebatesargumentmap' );
+	assert.equal( calls[ 0 ].params.page, 'Argument A' );
+	assert.equal( calls[ 0 ].params.source, 'Context A' );
+	assert.equal( calls[ 0 ].params.mode, 'argument' );
+	calls[ 0 ].pending.reject( 'unknown_action' );
+	await tick();
+	assert.equal( calls[ 1 ].method, 'POST' );
+	assert.match( calls[ 1 ].params.text, /#argumentmap:render/ );
+	await reply( 1, '<b>Fallback</b>' );
+	await tick();
+	assert.match( contents(), /Fallback/ );
+	leave();
+	window.document.getElementById( 'hover' ).dataset.argument = 'Context B';
+	await enter();
+	assert.equal( calls[ 2 ].method, 'POST' );
+	await reply( 2, '<b>Old backend</b>' );
+} );
+
+test( 'typed API returns HTML without a generic parse request', async ( t ) => {
+	const { calls, enter, contents } = await fixture( t, true );
+	await enter();
+	calls[ 0 ].pending.resolve( { wikidebatesargumentmap: { html: '<b>Typed</b>' } } );
+	await tick();
+	assert.equal( calls.length, 1 );
+	assert.match( contents(), /Typed/ );
+} );
+
+test( 'maps reuse one shared cache immediately and expire after 60 seconds', async ( t ) => {
+	const { window, $, calls, enter, leave, contents, reply } = await fixture( t );
+	let now = 100000;
+	window.Date.now = () => now;
+	await enter();
+	await reply( 0, '<b>Cached</b>' );
+	leave();
+	$( '#hover' ).trigger( 'mouseenter' );
+	assert.match( contents(), /Cached/, 'cached map is synchronous, before the hover timer' );
+	assert.equal( calls.length, 1 );
+	leave();
+	now += 60001;
+	await enter();
+	assert.equal( calls.length, 2, 'expired map is fetched again' );
+	await reply( 1, '<b>Fresh</b>' );
+	assert.match( contents(), /Fresh/ );
 } );

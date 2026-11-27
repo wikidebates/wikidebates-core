@@ -72,3 +72,22 @@ de l'HTML du véritable action=parse avec ou sans les paramètres compacts.
 Les lignes ARGUMENTMAP_API_BYTES mesurent la taille JSON non compressée
 des réponses du laboratoire ; elles ne mesurent pas le trafic gzip,
 les temps réseau ni les gains PHP-FPM réels de la production.
+
+## Transport typé et cache navigateur (étape expérimentale)
+
+Le point d'entrée en lecture seule `action=wikidebatesargumentmap` accepte
+page, source, mode (full/debate/argument) et l'option lang historique.
+Il garde le parseur pour les liens et les libellés stockés en wikicode,
+sans passer par le module générique ApiParse. La configuration
+`$wgWikidebatesArgumentMapApi = true;` active le transport GET.
+Par défaut il reste désactivé : parité du HTML et performance doivent
+être vérifiées avant activation en production. Un ancien backend qui
+ne connaît pas l'action conserve le transport précédent ; une erreur
+métier ne provoque pas de deuxième requête.
+
+Les cartes utilisent une seule entrée LRU partagée par requête et langue,
+avec une durée de vie de 60 secondes (pas de prolongation à la lecture).
+Un HIT s'affiche avant le délai de 140 ms. Un seul rendu ArgumentMap
+peut occuper la file commune à la fois, et le préchauffage des noms
+des modèles Wikipedia n'est plus exécuté pour une carte. Aucun changement
+de stockage SMW, de langue ou d'accessibilité dans ce lot.
