@@ -59,7 +59,7 @@ try {
 	same(0640, fileperms($temp . '/i18n/fr.json') & 0777, 'Atomic JSON import preserves file permissions');
 	same(MessageCatalog::json('resources/wiki-names.json'), json_decode(file_get_contents($temp . '/resources/wiki-names.json'), true, 512, JSON_THROW_ON_ERROR), 'Importing a UI label preserves technical identifiers');
 	// Exercise the historical compiler's active-output path on a complete isolated copy.
-	foreach (['debatephp/tools/compileI18n.php', 'debatephp/tools/I18nCompiler.php', 'debatephp/src/LiteralData.php',
+	foreach (['debatephp/tools/compileI18n.php', 'debatephp/tools/I18nCompiler.php', 'debatephp/tools/LiteralData.php',
 		'debatephp/resources/WD-I18N.reference.lua', 'debatephp/resources/I18nData.php', 'tools/I18nCatalogImporter.php'] as $path) {
 		if (!is_dir(dirname($temp . '/' . $path))) { mkdir(dirname($temp . '/' . $path), 0700, true); }
 		copy($root . '/' . $path, $temp . '/' . $path);

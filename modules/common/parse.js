@@ -7,7 +7,6 @@
 
 	var wkApi = null;
 	var wkReadingEndpointUnavailable = false;
-	var wkArgumentMapApiUnavailable = false;
 
 	var WK_PARSE_CONCURRENCY = 2;
 
@@ -291,7 +290,7 @@
 	function wkParseWikitext( wikitext, bucket, options ) {
 		bucket = bucket || 'def';
 
-		// Recent changes must not extend the server's 60-second data cache.
+		// Recent changes must not reuse the browser's tooltip data cache.
 		var keyLocal = String( wikitext || '' );
 		var language = mw.config.get( 'wgUserLanguage' );
 		var cacheKey = JSON.stringify( [ language, keyLocal ] );
@@ -387,20 +386,12 @@
 				params.disablelimitreport = 1;
 			}
 			var request;
-			if ( job.isMap && job.map && mw.config.get( 'wgWikidebatesArgumentMapApi' ) === true && !wkArgumentMapApiUnavailable ) {
+			if ( job.isMap && job.map && mw.config.get( 'wgWikidebatesArgumentMapApi' ) === true ) {
 				request = wkGetApi().get( {
 					action: 'wikidebatesargumentmap', page: job.map.page, source: job.map.source,
 					mode: job.map.mode, uselang: job.language, formatversion: 2
 				} ).then( function ( data ) {
 					return { parse: { text: data && data.wikidebatesargumentmap && data.wikidebatesargumentmap.html } };
-				}, function ( code, details ) {
-					var error = details && details.error;
-					if ( code === 'unknown_action' || ( code === 'badvalue' && error &&
-						( error.parameter === 'action' || /action.*wikidebatesargumentmap/.test( error.info || '' ) ) ) ) {
-						wkArgumentMapApiUnavailable = true;
-						return wkGetApi().post( params );
-					}
-					return jQuery.Deferred().reject( code, details ).promise();
 				} );
 			} else {
 				request = wkGetApi().post( params );

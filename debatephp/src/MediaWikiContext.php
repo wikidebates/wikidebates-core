@@ -17,14 +17,13 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 	private array $expansions = [];
 	private array $trace = [];
 	private bool $tracing;
-	private bool $optimize;
 	private ?Telemetry $telemetry;
 	private bool $argumentMode;
 	private array $titles = [];
 	private string $semanticOrigin = 'other';
 	public function __construct(Parser $parser, PPFrame $caller, array $nodes, bool $optimize, bool $tracing = false, ?Telemetry $telemetry = null, string $moduleName = 'Debate') {
 		$this->telemetry = $telemetry; $this->argumentMode = $moduleName === 'Argument';
-		$this->parser = $parser; $this->caller = $caller; $this->optimize = $optimize; $this->tracing = $tracing;
+		$this->parser = $parser; $this->caller = $caller; $this->tracing = $tracing;
 		if (!in_array($moduleName, ['Debate', 'Argument'], true)) { throw new \InvalidArgumentException('Unknown renderer'); }
 		$title = Title::newFromText('Module:' . $moduleName);
 		// Keep the historical parameter-frame identity without reading a wiki module.
@@ -64,7 +63,7 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 		finally { $this->telemetry?->finish('expansions', $started); }
 	}
 	private function expand(string $text, string $reason = 'explicit'): string {
-		// LuaEngine::preprocess, including mandatory argument forcing BEFORE a cache hit.
+		// Force the child frame arguments before even a cached expansion.
 		$this->module->getArguments(); $key = md5($text);
 		if (isset($this->expansions[$key])) {
 			$result = $this->expansions[$key]; $hit = true;
@@ -383,7 +382,7 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 	public function variableSet(string $name, string $value): void {
 		if (!class_exists(\ExtVariables::class) || !\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('Variables')) { return; }
 		try {
-			// Variables owns parser-local state; VariablesLua is not involved.
+			// Variables owns parser-local state.
 			\ExtVariables::pfObj_vardefine($this->parser, $this->parser->getPreprocessor()->newFrame(), [$name, $value]);
 		}
 		catch (\Throwable $e) {

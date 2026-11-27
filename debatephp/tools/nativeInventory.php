@@ -48,7 +48,7 @@ foreach ($files as $file) {
 }
 echo json_encode(['files' => $rows, 'total' => $total], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n";
 if (in_array('--assert-native', $argv, true)) {
-	if (array_sum($total) !== 0 || is_file($root . '/Lua.php') || is_file($root . '/Table.php')) {
+	if (array_sum($total) !== 0 || is_file($root . '/Lua.php') || is_file($root . '/Table.php') || is_file($root . '/LiteralData.php')) {
 		fwrite(STDERR, "Legacy emulation or Lua-extension reference in runtime source\n");
 		exit(1);
 	}
