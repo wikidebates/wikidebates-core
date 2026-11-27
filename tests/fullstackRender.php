@@ -183,7 +183,7 @@ foreach ($cases as $case) {
 		finally { if ($seoComparison) { \MWTimestamp::setFakeTime(false); } }
 	}
 	$row = ['title' => $case['title'], 'name' => $case['name'] ?? $case['title'], 'full_stack' => true,
-		'subject_id' => (int)$title->getArticleID(), 'variants' => []];
+		'subject_id' => (int)$title->getArticleID(), 'source_sha256' => hash('sha256', $case['text']), 'variants' => []];
 	$modes = getenv('WD_OPTIMIZATION_BASELINE') ? [...$renderModes, 'before-optimized'] : $renderModes;
 	$seoRevision = null;
 	if ($seoComparison) {

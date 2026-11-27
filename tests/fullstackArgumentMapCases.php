@@ -67,6 +67,10 @@ function fsArgumentMapCases(bool $legacy): void {
 				check(!str_contains($oracle, 'scribunto-error'), 'Real historical map runs: ' . $lang . '/' . $case);
 				same($oracle, $html, 'Native and historical map HTML: ' . $lang . '/' . $case);
 			}
+			if (getenv('WD_FULLSTACK_MAP_CAPTURE') === '1') {
+				echo 'WD_MAP_CONTRACT ' . json_encode(['variant' => $legacy ? 'lua-validated' : 'native-only',
+					'language' => $lang, 'case' => $case, 'sha256' => hash('sha256', $html)], JSON_THROW_ON_ERROR) . "\n";
+			}
 			if ($case === 'fallback') {
 				check(str_contains($html, 'WD Map stored fallback'), 'Stored full-map fallback');
 			} elseif ($case === 'empty target') {

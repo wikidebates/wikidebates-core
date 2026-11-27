@@ -76,6 +76,9 @@ foreach ($readQueries as $parameters) {
 	$legacy = $legacyRead($query);
 	$native = $context->readSemantic($query, 'other');
 	same($legacy, $native->rows, 'Native SMW rows exactly match the existing formatter and one-based conversion');
+	if (getenv('WD_FULLSTACK_MAP_CAPTURE') === '1') {
+		echo 'WD_SMW_READ_CONTRACT ' . json_encode(['parameters' => $query, 'rows' => $legacy], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) . "\n";
+	}
 }
 same(false, $native->rows[1]['flag'], 'Native formatter retains semantic boolean false');
 check(is_array($native->rows[1]['numbers']) && in_array(0, $native->rows[1]['numbers'], true) && in_array(12.5, $native->rows[1]['numbers'], true), 'Native formatter retains multivalued numeric zero and decimal');
