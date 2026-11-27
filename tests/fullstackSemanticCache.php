@@ -12,7 +12,6 @@ require __DIR__ . '/mediawikiEnvironment.php';
 
 use MediaWiki\Extension\DebatePHP\MediaWikiContext;
 use MediaWiki\Extension\DebatePHP\Table;
-use MediaWiki\Extension\DebatePHP\TrackedSemanticQuery;
 use MediaWiki\Extension\DebatePHP\SemanticReadResult;
 use MediaWiki\Extension\Wikidebates\Reading\FragmentService;
 use MediaWiki\Extension\Wikidebates\Reading\SemanticRevisionStore;
@@ -389,7 +388,7 @@ $parser->startExternalParse(Title::newFromText('WD Cache query A'),
 $context = new MediaWikiContext($parser, $parser->getPreprocessor()->newFrame(), [], false);
 $context->readSemantic(Table::wrap(['[[WD Cache Parent::WD Cache A]]',
 	'limit=200', 'link=none']), 'cache-tracking');
-check($parser->getOutput()->getExtensionData(TrackedSemanticQuery::OUTPUT_MARKER) === true,
+check($parser->getOutput()->getExtensionData(\MediaWiki\Extension\Wikidebates\Reading\SemanticPageCacheHooks::LEGACY_QUERY_MARKER) === true,
 	'Native read marks the ParserOutput when the dependency profile is recorded');
 check($parser->getOutput()->getExtensionData(\SMW\ParserData::DATA_ID) instanceof \SMW\SemanticData,
 	'Native _ASK annotation is written to the same SMW ParserOutput as #ask');
@@ -763,7 +762,7 @@ try {
 	$historicalProfilesAfterApi = $store->getPropertyValues(
 		$historicalSubject, new Property('_ASK'));
 	check($observedFirstTrackedOutput instanceof \MediaWiki\Parser\ParserOutput &&
-		$observedFirstTrackedOutput->getExtensionData(TrackedSemanticQuery::OUTPUT_MARKER) === true,
+		$observedFirstTrackedOutput->getExtensionData(\MediaWiki\Extension\Wikidebates\Reading\SemanticPageCacheHooks::LEGACY_QUERY_MARKER) === true,
 		'Fresh API parse executes the tracked native Argument query');
 
 	// ApiParse may annotate its temporary ParserOutput without writing the
@@ -774,7 +773,7 @@ try {
 	$local->setValue($access, new \MapCacheLRU(10));
 	$canonicalTrackedOutput = $historicalPage->getParserOutput(ParserOptions::newFromAnon());
 	check($canonicalTrackedOutput instanceof \MediaWiki\Parser\ParserOutput &&
-		$canonicalTrackedOutput->getExtensionData(TrackedSemanticQuery::OUTPUT_MARKER) === true,
+		$canonicalTrackedOutput->getExtensionData(\MediaWiki\Extension\Wikidebates\Reading\SemanticPageCacheHooks::LEGACY_QUERY_MARKER) === true,
 		'Canonical Argument parse after enabling tracking executes native traced queries');
 	fsFlush(['wikidebatesSemanticCachePurge']);
 	$store->clear();
@@ -798,9 +797,9 @@ try {
 	check($historicalProfiles !== [],
 		'Standard MediaWiki refreshLinks writes the missing _ASK query profiles; ' . json_encode([
 			'api_marker' => $observedFirstTrackedOutput->getExtensionData(
-				TrackedSemanticQuery::OUTPUT_MARKER),
+				\MediaWiki\Extension\Wikidebates\Reading\SemanticPageCacheHooks::LEGACY_QUERY_MARKER),
 			'canonical_marker' => $canonicalTrackedOutput->getExtensionData(
-				TrackedSemanticQuery::OUTPUT_MARKER),
+				\MediaWiki\Extension\Wikidebates\Reading\SemanticPageCacheHooks::LEGACY_QUERY_MARKER),
 			'links' => count($links->findEmbeddedQueryIdListBySubject($historicalSubject)),
 			'revision_before' => $revisionBeforeRefresh,
 			'revision_after' => $historicalPage->getLatest(),
