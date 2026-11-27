@@ -12,32 +12,19 @@ namespace {
 		throw new \Wikimedia\Rdbms\DBError('Simulated SQL failure');
 	};
 
-	use MediaWiki\Extension\DebatePHP\Lua;
+	use MediaWiki\Extension\DebatePHP\DatabaseFailure;
 	use MediaWiki\Extension\DebatePHP\MediaWikiContext;
 	use Wikimedia\Rdbms\DBError;
 
-	[ $success, $result ] = Lua::pcall( static fn() => 'ok' );
-	if ( !$success || $result !== 'ok' ) {
-		throw new \RuntimeException( 'Lua::pcall must preserve successful results' );
-	}
-
-	[ $success, $result ] = Lua::pcall( static function (): void {
-		throw new \RuntimeException( 'Expected recoverable failure' );
-	} );
-	if ( $success || $result !== 'Expected recoverable failure' ) {
-		throw new \RuntimeException( 'Lua::pcall must preserve non-database fallback' );
-	}
-
-	$rethrows = false;
+	DatabaseFailure::rethrow(new RuntimeException('Expected recoverable failure'));
+	$failure = new DBError('Simulated SQL failure');
 	try {
-		Lua::pcall( static function (): void {
-			throw new DBError( 'Simulated SQL failure' );
-		} );
-	} catch ( DBError $e ) {
-		$rethrows = true;
-	}
-	if ( !$rethrows ) {
-		throw new \RuntimeException( 'Lua::pcall swallowed database error' );
+		DatabaseFailure::rethrow($failure);
+		throw new LogicException('Database guard swallowed SQL failure');
+	} catch (DBError $e) {
+		if ($e !== $failure) {
+			throw new LogicException('Database guard replaced the original SQL failure');
+		}
 	}
 
 	// Construct without MediaWiki in order to exercise the SMW exception boundary.
@@ -56,5 +43,5 @@ namespace {
 		throw new \RuntimeException( 'MediaWikiContext::readSemantic swallowed database error' );
 	}
 
-	echo "Database failures propagate through Lua::pcall and SMW query boundary; ordinary fallback preserved\n";
+	echo "Database failures propagate through the native guard and SMW query boundary; ordinary fallback preserved\n";
 }

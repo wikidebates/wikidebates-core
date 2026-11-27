@@ -7,8 +7,6 @@ use MediaWiki\Extension\DebatePHP\I18n;
 use MediaWiki\Extension\DebatePHP\JsonData;
 use MediaWiki\Extension\DebatePHP\NativeTags;
 use MediaWiki\Extension\DebatePHP\NativeText;
-use MediaWiki\Extension\DebatePHP\Lua;
-use MediaWiki\Extension\DebatePHP\Table;
 use MediaWiki\Extension\DebatePHP\Telemetry;
 use MediaWiki\Extension\DebatePHP\TextEscaper;
 
@@ -74,11 +72,6 @@ foreach ([[null, ''], [false, ''], [true, 'true'], [0, '0'], [0.0, '0'], [1.25, 
 }
 same("\0A\0", trim(" \t\v\0A\0\f\r\n", NativeText::ASCII_WHITESPACE), 'ASCII trim preserves NUL');
 same(" A ", trim(" \t A \n", NativeText::ASCII_WHITESPACE), 'ASCII trim preserves NBSP');
-same(true, Lua::truth('0'), 'Lua zero string is truthy');
-same(true, Lua::truth(new Table), 'Lua empty table is truthy');
-same('string', Lua::type('trim'), 'Callable names remain Lua strings');
-$wrapped = Table::wrap(['items' => [1 => 'é', 2 => ['nested' => '0']]]);
-same(['items' => [1 => 'é', 2 => ['nested' => '0']]], Table::unwrap($wrapped), 'Nested table round trip');
 same(['é', '0'], JsonData::value([1 => 'é', 2 => '0']), 'One-based arrays encode as JSON lists');
 same('A_é', rawurldecode(TextEscaper::uriEncode('A é', 'WIKI')), 'Wiki URL encoding');
 check(!str_contains(TextEscaper::nowiki('{{x}} [[y]] https://example.test', ['https://']), '{{'), 'Escape wikitext delimiters');

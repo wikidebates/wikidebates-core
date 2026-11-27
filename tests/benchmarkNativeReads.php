@@ -4,7 +4,7 @@
 require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/../debatephp/tests/native_context.php';
 
-use MediaWiki\Extension\DebatePHP\{ArgumentRenderer, DebateRenderer, JsonData, RenderData, SemanticReadResult, Table, TextEscaper};
+use MediaWiki\Extension\DebatePHP\{ArgumentRenderer, DebateRenderer, JsonData, RenderData, SemanticReadResult, TextEscaper};
 
 $options = getopt('', ['baseline:', 'output:']);
 $baseline = realpath($options['baseline'] ?? '');
@@ -102,7 +102,7 @@ foreach (['before' => ['NativeReadBefore\\', new \NativeReadBefore\ArgumentTestC
 	}
 }
 $plain = static function($value) use (&$plain) {
-	if ($value instanceof Table || $value instanceof \NativeReadBefore\Table) { $value = $value->values; }
+	if ($value instanceof \NativeReadBefore\Table) { $value = $value->values; }
 	return is_array($value) ? array_map($plain, $value) : $value;
 };
 $report = ['php' => PHP_VERSION, 'baseline_commit' => trim(shell_exec('git -C ' . escapeshellarg($baseline) . ' rev-parse HEAD')),

@@ -61,7 +61,7 @@ namespace {
 	require __DIR__ . '/semantic_api_double.php';
 	\MediaWiki\Extension\DebatePHP\Tests\SemanticApiDouble::$onQuery = static fn() => boundaryFailure();
 	\MediaWiki\Extension\DebatePHP\Tests\SemanticApiDouble::$onWrite = static fn() => boundaryFailure();
-	use MediaWiki\Extension\DebatePHP\Lua;
+	use MediaWiki\Extension\DebatePHP\DatabaseFailure;
 	use MediaWiki\Extension\DebatePHP\MediaWikiContext;
 	use MediaWiki\Extension\DebatePHP\Telemetry;
 	use MediaWiki\Extension\Wikidebates\RecentDebateChanges;
@@ -87,7 +87,7 @@ namespace {
 		'seo' => static fn() => $context->seoSet([]),
 		'variable write' => static fn() => $context->variableSet('SECRET', 'VALUE'),
 		'variable read' => static fn() => $context->variableGet('SECRET'),
-		'pcall' => static fn() => Lua::pcall('boundaryFailure'),
+		'database guard' => static fn() => DatabaseFailure::rethrow($GLOBALS['boundaryFailure']),
 		'recent changes' => static fn() => RecentDebateChanges::render($parser, new PPFrame, ['test'])
 	];
 	$failures = [new \Wikimedia\Rdbms\DBError('SECRET SQL'), new \Wikimedia\Rdbms\DBTransactionStateError('SECRET SQL'), new PDOException('SECRET SQL')];
@@ -110,8 +110,7 @@ namespace {
 	$GLOBALS['boundaryFailure'] = new RuntimeException('Recoverable');
 	foreach ($operations as $name => $operation) {
 		$value = $operation();
-		if ($name === 'pcall') { same([false, 'Recoverable'], $value, 'pcall fallback'); }
-		elseif ($name === 'recent changes') {
+		if ($name === 'recent changes') {
 			check(str_contains($value, 'class="error"') && !str_contains($value, 'Recoverable'),
 				'Recoverable error is generic and does not reveal exception text');
 		}

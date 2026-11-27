@@ -5,7 +5,6 @@ if (!$wikiRoot) { fwrite(STDERR, "--wiki-root is required\n"); exit(2); }
 require $wikiRoot . '/maintenance/Maintenance.php';
 
 use MediaWiki\Extension\DebatePHP\MediaWikiContext;
-use MediaWiki\Extension\DebatePHP\Table;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Parser\Parser;
 use MediaWiki\Parser\ParserOptions;
@@ -47,10 +46,10 @@ class DebateTagBenchmark extends Maintenance {
 				$i=$record['id'];$last='';
 				foreach(['pro','con'] as $side){
 					$href='/w/index.php?side='.$side.'&amp;n='.$i;$label='＋ '.$side.' '.$i;
-					$last.=$native?$context->htmlTag('a',$label,new Table(['href'=>'javascript:void(0)','data-href'=>$href,'class'=>'wk-btn__a wk-js-nav','title'=>'Add']),true)
+					$last.=$native?$context->htmlTag('a',$label,['href'=>'javascript:void(0)','data-href'=>$href,'class'=>'wk-btn__a wk-js-nav','title'=>'Add'],true)
 						:$context->preprocess('<htmltag tagname="a" href="javascript:void(0)" data-href="'.$href.'" class="wk-btn__a wk-js-nav" title="Add">'.$label.'</htmltag>');
 				}
-				$last.=$native?$context->htmlTag('script',$record['json'],new Table(['class'=>'navigation-not-searchable','type'=>'application/ld+json']))
+				$last.=$native?$context->htmlTag('script',$record['json'],['class'=>'navigation-not-searchable','type'=>'application/ld+json'])
 					:$context->preprocess('{{#tag:htmltag|'.$record['json'].'|tagname=script|class=navigation-not-searchable|type=application/ld+json}}');
 				$desc='Arguments pour et contre la proposition '.$i;
 				$last.=$native?$context->shortDescription($desc):$context->preprocess('{{SHORTDESC: '.$desc.'}}');

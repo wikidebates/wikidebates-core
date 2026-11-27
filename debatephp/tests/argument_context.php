@@ -1,6 +1,6 @@
 <?php
 require __DIR__ . '/bootstrap.php';
-use MediaWiki\Extension\DebatePHP\{ArgumentContext,ArgumentRenderer,Table,I18n,JsonData,SemanticProperties,SemanticReadResult,TextEscaper};
+use MediaWiki\Extension\DebatePHP\{ArgumentContext,ArgumentRenderer,I18n,JsonData,SemanticProperties,SemanticReadResult,TextEscaper};
 
 class ArgumentTestContext implements ArgumentContext {
 	public array $effects = ['preprocess' => [], 'ask' => [], 'set' => [], 'seo' => [], 'variables' => []];
@@ -73,14 +73,14 @@ class ArgumentTestContext implements ArgumentContext {
 if (realpath($_SERVER['SCRIPT_FILENAME']) !== __FILE__) { return; }
 // Parent lists must deduplicate equivalent SMW title representations before rendering.
 $parentProbe = new class(new ArgumentTestContext(['args' => [], 'title' => 'Child'])) extends ArgumentRenderer {
-	public function uniqueTitles(Table $titles): array {
-		return $this->uniqueParentTitles(array_values($titles->values));
+	public function uniqueTitles(array $titles): array {
+		return $this->uniqueParentTitles(array_values($titles));
 	}
 };
-$actual = $parentProbe->uniqueTitles(new Table([
+$actual = $parentProbe->uniqueTitles([
 	1 => 'Parent A', 2 => 'Parent_A', 3 => '[[Parent A|label]]',
 	4 => 'Parent &amp; B', 5 => 'Parent & B', 6 => 'Parent C', 7 => ''
-]));
+]);
 if ($actual !== ['Parent A', 'Parent & B', 'Parent C']) {
 	throw new LogicException('Parent title deduplication failed: ' . json_encode($actual));
 }

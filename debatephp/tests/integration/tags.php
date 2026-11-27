@@ -6,7 +6,7 @@ if (!$wikiRoot) { fwrite(STDERR, "--wiki-root is required\n"); exit(2); }
 require $wikiRoot . '/maintenance/Maintenance.php';
 
 use MediaWiki\Extension\DebatePHP\MediaWikiContext;
-use MediaWiki\Extension\DebatePHP\Table;
+
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Parser\Parser;
 use MediaWiki\Parser\ParserOptions;
@@ -66,7 +66,7 @@ class NativeTagsTest extends Maintenance {
 			$attrs = $case['attrs'];
 			if ($xml) {
 				foreach ($attrs as &$value) { $value = strtr(str_replace(["\r","\n","\t"], ' ', $value), ['&'=>'&amp;','<'=>'&lt;','>'=>'&gt;','"'=>'&quot;']); } unset($value);
-			} else { ksort($attrs,SORT_STRING); foreach ($attrs as &$v) { $v = \MediaWiki\Extension\DebatePHP\Lua::str($v); } unset($v); }
+			} else { ksort($attrs,SORT_STRING); foreach ($attrs as &$v) { $v = match ($v) { null => 'nil', false => 'false', true => 'true', default => (string)$v }; } unset($v); }
 			$source = $case['kind'] === 'sd' ? '{{SHORTDESC: ' . $case['body'] . '}}' : ($xml ? '<htmltag tagname="a"' : '{{#tag:htmltag|' . $case['body'] . '|tagname=script');
 			if ($case['kind'] !== 'sd') {
 				foreach ($attrs as $key=>$value) { $source .= $xml ? ' ' . $key . '="' . $value . '"' : '|' . $key . '=' . $value; }
@@ -77,7 +77,7 @@ class NativeTagsTest extends Maintenance {
 				if ($case['kind']==='sd') { $p->getOutput()->setPageProperty('shortdesc','INTERVENING DESCRIPTION'); }
 			}
 			$out = !$native ? $context->preprocess($source) : ($case['kind']==='sd'
-				? $context->shortDescription($case['body']) : $context->htmlTag($name,$case['body'],new Table($attrs),$xml));
+				? $context->shortDescription($case['body']) : $context->htmlTag($name,$case['body'],$attrs,$xml));
 			return [$out,'noparse'=>true,'isHTML'=>false];
 		},Parser::SFH_OBJECT_ARGS);
 		$options = ParserOptions::newFromAnon(); $options->setTimestamp('20261018000000');
