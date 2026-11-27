@@ -64,9 +64,9 @@ function fsArgumentMapCases(bool $legacy): void {
 				check(!str_contains($html, 'wk-arg-map'), 'Empty target returns no map');
 			} else {
 				check(str_contains($html, 'wk-arg-map__col is-pro') && str_contains($html, 'wk-arg-map__col is-con'),
-					'Two map columns: ' . $case);
+					'Two map columns: ' . $lang . '/' . $case . '\n' . $html);
 				if ($case === 'argument' || $case === 'debate') {
-					check(str_contains($html, '<b>Source alias</b>'), 'Existing source highlighted by canonical identity');
+					check(str_contains($html, '<b>Source alias</b>'), 'Existing source highlighted by canonical identity: ' . $html);
 					check(str_contains($html, 'Other label') || str_contains($html, '>0</a>'), 'Other links and zero labels survive');
 				} elseif ($case === 'unknown source') {
 					check(!str_contains($html, '<b>Source alias</b>'), 'Missing source is not highlighted');
@@ -77,7 +77,7 @@ function fsArgumentMapCases(bool $legacy): void {
 		}
 		$encoded = $parserHtml('{{#argumentmap:render|' . rawurlencode('WD Map cible + 100% ' . $lang) . '|'
 			. rawurlencode('WD Map été + 100%') . '||encoding=uri|lang=' . $lang . '}}');
-		check(str_contains($encoded, '<b>Encoded source</b>'), 'Accents and literal plus/percent survive URI encoding');
+		check(str_contains($encoded, '<b>Encoded source</b>'), 'Accents and literal plus/percent survive URI encoding: ' . $encoded);
 		$invalid = $parserHtml('{{#argumentmap:render|' . rawurlencode('WD Map]] OR [[+')
 			. '||debate|encoding=uri|lang=' . $lang . '}}');
 		check(!str_contains($invalid, 'WD Map stored fallback') && !str_contains($invalid, 'wk-arg-map'),
