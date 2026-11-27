@@ -27,12 +27,32 @@ final class ArgumentMapData {
 	 * certified. Keep the query path for redirects, ambiguous syntax, unusual
 	 * types/cardinality and other SMW versions. Never build SQL from input.
 	 */
-	public static function readDirect(Title $title, array $properties): ?array {
+	public static function readDirect(Title $title, array $properties, ?string &$ineligibleReason = null): ?array {
+		$ineligibleReason = null;
 		if (!defined('SMW_VERSION') || !in_array(SMW_VERSION, ['7.3.1', '7.4.1'], true) ||
-			!NativeSemanticApi::available() || !class_exists(Property::class) || !class_exists(WikiPage::class) ||
-			empty($GLOBALS['smwgQEnabled']) || $title->isExternal() || $title->getNamespace() !== NS_MAIN ||
-			!preg_match('/^[\\p{L}\\p{N}][^:\\[\\]{}|<>#]*$/uD', $title->getDBkey()) ||
-			!$title->exists() || $title->isRedirect() || $properties === []) {
+			!NativeSemanticApi::available() || !class_exists(Property::class) || !class_exists(WikiPage::class)) {
+			$ineligibleReason = 'unsupported-smw';
+			return null;
+		}
+		if (empty($GLOBALS['smwgQEnabled'])) {
+			$ineligibleReason = 'queries-disabled';
+			return null;
+		}
+		if ($title->isExternal() || $title->getNamespace() !== NS_MAIN ||
+			!preg_match('/^[\\p{L}\\p{N}][^:\\[\\]{}|<>#]*$/uD', $title->getDBkey())) {
+			$ineligibleReason = 'unsupported-title';
+			return null;
+		}
+		if (!$title->exists()) {
+			$ineligibleReason = 'missing-page';
+			return null;
+		}
+		if ($title->isRedirect()) {
+			$ineligibleReason = 'redirect';
+			return null;
+		}
+		if ($properties === []) {
+			$ineligibleReason = 'empty-properties';
 			return null;
 		}
 		// Only the five literal map fields, in the two historical vocabularies.
@@ -50,22 +70,26 @@ final class ArgumentMapData {
 		$row = [];
 		foreach ($properties as $alias => $name) {
 			if (!isset($allowed[$name]) || !in_array($alias, ['map', 'left', 'right'], true)) {
+				$ineligibleReason = 'unsupported-property';
 				return null;
 			}
 			$property = Property::newFromUserLabel($name);
 			if (!$property->isUserDefined() || $property->isInverse() ||
 				$property->getLabel() !== $name || $property->findPropertyValueType() !== '_txt') {
+				$ineligibleReason = 'noncanonical-text-property';
 				return null;
 			}
 			$items = $store->getPropertyValues($subject, $property);
 			if (count($items) > 1) {
 				// Query printouts may apply different ordering or limits.
+				$ineligibleReason = 'multiple-values';
 				return null;
 			}
 			$row[$alias] = null;
 			if ($items !== []) {
 				$value = $factory->newDataValueByItem(reset($items), $property);
 				if (!$value->isValid() || $value->getTypeID() !== '_txt') {
+					$ineligibleReason = 'invalid-text-value';
 					return null;
 				}
 				$row[$alias] = $value->getShortText(SMW_OUTPUT_WIKI, $linker ??= new Linker());

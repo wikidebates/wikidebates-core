@@ -21,6 +21,7 @@ class BenchmarkArgumentMap extends Maintenance {
 		$this->addOption('limit', 'Maximum main-namespace non-redirect pages (default 100, maximum 1000)', false, true);
 		$this->addOption('after-id', 'Resume after this page ID (default 0)', false, true);
 		$this->addOption('ids', 'Optional comma-separated positive page IDs', false, true);
+		$this->addOption('report-ineligible', 'Emit page IDs and reason codes for ineligible reads (no page content)');
 		$this->addOption('cache-probe', 'Measure synthetic WAN cache hits without caching wiki content');
 	}
 
@@ -78,7 +79,8 @@ class BenchmarkArgumentMap extends Maintenance {
 		$report = [];
 		foreach ($modes as $mode => $properties) {
 			$report[$mode] = ['eligible' => 0, 'nonempty' => 0, 'eligible_nonempty' => 0,
-				'mismatches' => 0, 'query' => [], 'direct' => []];
+				'mismatches' => 0, 'ineligible_reasons' => [], 'ineligible_nonempty_reasons' => [],
+				'query' => [], 'direct' => []];
 		}
 		$count = 0;
 		$last = $after;
@@ -91,16 +93,26 @@ class BenchmarkArgumentMap extends Maintenance {
 				try {
 					$times = [];
 					$values = [];
+					$reason = null;
 					foreach (($count % 2 === 0 ? ['query', 'direct'] : ['direct', 'query']) as $reader) {
 						$started = hrtime(true);
 						$values[$reader] = $reader === 'query' ? ArgumentMapData::readQuery($title, $properties) :
-							ArgumentMapData::readDirect($title, $properties);
+							ArgumentMapData::readDirect($title, $properties, $reason);
 						$times[$reader] = (hrtime(true) - $started) / 1000;
 					}
 					$expected = self::fields($values['query'], $properties);
 					$nonempty = count(array_filter($expected, static fn(string $value): bool => $value !== '')) > 0;
 					$report[$mode]['nonempty'] += (int)$nonempty;
 					if ($values['direct'] === null) {
+						$reason ??= 'unclassified';
+						$report[$mode]['ineligible_reasons'][$reason] = ($report[$mode]['ineligible_reasons'][$reason] ?? 0) + 1;
+						if ($nonempty) {
+							$report[$mode]['ineligible_nonempty_reasons'][$reason] = ($report[$mode]['ineligible_nonempty_reasons'][$reason] ?? 0) + 1;
+						}
+						if ($this->hasOption('report-ineligible')) {
+							$this->emit(['type' => 'ineligible', 'pageid' => $last, 'mode' => $mode,
+								'reason' => $reason, 'query_nonempty' => $nonempty]);
+						}
 						continue;
 					}
 					$report[$mode]['eligible']++;
