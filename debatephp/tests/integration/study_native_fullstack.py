@@ -15,6 +15,26 @@ if len(before) != 144 or len(after) != len(before):
 
 counts = Counter()
 differences = []
+examples = {}
+
+def first_diff(x, y, path=''):
+	if type(x) is not type(y):
+		return path, repr(x)[:500], repr(y)[:500]
+	if isinstance(x, dict):
+		for key in sorted(x.keys() | y.keys(), key=str):
+			if key not in x or key not in y:
+				return path + '/' + str(key), repr(x.get(key))[:500], repr(y.get(key))[:500]
+			if x[key] != y[key]:
+				return first_diff(x[key], y[key], path + '/' + str(key))
+	elif isinstance(x, (list, tuple)):
+		for i, (a, b) in enumerate(zip(x, y)):
+			if a != b:
+				return first_diff(a, b, path + '/' + str(i))
+		return path + '/length', len(x), len(y)
+	elif isinstance(x, str):
+		i = next((i for i, (a, b) in enumerate(zip(x, y)) if a != b), min(len(x), len(y)))
+		return path + '/offset=' + str(i), x[max(0, i-100):i+300], y[max(0, i-100):i+300]
+	return path, repr(x)[:500], repr(y)[:500]
 for old, new in zip(before, after, strict=True):
 	name = old.get('name', old['title'])
 	if old['title'] != new['title'] or name != new.get('name', new['title']):
@@ -38,6 +58,8 @@ for old, new in zip(before, after, strict=True):
 		if x != y:
 			counts[key] += 1
 			changed.append(key)
+			if len(examples.setdefault(key, [])) < 4:
+				examples[key].append({'case': name, 'difference': first_diff(x, y)})
 	if changed:
 		differences.append({'case': name, 'fields': changed})
 
@@ -45,4 +67,7 @@ report = {'cases': len(after), 'equal_cases': len(after) - len(differences),
 	'field_differences': dict(counts), 'differences': differences,
 	'scope': 'Diagnostic only: template and link identities compared without lab-specific numeric IDs; no differences are approved by this study.'}
 output.write_text(json.dumps(report, ensure_ascii=False, indent='\t') + '\n', encoding='utf-8')
-print(json.dumps(report, ensure_ascii=False))
+print(json.dumps({k: v for k, v in report.items() if k != 'differences'}, ensure_ascii=False))
+for key, rows in examples.items():
+	for row in rows:
+		print('NATIVE_DIFF ' + key + ' ' + json.dumps(row, ensure_ascii=True))
