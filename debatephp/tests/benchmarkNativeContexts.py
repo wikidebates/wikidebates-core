@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Paired, isolated measurements of the compatibility and native renderer boundaries.
+"""Paired, isolated measurements of native renderer boundaries.
 
 Use the same PHP driver and fixtures for both source checkouts. No historical
 query projection is applied: this comparison is between two adjacent revisions.
@@ -13,7 +13,7 @@ import subprocess
 from nativeContract import MODES, check_sample_counts
 from summarizeNativeBenchmark import METRICS, aggregate, series
 
-CONTEXTS = ('legacy', 'native-json', 'native', 'native-schema')
+CONTEXTS = ('native', 'native-schema')
 DRIVER = Path(__file__).with_name('nativeCorpus.php').resolve()
 
 
@@ -43,9 +43,8 @@ def run(root, output, label, context, opcache, repeats, warmup):
 	with path.open(encoding='utf-8') as stream:
 		result = json.load(stream)
 	env, cases = result['environment'], result['cases']
-	if (env['context'] != context or env['json_boundary'] not in ('table', 'native')
-		or env['semantic_boundary'] not in ('table', 'mixed', 'native')
-		or (context != 'legacy' and env['json_boundary'] != 'native') or env['repeats'] != repeats
+	if (env['context'] != context or env['json_boundary'] != 'native'
+		or env['semantic_boundary'] != 'native' or env['repeats'] != repeats
 		or env['warmup'] != warmup or env['cases'] != len(cases)
 		or bool(env['opcache_status']) != bool(opcache)):
 		raise ValueError(f'{path}: invalid benchmark environment')
@@ -113,15 +112,8 @@ def main():
 			boundaries = ' -> '.join(results[label, context]['environment']['json_boundary'] for label in roots)
 			semantic = ' -> '.join(results[label, context]['environment']['semantic_boundary'] for label in roots)
 			report(before, after, f'base -> candidate / {context} (JSON: {boundaries}; SMW: {semantic})', args.repeats)
-		for label in roots:
-			legacy = results[label, 'legacy']['cases']
-			for context in ('native-json', 'native'):
-				native = results[label, context]['cases']
-				compare(legacy, native, f'{label}/{context} vs legacy')
-				boundary = results[label, 'legacy']['environment']['json_boundary']
-				semantic = ' -> '.join(results[label, item]['environment']['semantic_boundary'] for item in ('legacy', context))
-				report(legacy, native, f'{label}: legacy -> {context} (JSON: {boundary} -> native; SMW: {semantic})', args.repeats)
-		print('PASS: exact adjacent-revision fingerprints in all contexts; legacy/native trace parity.')
+		print('PASS: exact adjacent-revision fingerprints in both native contexts.')
+
 
 
 if __name__ == '__main__':

@@ -115,13 +115,14 @@ avec les compromis de temps et de mémoire. Le [plafond des références a été
 Le PHP de `debatephp/src/` est désormais la source de référence des deux moteurs.
 Les générateurs historiques et leurs tests propres sont archivés dans Git ;
 voir [la méthode de migration native](debatephp/docs/native-php-migration-baseline.md).
-Le contrôle PHP natif utilise un commit de référence fixe et ne régénère aucun fichier.
-Les contrats hors ligne sont figés après les dernières comparaisons Lua/PHP.
+Le contrôle PHP natif utilise des contrats figés, sans extraire de version historique
+ni régénérer les références. Les comparaisons avec les moteurs historiques sont
+archivées dans Git. Les benchmarks actifs comparent exclusivement du PHP natif.
 Les tests de rendu Argument, de texte et de traduction ne nécessitent plus Lua
 ni `lupa` :
 
 ```sh
-python3 debatephp/tests/regenerate.py
+python3 debatephp/tests/checkNativeCorpus.py
 python3 debatephp/tests/argument_contract.py php
 python3 debatephp/tests/serialized_contract.py php
 python3 debatephp/tests/i18n_contract.py php

@@ -37,20 +37,20 @@
 				},
 				{
 					"name": "PHP syntax",
-					"run": "find debatephp/src src tests maintenance -name '*.php' -print0 | xargs -0 -n1 php -l > /tmp/php-lint.log\ntail -n 5 /tmp/php-lint.log\n"
+					"run": "find debatephp/src debatephp/tests src tests maintenance -name '*.php' -print0 | xargs -0 -n1 php -l > /tmp/php-lint.log\ntail -n 5 /tmp/php-lint.log\n"
 				},
 				{
 					"name": "Standalone regression tests",
 					"run": "php debatephp/tools/nativeInventory.php --assert-native && php tests/run.php"
 				},
 				{
-					"name": "Native PHP contract against corrected pre-migration baseline",
-					"run": "git fetch --no-tags --depth=1 origin 2439e0749bcdc9ab81aeb20a902f8b6845a744e4\ngit worktree add --detach \"$RUNNER_TEMP/native-php-baseline\" FETCH_HEAD\npython3 debatephp/tests/regenerate.py --baseline-root=\"$RUNNER_TEMP/native-php-baseline\"\nfor script in buildArgument.py buildReference.py applyArgumentNative.py applyDebateNative.py closureCaptures.py phpConditions.py nativeFurtherPass.py nativeMeasuredPass.py nativeOptimizations.py nativePhpPass.py nativeReadPass.py nativeSchemaPass.py retirePublicationDate.py simplifyNative.py exhaustiveCitations.py; do\n\ttest ! -e \"debatephp/tools/$script\" || { echo \"Retired generator restored: $script\"; exit 1; }\ndone\n"
+					"name": "Frozen native PHP render contract",
+					"run": "python3 debatephp/tests/checkNativeCorpus.py\nfor script in buildArgument.py buildReference.py applyArgumentNative.py applyDebateNative.py closureCaptures.py phpConditions.py nativeFurtherPass.py nativeMeasuredPass.py nativeOptimizations.py nativePhpPass.py nativeReadPass.py nativeSchemaPass.py retirePublicationDate.py simplifyNative.py exhaustiveCitations.py; do\n\ttest ! -e \"debatephp/tools/$script\" || { echo \"Retired generator restored: $script\"; exit 1; }\ndone\n"
 				},
 				{
 					"name": "Isolated PHP 8.4 benchmark, with and without CLI OPcache",
 					"if": "${{ matrix.php == '8.4' }}",
-					"run": "mkdir -p \"$RUNNER_TEMP/native-php-benchmarks\"\nfor opcache in 0 1; do\n\tphp -d opcache.enable_cli=$opcache debatephp/tests/nativeCorpus.php --root=\"$RUNNER_TEMP/native-php-baseline\" --repeats=10 --warmup=3 > \"$RUNNER_TEMP/native-php-benchmarks/before-opcache-$opcache.json\"\n\tphp -d opcache.enable_cli=$opcache debatephp/tests/nativeCorpus.php --repeats=10 --warmup=3 > \"$RUNNER_TEMP/native-php-benchmarks/after-opcache-$opcache.json\"\ndone\npython3 debatephp/tests/summarizeNativeBenchmark.py \"$RUNNER_TEMP/native-php-benchmarks\" | tee \"$RUNNER_TEMP/native-php-benchmarks/summary.txt\"\n"
+					"run": "mkdir -p \"$RUNNER_TEMP/native-php-benchmarks\"\nfor opcache in 0 1; do\n\tphp -d opcache.enable_cli=$opcache debatephp/tests/nativeCorpus.php --repeats=10 --warmup=3 > \"$RUNNER_TEMP/native-php-benchmarks/native-opcache-$opcache.json\"\ndone\npython3 debatephp/tests/summarizeNativeBenchmark.py \"$RUNNER_TEMP/native-php-benchmarks\" | tee \"$RUNNER_TEMP/native-php-benchmarks/summary.txt\"\n"
 				},
 				{
 					"name": "Archive isolated benchmark samples",

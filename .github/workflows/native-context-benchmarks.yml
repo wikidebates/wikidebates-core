@@ -9,7 +9,9 @@
 				"debatephp/tests/nativeContract.py",
 				"debatephp/tests/summarizeNativeBenchmark.py",
 				"debatephp/tests/fixtures/**",
-				".github/workflows/native-context-benchmarks.yml"
+				".github/workflows/native-context-benchmarks.yml",
+				"debatephp/tests/checkNativeCorpus.py",
+				"debatephp/tests/argument_context.php"
 			]
 		}
 	},
