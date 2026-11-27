@@ -1,19 +1,19 @@
 <?php
 require __DIR__ . '/../../tests/bootstrap.php';
+require __DIR__ . '/frozen_contract.php';
 
 use MediaWiki\Extension\DebatePHP\FifoCache;
-use MediaWiki\Extension\DebatePHP\Lua;
 use MediaWiki\Extension\DebatePHP\RenderData;
 use MediaWiki\Extension\DebatePHP\SerializedData;
-use MediaWiki\Extension\DebatePHP\Table;
+use MediaWiki\Extension\DebatePHP\SemanticReadResult;
 
 $checks = 0;
 // Snapshot semantics include structural mutation, holes and shared nested objects.
-$nested = new Table(['name' => 'before']);
-$table = new Table([1 => false, 2 => '', 3 => '0', 4 => $nested, 6 => 'after hole']);
-$expected = Lua::ipairs($table);
-$sequence = $table->sequence();
-$table[2] = 'changed'; $table[5] = 'filled'; $nested['name'] = 'after';
+$nested = (object)['name' => 'before'];
+$values = [1 => false, 2 => '', 3 => '0', 4 => $nested, 6 => 'after hole'];
+$expected = [1 => false, 2 => '', 3 => '0', 4 => $nested];
+$sequence = SemanticReadResult::sequence($values);
+$values[2] = 'changed'; $values[5] = 'filled'; $nested->name = 'after';
 same($expected, iterator_to_array($sequence), 'Sequence captures values immediately, keeps nested identity, stops at hole');
 $checks++;
 mt_srand(806);
@@ -23,33 +23,39 @@ for ($sample = 0; $sample < 400; $sample++) {
 		$key = mt_rand(-1, 20);
 		$values[$key] = [null, false, '', 0, '0', 'é'][mt_rand(0, 5)];
 	}
-	$table = new Table($values);
-	same(Lua::ipairs($table), iterator_to_array($table->sequence()), 'Sparse/dense sequence equivalence');
+	$expected = [];
+	for ($index = 1; array_key_exists($index, $values) && $values[$index] !== null; $index++) {
+		$expected[$index] = $values[$index];
+	}
+	same($expected, iterator_to_array(SemanticReadResult::sequence($values)), 'Sparse/dense native sequence contract');
 	$checks++;
 }
 
-// Independent copy of the former Table FIFO algorithm, including nil/duplicate quirks.
+// Frozen exact FIFO states, including null/duplicate-key quirks.
+$contract = new FrozenNativeContract('fifo-states');
+$contractValue = static fn($value) => $value === $nested ? ['shared-object'] : $value;
 $keys = [null, false, true, '', '0', 0, 1, 'a', 'b', 'é'];
 foreach ([null, false, -1, 0, 1, 2, 5, '2', 2.5] as $limit) {
 	$cache = new FifoCache($limit);
-	$data = new Table; $order = new Table;
 	for ($operation = 0; $operation < 400; $operation++) {
 		$key = $keys[mt_rand(0, count($keys) - 1)];
 		$value = [null, false, '', 0, '0', $nested, 'value'][mt_rand(0, 6)];
-		if ($data[$key] !== null) { $data[$key] = $value; }
-		else {
-			$data[$key] = $value;
-			Lua::insert($order, $key);
-			if (count($order) > $cache->max) {
-				$old = Lua::remove($order, 1);
-				if ($old !== null) { $data[$old] = null; }
-			}
-		}
 		$alias = $cache;
 		$alias->put($key, $value);
-		foreach ($keys as $probe) { same($data[$probe], $cache->get($probe), 'FIFO exact behavior and shared identity'); $checks++; }
+		$actual = [];
+		foreach ($keys as $probe) {
+			$entry = $cache->get($probe);
+			if (is_object($entry)) {
+				same($nested, $entry, 'FIFO retains shared object identity');
+				$checks++;
+			}
+			$actual[] = $contractValue($entry);
+		}
+		$contract->add([$limit, $key, $contractValue($value)], $actual);
 	}
 }
+
+$contract->verify();
 
 // Explicit serialized data contracts, independent of the implementation.
 same([1 => '0', 2 => "\0A\0", 3 => " B "], SerializedData::csvValues("\v0\f, \t\0A\0\r, B ,, "), 'CSV trims ASCII whitespace, not NUL or NBSP');

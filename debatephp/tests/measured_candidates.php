@@ -1,9 +1,10 @@
 <?php
 require __DIR__ . '/../../tests/bootstrap.php';
+require __DIR__ . '/frozen_contract.php';
 require __DIR__ . '/argument_context.php';
 require __DIR__ . '/../../tests/nativeCandidatePrototypes.php';
 
-use MediaWiki\Extension\DebatePHP\{ArgumentRenderer, DecodedReferences, Lua, DebateRenderer, SerializedData};
+use MediaWiki\Extension\DebatePHP\{ArgumentRenderer, DecodedReferences, DebateRenderer, SerializedData};
 
 set_error_handler(static function($severity, $message, $file, $line): void { throw new ErrorException($message, 0, $severity, $file, $line); });
 $checks = 0;
@@ -86,20 +87,11 @@ $first[1]['title'] = 'Caller mutation';
 $equal('Video 1', $distinct->values('videography', $raw)[1]['title'], 'Large native lists remain isolated from caller mutations');
 $equal($statistics, $distinct->statistics(), 'A second large-list consumer performs no additional block decode');
 
+$contract = new FrozenNativeContract('title-decoding');
 mt_srand(809);
 $parts = ['', '0', 'é', ' [[Page|label]] ', '\0', '⟬', '⟭', '⟬⟬⟬', '⟭⟭⟭', "\t\n", "\xc2\xa0"];
 $titleParts = array_merge($parts, [':', '[', ']', '|', '<', '&nbsp;', '&#160;', '&amp;quot;', '&amp;lt;', '&#39;', '&gt;', 'false']);
-// Frozen aca0e6d algorithm: preserve the ordered replacements and newline rules.
-$legacyTitle = static function($s): string {
-	$s = Lua::trim(Lua::str(Lua::truth($s) ? $s : ''));
-	if ($s === '' || (Lua::byte($s, 1) !== 58 && !Lua::truth(Lua::find($s, '[%[<&]')))) { return $s; }
-	$s = Lua::gsub($s, '^:%s*', '');
-	$t = Lua::match($s, '^%[%[([^%]|]+)%|.-%]%]$') ?? Lua::match($s, '^%[%[([^%]]+)%]%]$');
-	if ($t !== null && $t !== '') { $s = $t; }
-	$s = Lua::gsub(Lua::trim($s), '^:%s*', '');
-	foreach (['&nbsp;' => ' ', '&#160;' => ' ', '&amp;' => '&', '&quot;' => '"', '&#39;' => "'", '&lt;' => '<', '&gt;' => '>'] as $a => $b) { $s = Lua::gsub($s, $a, $b); }
-	return Lua::trim($s);
-};
+// The previously validated title results are fixed in the boundary contract.
 for ($i = 0; $i < 800; $i++) {
 	$raw = '';
 	for ($j = 0, $n = mt_rand(0, 30); $j < $n; $j++) { $raw .= $parts[mt_rand(0, count($parts) - 1)]; }
@@ -108,7 +100,8 @@ for ($i = 0; $i < 800; $i++) {
 	$title = '';
 	for ($j = 0, $n = mt_rand(0, 30); $j < $n; $j++) { $title .= $titleParts[mt_rand(0, count($titleParts) - 1)]; }
 	foreach ([$title, '[[' . $title . '|label]]', ': [[' . $title . ']]'] as $text) {
-		$equal($legacyTitle($text), $normalize->invoke($r, $text), 'Native title decoding against frozen compatibility algorithm');
+		$contract->add($text, $normalize->invoke($r, $text));
 	}
 }
+$contract->verify();
 echo "$checks measured-candidate assertions: map isolation/bytes, title decoding, reference-cache reuse and experimental record views\n";

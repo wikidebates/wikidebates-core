@@ -1,18 +1,15 @@
 <?php
 
 require __DIR__ . '/../../tests/bootstrap.php';
+require __DIR__ . '/frozen_contract.php';
 require __DIR__ . '/argument_context.php';
 
-use MediaWiki\Extension\DebatePHP\{ArgumentContext, ArgumentRenderer, Context, JsonData, NativeJsonContext, NativeSemanticContext, RenderData, SemanticReadResult, Table, LegacyJson};
+use MediaWiki\Extension\DebatePHP\{ArgumentContext, ArgumentRenderer, Context, JsonData, NativeJsonContext, NativeSemanticContext, RenderData, SemanticReadResult};
 
 set_error_handler(static function($severity, $message, $file, $line): void { throw new ErrorException($message, 0, $severity, $file, $line); });
 $assertions = 0;
 $equal = static function($a, $b, string $label) use (&$assertions): void { same($a, $b, $label); $assertions++; };
-$legacyValues = static function($value) use (&$legacyValues) {
-	if (!is_array($value)) { return $value; }
-	array_unshift($value, ''); unset($value[0]);
-	return new Table(array_map($legacyValues, $value));
-};
+$contract = new FrozenNativeContract('semantic-values-json-sequence');
 mt_srand(806);
 $keys = [0, 1, 2, 7, -1, '01', '1e2', '2x', 'name', 'fulltext', 'page', '0.0', 'é'];
 $make = static function(int $depth = 0) use (&$make, $keys) {
@@ -23,16 +20,15 @@ $make = static function(int $depth = 0) use (&$make, $keys) {
 };
 for ($i = 0; $i < 2500; $i++) {
 	$data = $make();
-	$equal(Table::unwrap($legacyValues($data)), SemanticReadResult::values($data), 'SMW numeric reindexing, null and named fields');
-	$equal(LegacyJson::jsonValue(Table::wrap($data)), JsonData::value($data), 'Internal JSON native/Table equivalence');
-	if (is_array($data)) {
-		$equal(iterator_to_array((new Table($data))->sequence()), iterator_to_array(SemanticReadResult::sequence($data)), 'First-hole/nil sequence semantics');
-		$equal(json_encode(LegacyJson::jsonValue(Table::wrap($data)), JSON_THROW_ON_ERROR), json_encode(JsonData::value($data), JSON_THROW_ON_ERROR), 'Exact JSON byte/key order');
-	}
+	$json = JsonData::value($data);
+	$contract->add($data, [SemanticReadResult::values($data), $json,
+		is_array($data) ? iterator_to_array(SemanticReadResult::sequence($data)) : null,
+		json_encode($json, JSON_THROW_ON_ERROR)]);
 }
+$contract->verify();
 $data = ['@graph' => [1 => ['name' => 'é', 'values' => [1 => '0', 2 => false]]]];
 $originalData = $data;
-$equal(LegacyJson::jsonValue(Table::wrap($data)), JsonData::value($data), 'Native nested graph matches frozen conversion');
+$equal(['@graph' => [['name' => 'é', 'values' => ['0', false]]]], JsonData::value($data), 'Native nested graph matches frozen conversion');
 $equal($originalData, $data, 'JSON leaves remain unmodified');
 $cache = new RenderData;
 $first = $cache->csvValues(' a,0,é,,b '); $first[1] = 'mutated'; unset($first[2]);
@@ -68,17 +64,6 @@ foreach ([[['label' => 'Target'], false], [[1 => 'no', 3 => 'Target'], false],
 	[[1 => null, 2 => 'Target'], false], [['fulltext' => 'Target'], true], [[1 => false, 2 => 'Target'], true]] as [$value, $expected]) {
 	$equal($expected, $probe->invoke($renderer, $value, 'Target'), 'Native title lookup preserves historical sequence and named-field rules');
 }
-
-// The Lua bridge must respect one-based inclusive bounds, including an empty range.
-$concatValues = new Table([1 => 'A', 2 => 'B', 3 => 'C', 4 => 'D']);
-$concat = \MediaWiki\Extension\DebatePHP\Lua::class;
-$equal('A, B, C, D', $concat::concat($concatValues, ', '), 'Unbounded concatenation');
-$equal('A, B', $concat::concat($concatValues, ', ', 1, 2), 'Exclude trailing values');
-$equal('B, C', $concat::concat($concatValues, ', ', 2, 3), 'Inclusive range');
-$equal('C, D', $concat::concat($concatValues, ', ', 3), 'Default end');
-$equal('', $concat::concat($concatValues, ', ', 3, 2), 'Empty range');
-$equal('D', $concat::concat($concatValues, ', ', 4, 4), 'Single value range');
-$equal('A, B, C, D', $concat::concat($concatValues, ', '), 'Input table remains unchanged');
 
 // Check the final join, independently of title deduplication, for zero to four cards.
 $join = new ReflectionMethod(ArgumentRenderer::class, 'joinCards');
@@ -214,24 +199,27 @@ foreach ([
 	$equal($expected, $rowTitle->invoke($parentRenderer, $row), 'Preserve semantic title field precedence');
 }
 
-// Compare the literal title grammar against the retained compatibility helpers.
+// Explicit canonical and safe title results from the validated byte grammar.
 $canonical = new ReflectionMethod($parentRenderer, 'canonicalTitle');
 $safe = new ReflectionMethod($parentRenderer, 'smwSafeTitle');
-foreach (['', '0', " \t: [[Title|label]]\f", '[[A_B]]', 'Title#section',
-	"Title#fragment\nline", "Title#fragment\n", '[[A|B]]', 'A]B|C', 'A<B',
-	" A ", "\0A\0", 'Title{bad}', '[[Title|0]]', '::A'] as $input) {
-	$expected = trim($input, " \t\r\n\v\f");
-	if ($expected !== '') {
-		$expected = $concat::gsub($expected, '^:%s*', '');
-		$expected = $concat::gsub($concat::gsub($expected, '^%[%[%s*', ''), '%s*%]%]$', '');
-		$expected = $concat::match($expected, '^([^%]|]+)%|') ?? $expected;
-		$expected = str_replace('_', ' ', trim($expected, " \t\r\n\v\f"));
-	}
+foreach ([
+	['', '', ''],
+	['0', '0', '0'],
+	[" \t: [[Title|label]]\f", 'Title', 'Title'],
+	['[[A_B]]', 'A B', 'A B'],
+	['Title#section', 'Title#section', 'Title'],
+	["Title#fragment\nline", "Title#fragment\nline", "Title#fragment\nline"],
+	["Title#fragment\n", 'Title#fragment', 'Title'],
+	['[[A|B]]', 'A', 'A'],
+	['A]B|C', 'A]B|C', ''],
+	['A<B', 'A<B', ''],
+	["\xc2\xa0A\xc2\xa0", "\xc2\xa0A\xc2\xa0", "\xc2\xa0A\xc2\xa0"],
+	["\0A\0", "\0A\0", "\0A\0"],
+	['Title{bad}', 'Title{bad}', ''],
+	['[[Title|0]]', 'Title', 'Title'],
+	['::A', ':A', ':A']
+] as [$input, $expected, $smw]) {
 	$equal($expected, $canonical->invoke($parentRenderer, $input), 'Canonical title retains the historical byte grammar');
-	$smw = trim($concat::gsub($expected, '#.*$', ''), " \t\r\n\v\f");
-	if ($concat::truth($concat::find($smw, '[%[%]{}|<>]'))) {
-		$smw = '';
-	}
 	$equal($smw, $safe->invoke($parentRenderer, $input), 'SMW title filtering remains unchanged');
 }
 
