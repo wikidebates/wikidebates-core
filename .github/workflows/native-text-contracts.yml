@@ -41,16 +41,12 @@
 					}
 				},
 				{
-					"name": "Install Lua for final independent comparisons",
-					"run": "python3 -m pip install --disable-pip-version-check lupa==2.6"
+					"name": "Verify frozen text contract without Lua",
+					"run": "python3 debatephp/tests/serialized_contract.py php"
 				},
 				{
-					"name": "Capture validated serialized text contract",
-					"run": "python3 debatephp/tests/serialized_differential.py php"
-				},
-				{
-					"name": "Capture validated translation contract",
-					"run": "python3 debatephp/tests/differential_i18n.py php"
+					"name": "Verify frozen translation contract without Lua",
+					"run": "python3 debatephp/tests/i18n_contract.py php"
 				}
 			]
 		}

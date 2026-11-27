@@ -54,13 +54,6 @@ def fingerprints(cases, actual):
 	return {name: {'count': len(rows), 'sha256': digest(rows)} for name, rows in groups.items()}
 
 
-def capture(cases, actual):
-	if cases != fixtures():
-		raise ValueError('Retained fixture generator differs from historical one')
-	print('WD_SERIALIZED_CONTRACT ' + json.dumps(fingerprints(cases, actual),
-		sort_keys=True, separators=(',', ':')))
-
-
 def verify(php):
 	contract = json.loads((ROOT / 'fixtures' / 'serialized-contract.json').read_text(encoding='utf-8'))
 	if contract['baseline'] != BASELINE or contract['format'] != 1:
