@@ -63,7 +63,9 @@ function fsArgumentMapCases(bool $legacy): void {
 			} elseif ($case === 'empty target') {
 				check(!str_contains($html, 'wk-arg-map'), 'Empty target returns no map');
 			} else {
-				check(str_contains($html, 'wk-arg-map__col is-pro') && str_contains($html, 'wk-arg-map__col is-con'),
+				// MediaWiki may serialize underscores as numeric HTML entities.
+				$decoded = html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+				check(str_contains($decoded, 'wk-arg-map__col is-pro') && str_contains($decoded, 'wk-arg-map__col is-con'),
 					'Two map columns: ' . $lang . '/' . $case . '\n' . $html);
 				if ($case === 'argument' || $case === 'debate') {
 					check(str_contains($html, '<b>Source alias</b>'), 'Existing source highlighted by canonical identity: ' . $html);
