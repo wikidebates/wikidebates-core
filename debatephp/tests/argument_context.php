@@ -1,6 +1,6 @@
 <?php
 require __DIR__ . '/bootstrap.php';
-use MediaWiki\Extension\DebatePHP\{ArgumentContext,ArgumentRenderer,ArgumentReferenceRenderer,Table,I18n,JsonData,TextEscaper};
+use MediaWiki\Extension\DebatePHP\{ArgumentContext,ArgumentRenderer,ArgumentReferenceRenderer,Table,I18n,JsonData,SemanticProperties,TextEscaper};
 
 class ArgumentTestContext implements ArgumentContext {
 	public array $effects = ['preprocess' => [], 'ask' => [], 'set' => [], 'seo' => [], 'variables' => []];
@@ -13,8 +13,8 @@ class ArgumentTestContext implements ArgumentContext {
 	public function dbKey(string $page): string { return str_replace(' ', '_', $page); }
 	public function titleInfo(string $text): ?Table { return new Table(['prefixedText' => str_replace('_', ' ', $text)]); }
 	public function shortDescription(string $text): string { return $this->preprocess('{{SHORTDESC: ' . $text . '}}'); }
-	public function htmlTag(string $name, string $content, Table $attributes, bool $xml = false): string {
-		$attrs=$attributes->values;
+	public function htmlTag(string $name, string $content, array $attributes, bool $xml = false): string {
+		$attrs=$attributes;
 		if (!$xml) { ksort($attrs,SORT_STRING); }
 		$source=$xml ? '<htmltag tagname="'.$name.'"' : '{{#tag:htmltag|'.$content.'|tagname='.$name;
 		foreach ($attrs as $key=>$value) { $source.=$xml ? ' '.$key.'="'.$value.'"' : '|'.$key.'='.$value; }
@@ -29,12 +29,12 @@ class ArgumentTestContext implements ArgumentContext {
 		$protected=str_replace(['|','='],['&#124;','&#61;'],$json);
 		$protected=str_replace('/','\\/',$protected);
 		$protected=str_replace('}}','} }',$protected);
-		return $this->htmlTag('script',$protected,new Table(['type'=>'application/ld+json','class'=>'navigation-not-searchable']));
+		return $this->htmlTag('script',$protected,['type'=>'application/ld+json','class'=>'navigation-not-searchable']);
 	}
 	public function publicationDate(): ?string { return $this->case['publication_date'] ?? null; }
 	public function currentDate(): string { return $this->preprocess('{{CURRENTYEAR}}-{{CURRENTMONTH}}-{{CURRENTDAY2}}'); }
 	public function expandQuotes(string $text): string { return $this->preprocess($text); }
-	public function autoEdit(Table $params): string {
+	public function autoEdit(array $params): string {
 		$text='{{#autoedit:';
 		foreach ($params as $key=>$value) {
 			$text .= $key === 'link type' ? '| link type = '.$value : ($value === true ? '| '.$key : '| '.$key.' = '.$value);
@@ -48,8 +48,8 @@ class ArgumentTestContext implements ArgumentContext {
 	}
 	public function nowiki(string $text): string { return '<nowiki>' . $text . '</nowiki>'; }
 	public function uriEncode(string $text, string $mode = 'QUERY'): string { return TextEscaper::uriEncode($text, $mode); }
-	public function fullUrl(string $page, ?Table $query = null): ?string { return 'https://wiki.example/wiki/' . $this->uriEncode($page, 'WIKI') . ($query ? '?' . http_build_query(Table::unwrap($query), '', '&', PHP_QUERY_RFC1738) : ''); }
-	public function localUrl(string $page, ?Table $query = null): ?string { return substr($this->fullUrl($page, $query), strlen('https://wiki.example')); }
+	public function fullUrl(string $page, ?array $query = null): ?string { return 'https://wiki.example/wiki/' . $this->uriEncode($page, 'WIKI') . ($query !== null ? '?' . http_build_query($query, '', '&', PHP_QUERY_RFC1738) : ''); }
+	public function localUrl(string $page, ?array $query = null): ?string { return substr($this->fullUrl($page, $query), strlen('https://wiki.example')); }
 	private static function answerTable($data) {
 		if (!is_array($data)) { return $data; }
 		$out = [];
@@ -61,8 +61,8 @@ class ArgumentTestContext implements ArgumentContext {
 		$key = implode("\n", $query->values); $this->effects['ask'][] = $query->values;
 		return isset($this->case['answers'][$key]) ? self::answerTable($this->case['answers'][$key]) : null;
 	}
-	public function smwSet(Table $data): void { if ($this->smwAvailable()) { $this->effects['set'][] = TextEscaper::jsonValue($data); } }
-	public function seoSet(Table $data): void { if ($this->case['seo'] ?? true) { $this->effects['seo'][] = TextEscaper::jsonValue($data); } }
+	public function smwSet(array $data): void { if ($this->smwAvailable()) { $this->effects['set'][] = JsonData::value(SemanticProperties::present($data)); } }
+	public function seoSet(array $data): void { if ($this->case['seo'] ?? true) { $this->effects['seo'][] = JsonData::value($data); } }
 	public function variableSet(string $name, string $value): void { if ($this->case['vars'] ?? true) { $this->effects['variables'][$name] = trim($value); } }
 	public function variableGet(string $name): ?string { return $this->effects['variables'][$name] ?? null; }
 }

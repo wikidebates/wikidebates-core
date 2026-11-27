@@ -67,7 +67,7 @@ $services = MediaWikiServices::getInstance();
 $installProbe = static function($parser): void {
 	$parser->setHook('wd-fs-native', static function($input, $args, $parser, $frame): string {
 		$context = new MediaWikiContext($parser, $frame, [], ($args['mode'] ?? '') === 'optimized');
-		$context->smwSet(Table::wrap(fsPayload(trim($input))));
+		$context->smwSet(fsPayload(trim($input)));
 		return '';
 	});
 };

@@ -212,10 +212,10 @@ if (\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('PageForm
 	$context = new \MediaWiki\Extension\DebatePHP\MediaWikiContext(
 		$parser, $parser->getPreprocessor()->newFrame(), [], true
 	);
-	$button = $context->autoEdit(new \MediaWiki\Extension\DebatePHP\Table([
+	$button = $context->autoEdit([
 		'form' => 'Test form', 'target' => 'Target page', 'link text' => 'Finish | A=B',
 		'query string' => 'Test[field]=A%7CB%3DC', 'reload' => true
-	]));
+	]);
 	$html = $parser->getStripState()->unstripBoth($button);
 	check(str_contains($html, 'autoedit-trigger'), 'Registered Page Forms callback renders a button');
 	check(str_contains($html, 'Finish | A=B'), 'Structured autoedit preserves delimiters');
@@ -241,26 +241,26 @@ $parser->startExternalParse(Title::newFromText('Integration test'), ParserOption
 $context = new \MediaWiki\Extension\DebatePHP\MediaWikiContext(
 	$parser, $parser->getPreprocessor()->newFrame(), [], true
 );
-$link = $context->htmlTag('a', 'Open A=B | C', new \MediaWiki\Extension\DebatePHP\Table([
+$link = $context->htmlTag('a', 'Open A=B | C', [
 	'href' => 'javascript:void(0)',
 	'data-href' => '/wiki/Test?x=1&amp;y=2',
 	'class' => 'wk-btn__a wk-js-nav',
 	'onclick' => 'alert(1)'
-]), true);
+], true);
 $html = $parser->getStripState()->unstripBoth($link);
 check(str_contains($html, 'href="javascript:void(0)"'), 'Legacy inert RunQuery href retained');
 check(str_contains($html, 'data-href="/wiki/Test?x=1&amp;y=2"'), 'Encoded query URL retained');
 check(str_contains($html, 'Open A=B | C'), 'Link label keeps delimiters');
 check(!str_contains($html, 'onclick'), 'Unsupported attributes filtered');
-$link = $context->htmlTag('a', 'Safe label', new \MediaWiki\Extension\DebatePHP\Table([
+$link = $context->htmlTag('a', 'Safe label', [
 	'href' => 'javascript:alert(1)', 'data-href' => 'java&#x73;cript:alert(1)', 'class' => 'wk-js-nav'
-]), true);
+], true);
 $html = $parser->getStripState()->unstripBoth($link);
 check(!str_contains($html, 'javascript:alert'), 'Unsafe link targets excluded');
 rejects(static fn() => $context->htmlTag('script', 'alert(1)',
-	new \MediaWiki\Extension\DebatePHP\Table, true), 'Arbitrary script rendering disabled');
+	[], true), 'Arbitrary script rendering disabled');
 rejects(static fn() => $context->htmlTag('a', 'body',
-	new \MediaWiki\Extension\DebatePHP\Table, false), 'Generic tag fallback disabled');
+	[], false), 'Generic tag fallback disabled');
 
 rejects(static fn() => $parse('{{#debate:render}}', 'invalid'), 'Invalid mode rejected');
 $GLOBALS['wgDebatePHPMode'] = 'reference';

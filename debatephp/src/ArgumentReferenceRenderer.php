@@ -159,8 +159,8 @@ class ArgumentReferenceRenderer {
 		$formName = NativeText::formValue($formName);
 		if ($formName === '') { return ''; }
 		$tooltip = $this->normalizeTooltipText(NativeText::formValue($tooltip));
-		$href = $this->context->localUrl($this->wkRunQueryPath($formName), new Table($query ?? [])) ?? 'nil';
-		$attributes = new Table(['href' => 'javascript:void(0)', 'data-href' => $this->escapeAttr($href), 'class' => 'wk-btn__a wk-js-nav']);
+		$href = $this->context->localUrl($this->wkRunQueryPath($formName), $query ?? []) ?? 'nil';
+		$attributes = ['href' => 'javascript:void(0)', 'data-href' => $this->escapeAttr($href), 'class' => 'wk-btn__a wk-js-nav'];
 		if ($tooltip !== '') { $attributes['title'] = $this->escapeAttr($tooltip); }
 		return $this->context->htmlTag('a', '＋ ' . NativeText::formValue($label), $attributes, true);
 	}
@@ -200,7 +200,7 @@ class ArgumentReferenceRenderer {
 			}
 		}
 		$q['_run'] = '1';
-		$url = $this->absUrlFromTitle($title, new Table($q));
+		$url = $this->absUrlFromTitle($title, $q);
 		$label = $opts['label'] ?? $value;
 		$label = NativeText::formValue($label === false ? $value : $label);
 		$tt = $this->normalizeTooltipText(NativeText::field($opts['tooltip'] ?? null));
@@ -1063,8 +1063,8 @@ class ArgumentReferenceRenderer {
 		if ($summary !== '') {
 			$summary .= ' : « ' . $title . ' »';
 		}
-		$params = new Table(['form' => $formName, 'target' => $parentPage, 'query string' => $qs,
-			'link text' => $yesText, 'link type' => 'button', 'tooltip' => $yesTooltip, 'ok text' => $okText]);
+		$params = ['form' => $formName, 'target' => $parentPage, 'query string' => $qs,
+			'link text' => $yesText, 'link type' => 'button', 'tooltip' => $yesTooltip, 'ok text' => $okText];
 		if ($summary !== '') {
 			$params['summary'] = $summary;
 		}
@@ -1674,7 +1674,7 @@ class ArgumentReferenceRenderer {
 			$topic = $titleText;
 		}
 		$kw = $this->buildSeoKeywords($args, $lang);
-		$this->wkSeoSet(new Table(['title' => ($titleText . $this->L($lang, 'seo', 'space') . ': ' . $this->L($lang, 'seo', 'shortdesc_plain') . ' – ' . $this->L($lang, 'seo', 'site_name')), 'title_mode' => ($titleText . $this->L($lang, 'seo', 'space') . ': ' . $this->L($lang, 'seo', 'shortdesc_plain')), 'title_separator' => sprintf($this->seoL($lang, 'title_separator'), $titleText), 'description' => sprintf($this->seoL($lang, 'description'), $topic), 'keywords' => $kw, 'author' => $this->seoL($lang, 'author'), 'image' => $this->seoL($lang, 'image'), 'image_alt' => $this->seoL($lang, 'image_alt'), 'type' => 'article', 'section' => $this->seoL($lang, 'section'), 'site_name' => $this->seoL($lang, 'site_name'), 'twitter_site' => $this->seoL($lang, 'twitter_site'), 'locale' => $this->seoL($lang, 'locale'), 'robots' => 'index,follow', 'googlebot' => 'index,follow']));
+		$this->wkSeoSet(['title' => ($titleText . $this->L($lang, 'seo', 'space') . ': ' . $this->L($lang, 'seo', 'shortdesc_plain') . ' – ' . $this->L($lang, 'seo', 'site_name')), 'title_mode' => ($titleText . $this->L($lang, 'seo', 'space') . ': ' . $this->L($lang, 'seo', 'shortdesc_plain')), 'title_separator' => sprintf($this->seoL($lang, 'title_separator'), $titleText), 'description' => sprintf($this->seoL($lang, 'description'), $topic), 'keywords' => $kw, 'author' => $this->seoL($lang, 'author'), 'image' => $this->seoL($lang, 'image'), 'image_alt' => $this->seoL($lang, 'image_alt'), 'type' => 'article', 'section' => $this->seoL($lang, 'section'), 'site_name' => $this->seoL($lang, 'site_name'), 'twitter_site' => $this->seoL($lang, 'twitter_site'), 'locale' => $this->seoL($lang, 'locale'), 'robots' => 'index,follow', 'googlebot' => 'index,follow']);
 		return '';
 	}
 
@@ -2542,6 +2542,6 @@ class ArgumentReferenceRenderer {
 	protected function L($lang = null, $section = null, $key = null, ...$rest) { return $this->context->message('Argument.' . $section, $lang, $key, ...$rest); }
 	protected function computePageVars() { return $this->context->pageVars(); }
 	protected function wkDbKey($page = null) { return $this->context->dbKey($page); }
-	protected function wkSeoSet($data = null) { $this->context->seoSet($data); }
-	protected function smwSetSafe(array $data): void { $this->context->smwSet(SemanticProperties::toLegacyTable($data)); }
+	protected function wkSeoSet(array $data) { $this->context->seoSet($data); }
+	protected function smwSetSafe(array $data): void { $this->context->smwSet($data); }
 }

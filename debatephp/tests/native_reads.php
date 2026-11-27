@@ -251,14 +251,14 @@ $initContext = new class(['title' => 'Child argument test', 'args' => ['lang' =>
 		}
 		return Table::wrap([1 => ['fulltext' => 'Parent title']]);
 	}
-	public function autoEdit(Table $params): string {
+	public function autoEdit(array $params): string {
 		$this->edits++;
 		if ($this->editFailure) {
 			throw $this->editFailure;
 		}
 		return parent::autoEdit($params);
 	}
-	public function fullUrl(string $page, ?Table $query = null): ?string {
+	public function fullUrl(string $page, ?array $query = null): ?string {
 		if ($this->urlFailure) {
 			throw $this->urlFailure;
 		}
@@ -315,9 +315,9 @@ $semantic::merge($properties, ['replace' => ' new ', 'multiple' => ['last', '0']
 $expectedProperties = ['first' => 'unchanged', 'multiple' => ['old', '0', 'x', 'x', 'y', 'last', '0'],
 	'zero' => 0, 'false' => false, 'replace' => 'new', 'list' => ['a', 'b']];
 $equal($expectedProperties, $properties, 'Native semantic properties retain ordered and repeated values');
-$equal($expectedProperties, TextEscaper::jsonValue($semantic::toLegacyTable($properties)), 'Legacy write boundary preserves semantic values');
-$equal([1 => 'old', 2 => '0', 3 => 'x', 4 => 'x', 5 => 'y', 6 => 'last', 7 => '0'],
-	Table::unwrap($semantic::toLegacyTable($properties))['multiple'], 'Only the legacy boundary uses one-based sequences');
+$equal($expectedProperties, $semantic::present($properties), 'Native write boundary preserves semantic values');
+$equal(['old', '0', 'x', 'x', 'y', 'last', '0'],
+	$semantic::present($properties)['multiple'], 'Native write boundary preserves zero-based sequences');
 $source = ['new' => ['a']];
 $semantic::merge($properties, $source);
 $semantic::add($properties, 'new', 'b', true);
@@ -326,7 +326,7 @@ $semantic::add($properties, 'new', 'scalar', false);
 $equal('scalar', $properties['new'], 'Single-valued writes replace previous lists');
 $semantic::add($properties, 'new', '0', true);
 $equal(['scalar', '0'], $properties['new'], 'A later multi-value write retains the previous scalar');
-$equal(['empty' => []], TextEscaper::jsonValue($semantic::toLegacyTable(['empty' => [], 'missing' => null])), 'Empty list and missing property remain distinct');
+$equal(['empty' => []], $semantic::present(['empty' => [], 'missing' => null]), 'Empty list and missing property remain distinct');
 
 
 // A missing category sink suppresses only category collection, not the banner.
@@ -353,12 +353,12 @@ foreach ([ArgumentReferenceRenderer::class, \MediaWiki\Extension\DebatePHP\Refer
 $formContext = new class(['title' => 'Child', 'args' => ['lang' => 'en']]) extends ArgumentTestContext {
 	public array $queries = [];
 	public bool $failFullUrl = false;
-	public function fullUrl(string $page, ?Table $query = null): ?string {
-		$this->queries[] = ['full', $page, $query?->values];
+	public function fullUrl(string $page, ?array $query = null): ?string {
+		$this->queries[] = ['full', $page, $query];
 		return $this->failFullUrl ? null : parent::fullUrl($page, $query);
 	}
-	public function localUrl(string $page, ?Table $query = null): ?string {
-		$this->queries[] = ['local', $page, $query?->values];
+	public function localUrl(string $page, ?array $query = null): ?string {
+		$this->queries[] = ['local', $page, $query];
 		return substr(parent::fullUrl($page, $query), strlen('https://wiki.example'));
 	}
 };
