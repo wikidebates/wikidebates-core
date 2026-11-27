@@ -3,7 +3,7 @@
 /** Isolated helper benchmark against an explicit checkout, including its real FIFO. */
 require __DIR__ . '/bootstrap.php';
 
-use MediaWiki\Extension\DebatePHP\ArgumentReferenceRenderer;
+use MediaWiki\Extension\DebatePHP\ArgumentRenderer;
 use MediaWiki\Extension\DebatePHP\RenderData;
 use MediaWiki\Extension\DebatePHP\NativeText;
 use MediaWiki\Extension\DebatePHP\SemanticReadResult;
@@ -26,7 +26,7 @@ spl_autoload_register(static function($class) use ($temporary): void {
 	if (str_starts_with($class, 'NativeCollectionsBefore\\')) { require_once $temporary . '/src/' . substr($class, strlen('NativeCollectionsBefore\\')) . '.php'; }
 });
 $beforeClass = new ReflectionClass(\NativeCollectionsBefore\ArgumentReferenceRenderer::class);
-$afterClass = new ReflectionClass(ArgumentReferenceRenderer::class);
+$afterClass = new ReflectionClass(ArgumentRenderer::class);
 $before = $beforeClass->newInstanceWithoutConstructor();
 $after = $afterClass->newInstanceWithoutConstructor();
 $values = array_fill(1, 2000, 'value');

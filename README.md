@@ -49,7 +49,8 @@ n'hérite plus de `$wgHTMLTagsAttributes`. Les anciens usages de cette balise
 présents dans les pages wiki doivent être vérifiés et migrés avant de désactiver
 HTML Tags sur le serveur (voir `docs/html-tags-retirement.md`).
 
-Argument et Debate utilisent chacun un moteur PHP canonique, avec mémorisation
+`ArgumentRenderer`, `DebateRenderer` et `ArgumentMap` sont les trois moteurs
+PHP canoniques. Argument et Debate utilisent la mémorisation
 des traductions limitée au rendu. Le paramètre historique `$wgDebatePHPMode`
 n’est plus utilisé et peut être retiré de la configuration locale après déploiement.
 Le JSON-LD conserve ses valeurs et protège les

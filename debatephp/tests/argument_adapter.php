@@ -202,7 +202,7 @@ namespace {
 	$events = [];
 	$profile = new \MediaWiki\Extension\DebatePHP\Telemetry(true, false, [], static function($event) use (&$events): void { $events[] = $event; });
 	$profiled = new MediaWikiContext(new Parser, new PPFrame, [], false, false, $profile, 'Argument');
-	$renderer = new \MediaWiki\Extension\DebatePHP\ArgumentReferenceRenderer($profiled);
+	$renderer = new \MediaWiki\Extension\DebatePHP\ArgumentRenderer($profiled);
 	$reflection = new \ReflectionClass($renderer);
 	$makeCache = $reflection->getMethod('cacheMake');
 	foreach (['SMW_TITLES_CACHE', 'CARD_CACHE'] as $name) {

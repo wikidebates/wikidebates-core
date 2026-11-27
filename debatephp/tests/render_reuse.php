@@ -2,14 +2,13 @@
 require __DIR__ . '/../../tests/bootstrap.php';
 require __DIR__ . '/argument_context.php';
 
-use MediaWiki\Extension\DebatePHP\ArgumentReferenceRenderer;
 use MediaWiki\Extension\DebatePHP\ArgumentRenderer;
 
 $case = ['title' => 'Native reuse', 'smw' => false, 'args' => []];
 $caseProperty = new ReflectionProperty(ArgumentTestContext::class, 'case');
-$rendererClass = new ReflectionClass(ArgumentReferenceRenderer::class);
+$rendererClass = new ReflectionClass(ArgumentRenderer::class);
 $checks = 0;
-foreach ([ArgumentReferenceRenderer::class, ArgumentRenderer::class] as $class) {
+foreach ([ArgumentRenderer::class] as $class) {
 	$context = new ArgumentTestContext($case);
 	$renderer = new $class($context);
 	$urlCache = $rendererClass->getProperty('URLENC_CACHE')->getValue($renderer);
@@ -34,7 +33,7 @@ foreach ([ArgumentReferenceRenderer::class, ArgumentRenderer::class] as $class) 
 }
 // The nine reference fields are expanded once, in the original order, and their
 // expanded values reach both HTML and the JSON-LD citation builder.
-foreach ([\MediaWiki\Extension\DebatePHP\ReferenceRenderer::class, \MediaWiki\Extension\DebatePHP\Renderer::class] as $class) {
+foreach ([\MediaWiki\Extension\DebatePHP\DebateRenderer::class] as $class) {
 	$case = ['title' => 'Native debate references', 'args' => ['lang' => 'en']];
 	$context = new class($case) extends ArgumentTestContext {
 		public array $expansions = [];
@@ -103,8 +102,8 @@ foreach ([\MediaWiki\Extension\DebatePHP\ReferenceRenderer::class, \MediaWiki\Ex
 	}
 }
 // SEO is an invocation-local effect, not a cached cross-render operation.
-foreach ([ArgumentReferenceRenderer::class, ArgumentRenderer::class,
-	\MediaWiki\Extension\DebatePHP\ReferenceRenderer::class, \MediaWiki\Extension\DebatePHP\Renderer::class] as $class) {
+foreach ([ArgumentRenderer::class,
+	\MediaWiki\Extension\DebatePHP\DebateRenderer::class] as $class) {
 	$case = ['title' => 'Native SEO reuse', 'smw' => false, 'args' => [
 		'lang' => 'en', 'keywords' => '0, 0, Énergie, A, A, é, , 00',
 		'sections' => 'Énergie, 0, é, B, 00, 0.0'
@@ -129,7 +128,7 @@ foreach ([ArgumentReferenceRenderer::class, ArgumentRenderer::class,
 	}
 }
 // Normalization mutates only the renderer's local copy, including whitespace-only fields.
-foreach ([ArgumentReferenceRenderer::class, ArgumentRenderer::class] as $class) {
+foreach ([ArgumentRenderer::class] as $class) {
 	$case = ['title' => 'Argument input snapshot', 'smw' => false, 'args' => [
 		'lang' => 'en', 'summary' => " \tSnapshot summary\r\n ", 'keywords' => ' 0 ',
 		'sections' => " \t\r\n ", 'bibliography' => " \t ", 'justifications' => false

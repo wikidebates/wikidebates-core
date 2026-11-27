@@ -79,7 +79,7 @@ $register = static function($parser): void {
 		]), 'cache-tracking');
 		return 'WD_MATCHES=' . count($rows->rows ?? []);
 	});
-	// Mirror the actual ArgumentReferenceRenderer parent queries: two
+	// Mirror the actual ArgumentRenderer parent queries: two
 	// alternatives, both property printouts, and the native PHP reader.
 	foreach ([
 		'wd-cache-debate-parents' => ['WD Cache Pro', 'WD Cache Con', 'debate-parents'],
@@ -604,7 +604,7 @@ foreach ($combined as $kind => $case) {
 }
 
 // Render a real native #argument:render page in French, not merely a
-// diagnostic test tag. Its parent-query shapes come from ArgumentReferenceRenderer
+// diagnostic test tag. Its parent-query shapes come from ArgumentRenderer
 // and the resulting HTML passes through the same reading fragment pipeline.
 $i18n = \MediaWiki\Extension\DebatePHP\I18n::bundled();
 $proProperty = $i18n->message('Argument.props', 'fr', 'arg_pro');

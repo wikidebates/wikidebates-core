@@ -33,8 +33,8 @@ final class Hooks {
 			try {
 				$context = new MediaWikiContext($parser, $frame, $args, true, false, $telemetry, $moduleName);
 				$renderer = $moduleName === 'Argument'
-					? new ArgumentReferenceRenderer($context)
-					: new ReferenceRenderer($context);
+					? new ArgumentRenderer($context)
+					: new DebateRenderer($context);
 			} finally { $telemetry?->finish('setup', $started); }
 			$started = $telemetry?->start();
 			try { $text = $renderer->render(); }

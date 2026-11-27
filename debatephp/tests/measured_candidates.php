@@ -3,13 +3,13 @@ require __DIR__ . '/../../tests/bootstrap.php';
 require __DIR__ . '/argument_context.php';
 require __DIR__ . '/../../tests/nativeCandidatePrototypes.php';
 
-use MediaWiki\Extension\DebatePHP\{ArgumentReferenceRenderer, DecodedReferences, Lua, ReferenceRenderer, SerializedData};
+use MediaWiki\Extension\DebatePHP\{ArgumentRenderer, DecodedReferences, Lua, DebateRenderer, SerializedData};
 
 set_error_handler(static function($severity, $message, $file, $line): void { throw new ErrorException($message, 0, $severity, $file, $line); });
 $checks = 0;
 $equal = static function($a, $b, string $message) use (&$checks): void { same($a, $b, $message); $checks++; };
 $context = new ArgumentTestContext(['title' => 'Measured regressions', 'smw' => false, 'args' => []]);
-foreach ([ReferenceRenderer::class, ArgumentReferenceRenderer::class] as $class) {
+foreach ([DebateRenderer::class, ArgumentRenderer::class] as $class) {
 	$r = new $class($context); $method = new ReflectionMethod($r, 'wkBuildArgumentData');
 	$items = SerializedData::argumentItems('Page⟬Shown⟬⟭⟭Same⟬Same⟬⟭⟬Ignored⟭', true);
 	$equal(true, array_is_list($items), 'Argument parser produces a dense zero-based list');
@@ -17,10 +17,10 @@ foreach ([ReferenceRenderer::class, ArgumentReferenceRenderer::class] as $class)
 	$d = $method->invoke($r, $items, 'en', 'pro');
 	$equal($items, $d['items'], 'Argument map retains all decoded records');
 	$equal("* Shown\n* Same", $d['list'], 'Exact list bytes');
-	$separator = $class === ReferenceRenderer::class ? ' -;- ' : '⟭';
+	$separator = $class === DebateRenderer::class ? ' -;- ' : '⟭';
 	$equal('Page⟬Shown' . $separator . 'Same', $d['argsVar'], 'Historical argument-variable separators');
 	$equal('<div class="argument-title--map wk-icon-before wk-icon-argument">[[Page|Shown]]</div>' . "\n" . '<div class="argument-title--map wk-icon-before wk-icon-argument">[[Same|Same]]</div>', $d['mapHover'], 'Exact hover bytes and newline');
-	if ($class === ReferenceRenderer::class) {
+	if ($class === DebateRenderer::class) {
 		$equal('<div  id="Pro_argument_1_map" class="argument-title--map wk-icon-before wk-icon-argument">Shown</div>' . "\n" . '<div  id="Pro_argument_2_map" class="argument-title--map wk-icon-before wk-icon-argument">Same</div>', $d['map'], 'Historical double space and one-based map IDs');
 		$negative = $method->invoke($r, $items, 'en', 'con');
 		$equal(str_replace('Pro_argument_', 'Con_argument_', $d['map']), $negative['map'], 'Counterargument public IDs');
@@ -35,7 +35,7 @@ foreach ([ReferenceRenderer::class, ArgumentReferenceRenderer::class] as $class)
 
 }
 
-$r = new ArgumentReferenceRenderer($context); $normalize = new ReflectionMethod($r, 'normalizeTitleForCard');
+$r = new ArgumentRenderer($context); $normalize = new ReflectionMethod($r, 'normalizeTitleForCard');
 foreach ([[': [[A &amp;quot;B&amp;quot;|label]]', 'A "B"'], ['&amp;nbsp;', '&nbsp;'], ['&amp;lt;', '<'], [' 0 ', '0'], [false, ''], [': [[A_B|label]]', 'A_B'], [": [[A|line\nbreak]]", "A|line\nbreak"]] as [$input, $expected]) {
 	$equal($expected, $normalize->invoke($r, $input), 'Historical title decoding order and link patterns');
 	$equal($expected, $normalize->invoke($r, $input), 'Title memoization does not alter bytes');

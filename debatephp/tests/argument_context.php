@@ -1,6 +1,6 @@
 <?php
 require __DIR__ . '/bootstrap.php';
-use MediaWiki\Extension\DebatePHP\{ArgumentContext,ArgumentRenderer,ArgumentReferenceRenderer,Table,I18n,JsonData,SemanticProperties,SemanticReadResult,TextEscaper};
+use MediaWiki\Extension\DebatePHP\{ArgumentContext,ArgumentRenderer,Table,I18n,JsonData,SemanticProperties,SemanticReadResult,TextEscaper};
 
 class ArgumentTestContext implements ArgumentContext {
 	public array $effects = ['preprocess' => [], 'ask' => [], 'set' => [], 'seo' => [], 'variables' => []];
@@ -72,7 +72,7 @@ class ArgumentTestContext implements ArgumentContext {
 
 if (realpath($_SERVER['SCRIPT_FILENAME']) !== __FILE__) { return; }
 // Parent lists must deduplicate equivalent SMW title representations before rendering.
-$parentProbe = new class(new ArgumentTestContext(['args' => [], 'title' => 'Child'])) extends ArgumentReferenceRenderer {
+$parentProbe = new class(new ArgumentTestContext(['args' => [], 'title' => 'Child'])) extends ArgumentRenderer {
 	public function uniqueTitles(Table $titles): array {
 		return $this->uniqueParentTitles(array_values($titles->values));
 	}
@@ -88,7 +88,7 @@ set_error_handler(static function($severity, $message, $file, $line) { throw new
 $cases = json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR); $out = [];
 foreach ($cases as $case) {
 	$row = [];
-	foreach ([ArgumentReferenceRenderer::class, ArgumentRenderer::class] as $renderer) {
+	foreach ([ArgumentRenderer::class] as $renderer) {
 		$c = new ArgumentTestContext($case);
 		try { $r = new $renderer($c); $text = $r->render(); $c->effects['variables'] = (object)$c->effects['variables']; $row[] = ['text' => $text, 'effects' => $c->effects]; }
 		catch (Throwable $e) { $row[] = ['error' => (string)$e]; }

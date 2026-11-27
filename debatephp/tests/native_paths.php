@@ -137,8 +137,8 @@ trait NativeBannerProbe {
 	}
 	public function append(&$out, array &$cats): void { $this->renderReferenceItemBanners('dead_link,dead_link', null, 'en', $cats, $out); }
 }
-foreach ([new class extends \MediaWiki\Extension\DebatePHP\ReferenceRenderer { use NativeBannerProbe; },
-	new class extends \MediaWiki\Extension\DebatePHP\ArgumentReferenceRenderer { use NativeBannerProbe; }] as $probe) {
+foreach ([new class extends \MediaWiki\Extension\DebatePHP\DebateRenderer { use NativeBannerProbe; },
+	new class extends \MediaWiki\Extension\DebatePHP\ArgumentRenderer { use NativeBannerProbe; }] as $probe) {
 	$parts = ['prefix']; $categories = [];
 	$probe->append($parts, $categories);
 	same(['prefix', '<banner>', '<banner>'], $parts, 'Banner append mutates caller native fragments');

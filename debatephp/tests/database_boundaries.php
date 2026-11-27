@@ -78,7 +78,7 @@ namespace {
 	$events = [];
 	$telemetry = new Telemetry(true, true, [], static function($event) use (&$events): void { $events[] = $event; });
 	$reflection->getProperty('telemetry')->setValue($context, $telemetry);
-	$renderer = new \MediaWiki\Extension\DebatePHP\ArgumentReferenceRenderer($context);
+	$renderer = new \MediaWiki\Extension\DebatePHP\ArgumentRenderer($context);
 	$rendererReflection = new ReflectionClass($renderer);
 	$read = $rendererReflection->getMethod('readSemantic');
 	$operations = [

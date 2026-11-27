@@ -4,7 +4,7 @@ namespace MediaWiki\Extension\DebatePHP;
 /** Debate renderer. This PHP source is authoritative and maintained directly.
  * See docs/native-php-migration-baseline.md for the behavioural contract.
  */
-class ReferenceRenderer {
+class DebateRenderer {
 	use WarningLabels;
 
 	private ?DecodedReferences $decodedReferences = null;
