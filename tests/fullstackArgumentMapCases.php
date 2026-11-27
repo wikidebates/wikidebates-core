@@ -174,12 +174,16 @@ function fsArgumentMapApiEnvelope(string $page, string $lang): void {
 		$text = '{{#argumentmap:render|' . $page . $tail . '|lang=' . $lang . '}}';
 		$original = $call($text, false);
 		$compact = $call($text, true);
-		$typed = new ApiMain(new FauxRequest(['action' => 'wikidebatesargumentmap', 'page' => $page,
+		$typedParams = ['action' => 'wikidebatesargumentmap', 'page' => $page,
 			'source' => $mode === 'fallback' ? '' : 'WD Map source',
 			'mode' => $mode === 'fallback' ? 'full' : $mode, 'lang' => $lang,
-			'formatversion' => 2, 'uselang' => $GLOBALS['wgLanguageCode']], false));
-		$typed->execute();
-		$typedResponse = $typed->getResult()->getResultData([], ['Strip' => 'all']);
+			'formatversion' => 2, 'uselang' => $GLOBALS['wgLanguageCode']];
+		$typedCall = static function() use ($typedParams): array {
+			$typed = new ApiMain(new FauxRequest($typedParams, false));
+			$typed->execute();
+			return $typed->getResult()->getResultData([], ['Strip' => 'all']);
+		};
+		$typedResponse = $typedCall();
 		same($visible($compact), $visible(['parse' => ['text' => $typedResponse['wikidebatesargumentmap']['html'] ?? null]]),
 			'Typed API keeps map HTML: ' . $lang . '/' . $mode);
 		same($visible($original), $visible($compact), 'Compact API keeps map HTML: ' . $lang . '/' . $mode);
@@ -188,8 +192,35 @@ function fsArgumentMapApiEnvelope(string $page, string $lang): void {
 		$before = strlen(json_encode($original, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
 		$after = strlen(json_encode($compact, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
 		check($after < $before, 'Compact JSON is strictly smaller');
+		$typedBytes = strlen(json_encode($typedResponse, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
 		echo 'ARGUMENTMAP_API_BYTES ' . json_encode(['lang' => $lang, 'mode' => $mode,
-			'default' => $before, 'compact' => $after], JSON_THROW_ON_ERROR) . "\n";
+			'default' => $before, 'compact' => $after, 'typed' => $typedBytes], JSON_THROW_ON_ERROR) . "\n";
+
+		// Measure the entire PHP API envelope (including JSON serialization),
+		// not the network or the browser. Alternate order and clear only the
+		// isolated SMW Store's internal state before each measured call.
+		$store = \SMW\Services\ServicesFactory::getInstance()->getStore();
+		$times = ['compact' => [], 'typed' => []];
+		for ($i = 0; $i < 12; $i++) {
+			foreach ($i % 2 === 0 ? ['compact', 'typed'] : ['typed', 'compact'] as $transport) {
+				$store->clear();
+				$started = hrtime(true);
+				$response = $transport === 'compact' ? $call($text, true) : $typedCall();
+				json_encode($response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+				$times[$transport][] = (hrtime(true) - $started) / 1000;
+				same($visible($compact), $visible($transport === 'compact' ? $response :
+					['parse' => ['text' => $response['wikidebatesargumentmap']['html'] ?? null]]),
+					'Measured transport retains visible map HTML');
+			}
+		}
+		foreach ($times as &$samples) {
+			sort($samples);
+		}
+		unset($samples);
+		echo 'ARGUMENTMAP_API_TIMING ' . json_encode(['lang' => $lang, 'mode' => $mode,
+			'read_mode' => MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesArgumentMapDirectRead') ? 'direct' : 'query',
+			'compact_median_us' => ($times['compact'][5] + $times['compact'][6]) / 2,
+			'typed_median_us' => ($times['typed'][5] + $times['typed'][6]) / 2], JSON_THROW_ON_ERROR) . "\n";
 	}
 }
 
