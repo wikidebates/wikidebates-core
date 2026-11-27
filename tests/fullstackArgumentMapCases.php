@@ -124,15 +124,15 @@ function fsArgumentMapLazyLookup(callable $render, string $page, array $properti
 			return true;
 		});
 	try {
-		$expectedQueries = $services->getMainConfig()->get('WikidebatesArgumentMapDirectRead') ? 0 : 1;
+		$expectedQueries = in_array(SMW_VERSION, ['7.3.1', '7.4.1'], true) ? 0 : 1;
 		$absent = $render('{{#argumentmap:render|' . $page . '|' . $source . '|debate|lang=' . $lang . '}}');
 		check(str_contains($absent, 'Other label'), 'Nonmatching source still renders the map');
 		same(0, $exists, 'Unmatched source incurs no existence probe');
-		same($expectedQueries, $queries, 'Selected read mode uses the expected number of SMW queries');
+		same($expectedQueries, $queries, 'Automatic reader uses the expected number of SMW queries');
 		$queries = 0;
 		$matched = $render('{{#argumentmap:render|' . $target . '|' . $source . '|debate|lang=' . $lang . '}}');
 		same(1, $exists, 'All three matching cards share one source existence probe');
-		same($expectedQueries, $queries, 'Selected read mode works across two populated columns');
+		same($expectedQueries, $queries, 'Automatic reader works across two populated columns');
 		foreach (['First', 'Second', 'Third'] as $label) {
 			check(str_contains($matched, '<b>' . $label . ' occurrence</b>'), 'All matching cards are highlighted');
 		}
@@ -213,7 +213,7 @@ function fsArgumentMapApiEnvelope(string $page, string $lang): void {
 		}
 		unset($samples);
 		echo 'ARGUMENTMAP_API_TIMING ' . json_encode(['lang' => $lang, 'mode' => $mode,
-			'read_mode' => MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesArgumentMapDirectRead') ? 'direct' : 'query',
+			'read_mode' => in_array(SMW_VERSION, ['7.3.1', '7.4.1'], true) ? 'direct' : 'query',
 			'compact_median_us' => ($times['compact'][5] + $times['compact'][6]) / 2,
 			'typed_median_us' => ($times['typed'][5] + $times['typed'][6]) / 2], JSON_THROW_ON_ERROR) . "\n";
 	}
@@ -286,7 +286,7 @@ function fsArgumentMapDirectReadStudy(string $page, array $properties, string $l
 		}
 		$selected = $read::read($title, $props);
 		same($expected, array_map(static fn($alias) => $read::field($selected[$alias] ?? null),
-			array_combine(array_keys($props), array_keys($props))), 'Configured path preserves fields: ' . $case);
+			array_combine(array_keys($props), array_keys($props))), 'Automatic path preserves fields: ' . $case);
 		$equal = $candidate === $expected;
 		$queryNs = $directNs = $runtimeNs = [];
 		// Alternate order to reduce warming bias. Clear SMW's local store state

@@ -3,7 +3,6 @@
 namespace MediaWiki\Extension\DebatePHP;
 
 use MediaWiki\Linker\Linker;
-use MediaWiki\MediaWikiServices;
 use MediaWiki\Title\Title;
 use SMW\DataValueFactory;
 use SMW\DataItems\Property;
@@ -13,13 +12,7 @@ use SMW\Services\ServicesFactory;
 /** Source-independent map reads with a conservative, guarded direct path. */
 final class ArgumentMapData {
 	public static function read(Title $title, array $properties): array {
-		if (MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesArgumentMapDirectRead')) {
-			$direct = self::readDirect($title, $properties);
-			if ($direct !== null) {
-				return $direct;
-			}
-		}
-		return self::readQuery($title, $properties);
+		return self::readDirect($title, $properties) ?? self::readQuery($title, $properties);
 	}
 
 	/** Restricted fast path. Null means the original singleton query is required.

@@ -1,7 +1,6 @@
 <?php
 
 /** Boot the real MediaWiki registry with no site-specific ArgumentMap or archive config. */
-define( 'WD_TEST_ARGUMENTMAP_DEFAULTS', true );
 $language = $argv[1] ?? '';
 if ( !in_array( $language, [ 'fr', 'en', 'de', 'es', 'it', 'pt' ], true ) ) {
 	throw new RuntimeException( 'Invalid test language' );
@@ -27,7 +26,7 @@ $services = MediaWikiServices::getInstance();
 $config = $services->getMainConfig();
 $historical = in_array( $language, [ 'fr', 'en' ], true );
 same( $historical && !$override, $config->get( 'WikidebatesArgumentMapApi' ), 'Typed transport default' );
-same( $historical && !$override, $config->get( 'WikidebatesArgumentMapDirectRead' ), 'Direct read default' );
+check( !$config->has( 'WikidebatesArgumentMapDirectRead' ), 'No manual direct-read mode' );
 check( !ExtensionRegistry::getInstance()->isLoaded( 'WikidebatesLuaArchive' ), 'No separate archive loader' );
 $handler = $config->get( 'ContentHandlers' )['Scribunto'] ?? null;
 if ( $legacy ) {

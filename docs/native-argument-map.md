@@ -124,8 +124,8 @@ des réponses dépendantes du visiteur dans un cache partagé.
 
 ## Lecture directe : chemin restreint et validation sur la version de production
 
-La lecture directe est activée par défaut sur FR/EN (désactivation explicite
-possible avec `$wgWikidebatesArgumentMapDirectRead = false;`). Elle autorise
+La lecture directe est sélectionnée automatiquement, sans paramètre de
+configuration, lorsque ses conditions d'éligibilité sont réunies. Elle autorise
 la lecture directe des cinq propriétés Text historiques sur les sujets
 ordinaires de l'espace principal, non redirigés, avec SMW 7.3.1 ou 7.4.1.
 Le cas général (titre ambigu, page inexistante, redirection, propriété
@@ -134,13 +134,14 @@ singleton existante. Les listes, leur ordre, le formatage SMW et le
 surlignage restent inchangés. Pas de SQL ni de cache persistant ajouté.
 
 Le workflow native-argumentmap teste MediaWiki 1.43.12 et SMW 7.4.1
-sur SQLite et MariaDB, sans Scribunto : modes de lecture de référence
-et direct, égalité du HTML API et des champs, compteurs de requêtes,
+sur SQLite et MariaDB, sans Scribunto : lecture automatique et comparaison
+avec la requête de référence, égalité du HTML API et des champs, compteurs de requêtes,
 cas de repli et édition/suppression de valeurs sémantiques. La mesure
 runtime inclut les garde-fous de sélection : elle est distincte du
 prototype brut. L'échantillonnage de production (2 000 pages FR/EN) a confirmé zéro
-divergence et zéro erreur ; les quatre autres langues gardent les anciens
-défauts. Le repli sémantique reste indispensable.
+divergence et zéro erreur. Le choix ne dépend plus de la langue du wiki,
+mais des propriétés et du sujet réellement lus. Le repli sémantique reste
+indispensable pour les cas non certifiés.
 
 ## Mesurer les gains de bout en bout et décider du cache partagé
 
