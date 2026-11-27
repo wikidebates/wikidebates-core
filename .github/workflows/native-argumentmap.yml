@@ -12,7 +12,9 @@
 				"tests/fullstackSupport.php",
 				"extension.json",
 				".github/workflows/native-argumentmap.yml",
-				"maintenance/BenchmarkArgumentMap.php"
+				"maintenance/BenchmarkArgumentMap.php",
+				"debatephp/src/EmptyParentQuery.php",
+				"tests/fullstackParentQueryModern.php"
 			]
 		},
 		"push": {
@@ -29,7 +31,9 @@
 				"tests/fullstackSupport.php",
 				"extension.json",
 				".github/workflows/native-argumentmap.yml",
-				"maintenance/BenchmarkArgumentMap.php"
+				"maintenance/BenchmarkArgumentMap.php",
+				"debatephp/src/EmptyParentQuery.php",
+				"tests/fullstackParentQueryModern.php"
 			]
 		}
 	},
@@ -64,7 +68,7 @@
 				},
 				{
 					"name": "Audit PHP syntax",
-					"run": "php -l debatephp/src/ArgumentMapData.php\nphp -l tests/fullstackArgumentMapCases.php\nphp -l maintenance/BenchmarkArgumentMap.php"
+					"run": "php -l debatephp/src/ArgumentMapData.php\nphp -l tests/fullstackArgumentMapCases.php\nphp -l maintenance/BenchmarkArgumentMap.php\nphp -l debatephp/src/EmptyParentQuery.php\nphp -l tests/fullstackParentQueryModern.php"
 				},
 				{
 					"name": "MediaWiki 1.43.12",
