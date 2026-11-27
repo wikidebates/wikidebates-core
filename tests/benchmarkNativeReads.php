@@ -84,9 +84,13 @@ foreach (['before' => ['NativeReadBefore\\', new \NativeReadBefore\ArgumentTestC
 	$debate = new $debateClass($context); $argument = new $argumentClass($context);
 	foreach (['renderKeywords', 'renderConnexes', 'renderRubriques'] as $method) {
 		$reflection = new ReflectionMethod($debate, $method);
-		$args = new $table($case['args']); $pv = $context->pageVars();
+		$args = $context->arguments(); $pv = $context->pageVars();
 		$operations['html-' . $method . '-40'][$mode] = static function() use ($reflection, $debate, $args, $pv, $table, $method) {
-			return $method === 'renderRubriques' ? $reflection->invoke($debate, $args, new $table, 'en') : $reflection->invoke($debate, $args, $pv, new $table, 'en');
+			$categoryIndex = $method === 'renderRubriques' ? 1 : 2;
+			$categoryParameter = $reflection->getParameters()[$categoryIndex];
+			$cats = $categoryParameter->getType()?->getName() === 'array' ? [] : new $table;
+			$parameters = $method === 'renderRubriques' ? [$args, &$cats, 'en'] : [$args, $pv, &$cats, 'en'];
+			return $reflection->invokeArgs($debate, $parameters);
 		};
 	}
 	foreach (['debate' => $debate, 'argument' => $argument] as $kind => $renderer) {

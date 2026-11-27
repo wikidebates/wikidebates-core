@@ -128,4 +128,24 @@ foreach ([ArgumentReferenceRenderer::class, ArgumentRenderer::class,
 		$checks += 4;
 	}
 }
+// Normalization mutates only the renderer's local copy, including whitespace-only fields.
+foreach ([ArgumentReferenceRenderer::class, ArgumentRenderer::class] as $class) {
+	$case = ['title' => 'Argument input snapshot', 'smw' => false, 'args' => [
+		'lang' => 'en', 'summary' => " \tSnapshot summary\r\n ", 'keywords' => ' 0 ',
+		'sections' => " \t\r\n ", 'bibliography' => " \t ", 'justifications' => false
+	]];
+	$context = new ArgumentTestContext($case);
+	$before = $context->arguments();
+	$renderer = new $class($context);
+	$html = $renderer->render();
+	same($before, $context->arguments(), 'Renderer must not mutate its input snapshot');
+	check(str_contains($html, 'Snapshot summary'), 'Normalized summary reaches HTML');
+	same('0', $context->effects['seo'][0]['keywords'], 'Normalization preserves literal zero');
+	$normalized = $case;
+	$normalized['args'] = ['lang' => 'en', 'summary' => 'Snapshot summary', 'keywords' => '0'];
+	$fresh = new ArgumentTestContext($normalized);
+	same((new $class($fresh))->render(), $html, 'Whitespace-only and absent normalized fields produce identical HTML');
+	same($fresh->effects, $context->effects, 'Whitespace-only and absent normalized fields produce identical effects');
+	$checks += 5;
+}
 echo "$checks renderer reuse assertions: language changes, text changes, side effects and cache lifetimes\n";

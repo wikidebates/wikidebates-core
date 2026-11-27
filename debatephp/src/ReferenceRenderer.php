@@ -119,14 +119,14 @@ class ReferenceRenderer {
 
 	protected function buildSeoKeywords($args = null, $lang = null) {
 		return NativeText::seoKeywords(
-			$this->csvValues($args['keywords'], ','),
-			$this->csvValues($args['sections'], ',')
+			$this->csvValues(($args['keywords'] ?? null), ','),
+			$this->csvValues(($args['sections'] ?? null), ',')
 		);
 	}
 
 	protected function renderFullSEO($args = null, $pv = null, $lang = null) {
 		$pageTitle = NativeText::field($pv['rawTitle']);
-		$topic = trim(NativeText::field($args['expanded-topic']), NativeText::ASCII_WHITESPACE);
+		$topic = trim(NativeText::field(($args['expanded-topic'] ?? null)), NativeText::ASCII_WHITESPACE);
 		if (($topic === '')) {
 			$topic = $pageTitle;
 		}
@@ -369,8 +369,8 @@ class ReferenceRenderer {
 	}
 
 	protected function computeArgumentMapsFromArgs($args = null, $lang = null): array {
-		$rawPro = NativeText::field($args['pro-arguments']);
-		$rawCon = NativeText::field($args['con-arguments']);
+		$rawPro = NativeText::field(($args['pro-arguments'] ?? null));
+		$rawCon = NativeText::field(($args['con-arguments'] ?? null));
 		if (($rawPro !== '')) {
 			$rawPro = $this->context->expandField($rawPro, 'debate.arguments.pro');
 		}
@@ -435,7 +435,7 @@ class ReferenceRenderer {
 	}
 
 	protected function renderWarningBanners($args = null, $pv = null, ?array &$cats = null, $lang = null) {
-		$av = $args['progress'];
+		$av = ($args['progress'] ?? null);
 		$out = [];
 		$titleLookup = $this->buildBannerLabelLookup($lang, $this->TITLE_WARNING_BANNER_KEYS);
 		$debateLookup = $this->buildBannerLabelLookup($lang, $this->DEBATE_WARNING_BANNER_KEYS);
@@ -450,8 +450,8 @@ class ReferenceRenderer {
 		}
 		return implode('', $html);
 		};
-		if (isset($args['title-warnings']) && $args['title-warnings'] !== false) {
-			$out[] = $renderBannersFromList($args['title-warnings'], $titleLookup);
+		if (isset($args['title-warnings']) && ($args['title-warnings'] ?? null) !== false) {
+			$out[] = $renderBannersFromList(($args['title-warnings'] ?? null), $titleLookup);
 		}
 		if ($av !== null && $av !== false && trim($av, NativeText::ASCII_WHITESPACE) !== '') {
 			$key = $this->resolveBannerKeyFromLookup($av, $progLookup);
@@ -467,8 +467,8 @@ class ReferenceRenderer {
 				$cats[] = ('[[Category:' . $this->L($lang, 'categories', 'progress_missing') . ']]');
 			}
 		}
-		if (isset($args['debate-warnings']) && $args['debate-warnings'] !== false) {
-			$out[] = $renderBannersFromList($args['debate-warnings'], $debateLookup);
+		if (isset($args['debate-warnings']) && ($args['debate-warnings'] ?? null) !== false) {
+			$out[] = $renderBannersFromList(($args['debate-warnings'] ?? null), $debateLookup);
 		}
 		return implode('', $out);
 	}
@@ -569,7 +569,7 @@ class ReferenceRenderer {
 
 	protected function renderIntroduction($args = null, $pv = null, $lang = null, ?array &$cats = null) {
 		$h2 = ('<h2 class="section-modifiable wk-icon-before wk-icon-question">' . $this->L($lang, 'text', 'understand_debate_title') . $this->addDataLink($this->L($lang, 'forms', 'intro_edit_title'), $pv['rawTitle'], $this->L($lang, 'text', 'edit_label'), $this->L($lang, 'text', 'intro_edit_tt')) . '</h2>');
-		$raw = $args['introduction'];
+		$raw = ($args['introduction'] ?? null);
 		$raw = is_string($raw) ? trim($raw, NativeText::ASCII_WHITESPACE) : '';
 		if (($raw !== '')) {
 			$expanded = $this->context->expandField($raw, 'debate.introduction');
@@ -591,7 +591,7 @@ class ReferenceRenderer {
 	}
 
 	protected function renderWikipediaLinks($args = null, $pv = null, $lang = null) {
-		$raw = $args['wikipedia-articles'];
+		$raw = ($args['wikipedia-articles'] ?? null);
 		$raw = is_string($raw) ? trim($raw, NativeText::ASCII_WHITESPACE) : '';
 		$wrap = (HtmlBuilder::create('div'))->addClass('bandeau-section wk-icon-before wk-icon-wikipedia hover-top navigation-not-searchable');
 		$hasPages = false;
@@ -643,7 +643,7 @@ class ReferenceRenderer {
 		$out = [];
 		$out[] = $this->listBreaker();
 		$out[] = ('<h2 class="section-modifiable wk-icon-before wk-icon-argument ' . ($isCon ? $hIconCon : $hIconPro) . '">' . $title . $btnForm . '</h2>');
-		$out[] = $this->renderQuestionsFAQ($args['expanded-topic'], $sens, $lang);
+		$out[] = $this->renderQuestionsFAQ(($args['expanded-topic'] ?? null), $sens, $lang);
 		$items = $maps[$isCon ? 'con' : 'pro']['items'] ?? [];
 		if ($items !== []) {
 			$ul = ((HtmlBuilder::create('ul'))->addClass('argument-list'))->addClass(($isCon ? 'is-con' : 'is-pro'));
@@ -1224,8 +1224,8 @@ class ReferenceRenderer {
 		$isPartOf = $this->wkBuildIsPartOf($lang);
 		$relatedLinks = $this->wkBuildRelatedLinks($args);
 		$questionText = null;
-		if (($args['expanded-topic'] !== null && $args['expanded-topic'] !== false && (trim($args['expanded-topic'], NativeText::ASCII_WHITESPACE) !== ''))) {
-			$questionText = sprintf($this->L($lang, 'text', 'faq_q'), trim($args['expanded-topic'], NativeText::ASCII_WHITESPACE));
+		if ((($args['expanded-topic'] ?? null) !== null && ($args['expanded-topic'] ?? null) !== false && (trim(($args['expanded-topic'] ?? null), NativeText::ASCII_WHITESPACE) !== ''))) {
+			$questionText = sprintf($this->L($lang, 'text', 'faq_q'), trim(($args['expanded-topic'] ?? null), NativeText::ASCII_WHITESPACE));
 		}
 		else {
 			$questionText = $pv['rawTitle'];
@@ -1293,7 +1293,7 @@ class ReferenceRenderer {
 	protected function renderKeywords($args = null, $pv = null, ?array &$cats = null, $lang = null) {
 		$out = [];
 		$out[count($out) + 1] = ('<div style="font-size: 95%; margin-top: 1em;">' . $this->L($lang, 'text', 'keywords_label_text'));
-		if ($args['keywords'] !== null && $args['keywords'] !== false && trim($args['keywords'], NativeText::ASCII_WHITESPACE) !== '') {
+		if (($args['keywords'] ?? null) !== null && ($args['keywords'] ?? null) !== false && trim(($args['keywords'] ?? null), NativeText::ASCII_WHITESPACE) !== '') {
 			$rendered = [];
 			$formName = $this->L($lang, 'forms', 'search_by_keywords_title');
 			$fieldLabel = $formName;
@@ -1302,7 +1302,7 @@ class ReferenceRenderer {
 			$typeField = $this->L($lang, 'params', 'search_type_field');
 			$typeValue = $this->L($lang, 'params', 'search_type_value');
 			$extra = [($fieldLabel . '[' . $typeField . ']') => $typeValue];
-			foreach ($this->csvValues($args['keywords'], ',') as $_ => $k) {
+			foreach ($this->csvValues(($args['keywords'] ?? null), ',') as $_ => $k) {
 				$k = trim(NativeText::field($k), NativeText::ASCII_WHITESPACE);
 				if (($k !== '')) {
 					$chip = $this->runQueryLink($formName, $fieldLabel, $fieldName, $k, $k, $tt, $extra);
@@ -1332,7 +1332,7 @@ class ReferenceRenderer {
 
 	protected function renderConnexes($args = null, $pv = null, ?array &$cats = null, $lang = null) {
 		$h2 = ('<h2 class="section-modifiable wk-icon-before wk-icon-parent">' . $this->L($lang, 'forms', 'related_edit_title') . $this->addDataLink($this->L($lang, 'forms', 'related_edit_title'), $pv['rawTitle'], $this->L($lang, 'text', 'edit_label'), $this->L($lang, 'text', 'related_edit_tt')) . '</h2>');
-		$raw = $args['related-debates'];
+		$raw = ($args['related-debates'] ?? null);
 		if ($raw !== null && $raw !== false && trim($raw, NativeText::ASCII_WHITESPACE) !== '') {
 			$items = [];
 			$n = 0;
@@ -1352,9 +1352,9 @@ class ReferenceRenderer {
 	}
 
 	protected function renderRubriques($args = null, ?array &$cats = null, $lang = null) {
-		if ($args['sections'] !== null && $args['sections'] !== false && trim($args['sections'], NativeText::ASCII_WHITESPACE) !== '') {
+		if (($args['sections'] ?? null) !== null && ($args['sections'] ?? null) !== false && trim(($args['sections'] ?? null), NativeText::ASCII_WHITESPACE) !== '') {
 			$out = [];
-			foreach ($this->csvValues($args['sections'], ',') as $_ => $r) {
+			foreach ($this->csvValues(($args['sections'] ?? null), ',') as $_ => $r) {
 				$out[count($out) + 1] = ('[[Category:' . $r . ']]');
 			}
 			return implode('', $out);
@@ -1414,25 +1414,25 @@ class ReferenceRenderer {
 		$this->renderData = null;
 		$args = $this->getArgs($frame);
 		$this->renderData = new RenderData;
-		$this->renderData->expectReuse([$args['keywords'], $args['sections']]);
+		$this->renderData->expectReuse([($args['keywords'] ?? null), ($args['sections'] ?? null)]);
 		$lang = $this->detectLang($args);
 		$pv = $this->computePageVars();
 		[$pieces, $cats] = [[], []];
 		$smwPending = [];
-		$keywords = is_string($args['keywords']) ? array_values($this->csvValues($args['keywords'], ',')) : [];
+		$keywords = is_string(($args['keywords'] ?? null)) ? array_values($this->csvValues(($args['keywords'] ?? null), ',')) : [];
 		if ($keywords !== []) {
 			SemanticProperties::add($smwPending, $this->smwProp($lang, 'keyword'), $keywords, true);
 		}
 		$maps = $this->computeArgumentMapsFromArgs($args, $lang);
 		$cats[] = ('[[Category:' . $this->L($lang, 'categories', 'debates') . ']]');
-		if ($args['topic'] !== null && $args['topic'] !== false && trim($args['topic'], NativeText::ASCII_WHITESPACE) !== '') {
-			SemanticProperties::add($smwPending, $this->smwProp($lang, 'debate_topic'), $args['topic'], false);
+		if (($args['topic'] ?? null) !== null && ($args['topic'] ?? null) !== false && trim(($args['topic'] ?? null), NativeText::ASCII_WHITESPACE) !== '') {
+			SemanticProperties::add($smwPending, $this->smwProp($lang, 'debate_topic'), ($args['topic'] ?? null), false);
 		}
 		else {
 			$cats[] = ('[[Category:' . $this->L($lang, 'categories', 'topic_missing') . ']]');
 		}
-		if ($args['expanded-topic'] !== null && $args['expanded-topic'] !== false && trim($args['expanded-topic'], NativeText::ASCII_WHITESPACE) !== '') {
-			$pieces[] = $this->context->shortDescription(sprintf($this->L($lang, 'text', 'shortdesc_topic'), $args['expanded-topic']));
+		if (($args['expanded-topic'] ?? null) !== null && ($args['expanded-topic'] ?? null) !== false && trim(($args['expanded-topic'] ?? null), NativeText::ASCII_WHITESPACE) !== '') {
+			$pieces[] = $this->context->shortDescription(sprintf($this->L($lang, 'text', 'shortdesc_topic'), ($args['expanded-topic'] ?? null)));
 		}
 		else {
 			$cats[] = ('[[Category:' . $this->L($lang, 'categories', 'topic_complete_missing') . ']]');
@@ -1448,7 +1448,7 @@ class ReferenceRenderer {
 		$pieces[] = $this->renderWikipediaLinks($args, $pv, $lang);
 		$pieces[] = $this->renderArgsList($args, $pv, $lang, 'pro', $maps, $cats);
 		$pieces[] = $this->renderArgsList($args, $pv, $lang, 'con', $maps, $cats);
-		if (!$this->isProgress($lang, $args['progress'], 'draft')) {
+		if (!$this->isProgress($lang, ($args['progress'] ?? null), 'draft')) {
 			$target = ($this->L($lang, 'text', 'self_eval_ns_label') . ':' . $pv['rawTitle'] . ' (ID)');
 			$ns = $this->L($lang, 'text', 'self_eval_ns_label');
 			$f_debat = $this->L($lang, 'text', 'self_eval_debate_field');
@@ -1470,8 +1470,8 @@ class ReferenceRenderer {
 		$pieces[] = ('<span id="bouton-renommer" class="bouton-modifier navigation-not-searchable noprint" style="display: none;">[[' . $renameLink . '|' . $this->L($lang, 'text', 'rename_link_label') . ']]</span>');
 		$pieces[] = ('<span id="bouton-modifier-sujet" style="display: none;">' . $this->addDataLink($this->L($lang, 'forms', 'topic_edit_title'), $pv['rawTitle'], $this->L($lang, 'text', 'edit_label'), $this->L($lang, 'text', 'topic_edit_tt')) . '</span>');
 		$pieces[] = ('<span id="bouton-modifier-categories" style="display: none;">' . $this->addDataLink($this->L($lang, 'forms', 'sections_edit_title'), $pv['rawTitle'], $this->L($lang, 'text', 'edit_label'), $this->L($lang, 'text', 'sections_edit_tt')) . '</span>');
-		if (trim(NativeText::field($args['interlanguage']), NativeText::ASCII_WHITESPACE) !== '') {
-			$pieces[] = $args['interlanguage'];
+		if (trim(NativeText::field(($args['interlanguage'] ?? null)), NativeText::ASCII_WHITESPACE) !== '') {
+			$pieces[] = ($args['interlanguage'] ?? null);
 			$pieces[] = ('<span id="bouton-modifier-interlangue" class="bouton-modifier navigation-not-searchable noprint" style="display: none;"' . ' data-wk-tooltip="' . $this->escapeAttr($this->L($lang, 'text', 'interlanguage_edit_tt')) . '">' . $this->addDataLink($this->L($lang, 'forms', 'interlanguage_edit_title'), $pv['rawTitle'], $this->L($lang, 'text', 'edit_label')) . '</span>');
 		}
 		$pieces[] = $this->renderDebateSchemaJSONLD($pv, $lang, $args, $maps, $refRaw);
@@ -1481,10 +1481,10 @@ class ReferenceRenderer {
 		return implode('', $pieces);
 	}
 
-	protected function getArgs($frame = null) { return $this->context->arguments(); }
-	protected function detectLang($args = null) { return $this->context->language($args); }
+	protected function getArgs($frame = null): array { return $this->context->arguments(); }
+	protected function detectLang(array $args): string { return $this->context->language($args); }
 	protected function L($lang = null, $section = null, $key = null, ...$rest) { return $this->context->message('Debate.' . $section, $lang, $key, ...$rest); }
-	protected function computePageVars() { return $this->context->pageVars(); }
+	protected function computePageVars(): array { return $this->context->pageVars(); }
 	protected function wkDbKey($page = null) { return $this->context->dbKey($page); }
 	protected function wkSeoSet(array $data) { $this->context->seoSet($data); }
 	protected function smwSetSafe(array $data): void { $this->context->smwSet($data); }

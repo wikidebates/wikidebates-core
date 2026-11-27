@@ -56,8 +56,11 @@ foreach (['before' => ['NativeReadBefore\\', new \NativeReadBefore\NativeReadTes
 		};
 	}
 	$m = new ReflectionMethod($debate, 'wkRenderIntroSubsectionsBlock');
-	$pv = $context->pageVars(); $cats = new $table;
-	$operations['introduction-html-40'][$mode] = static fn() => $m->invoke($debate, $pv, 'en', $intro, $cats);
+	$pv = $context->pageVars();
+	$operations['introduction-html-40'][$mode] = static function() use ($m, $debate, $pv, $intro, $table) {
+		$cats = $m->getParameters()[3]->getType()?->getName() === 'array' ? [] : new $table;
+		return $m->invokeArgs($debate, [$pv, 'en', $intro, &$cats]);
+	};
 	$m = new ReflectionMethod($argument, 'normalizeTitleForCard');
 	foreach (['plain' => 'A simple title', 'encoded' => ': [[A &amp;quot;title&amp;quot;|label]]'] as $shape => $title) {
 		$operations['title-' . $shape . '-100'][$mode] = static function() use ($m, $argument, $title): string {
