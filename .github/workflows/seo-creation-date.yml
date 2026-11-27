@@ -47,7 +47,7 @@
 			},
 			"steps": [
 				{
-					"uses": "actions/checkout@v7.0.1"
+					"uses": "actions/checkout@v7"
 				},
 				{
 					"uses": "shivammathur/setup-php@v2",
@@ -64,7 +64,7 @@
 					"run": "python3 debatephp/tests/checkNativeCorpus.py"
 				},
 				{
-					"uses": "actions/checkout@v7.0.1",
+					"uses": "actions/checkout@v7",
 					"with": {
 						"repository": "wikimedia/mediawiki",
 						"ref": "1.43.12",
