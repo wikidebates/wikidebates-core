@@ -14,7 +14,7 @@
 				"debatephp/src/ArgumentReferenceRenderer.php",
 				"debatephp/src/ReferenceRenderer.php",
 				"debatephp/tools/**",
-				"debatephp/tests/regenerate.py",
+				"debatephp/tests/checkNativeCorpus.py",
 				"tests/seoStructuredData.php",
 				"debatephp/src/SchemaData.php",
 				"debatephp/src/MessageCatalog.php",
@@ -61,7 +61,7 @@
 				{
 					"name": "Verify native renderer behaviour and historical Lua snapshots",
 					"if": "matrix.database == 'sqlite'",
-					"run": "git fetch --no-tags --depth=1 origin 2439e0749bcdc9ab81aeb20a902f8b6845a744e4\npython3 debatephp/tests/regenerate.py"
+					"run": "python3 debatephp/tests/checkNativeCorpus.py"
 				},
 				{
 					"uses": "actions/checkout@v7.0.1",

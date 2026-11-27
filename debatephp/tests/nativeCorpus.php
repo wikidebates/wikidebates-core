@@ -1,10 +1,10 @@
 <?php
 /**
  * Native PHP behaviour contract and isolated renderer benchmark.
- * The same driver can load the production source of a pinned checkout.
+ * The same driver can load a second native source checkout for paired timings.
  * No MediaWiki installation, network or live semantic database is used.
  */
-use MediaWiki\Extension\DebatePHP\{ArgumentContext, ArgumentRenderer, Context, DebateRenderer, JsonData, NativeJsonContext, NativeSemanticContext, Renderer, SemanticReadResult, Table};
+use MediaWiki\Extension\DebatePHP\{ArgumentRenderer, DebateRenderer, JsonData, SemanticReadResult};
 
 $options = getopt('', ['root:', 'repeats:', 'warmup:', 'context:']);
 $root = realpath($options['root'] ?? dirname(__DIR__, 2));
@@ -16,8 +16,8 @@ $warmup = filter_var($options['warmup'] ?? '3', FILTER_VALIDATE_INT, ['options' 
 if ($repeats === false || $warmup === false) {
 	throw new InvalidArgumentException('Invalid repetition or warmup count');
 }
-$contextMode = $options['context'] ?? 'legacy';
-if (!in_array($contextMode, ['legacy', 'native-json', 'native', 'native-schema'], true)) {
+$contextMode = $options['context'] ?? 'native';
+if (!in_array($contextMode, ['native', 'native-schema'], true)) {
 	throw new InvalidArgumentException('Unknown benchmark context');
 }
 require $root . '/debatephp/tests/argument_context.php';
@@ -31,17 +31,6 @@ set_error_handler(static function($severity, $message, $file, $line) {
 trait NativeCorpusFixtures {
 	public function __construct(private array $fixture) {
 		parent::__construct($fixture);
-	}
-
-	protected static function legacyRows($value) {
-		if (!is_array($value)) {
-			return $value;
-		}
-		$rows = [];
-		foreach ($value as $key => $item) {
-			$rows[is_int($key) ? $key + 1 : $key] = self::legacyRows($item);
-		}
-		return new Table($rows);
 	}
 
 	protected static function nativeRows(array $rows): array {
@@ -80,54 +69,19 @@ trait NativeCorpusFixtures {
 	}
 }
 
-// Only the independently pinned source checkout needs the historical query adapter.
-$mandatorySemantic = method_exists(ArgumentContext::class, 'readSemantic');
-if ($mandatorySemantic) {
-	class NativeCorpusContext extends ArgumentTestContext {
-		use NativeCorpusFixtures;
-		public function readSemantic(array $query, string $origin): SemanticReadResult {
-			return new SemanticReadResult(self::nativeRows($this->fixtureRows($query)));
-		}
-	}
-} else {
-	class NativeCorpusContext extends ArgumentTestContext {
-		use NativeCorpusFixtures;
-		public function smwAsk(Table $query): ?Table {
-			return self::legacyRows($this->fixtureRows($query->values));
-		}
+class NativeCorpusContext extends ArgumentTestContext {
+	use NativeCorpusFixtures;
+
+	public function readSemantic(array $query, string $origin): SemanticReadResult {
+		return new SemanticReadResult(self::nativeRows($this->fixtureRows($query)));
 	}
 }
 
-// Keep the historical trace encoder unchanged. Only old source revisions have
-// an optional JSON boundary; the current Context always receives native arrays.
-// Define these contexts only on request so the pinned historical driver works.
-if ($contextMode !== 'legacy') {
-	class NativeCorpusJsonContext extends NativeCorpusContext implements NativeJsonContext {
-		public function jsonLdData(array $data): string {
-			return $this->jsonLd(json_encode(JsonData::value($data), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
-		}
-	}
-
-	if ($mandatorySemantic) {
-		class NativeCorpusReadContext extends NativeCorpusJsonContext {}
-	} else {
-		class NativeCorpusReadContext extends NativeCorpusJsonContext implements NativeSemanticContext {
-			public function readSemantic(Table $query, string $origin): SemanticReadResult {
-				return new SemanticReadResult(self::nativeRows($this->fixtureRows($query->values)));
-			}
-
-			public function skipEmptyParentFallback(string $origin): void {
-				throw new LogicException('Mock rows cannot certify a complete empty semantic union');
-			}
-		}
-	}
-
-	class NativeCorpusSchemaContext extends NativeCorpusReadContext {
-		public function jsonLdData(array $data): string {
-			// Production schema filtering, without parser-specific revision or
-			// description enrichment, FormatJson or script-strip insertion.
-			return $this->jsonLd(json_encode(JsonData::schemaValue($data), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
-		}
+class NativeCorpusSchemaContext extends NativeCorpusContext {
+	public function jsonLdData(array $data): string {
+		// Production schema filtering, without parser-specific revision or
+		// description enrichment, FormatJson or script-strip insertion.
+		return $this->jsonLd(json_encode(JsonData::schemaValue($data), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
 	}
 }
 
@@ -169,11 +123,9 @@ function nativeCorpus(): array {
 	return $cases;
 }
 
-function nativeRender(array $case, string $class, string $contextMode = 'legacy'): array {
+function nativeRender(array $case, string $class, string $contextMode = 'native'): array {
 	$context = match ($contextMode) {
-		'legacy' => new NativeCorpusContext($case),
-		'native-json' => new NativeCorpusJsonContext($case),
-		'native' => new NativeCorpusReadContext($case),
+		'native' => new NativeCorpusContext($case),
 		'native-schema' => new NativeCorpusSchemaContext($case),
 	};
 	try {
@@ -196,7 +148,7 @@ function cpuMicroseconds(): int {
 		+ $usage['ru_utime.tv_usec'] + $usage['ru_stime.tv_usec'];
 }
 
-function measureNativeRender(array $case, string $class, string $contextMode = 'legacy'): array {
+function measureNativeRender(array $case, string $class, string $contextMode = 'native'): array {
 	gc_collect_cycles();
 	memory_reset_peak_usage();
 	$memory = memory_get_usage();
@@ -213,14 +165,12 @@ function measureNativeRender(array $case, string $class, string $contextMode = '
 	];
 }
 
-// The same driver benchmarks archived checkouts using their original class names.
-$debateRenderer = is_file($root . '/debatephp/src/DebateRenderer.php') ? DebateRenderer::class : Renderer::class;
 $output = [];
 $cases = nativeCorpus();
 foreach ($cases as $case) {
 	$classes = $case['module'] === 'Argument'
 		? ['optimized' => ArgumentRenderer::class]
-		: ['optimized' => $debateRenderer];
+		: ['optimized' => DebateRenderer::class];
 	$row = [];
 	foreach ($classes as $mode => $class) {
 		try {
@@ -256,8 +206,7 @@ if ($repeats) {
 		'environment' => ['php' => PHP_VERSION, 'os' => PHP_OS_FAMILY, 'opcache_cli' => ini_get('opcache.enable_cli'),
 			'opcache_status' => function_exists('opcache_get_status') && opcache_get_status(false) !== false,
 			'cases' => count($cases), 'warmup' => $warmup, 'repeats' => $repeats, 'context' => $contextMode,
-			'json_boundary' => $contextMode === 'legacy' && !method_exists(Context::class, 'jsonLdData') ? 'table' : 'native',
-			'semantic_boundary' => $mandatorySemantic ? 'native' : (in_array($contextMode, ['native', 'native-schema'], true) ? 'mixed' : 'table')],
+			'json_boundary' => 'native', 'semantic_boundary' => 'native'],
 		'cases' => $output,
 	];
 }

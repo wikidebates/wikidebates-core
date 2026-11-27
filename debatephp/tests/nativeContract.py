@@ -1,62 +1,36 @@
-"""Strict contract for the single reviewed removal of an unused SMW query.
+"""Frozen native renderer fingerprints and timing sample integrity checks."""
+import hashlib
+import json
+from pathlib import Path
 
-The pinned baseline is unchanged. Only these exact historical requests may
-disappear; every other query, its order and all other effects must match.
-"""
-RETIRED_PARENT_QUERIES = {
-	'Argument/parents': 'Argument parent',
-	'Argument/inherited': 'Parent',
-	'Argument/fallback-parents': 'Parent fallback',
-	'Argument/both-parent-types': 'Parent argument',
-}
 MODES = ('optimized',)
+FIXTURE = Path(__file__).with_name('fixtures') / 'native-render-contract.json'
 
 
-def retired_query(parent):
-	return {
-		'1': f'([[{parent}]])',
-		'2': "?Fil d'Ariane=chain",
-		'3': '?Débat parent=pdeb',
-		'4': 'limit=200',
-		'5': 'link=none',
-	}
-
-
-def project_retired_reads(name, queries):
-	"""Project only the exact reviewed request in the historical oracle."""
-	queries = list(queries)
-	if name in RETIRED_PARENT_QUERIES:
-		query = retired_query(RETIRED_PARENT_QUERIES[name])
-		if queries.count(query) != 1:
-			raise ValueError(f'{name}: expected exactly one retired request in historical oracle')
-		queries.remove(query)
-	return queries
-
-
-def compare_case(name, mode, before, after):
-	label = f'{name}/{mode}'
-	old_hashes = dict(before['sha256'])
-	new_hashes = dict(after['sha256'])
-	old_queries = project_retired_reads(name, before['ask_queries'])
-	new_queries = after['ask_queries']
-	if name in RETIRED_PARENT_QUERIES:
-		# The full ordered ask trace is checked below, not just its count.
-		del old_hashes['ask']
-		del new_hashes['ask']
-	if old_queries != new_queries:
-		raise ValueError(f'{label}: unexpected semantic read trace difference: {old_queries!r} != {new_queries!r}')
-	if old_hashes != new_hashes:
-		raise ValueError(f'{label}: unexpected renderer effect difference')
-
-
-def compare_corpora(before, after):
-	if before.keys() != after.keys() or not RETIRED_PARENT_QUERIES.keys() <= before.keys():
-		raise ValueError('Behavioural corpus differs or retired-query fixtures are missing')
-	for name in before:
-		if before[name].keys() != after[name].keys() or set(before[name]) != set(MODES):
-			raise ValueError(f'{name}: renderer modes differ')
-		for mode in MODES:
-			compare_case(name, mode, before[name][mode], after[name][mode])
+def verify_frozen(rows):
+	expected = json.loads(FIXTURE.read_text(encoding='utf-8'))
+	if expected['format'] != 1 or expected['block_size'] != 10:
+		raise ValueError('Unsupported native render contract format')
+	if len(rows) != expected['cases']:
+		raise ValueError('Native render case count differs')
+	entries = []
+	for name, modes in rows.items():
+		if set(modes) != set(MODES):
+			raise ValueError(f'{name}: unexpected renderer mode')
+		entries.append((name, {mode: {
+			'sha256': modes[mode]['sha256'],
+			'ask_queries': modes[mode]['ask_queries'],
+		} for mode in MODES}))
+	blocks = []
+	for index in range(0, len(entries), 10):
+		block = json.dumps(entries[index:index + 10], ensure_ascii=True, separators=(',', ':')).encode('ascii')
+		blocks.append(hashlib.sha256(block).hexdigest())
+	if len(blocks) != len(expected['blocks']):
+		raise ValueError('Native render block count differs')
+	for index, (actual, frozen) in enumerate(zip(blocks, expected['blocks'])):
+		if actual != frozen:
+			names = ', '.join(name for name, _ in entries[index * 10:(index + 1) * 10])
+			raise ValueError(f'Native render contract block {index + 1} differs: {names}')
 
 
 def check_sample_counts(row):

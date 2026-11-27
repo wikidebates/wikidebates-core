@@ -5,7 +5,7 @@ from pathlib import Path
 from statistics import median
 import sys
 
-from nativeContract import MODES, compare_corpora, check_sample_counts
+from nativeContract import MODES, verify_frozen, check_sample_counts
 
 METRICS = (
 	('wall_ns', 1e6, 'wall ms'),
@@ -45,41 +45,24 @@ def aggregate(values):
 def main(root):
 	print('Isolated PHP render benchmarks: sums of per-case medians; not production measurements.')
 	for opcache in (0, 1):
-		before = read(root, 'before', opcache)
-		after = read(root, 'after', opcache)
-		env = before['environment']
-		if ({k: v for k, v in env.items() if k not in ('json_boundary', 'semantic_boundary')} !=
-			{k: v for k, v in after['environment'].items() if k not in ('json_boundary', 'semantic_boundary')}):
-			raise ValueError('Benchmark environments differ')
-		rows = before['cases']
-		other = after['cases']
-		if rows.keys() != other.keys() or len(rows) != env['cases']:
-			raise ValueError('Benchmark corpora differ')
-		compare_corpora(rows, other)
-		for name in rows:
-			for mode in MODES:
-				check_sample_counts(rows[name][mode])
-				check_sample_counts(other[name][mode])
+		result = read(root, 'native', opcache)
+		env, rows = result['environment'], result['cases']
+		if env['context'] != 'native' or env['cases'] != len(rows) or bool(env['opcache_status']) != bool(opcache):
+			raise ValueError('Invalid native benchmark environment')
+		verify_frozen(rows)
 		print(f"\nPHP {env['php']} {env['os']}; CLI OPcache requested={opcache}, active={env['opcache_status']}; "
 			f"cases={env['cases']}; repetitions={env['repeats']}; warmup={env['warmup']}")
-		print(f"  JSON boundary: {env.get('json_boundary', 'unrecorded')} -> "
-			f"{after['environment'].get('json_boundary', 'unrecorded')}")
-		print(f"  SMW boundary: {env.get('semantic_boundary', 'unrecorded')} -> "
-			f"{after['environment'].get('semantic_boundary', 'unrecorded')}")
-		if bool(env['opcache_status']) != bool(opcache):
-			print('WARNING: actual OPcache status differs from requested; do not label this a valid OPcache comparison.')
 		for module in ('Argument', 'Debate'):
 			names = [name for name in rows if name.startswith(module + '/')]
 			if not names:
 				raise ValueError('Missing module: ' + module)
 			for mode in MODES:
 				print(f'  {module}/{mode}: {len(names)} cases')
+				for name in names:
+					check_sample_counts(rows[name][mode])
 				for key, scale, label in METRICS:
-					b, bm = aggregate(series(rows, names, mode, key, env['repeats']))
-					a, am = aggregate(series(other, names, mode, key, env['repeats']))
-					delta = f'{(a / b - 1) * 100:+.2f}%' if b else 'n/a'
-					print(f'    {label}: {b / scale:.3f} -> {a / scale:.3f} ({delta}); '
-						f'median per-case MAD {bm / scale:.3f} -> {am / scale:.3f}')
+					total, mad = aggregate(series(rows, names, mode, key, env['repeats']))
+					print(f'    {label}: {total / scale:.3f}; median per-case MAD {mad / scale:.3f}')
 
 
 if __name__ == '__main__':
