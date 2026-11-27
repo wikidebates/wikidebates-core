@@ -83,9 +83,9 @@ fin d’exécution. Il ne lit ni n’écrit `LocalSettings.php` et n’utilise a
 existante. PDO SQLite et les extensions PHP normales de MediaWiki sont requis.
 Sans `WD_TEST_EXTENSIONS`, il vérifie que seule Wikidebates est chargée.
 
-Avec les vraies extensions SMW, SemanticScribunto et VariablesLua installées
-dans ce laboratoire, la validation des écritures différées, requêtes, variables
-et rendus Lua/PHP se lance avec :
+Avec les vraies extensions SMW, Variables, ParserFunctions, Cite, PageForms,
+ShortDescription et WikiSEO installées dans ce laboratoire, le contrat natif
+figé (144 rendus, 12 cartes et 8 lectures SMW) se vérifie sans Lua :
 
 ```sh
 MW_INSTALL_PATH=/path/to/mediawiki-1.43 WD_FULLSTACK_AUTOLOAD=/path/to/dependencies/vendor/autoload.php python3 tests/fullstack.py --php php --output /tmp/wikidebates-fullstack.json
@@ -141,8 +141,8 @@ documentés dans `i18n/qqq.json`. PHP et JavaScript utilisent les messages
 MediaWiki. Les identifiants du wiki sont séparés dans
 `resources/wiki-names.json` et restent indépendants de la langue du visiteur.
 `debatephp/resources/I18nData.php` conserve l’ancien format pour les outils et
-tests ; les snapshots Lua sont encore utilisés par les comparaisons
-historiques dans le banc MediaWiki complet et par les outils d’import.
+tests ; les snapshots Lua encore présents ne sont plus utilisés par le banc
+de rendu MediaWiki complet. Les outils d’import historiques restent à retirer.
 
 Voir [l’organisation et le bilan de migration i18n](docs/i18n-harmonization.md).
 

@@ -113,12 +113,28 @@ if (getenv('WD_FULLSTACK_NATIVE_RENDER') === '1') {
 	require __DIR__ . '/fullstackParentLink.php';
 	check($report['render_cases'] === 144, 'Complete native render corpus');
 	check(!MediaWikiServices::getInstance()->getJobQueueGroup()->queuesHaveJobs(), 'All native render jobs drained');
+}
+require __DIR__ . '/fullstackArgumentMapCases.php';
+fsArgumentMapCases();
+if (getenv('WD_FULLSTACK_NATIVE_RENDER') === '1') {
+	$parser = $services->getParserFactory()->create();
+	$parser->startExternalParse(Title::newFromText('WD FS native query guards'), ParserOptions::newFromAnon(), $parser::OT_HTML);
+	$context = new MediaWikiContext($parser, $parser->getPreprocessor()->newFrame(), [], true);
+	require __DIR__ . '/fullstackNativeReads.php';
+	// Preserve the asynchronous store-update assertion from the old harness.
+	$beforeJob = fsStored('WD FS query target');
+	$services->getJobQueueGroup()->push(new \SMW\MediaWiki\Jobs\UpdateJob(Title::newFromText('WD FS query target'), ['forcedUpdate' => true]));
+	$jobs = fsFlush();
+	check(($jobs['smw.update'] ?? 0) === 1, 'Genuine asynchronous SMW update job executes');
+	same($beforeJob, fsStored('WD FS query target'), 'SMW update job preserves typed native properties');
+	$report['semantic_update_jobs'] = $jobs;
+	$report['queues_empty'] = !$services->getJobQueueGroup()->queuesHaveJobs();
+	check($report['queues_empty'], 'All isolated jobs drained');
+	require __DIR__ . '/fullstackDatabaseErrors.php';
 	if (getenv('WD_FULLSTACK_OUTPUT')) {
 		file_put_contents(getenv('WD_FULLSTACK_OUTPUT'), json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) . "\n");
 	}
 }
-require __DIR__ . '/fullstackArgumentMapCases.php';
-fsArgumentMapCases(false);
 check(!class_exists(\SMW\Scribunto\LibraryFactory::class, false), 'Historical bridge class never loaded');
 check(!class_exists(\MediaWiki\Extension\Scribunto\Engines\LuaCommon\LuaEngine::class, false), 'Lua engine never loaded');
 echo "OK: real SMW deferred writes, typed queries, empty parent proof and Argument/Debate rendering without Lua extensions\n";
