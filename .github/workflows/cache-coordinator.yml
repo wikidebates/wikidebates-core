@@ -27,7 +27,7 @@ on:
       - 'tests/readingFragments/coordinatorPreview.php'
       - 'tests/run.php'
       - 'extension.json'
-      - 'debatephp/src/TrackedSemanticQuery.php'
+      - 'debatephp/src/NativeSemanticApi.php'
       - 'src/Reading/SemanticCachePurgeJob.php'
       - 'src/Reading/CachePreparationResults.php'
       - 'tests/readingFragments/semanticPurgesRetired.php'
@@ -72,7 +72,7 @@ jobs:
           sh tests/readingFragments/backfillScript.sh
           php -l tests/readingFragments/coordinatedPreparation.php
           php -l src/Reading/SemanticCachePurgeJob.php
-          php -l debatephp/src/TrackedSemanticQuery.php
+          php -l debatephp/src/NativeSemanticApi.php
           php -l tests/readingFragments/semanticPurgesRetired.php
           php -l tests/readingFragments/semanticQuerySnapshot.php
           php tests/readingFragments/preparationQueue.php
