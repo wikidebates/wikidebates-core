@@ -2,26 +2,8 @@
 require __DIR__ . '/../../tests/bootstrap.php';
 require __DIR__ . '/frozen_contract.php';
 
-use MediaWiki\Extension\DebatePHP\{CacheKey, DecodedReferences, JsonData, Lua, RenderData, Table};
+use MediaWiki\Extension\DebatePHP\{CacheKey, DecodedReferences, JsonData, RenderData};
 
-// Frozen algorithms used before this phase, independent of the native helpers.
-$legacyKey = static function($q): string {
-	if (!$q instanceof Table) { $s = Lua::str(Lua::truth($q) ? $q : ''); return Lua::str(Lua::len($s)) . ':' . $s; }
-	$idx = new Table;
-	foreach (Lua::pairs($q) as $key => $_) { if (Lua::type($key) === 'number') { Lua::insert($idx, $key); } }
-	Lua::sort($idx); $parts = new Table;
-	foreach (Lua::ipairs($idx) as $i => $key) { $s = Lua::str(Lua::truth($q[$key]) ? $q[$key] : ''); $parts[$i] = Lua::str(Lua::len($s)) . ':' . $s; }
-	return Lua::concat($parts, "\n");
-};
-$legacyJson = static function($v) use (&$legacyJson) {
-	if (!$v instanceof Table) { return $v; }
-	$a = $v->values; ksort($a, SORT_NUMERIC); $next = 1; $sequence = true;
-	foreach ($a as $key => &$value) {
-		$value = $legacyJson($value);
-		if ($sequence) { $sequence = (is_int($key) || (is_string($key) && ctype_digit($key))) && $next++ === (int)$key; }
-	} unset($value);
-	return $sequence ? array_values($a) : $a;
-};
 $checks = 0;
 foreach ([null, false, true, 0, '0', '', 'é', "\0:\n"] as $input) {
 	try { CacheKey::semantic($input); throw new LogicException('Scalar query should be rejected'); }
@@ -36,21 +18,18 @@ for ($sample = 0; $sample < 2000; $sample++) {
 	for ($i = 0; $i < mt_rand(1, 30); $i++) {
 		$key = $keys[mt_rand(0, count($keys) - 1)];
 		$a[$key] = $values[mt_rand(0, count($values) - 1)];
-		$node[$key] = $i % 3 ? $a[$key] : new Table([3 => new Table(['name' => 'é']), 1 => '0', 2 => false]);
+		$node[$key] = $i % 3 ? $a[$key] : [3 => ['name' => 'é'], 1 => '0', 2 => false];
 	}
-	$table = new Table($a);
-	same($legacyKey($table), CacheKey::semantic($a), 'Mixed, sparse and numeric-string query keys');
-	$table = new Table($node); $before = Table::unwrap($table);
-	$expected = $legacyJson($table); $actual = JsonData::value($before);
-	same($expected, $actual, 'JSON fallback and native shapes preserve values and ordering');
-	same(json_encode($expected, JSON_THROW_ON_ERROR), json_encode($actual, JSON_THROW_ON_ERROR), 'Exact encoded JSON bytes');
-	same($before, Table::unwrap($table), 'The independent oracle and native conversion preserve input');
-	$contract->add([$a, $before], [$legacyKey(new Table($a)), $expected, json_encode($expected, JSON_THROW_ON_ERROR)]);
-	$checks += 4;
+	$before = $node;
+	$actual = JsonData::value($node);
+	$contract->add([$a, $before], [CacheKey::semantic($a), $actual, json_encode($actual, JSON_THROW_ON_ERROR)]);
+	same($before, $node, 'Native conversion preserves input');
+	$checks++;
 }
-$contract->report();
-foreach ([new Table, new Table([1 => 'é', 2 => '0']), new Table(['@type' => 'Thing', 'name' => new Table(['@id' => 'x'])])] as $table) {
-	same($legacyJson($table), JsonData::value(Table::unwrap($table)), 'Dense and mapping fast paths'); $checks++;
+$contract->verify();
+foreach ([[[], []], [[1 => 'é', 2 => '0'], ['é', '0']],
+	[['@type' => 'Thing', 'name' => ['@id' => 'x']], ['@type' => 'Thing', 'name' => ['@id' => 'x']]]] as [$input, $expected]) {
+	same($expected, JsonData::value($input), 'Dense and mapping fast paths'); $checks++;
 }
 
 $decoder = new DecodedReferences;
@@ -150,13 +129,13 @@ foreach ([new class extends \MediaWiki\Extension\DebatePHP\DebateRenderer { use 
 	$empty = []; $categories = [];
 	$probe->append($empty, $categories);
 	same(['<banner>', '<banner>'], $empty, 'Native fragment list preserves duplicates and order');
-	$legacyParts = new Table([1 => 'prefix']);
+	$legacyParts = (object)['values' => [1 => 'prefix']];
 	try {
 		$probe->append($legacyParts, $categories);
-		throw new LogicException('Legacy fragment Table must be rejected');
+		throw new LogicException('Object fragment must be rejected');
 	} catch (TypeError $error) {
-		same([1 => 'prefix'], $legacyParts->values, 'No mutation through retired Table boundary');
+		same([1 => 'prefix'], $legacyParts->values, 'No mutation through rejected object boundary');
 	}
 	$checks += 4;
 }
-echo "$checks native-path assertions: exact cache keys, JSON shape/order, native/legacy isolation and byte-bounded selective CSV\n";
+echo "$checks native-path assertions: exact cache keys, JSON shape/order, native input isolation and byte-bounded selective CSV\n";
