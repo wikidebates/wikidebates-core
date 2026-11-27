@@ -1099,7 +1099,7 @@ test( 'Vector hover uses the user language in its element-local cache and reject
 		mw.config.get = ( key ) => key === 'wgUserLanguage' ? window.tooltipLanguage : get( key );
 		window.tooltipRequests = [];
 		mw.Api = function () {
-			this.post = ( params ) => {
+			this.get = ( params ) => {
 				const deferred = jQuery.Deferred();
 				window.tooltipRequests.push( { params, deferred } );
 				return deferred.promise();
@@ -1114,8 +1114,9 @@ test( 'Vector hover uses the user language in its element-local cache and reject
 	await page.addScriptTag( { path: path.join( root, 'modules/features/hover.js' ) } );
 	await page.hover( '#browser-hover' );
 	await page.waitForFunction( () => tooltipRequests.length === 1 );
+	assert.equal( await page.evaluate( () => tooltipRequests[ 0 ].params.action ), 'wikidebatesargumentmap' );
 	assert.equal( await page.evaluate( () => tooltipRequests[ 0 ].params.uselang ), 'fr' );
-	await page.evaluate( () => { tooltipRequests[ 0 ].deferred.resolve( { parse: { text: '<strong>French result</strong>' } } ); } );
+	await page.evaluate( () => { tooltipRequests[ 0 ].deferred.resolve( { wikidebatesargumentmap: { html: '<strong>French result</strong>' } } ); } );
 	await page.waitForFunction( () => document.querySelector( '#browser-hover .hover-wrapper' )?.textContent === 'French result' );
 	await page.mouse.move( 350, 680 );
 	await page.evaluate( () => { window.tooltipLanguage = 'en'; } );
@@ -1123,7 +1124,7 @@ test( 'Vector hover uses the user language in its element-local cache and reject
 	await page.waitForFunction( () => tooltipRequests.length === 2 );
 	assert.equal( await page.evaluate( () => tooltipRequests[ 1 ].params.uselang ), 'en' );
 	assert.equal( await page.locator( '#browser-hover .hover-wrapper' ).textContent(), '' );
-	await page.evaluate( () => { tooltipRequests[ 1 ].deferred.resolve( { parse: { text: '<strong>English result</strong>' } } ); } );
+	await page.evaluate( () => { tooltipRequests[ 1 ].deferred.resolve( { wikidebatesargumentmap: { html: '<strong>English result</strong>' } } ); } );
 	await page.waitForFunction( () => document.querySelector( '#browser-hover .hover-wrapper' )?.textContent === 'English result' );
 	await page.mouse.move( 350, 680 );
 	await page.hover( '#browser-hover' );
