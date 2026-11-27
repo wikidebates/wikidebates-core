@@ -7,7 +7,7 @@ from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 import sys
 
-from check_results import html_key
+from html_contract import html_key
 
 ROOT = Path(__file__).resolve().parents[1]
 BASELINE = '2593e16944ef5b0c0c52f00dcbe748de2d71fd4f'

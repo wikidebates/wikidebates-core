@@ -109,12 +109,7 @@ namespace MediaWiki\Parser {
 		public function getRevisionId(): ?int { return null; }
 		public function fetchTemplateAndTitle($title) {
 			$name = $title->getPrefixedText(); $this->fetched[] = $name;
-			$file = match ($name) {
-				'Module:Argument' => 'Module-Argument.reference.lua', 'Module:Debate' => 'Module-Debate.reference.lua',
-				'Module:WD/I18N' => 'WD-I18N.reference.lua', 'Module:WD/I18N/Data' => 'WD-I18N-Data.snapshot.lua',
-			};
-			$text = file_get_contents(__DIR__ . '/../resources/' . $file);
-			return [$text . ($name === $this->changed ? '\n-- changed' : ''), $title];
+			throw new \RuntimeException('Unexpected template or module source fetch: ' . $name);
 		}
 		public function getPreprocessor() { return new class { public function preprocessToObj($text, $flags) { return $text; } public function newFrame() { return new PPFrame; } }; }
 	}

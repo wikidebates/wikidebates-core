@@ -4,7 +4,8 @@ This PHP adaptation includes the supplied Module:Debate and public Wikidebats
 translation/template snapshots. Wikidebats content is published under
 Creative Commons Attribution-ShareAlike 4.0. Original revision identifiers and
 permanent links are in tests/fixtures/revisions.json. The supplied module is
-retained verbatim in resources/Module-Debate.reference.lua.
+preserved verbatim in resources/Module-Debate.reference.lua at archived
+commit 3e2d4fa7d83fbe3476696c7fdd65ca50cbd6cd49.
 
 The compatibility routines adapt algorithms and behavior from MediaWiki and
 Scribunto REL1_43, published under GNU GPL version 2 or later, including the
@@ -24,6 +25,11 @@ LICENSE. See https://creativecommons.org/licenses/by-sa/4.0/ for CC BY-SA 4.0.
 
 Version 0.5.0 merges the second user-provided native-tag Debate archive with
 the Module:Argument port. The exact Argument source is preserved in
-resources/Module-Argument.reference.lua; no revision history was supplied.
+resources/Module-Argument.reference.lua at that same archived commit;
+no revision history was supplied.
 Shared native tag behavior follows the HTML Tags 0.3 source and MediaWiki
 REL1_43 parser semantics. Existing source attribution and licenses apply.
+
+Original source files remain accessible at
+https://github.com/wikidebates/wikidebates-core/tree/3e2d4fa7d83fbe3476696c7fdd65ca50cbd6cd49/debatephp/resources
+Their original licenses, provenance and attribution remain unchanged.

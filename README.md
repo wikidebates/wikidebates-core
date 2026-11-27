@@ -140,9 +140,10 @@ Les textes affichés sont centralisés dans `i18n/en.json`, `i18n/fr.json` et
 documentés dans `i18n/qqq.json`. PHP et JavaScript utilisent les messages
 MediaWiki. Les identifiants du wiki sont séparés dans
 `resources/wiki-names.json` et restent indépendants de la langue du visiteur.
-`debatephp/resources/I18nData.php` conserve l’ancien format pour les outils et
-tests ; les snapshots Lua encore présents ne sont plus utilisés par le banc
-de rendu MediaWiki complet. Les outils d’import historiques restent à retirer.
+`debatephp/resources/I18nData.php` reconstruit le format de données attendu par
+les tests et benchmarks PHP. Les catalogues JSON sont les seules sources
+éditables ; les anciennes sources Lua et les outils d’import sont archivés
+dans Git.
 
 Voir [l’organisation et le bilan de migration i18n](docs/i18n-harmonization.md).
 
@@ -153,16 +154,9 @@ node tests/i18n.js
 MW_INSTALL_PATH=/path/to/mediawiki-1.43 php tests/mediawikiI18n.php
 ```
 
-L’importateur hors ligne des anciens dictionnaires est conservé uniquement pour les tests et la reproduction historique. Le texte courant se maintient directement dans les catalogues JSON ; l’ancien outil de synchronisation nécessitant Scribunto a été retiré.
-
-```sh
-php tools/compileI18n.php debatephp/resources/WD-I18N-Data.snapshot.lua debatephp/resources/WD-I18N.reference.lua > /tmp/I18nData.php
-```
-
-Le compilateur amont avec remplacement atomique reste sous `debatephp/tools/`.
-S’il vise le point d’entrée actif, il met à jour les JSON sans l’écraser.
-Les générateurs des moteurs, fixtures et références utiles remplacent les
-dossiers provisoires `imports/`.
+Les anciens oracles et commandes d’import ne sont plus présents dans `main`.
+Pour reproduire les mesures historiques, utiliser le [commit archivé](https://github.com/wikidebates/wikidebates-core/tree/3e2d4fa7d83fbe3476696c7fdd65ca50cbd6cd49) (ou le commit indiqué par le rapport correspondant).
+Les références figées et les vérifications Schema.org restent actives.
 
 Voir les [empreintes recalculées](debatephp/UPSTREAM.json), la
 [notice conservée](debatephp/NOTICE) et la [licence GPLv3](debatephp/LICENSE).
