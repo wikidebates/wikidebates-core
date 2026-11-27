@@ -3,7 +3,8 @@
 Les audits FR et EN du 27 novembre 2026 ont retrouvé exactement le même
 Module:ArgumentMap (révisions FR 195841 et EN 10184, SHA-256
 d355b6a200310a77e3595cd7758fbe3944f2457ff8488898bd8b17e4084ade6b).
-La copie binaire gzip dans tests/fixtures est uniquement un oracle de test.
+Les sorties de référence sont figées dans le contrat natif ; les sources
+historiques ont été retirées après validation et restent dans l'historique Git.
 La production n'a plus besoin d'exécuter le module pour les nouveaux survols.
 
 La fonction de parseur #argumentmap:render conserve les trois branches :
@@ -18,7 +19,8 @@ recherche de l'identifiant de chaque carte n'est nécessaire.
 
 Les attributs data-argument et data-debate des renderers restent inchangés
 (y compris le HTML déjà en cache). Le JS décode leur ancien encodage QUERY
-et envoie les deux titres encodés explicitement en URI avec encoding=uri.
+et transmet les deux titres littéraux à l'API dédiée. Celle-ci encode les
+titres en URI avant l'appel interne de la fonction de parseur.
 Cela corrige le test historique de '%' qui cherchait en réalité deux
 signes '%' consécutifs, évite de confondre un plus littéral avec une espace
 et protège les limites des paramètres du wikicode. Les appels manuels sans
@@ -78,14 +80,12 @@ les temps réseau ni les gains PHP-FPM réels de la production.
 Le point d'entrée en lecture seule `action=wikidebatesargumentmap` accepte
 page, source, mode (full/debate/argument) et l'option lang historique.
 Il garde le parseur pour les liens et les libellés stockés en wikicode,
-sans passer par le module générique ApiParse. La configuration
-`$wgWikidebatesArgumentMapApi = true;` active le transport GET.
-Après validation en production FR/EN, le transport est activé par défaut
-sur ces deux langues. Une valeur explicite false reste possible. Une erreur du point d'entrée dédié ne provoque plus de seconde requête
+sans passer par le module générique ApiParse. Le survol structuré utilise
+ce transport GET dans toutes les langues, sans réglage de configuration.
+Une erreur du point d'entrée dédié ne provoque pas de seconde requête
 vers action=parse et ne désactive pas l'API pour les cartes suivantes.
-Le transport PHP compact reste utilisable uniquement sur les autres
-langues ou par désactivation explicite du paramètre ; il ne contient
-aucun appel à Lua.
+Les appels explicites de wikicode et le banc comparatif restent possibles ;
+ils ne constituent pas un repli automatique du survol.
 
 Les cartes utilisent une seule entrée LRU partagée par requête et langue,
 avec une durée de vie de 60 secondes (pas de prolongation à la lecture).
