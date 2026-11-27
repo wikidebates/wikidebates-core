@@ -4,7 +4,7 @@
 require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/../debatephp/tests/native_context.php';
 
-use MediaWiki\Extension\DebatePHP\{ArgumentReferenceRenderer, JsonData, ReferenceRenderer, RenderData, SemanticReadResult, Table, TextEscaper};
+use MediaWiki\Extension\DebatePHP\{ArgumentRenderer, DebateRenderer, JsonData, RenderData, SemanticReadResult, Table, TextEscaper};
 
 $options = getopt('', ['baseline:', 'output:']);
 $baseline = realpath($options['baseline'] ?? '');
@@ -80,7 +80,8 @@ $related = implode('⟭', array_map(static fn($i) => 'debate ' . $i, range(1, 40
 $case = ['title' => 'Benchmark native reads', 'smw' => false, 'args' => ['lang' => 'en', 'summary' => 'Summary', 'keywords' => $keywords, 'sections' => $sections, 'related-debates' => $related, 'creation-date' => '2026-01-01']];
 foreach (['before' => ['NativeReadBefore\\', new \NativeReadBefore\ArgumentTestContext($case)],
 	'after' => ['MediaWiki\\Extension\\DebatePHP\\', new NativeReadTestContext($case)]] as $mode => [$prefix, $context]) {
-	$table = $prefix . 'Table'; $debateClass = $prefix . 'ReferenceRenderer'; $argumentClass = $prefix . 'ArgumentReferenceRenderer';
+	$table = $prefix . 'Table'; $debateClass = $prefix . ($mode === 'before' ? 'ReferenceRenderer' : 'DebateRenderer');
+	$argumentClass = $prefix . ($mode === 'before' ? 'ArgumentReferenceRenderer' : 'ArgumentRenderer');
 	$debate = new $debateClass($context); $argument = new $argumentClass($context);
 	foreach (['renderKeywords', 'renderConnexes', 'renderRubriques'] as $method) {
 		$reflection = new ReflectionMethod($debate, $method);

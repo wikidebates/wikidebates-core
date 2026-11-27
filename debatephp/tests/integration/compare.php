@@ -10,7 +10,7 @@ use MediaWiki\Parser\Parser;
 use MediaWiki\Parser\ParserOptions;
 use MediaWiki\Title\Title;
 use MediaWiki\Extension\DebatePHP\MediaWikiContext;
-use MediaWiki\Extension\DebatePHP\ReferenceRenderer;
+use MediaWiki\Extension\DebatePHP\DebateRenderer;
 use MediaWiki\Extension\DebatePHP\Tests\CaptureLibrary;
 
 class DebateComparison extends Maintenance {
@@ -91,7 +91,7 @@ class DebateComparison extends Maintenance {
 		} elseif ($trace && $mode !== 'lua') {
 			$parser->setFunctionHook('debate', static function($p, $f, $args) use ($mode, &$phpTrace) {
 				$f->expand($args[0]); unset($args[0]); $c = new MediaWikiContext($p, $f, $args, true, true);
-				$r = new ReferenceRenderer($c);
+				$r = new DebateRenderer($c);
 				$out = \UtfNormal\Validator::cleanUp($r->render()); $phpTrace = array_merge($phpTrace, $c->trace());
 				return [$out, 'noparse' => true, 'isHTML' => false];
 			}, Parser::SFH_OBJECT_ARGS);

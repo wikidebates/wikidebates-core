@@ -1,7 +1,7 @@
 <?php
 require __DIR__ . '/bootstrap.php';
-use MediaWiki\Extension\DebatePHP\ArgumentReferenceRenderer;
-$class = new ReflectionClass(ArgumentReferenceRenderer::class);
+use MediaWiki\Extension\DebatePHP\ArgumentRenderer;
+$class = new ReflectionClass(ArgumentRenderer::class);
 $object = $class->newInstanceWithoutConstructor();
 $call = static fn($name, ...$args) => $class->getMethod($name)->invokeArgs($object, $args);
 $count = 0;

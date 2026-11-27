@@ -10,7 +10,7 @@ use MediaWiki\Parser\Parser;
 use MediaWiki\Parser\ParserOptions;
 use MediaWiki\Title\Title;
 use MediaWiki\Extension\DebatePHP\MediaWikiContext;
-use MediaWiki\Extension\DebatePHP\ArgumentReferenceRenderer as ReferenceRenderer;
+use MediaWiki\Extension\DebatePHP\ArgumentRenderer;
 use MediaWiki\Extension\DebatePHP\Tests\CaptureLibrary;
 
 class ArgumentComparison extends Maintenance {
@@ -69,7 +69,7 @@ class ArgumentComparison extends Maintenance {
 		if ($trace && $mode !== 'lua') {
 			$parser->setFunctionHook('argument', static function($p, $f, $args) use ($mode, &$phpTrace) {
 				$f->expand($args[0]); unset($args[0]); $c = new MediaWikiContext($p, $f, $args, true, true, null, 'Argument');
-				$r = new ReferenceRenderer($c);
+				$r = new ArgumentRenderer($c);
 				$out = \UtfNormal\Validator::cleanUp($r->render()); $phpTrace = array_merge($phpTrace, $c->trace());
 				return [$out, 'noparse' => true, 'isHTML' => false];
 			}, Parser::SFH_OBJECT_ARGS);

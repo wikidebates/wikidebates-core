@@ -223,8 +223,10 @@ if __name__=='__main__':
 		c['publication_date']=(day if re.fullmatch(r'\d{4}-\d{2}-\d{2}',day) else '2025-01-01')+'T12:34:56Z'
 	proc=subprocess.run([sys.argv[1] if len(sys.argv)>1 else 'php','-n',str(ROOT/'tests/argument_context.php')],input=json.dumps(corpus),text=True,capture_output=True,check=True)
 	actual=json.loads(proc.stdout);bad=[];tested=0
+	if len(actual) != len(corpus) or any(len(row) != 1 for row in actual):
+		raise ValueError('Expected exactly one canonical PHP result per fixture')
 	for c,want,modes in zip(corpus,expected,actual):
-		for mode,got in zip(['reference','optimized'],modes):
+		for mode,got in zip(['optimized'],modes):
 			tested+=1
 			if 'error' in got:
 				bad.append((c['name'],mode))
@@ -246,8 +248,6 @@ if __name__=='__main__':
 				print(c['name'],mode, schema_error or '')
 				print('\n'.join(list(difflib.unified_diff(json.dumps(normalize(want, historical=True),ensure_ascii=False,indent=2).splitlines(),json.dumps(normalize(got),ensure_ascii=False,indent=2).splitlines()))[:25]))
 				break
-		if not bad and normalize(modes[0]) != normalize(modes[1]):
-			bad.append((c['name'],'native parity'))
 		if bad:break
 	report={'cases':len(corpus),'renderer_comparisons':tested,'passed':not bad,'failures':bad,'scope':'Lua 5.1 versus PHP, mocked MediaWiki boundary; not a live wiki benchmark'}
 	if len(sys.argv) > 2:

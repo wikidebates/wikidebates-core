@@ -4,7 +4,7 @@ $wikiRoot = null;
 foreach ($argv as $arg) { if (str_starts_with($arg, '--wiki-root=')) { $wikiRoot = substr($arg, 12); } }
 if (!$wikiRoot) { fwrite(STDERR, "--wiki-root required\n"); exit(2); }
 require $wikiRoot . '/maintenance/Maintenance.php';
-use MediaWiki\Extension\DebatePHP\{MediaWikiContext,Telemetry,ReferenceRenderer,Renderer,ArgumentReferenceRenderer,ArgumentRenderer};
+use MediaWiki\Extension\DebatePHP\{MediaWikiContext,Telemetry,DebateRenderer,ArgumentRenderer};
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Parser\{Parser,ParserOptions};
 use MediaWiki\Title\Title;
@@ -19,14 +19,13 @@ class ProfileNativeRender extends Maintenance {
 		$rows = [];
 		foreach (json_decode(file_get_contents($this->getOption('corpus')), true, 512, JSON_THROW_ON_ERROR) as $case) {
 			$title = Title::newFromText($case['title']); if (!$title) { continue; }
-			foreach (['reference','optimized'] as $mode) {
+			foreach (['optimized'] as $mode) {
 				$profiles = []; $p = MediaWikiServices::getInstance()->getParserFactory()->create();
 				$p->setFunctionHook(strtolower($module), static function($parser, $frame, $args) use ($module, $mode, &$profiles) {
 					unset($args[0]);
 					$t = new Telemetry(true, false, [], static function($event) use (&$profiles) { $profiles[] = $event; });
-					$c = new MediaWikiContext($parser, $frame, $args, $mode === 'optimized', false, $t, $module);
-					$class = $module === 'Argument' ? ($mode === 'optimized' ? ArgumentRenderer::class : ArgumentReferenceRenderer::class)
-						: ($mode === 'optimized' ? Renderer::class : ReferenceRenderer::class);
+					$c = new MediaWikiContext($parser, $frame, $args, true, false, $t, $module);
+					$class = $module === 'Argument' ? ArgumentRenderer::class : DebateRenderer::class;
 					$start = $t->start();
 					try { $text = (new $class($c))->render(); }
 					finally { $t->finish('render', $start); $t->report(); }

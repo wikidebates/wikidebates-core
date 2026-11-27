@@ -9,7 +9,7 @@ RETIRED_PARENT_QUERIES = {
 	'Argument/fallback-parents': 'Parent fallback',
 	'Argument/both-parent-types': 'Parent argument',
 }
-MODES = ('reference', 'optimized')
+MODES = ('optimized',)
 
 
 def retired_query(parent):

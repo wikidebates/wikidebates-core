@@ -21,7 +21,7 @@ mt_srand(811);
 foreach (['natural', 'collect-before-render'] as $phase) {
 	gc_collect_cycles();
 	for ($i = 0; $i < $out['repeats']; $i++) {
-		$modes = ['before-reference', 'before-optimized', 'reference', 'optimized']; shuffle($modes);
+		$modes = ['before-optimized', 'optimized']; shuffle($modes);
 		foreach ($modes as $mode) {
 			if ($phase === 'collect-before-render') { gc_collect_cycles(); }
 			$memory = memory_get_usage(); $gc = $after = null;

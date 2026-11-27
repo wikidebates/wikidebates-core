@@ -36,13 +36,15 @@ function nativeOptimizationHooks($parser, string $mode, bool $profile, array &$e
 			$parser->setFunctionHook($function, [$prefix . 'Hooks', $function], $parser::SFH_OBJECT_ARGS);
 			continue;
 		}
-		$parser->setFunctionHook($function, static function($parser, $frame, $args) use ($prefix, $mode, $module, &$events): array {
+		$parser->setFunctionHook($function, static function($parser, $frame, $args) use ($prefix, $mode, $module, $isBaseline, &$events): array {
 			unset($args[0]);
 			$telemetryClass = $prefix . 'Telemetry';
 			$telemetry = new $telemetryClass(true, false, [], static function($event) use (&$events): void { $events[] = $event; });
 			$contextClass = $prefix . 'MediaWikiContext';
 			$context = new $contextClass($parser, $frame, $args, str_ends_with($mode, 'optimized'), false, $telemetry, $module);
-			$rendererClass = $prefix . ($module === 'Argument' ? 'ArgumentReferenceRenderer' : 'ReferenceRenderer');
+			$rendererClass = $prefix . ($isBaseline
+				? ($module === 'Argument' ? 'ArgumentReferenceRenderer' : 'ReferenceRenderer')
+				: ($module === 'Argument' ? 'ArgumentRenderer' : 'DebateRenderer'));
 			$start = $telemetry->start();
 			try { $text = (new $rendererClass($context))->render(); }
 			finally { $telemetry->finish('render', $start); $telemetry->report(); }

@@ -4,7 +4,7 @@
  * The same driver can load the production source of a pinned checkout.
  * No MediaWiki installation, network or live semantic database is used.
  */
-use MediaWiki\Extension\DebatePHP\{ArgumentContext, ArgumentReferenceRenderer, ArgumentRenderer, Context, JsonData, NativeJsonContext, NativeSemanticContext, ReferenceRenderer, Renderer, SemanticReadResult, Table};
+use MediaWiki\Extension\DebatePHP\{ArgumentContext, ArgumentRenderer, Context, DebateRenderer, JsonData, NativeJsonContext, NativeSemanticContext, Renderer, SemanticReadResult, Table};
 
 $options = getopt('', ['root:', 'repeats:', 'warmup:', 'context:']);
 $root = realpath($options['root'] ?? dirname(__DIR__, 2));
@@ -213,12 +213,14 @@ function measureNativeRender(array $case, string $class, string $contextMode = '
 	];
 }
 
+// The same driver benchmarks archived checkouts using their original class names.
+$debateRenderer = is_file($root . '/debatephp/src/DebateRenderer.php') ? DebateRenderer::class : Renderer::class;
 $output = [];
 $cases = nativeCorpus();
 foreach ($cases as $case) {
 	$classes = $case['module'] === 'Argument'
-		? ['reference' => ArgumentReferenceRenderer::class, 'optimized' => ArgumentRenderer::class]
-		: ['reference' => ReferenceRenderer::class, 'optimized' => Renderer::class];
+		? ['optimized' => ArgumentRenderer::class]
+		: ['optimized' => $debateRenderer];
 	$row = [];
 	foreach ($classes as $mode => $class) {
 		try {

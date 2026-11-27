@@ -3,7 +3,7 @@
 require __DIR__ . '/../../tests/bootstrap.php';
 require __DIR__ . '/argument_context.php';
 
-use MediaWiki\Extension\DebatePHP\{ArgumentContext, ArgumentReferenceRenderer, Context, JsonData, NativeJsonContext, NativeSemanticContext, RenderData, SemanticReadResult, Table, LegacyJson};
+use MediaWiki\Extension\DebatePHP\{ArgumentContext, ArgumentRenderer, Context, JsonData, NativeJsonContext, NativeSemanticContext, RenderData, SemanticReadResult, Table, LegacyJson};
 
 set_error_handler(static function($severity, $message, $file, $line): void { throw new ErrorException($message, 0, $severity, $file, $line); });
 $assertions = 0;
@@ -47,13 +47,13 @@ require_once __DIR__ . '/native_context.php';
 $cases = json_decode(file_get_contents(__DIR__ . '/fixtures/argument-cases.json'), true, 512, JSON_THROW_ON_ERROR);
 foreach ($cases as $case) {
 	$legacy = new ArgumentTestContext($case); $native = new NativeReadTestContext($case);
-	$equal((new ArgumentReferenceRenderer($legacy))->render(), (new ArgumentReferenceRenderer($native))->render(), 'Native context with optional completeness proof exact HTML/JSON: ' . $case['title']);
+	$equal((new ArgumentRenderer($legacy))->render(), (new ArgumentRenderer($native))->render(), 'Native context with optional completeness proof exact HTML/JSON: ' . $case['title']);
 	$equal($legacy->effects, $native->effects, 'Native contexts preserve exact effects');
 }
 $case = ['title' => 'An isolated orphan', 'args' => ['lang' => 'en', 'summary' => 'Summary', 'creation-date' => '2026-01-01']];
 $old = new ArgumentTestContext($case); $native = new NativeReadTestContext($case); $native->certify = true;
-$renderer = new ArgumentReferenceRenderer($native);
-$equal((new ArgumentReferenceRenderer($old))->render(), $renderer->render(), 'Certified empty parents preserve output');
+$renderer = new ArgumentRenderer($native);
+$equal((new ArgumentRenderer($old))->render(), $renderer->render(), 'Certified empty parents preserve output');
 $equal(4, count($old->effects['ask']) - count($native->effects['ask']), 'Two fallback reads skipped for each proven empty parent union');
 $equal(['debate-parents' => 2, 'argument-parents' => 2], $native->skipped, 'Only certified fallbacks recorded');
 $beforeCalls = count($native->effects['ask']); $renderer->render();
@@ -62,7 +62,7 @@ $native->failJson = true;
 try { $renderer->render(); throw new LogicException('Expected JSON failure'); }
 catch (RuntimeException $e) { $equal('Synthetic JSON insertion failure', $e->getMessage(), 'JSON failures propagate'); }
 $native->failJson = false;
-$equal((new ArgumentReferenceRenderer(new ArgumentTestContext($case)))->render(), $renderer->render(), 'Native JSON render recovers without retained construction state');
+$equal((new ArgumentRenderer(new ArgumentTestContext($case)))->render(), $renderer->render(), 'Native JSON render recovers without retained construction state');
 $probe = new ReflectionMethod($renderer, 'containsTitle');
 foreach ([[['label' => 'Target'], false], [[1 => 'no', 3 => 'Target'], false],
 	[[1 => null, 2 => 'Target'], false], [['fulltext' => 'Target'], true], [[1 => false, 2 => 'Target'], true]] as [$value, $expected]) {
@@ -81,8 +81,8 @@ $equal('D', $concat::concat($concatValues, ', ', 4, 4), 'Single value range');
 $equal('A, B, C, D', $concat::concat($concatValues, ', '), 'Input table remains unchanged');
 
 // Check the final join, independently of title deduplication, for zero to four cards.
-$join = new ReflectionMethod(ArgumentReferenceRenderer::class, 'joinCards');
-$joinRenderer = new ArgumentReferenceRenderer(new ArgumentTestContext(['title' => 'Child', 'args' => ['lang' => 'fr']]));
+$join = new ReflectionMethod(ArgumentRenderer::class, 'joinCards');
+$joinRenderer = new ArgumentRenderer(new ArgumentTestContext(['title' => 'Child', 'args' => ['lang' => 'fr']]));
 foreach ([
 	'' => [],
 	'A' => [1 => 'A'],
@@ -99,8 +99,8 @@ $equal('0, A, A&#32;and&#32;B', $join->invoke($joinRenderer, $cards, 'en'), 'Eng
 $equal(['0', 'A', 'A', 'B'], $cards, 'Joining does not change caller list');
 $equal('', $join->invoke($joinRenderer, null, 'fr'), 'No cached cards');
 $equal('0', $join->invoke($joinRenderer, ['0'], 'fr'), 'Single zero card');
-$articles = new ReflectionMethod(\MediaWiki\Extension\DebatePHP\ReferenceRenderer::class, 'joinArticles');
-$debate = new \MediaWiki\Extension\DebatePHP\ReferenceRenderer(new ArgumentTestContext(['title' => 'Question ?', 'args' => []]));
+$articles = new ReflectionMethod(\MediaWiki\Extension\DebatePHP\DebateRenderer::class, 'joinArticles');
+$debate = new \MediaWiki\Extension\DebatePHP\DebateRenderer(new ArgumentTestContext(['title' => 'Question ?', 'args' => []]));
 foreach (['fr' => ' et ', 'en' => ' and '] as $language => $conjunction) {
 	$equal('', $articles->invoke($debate, [], $language), 'Empty article list');
 	$equal('0', $articles->invoke($debate, ['0'], $language), 'Single zero article');
@@ -144,7 +144,7 @@ $parentContext = new class(['title' => 'Child', 'args' => ['lang' => 'en']]) ext
 		return new SemanticReadResult(null);
 	}
 };
-foreach ([ArgumentReferenceRenderer::class, \MediaWiki\Extension\DebatePHP\ArgumentRenderer::class] as $class) {
+foreach ([ArgumentRenderer::class] as $class) {
 	$parentContext->effects['ask'] = [];
 	$rendered = (new $class($parentContext))->render();
 	$breadcrumbQueries = array_filter($parentContext->effects['ask'], static fn($query) => str_contains(implode("\n", $query), '=chain'));
@@ -173,7 +173,7 @@ $equal(null, $relations->proDebates, 'Unloaded parent relation');
 $relations->proDebates = [];
 $equal([], $relations->proDebates, 'Loaded empty parent relation');
 
-$parentRenderer = new ArgumentReferenceRenderer($parentContext);
+$parentRenderer = new ArgumentRenderer($parentContext);
 $parentRenderer->render();
 $parentFields = [
 	'prop_arg_pro' => 'Pro', 'prop_arg_con' => 'Con',
@@ -266,7 +266,7 @@ $initContext = new class(['title' => 'Child argument test', 'args' => ['lang' =>
 		return parent::fullUrl($page, $query);
 	}
 };
-$initRenderer = new ArgumentReferenceRenderer($initContext);
+$initRenderer = new ArgumentRenderer($initContext);
 $initHtml = $initRenderer->render();
 $equal(1, $initContext->initQueries, 'Initialization does one uncached lookup');
 $equal(1, $initContext->edits, 'Initialization still renders its edit button');
@@ -332,7 +332,7 @@ $equal(['empty' => []], $semantic::present(['empty' => [], 'missing' => null]), 
 
 // A missing category sink suppresses only category collection, not the banner.
 $categoryContext = new ArgumentTestContext(['title' => 'Category probe', 'args' => ['lang' => 'en']]);
-foreach ([ArgumentReferenceRenderer::class, \MediaWiki\Extension\DebatePHP\ReferenceRenderer::class] as $class) {
+foreach ([ArgumentRenderer::class, \MediaWiki\Extension\DebatePHP\DebateRenderer::class] as $class) {
 	$renderer = new $class($categoryContext);
 	$banner = new ReflectionMethod($renderer, 'renderSubsectionBanner');
 	$category = new ReflectionMethod($renderer, 'subMsg');
@@ -363,8 +363,8 @@ $formContext = new class(['title' => 'Child', 'args' => ['lang' => 'en']]) exten
 		return substr(parent::fullUrl($page, $query), strlen('https://wiki.example'));
 	}
 };
-$argumentForm = new ArgumentReferenceRenderer($formContext);
-$debateForm = new \MediaWiki\Extension\DebatePHP\ReferenceRenderer($formContext);
+$argumentForm = new ArgumentRenderer($formContext);
+$debateForm = new \MediaWiki\Extension\DebatePHP\DebateRenderer($formContext);
 $argumentQuery = new ReflectionMethod($argumentForm, 'runQueryLink');
 $debateQuery = new ReflectionMethod($debateForm, 'runQueryLink');
 $extra = ['0' => '0', 'blank' => '', 'missing' => null, 'flag' => false, 'yes' => true, 'literal%[field]' => 'x'];
@@ -418,8 +418,8 @@ $graphIsNative = static function($value) use (&$graphIsNative): bool {
 	}
 	return true;
 };
-foreach ([ArgumentReferenceRenderer::class, \MediaWiki\Extension\DebatePHP\ReferenceRenderer::class] as $class) {
-	$isArgument = $class === ArgumentReferenceRenderer::class;
+foreach ([ArgumentRenderer::class, \MediaWiki\Extension\DebatePHP\DebateRenderer::class] as $class) {
+	$isArgument = $class === ArgumentRenderer::class;
 	$fixture = ['title' => $isArgument ? 'An argument with references' : 'A debate with references?',
 		'args' => ['lang' => 'en', 'keywords' => '0,First,Second,Third', 'sections' => 'One,Two',
 			'expanded-topic' => 'the issue', 'summary' => 'Summary',

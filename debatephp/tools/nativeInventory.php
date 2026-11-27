@@ -48,6 +48,12 @@ foreach ($files as $file) {
 }
 echo json_encode(['files' => $rows, 'total' => $total], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n";
 if (in_array('--assert-native', $argv, true)) {
+	foreach (['ArgumentReferenceRenderer.php', 'ReferenceRenderer.php', 'Renderer.php'] as $legacy) {
+		if (is_file($root . '/' . $legacy)) {
+			fwrite(STDERR, "Obsolete renderer in runtime source: $legacy\n");
+			exit(1);
+		}
+	}
 	if (array_sum($total) !== 0 || is_file($root . '/Lua.php') || is_file($root . '/Table.php') || is_file($root . '/LiteralData.php')) {
 		fwrite(STDERR, "Legacy emulation or Lua-extension reference in runtime source\n");
 		exit(1);

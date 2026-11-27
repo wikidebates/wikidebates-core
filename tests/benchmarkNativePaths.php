@@ -4,7 +4,7 @@
 require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/../debatephp/tests/argument_context.php';
 
-use MediaWiki\Extension\DebatePHP\{ArgumentReferenceRenderer, DecodedReferences, JsonData, RenderData};
+use MediaWiki\Extension\DebatePHP\{ArgumentRenderer, DecodedReferences, JsonData, RenderData};
 
 $options = getopt('', ['baseline:', 'output:']);
 $baseline = realpath($options['baseline'] ?? '');
@@ -31,7 +31,7 @@ $context = str_replace("new I18n((require __DIR__ . '/../resources/I18nData.php'
 file_put_contents($temporary . '/src/ArgumentTestContext.php', $context);
 $case = ['title' => 'Benchmark', 'smw' => false, 'args' => []];
 $before = new \NativePathsBefore\ArgumentReferenceRenderer(new \NativePathsBefore\ArgumentTestContext($case));
-$after = new ArgumentReferenceRenderer(new ArgumentTestContext($case));
+$after = new ArgumentRenderer(new ArgumentTestContext($case));
 $oldClass = new ReflectionClass($before); $newClass = new ReflectionClass($after);
 $operations = [];
 foreach (['before' => [$oldClass, $before, \NativePathsBefore\Table::class], 'after' => [$newClass, $after, null]] as $mode => [$class, $renderer, $table]) {

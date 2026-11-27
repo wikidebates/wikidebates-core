@@ -5,7 +5,7 @@ from pathlib import Path
 from statistics import median
 import sys
 
-from nativeContract import compare_corpora, check_sample_counts
+from nativeContract import MODES, compare_corpora, check_sample_counts
 
 METRICS = (
 	('wall_ns', 1e6, 'wall ms'),
@@ -57,7 +57,7 @@ def main(root):
 			raise ValueError('Benchmark corpora differ')
 		compare_corpora(rows, other)
 		for name in rows:
-			for mode in ('reference', 'optimized'):
+			for mode in MODES:
 				check_sample_counts(rows[name][mode])
 				check_sample_counts(other[name][mode])
 		print(f"\nPHP {env['php']} {env['os']}; CLI OPcache requested={opcache}, active={env['opcache_status']}; "
@@ -72,7 +72,7 @@ def main(root):
 			names = [name for name in rows if name.startswith(module + '/')]
 			if not names:
 				raise ValueError('Missing module: ' + module)
-			for mode in ('reference', 'optimized'):
+			for mode in MODES:
 				print(f'  {module}/{mode}: {len(names)} cases')
 				for key, scale, label in METRICS:
 					b, bm = aggregate(series(rows, names, mode, key, env['repeats']))

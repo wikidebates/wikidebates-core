@@ -5,7 +5,7 @@ require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/../debatephp/tests/native_context.php';
 require __DIR__ . '/nativeCandidatePrototypes.php';
 
-use MediaWiki\Extension\DebatePHP\{ArgumentReferenceRenderer, JsonData, ReferenceRenderer, RenderData, SemanticReadResult, Table, TextEscaper};
+use MediaWiki\Extension\DebatePHP\{ArgumentRenderer, DebateRenderer, JsonData, RenderData, SemanticReadResult, Table, TextEscaper};
 
 $options = getopt('', ['baseline:', 'output:']);
 $baseline = realpath($options['baseline'] ?? '');
@@ -44,7 +44,8 @@ $case = ['title' => 'Measured candidate', 'smw' => false, 'args' => ['lang' => '
 foreach (['before' => ['NativeReadBefore\\', new \NativeReadBefore\NativeReadTestContext($case)],
 	'after' => ['MediaWiki\\Extension\\DebatePHP\\', new NativeReadTestContext($case)]] as $mode => [$prefix, $context]) {
 	$table = $prefix . 'Table'; $decoder = $prefix . 'DecodedReferences'; $serialized = $prefix . 'SerializedData';
-	$debateClass = $prefix . 'ReferenceRenderer'; $argumentClass = $prefix . 'ArgumentReferenceRenderer';
+	$debateClass = $prefix . ($mode === 'before' ? 'ReferenceRenderer' : 'DebateRenderer');
+	$argumentClass = $prefix . ($mode === 'before' ? 'ArgumentReferenceRenderer' : 'ArgumentRenderer');
 	$debate = new $debateClass($context); $argument = new $argumentClass($context);
 	$items = $serialized::argumentItems($rawItems, false);
 	foreach (['debate' => $debate, 'argument' => $argument] as $kind => $renderer) {
