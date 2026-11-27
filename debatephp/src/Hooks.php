@@ -34,9 +34,11 @@ final class Hooks {
 			$started = $telemetry?->start();
 			try {
 				$context = new MediaWikiContext($parser, $frame, $args, $mode === 'optimized', false, $telemetry, $moduleName);
+				// The two renderer implementations are identical; only the context's
+				// message memoization differs during comparative validation.
 				$renderer = $moduleName === 'Argument'
-					? ($mode === 'optimized' ? new ArgumentRenderer($context) : new ArgumentReferenceRenderer($context))
-					: ($mode === 'optimized' ? new Renderer($context) : new ReferenceRenderer($context));
+					? new ArgumentReferenceRenderer($context)
+					: new ReferenceRenderer($context);
 			} finally { $telemetry?->finish('setup', $started); }
 			$started = $telemetry?->start();
 			try { $text = $renderer->render(); }

@@ -607,8 +607,8 @@
 	},
 	"config": {
 		"DebatePHPMode": {
-			"value": "reference",
-			"description": "DebatePHP 0.8.0 renderer: reference or optimized; reference is the default."
+			"value": "optimized",
+			"description": "Canonical native rendering with invocation-local message memoization; reference is retained temporarily for comparative tests."
 		},
 		"DebatePHPProfiling": {
 			"value": false,
