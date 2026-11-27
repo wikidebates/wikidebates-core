@@ -9,6 +9,10 @@ final class NativeText {
 	public static function field(mixed $value): string {
 		return $value === null || $value === false ? '' : ($value === true ? 'true' : (string)$value);
 	}
+	/** Form values retain explicit boolean text rather than PHP's 1/empty cast. */
+	public static function formValue(mixed $value): string {
+		return $value === false ? 'false' : self::field($value);
+	}
 	public static function anchorId($value): string {
 		$text = str_replace(['&#039;', '&#39;', '&apos;'], "'", self::field($value));
 		$text = trim(preg_replace('/[\x09-\x0d ]+/', ' ', $text), self::ASCII_WHITESPACE);

@@ -47,14 +47,18 @@ final class SerializedData {
 		return $record;
 	}
 	public static function records(?string $text, string $separator, string $fieldSeparator, array $fields, bool $requireItemSeparator = false): Table {
+		return Table::wrap(self::recordsValues($text, $separator, $fieldSeparator, $fields, $requireItemSeparator));
+	}
+	/** @return array<int, array<string, string>> Dense one-based records. */
+	public static function recordsValues(?string $text, string $separator, string $fieldSeparator, array $fields, bool $requireItemSeparator = false): array {
 		$text = trim($text ?? '', self::WHITESPACE); $out = [];
 		if ($text === '' || ($requireItemSeparator ? !str_contains($text, $separator)
-			: (!str_contains($text, $separator) && !str_contains($text, $fieldSeparator)))) { return new Table; }
+			: (!str_contains($text, $separator) && !str_contains($text, $fieldSeparator)))) { return []; }
 		foreach (explode($separator, $text) as $block) {
 			$block = trim($block, self::WHITESPACE); if ($block === '') { continue; }
-			$out[count($out) + 1] = self::record($block, $fieldSeparator, $fields);
+			$out[count($out) + 1] = self::recordValues($block, $fieldSeparator, $fields);
 		}
-		return new Table($out);
+		return $out;
 	}
 	public static function quotes(?string $text): Table {
 		// Quotes require a field marker, whereas the other record formats also accept
