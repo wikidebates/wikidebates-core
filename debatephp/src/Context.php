@@ -11,11 +11,11 @@ interface Context extends NativeJsonContext {
 	public function preprocess(string $text): string;
 	public function expandField(string $text): string;
 	public function shortDescription(string $text): string;
-	public function htmlTag(string $name, string $content, Table $attributes, bool $xml = false): string;
+	public function htmlTag(string $name, string $content, array $attributes, bool $xml = false): string;
 	public function nowiki(string $text): string;
 	public function uriEncode(string $text, string $mode = 'QUERY'): string;
-	public function fullUrl(string $page, ?Table $query = null): ?string;
-	public function localUrl(string $page, ?Table $query = null): ?string;
-	public function smwSet(Table $data): void;
-	public function seoSet(Table $data): void;
+	public function fullUrl(string $page, ?array $query = null): ?string;
+	public function localUrl(string $page, ?array $query = null): ?string;
+	public function smwSet(array $data): void;
+	public function seoSet(array $data): void;
 }

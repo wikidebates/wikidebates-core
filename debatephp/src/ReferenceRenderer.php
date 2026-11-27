@@ -131,7 +131,7 @@ class ReferenceRenderer {
 			$topic = $pageTitle;
 		}
 		$kw = $this->buildSeoKeywords($args, $lang);
-		$this->wkSeoSet(new Table(['title' => ($pageTitle . ' ' . $this->L($lang, 'text', 'shortdesc_plain') . ' – ' . $this->L($lang, 'seo', 'site_name')), 'title_mode' => ($pageTitle . ' ' . $this->L($lang, 'text', 'shortdesc_plain')), 'title_separator' => sprintf($this->seoL($lang, 'title_separator'), $pageTitle), 'description' => sprintf($this->seoL($lang, 'description'), $topic), 'keywords' => $kw, 'image' => $this->seoL($lang, 'image'), 'image_alt' => $this->seoL($lang, 'image_alt'), 'section' => $this->seoL($lang, 'section'), 'site_name' => $this->seoL($lang, 'site_name'), 'twitter_site' => $this->seoL($lang, 'twitter_site'), 'locale' => $this->seoL($lang, 'locale'), 'author' => $this->seoL($lang, 'author'), 'robots' => 'index,follow', 'googlebot' => 'index,follow']));
+		$this->wkSeoSet(['title' => ($pageTitle . ' ' . $this->L($lang, 'text', 'shortdesc_plain') . ' – ' . $this->L($lang, 'seo', 'site_name')), 'title_mode' => ($pageTitle . ' ' . $this->L($lang, 'text', 'shortdesc_plain')), 'title_separator' => sprintf($this->seoL($lang, 'title_separator'), $pageTitle), 'description' => sprintf($this->seoL($lang, 'description'), $topic), 'keywords' => $kw, 'image' => $this->seoL($lang, 'image'), 'image_alt' => $this->seoL($lang, 'image_alt'), 'section' => $this->seoL($lang, 'section'), 'site_name' => $this->seoL($lang, 'site_name'), 'twitter_site' => $this->seoL($lang, 'twitter_site'), 'locale' => $this->seoL($lang, 'locale'), 'author' => $this->seoL($lang, 'author'), 'robots' => 'index,follow', 'googlebot' => 'index,follow']);
 	}
 
 	protected function subMsg($lang = null, $key = null, ...$rest) {
@@ -239,9 +239,9 @@ class ReferenceRenderer {
 			return '';
 		}
 		$title = $this->wkRunQueryPath($formName);
-		$href = $this->context->localUrl($title, new Table($query ?? [])) ?? 'nil';
+		$href = $this->context->localUrl($title, $query ?? []) ?? 'nil';
 		$content = ('＋ ' . $label);
-		$attributes = new Table(['href' => 'javascript:void(0)', 'data-href' => $this->escapeAttr($href), 'class' => 'wk-btn__a wk-js-nav']);
+		$attributes = ['href' => 'javascript:void(0)', 'data-href' => $this->escapeAttr($href), 'class' => 'wk-btn__a wk-js-nav'];
 		if ($tooltip !== '') { $attributes['title'] = $this->escapeAttr($tooltip); }
 		return $this->context->htmlTag('a', $content, $attributes, true);
 	}
@@ -255,7 +255,7 @@ class ReferenceRenderer {
 			return '';
 		}
 		$title = $this->wkAddDataPath($formName, $pageTitle);
-		$url = $this->context->fullUrl($title, new Table($query ?? [])) ?? 'nil';
+		$url = $this->context->fullUrl($title, $query ?? []) ?? 'nil';
 		$linkInner = ('<span class="wk-btn__icon" aria-hidden="true">➜</span>' . '<span class="wk-btn__label">' . $label . '</span>');
 		$link = ('[' . $url . ' ' . $linkInner . ']');
 		return ('<div class="wk-btn wk-auto-id mw-ui-button navigation-not-searchable"' . ($tooltip !== '' ? ' title="' . $this->escapeAttr($tooltip) . '"' : '') . '>' . $link . '</div>');
@@ -280,7 +280,7 @@ class ReferenceRenderer {
 			}
 		}
 		$q['_run'] = '';
-		$url = $this->context->fullUrl($title, new Table($q)) ?? 'nil';
+		$url = $this->context->fullUrl($title, $q) ?? 'nil';
 		$label = $linktext === null || $linktext === false ? $value : $linktext;
 		$tt = NativeText::field($tooltip);
 		$link = ('[' . $url . ' ' . $label . ']');
@@ -1486,6 +1486,6 @@ class ReferenceRenderer {
 	protected function L($lang = null, $section = null, $key = null, ...$rest) { return $this->context->message('Debate.' . $section, $lang, $key, ...$rest); }
 	protected function computePageVars() { return $this->context->pageVars(); }
 	protected function wkDbKey($page = null) { return $this->context->dbKey($page); }
-	protected function wkSeoSet($data = null) { $this->context->seoSet($data); }
-	protected function smwSetSafe(array $data): void { $this->context->smwSet(SemanticProperties::toLegacyTable($data)); }
+	protected function wkSeoSet(array $data) { $this->context->seoSet($data); }
+	protected function smwSetSafe(array $data): void { $this->context->smwSet($data); }
 }

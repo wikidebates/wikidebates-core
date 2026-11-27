@@ -3,7 +3,7 @@ $wikiRoot=null;foreach($argv as $arg) { if(str_starts_with($arg,'--wiki-root='))
 if(!$wikiRoot) { fwrite(STDERR,"--wiki-root required\n");exit(2); }
 require $wikiRoot.'/maintenance/Maintenance.php';
 use MediaWiki\MediaWikiServices;
-use MediaWiki\Extension\DebatePHP\{MediaWikiContext,Table};
+use MediaWiki\Extension\DebatePHP\MediaWikiContext;
 use MediaWiki\Parser\{Parser,ParserOptions};
 use MediaWiki\Title\Title;
 class ArgumentOperationsTest extends Maintenance {
@@ -35,7 +35,7 @@ class ArgumentOperationsTest extends Maintenance {
 		else {
 		$params=['form'=>$case['form'],'target'=>$case['target'],'query string'=>'Argument[99][page]='.$case['title'],'link text'=>'Terminer','link type'=>'button','tooltip'=>'Initialiser','ok text'=>'Terminé','summary'=>'Ajout : '.$case['title'],'reload'=>true];
 		$source='{{#autoedit:';foreach($params as $key=>$value) { $source.=$value===true?'| '.$key:'| '.$key.' = '.$value; }$source.='}}';
-		$out=$native?$c->autoEdit(new Table($params)):$c->preprocess($source);
+		$out=$native?$c->autoEdit($params):$c->preprocess($source);
 		}
 		return [$out,'noparse'=>true,'isHTML'=>false];
 	},Parser::SFH_OBJECT_ARGS);

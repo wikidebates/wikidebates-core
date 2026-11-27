@@ -5,7 +5,7 @@ foreach ($argv as $arg) { if (str_starts_with($arg, '--wiki-root=')) { $wikiRoot
 if (!$wikiRoot) { fwrite(STDERR, "--wiki-root required\n"); exit(2); }
 require $wikiRoot . '/maintenance/Maintenance.php';
 
-use MediaWiki\Extension\DebatePHP\{MediaWikiContext,Telemetry,Table,NativeTags};
+use MediaWiki\Extension\DebatePHP\{MediaWikiContext,Telemetry,NativeTags};
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Parser\{Parser,ParserOptions};
 use MediaWiki\Registration\ExtensionRegistry;
@@ -41,13 +41,13 @@ class PreprocessingTest extends Maintenance {
 						return NativeTags::render($parser, $frame, 'a', '{{#if:1|BODY}}', ['title' => '{{#if:1|TITLE}}'], false, ['a' => ['title']]);
 					});
 				} elseif ($case === 'xml-tags') {
-					$c->htmlTag('a', '{{#if:1|BODY}}', new Table(['title' => '{{#if:1|TITLE}}']), true);
+					$c->htmlTag('a', '{{#if:1|BODY}}', ['title' => '{{#if:1|TITLE}}'], true);
 				} elseif ($case === 'fallback') {
-					$c->htmlTag('a', 'A|B', new Table(['title' => 'C']));
+					$c->htmlTag('a', 'A|B', ['title' => 'C']);
 				} elseif ($case === 'shortdesc') {
 					$c->shortDescription('{{#if:1|Description}}');
 				} elseif ($case === 'autoedit') {
-					$c->autoEdit(new Table(['form' => '{{#if:1|Argument}}', 'target' => 'Counter test', 'link text' => 'OK']));
+					$c->autoEdit(['form' => '{{#if:1|Argument}}', 'target' => 'Counter test', 'link text' => 'OK']);
 				} elseif ($case === 'nested') {
 					// Outer observer must resume after an inner observer, including an exception.
 					NativeTags::observe($telemetry, static function() use ($parser, $frame) {

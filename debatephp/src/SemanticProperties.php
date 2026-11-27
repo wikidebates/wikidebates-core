@@ -39,15 +39,13 @@ final class SemanticProperties {
 		}
 	}
 
-	/** Only the existing context boundary still consumes one-based Table values. */
-	public static function toLegacyTable(array $properties): Table {
+	/** Omit missing properties without touching ordered lists or explicit zero. */
+	public static function present(array $properties): array {
 		foreach ($properties as $key => $value) {
 			if ($value === null) {
 				unset($properties[$key]);
-			} elseif (is_array($value)) {
-				$properties[$key] = new Table($value === [] ? [] : array_combine(range(1, count($value)), $value));
 			}
 		}
-		return new Table($properties);
+		return $properties;
 	}
 }

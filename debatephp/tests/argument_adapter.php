@@ -125,7 +125,7 @@ namespace SMW\Services { final class ServicesFactory {
 } }
 namespace SMW\Scribunto {
 	final class LibraryFactory {
-		public static array $query = []; public static bool $fail = false;
+		public static array $query = []; public static array $write = []; public static bool $fail = false;
 		public function __construct($store) {}
 		public function newQueryResultFrom($raw) {
 			self::$query = $raw; if (self::$fail) { throw new \RuntimeException('test failure'); }
@@ -134,7 +134,7 @@ namespace SMW\Scribunto {
 		public function newLuaAskResultProcessor($result) { return new class {
 			public function getProcessedResult() { return [['fulltext' => 'Parent', 'pro' => ['A', ['fulltext' => 'B']]]]; }
 		}; }
-		public function newParserParameterProcessorFrom($raw) { return $raw; }
+		public function newParserParameterProcessorFrom($raw) { self::$write = $raw; return $raw; }
 		public function newSetParserFunction($parser) { return new class { public function parse($raw) { return ''; } }; }
 	}
 }
@@ -163,7 +163,7 @@ namespace {
 	$check($debateContext->arguments()['topic'] === '0' && $debateContext->arguments()['intro'] === "\0A\0"
 		&& $debateContext->arguments()['blank'] === null, 'Debate trims ASCII whitespace, retains zero and NUL');
 	$check($c->dbKey("[ A\tB\r\n\v\f C") === '[_A_B____ C', 'Invalid-title fallback replaces each ASCII whitespace byte');
-	$c->htmlTag('a', 'native attribute conversion', new Table(['title' => true, 'class' => false, 'href' => '0', 'data-href' => 0, 'other' => null]), true);
+	$c->htmlTag('a', 'native attribute conversion', ['title' => true, 'class' => false, 'href' => '0', 'data-href' => 0, 'other' => null], true);
 	$check(\MediaWiki\Extension\DebatePHP\NativeTags::$lastAttributes === ['title' => 'true', 'class' => 'false', 'href' => '0', 'data-href' => '0', 'other' => 'nil'], 'Native link attributes preserve legacy scalar text');
 
 	$c->preprocess('test'); $c->preprocess('test');
@@ -220,8 +220,13 @@ namespace {
 	$ask->invoke($renderer, new Table([1 => '[[SECRET3]]']), 'cards');
 	LibraryFactory::$fail = false;
 	$profiled->smwAsk(new Table([1 => '[[SECRET4]]']));
-	$profiled->smwSet(new Table(['SECRET' => 'VALUE']));
+	$profiled->smwSet(['SECRET' => 'VALUE']);
+	$check(LibraryFactory::$write === ['SECRET=VALUE'], 'Native SMW write keeps literal values');
 	$profile->report();
+	$write = ['prop' => ['0', 'A|B=C', 'é', '0'], 'zero' => 0, 'missing' => null, 'empty' => []];
+	$c->smwSet($write);
+	$check(LibraryFactory::$write === ['prop=0', 'prop=A|B=C', 'prop=é', 'prop=0', 'zero=0'], 'SMW writes preserve ordered values, delimiters and zero, omit missing properties');
+	$check($write['prop'] === ['0', 'A|B=C', 'é', '0'] && array_key_exists('missing', $write), 'Native SMW write leaves caller data unchanged');
 	$event = $events[0];
 	$check($event['semantic']['debate-parents']['read']['calls'] === 1, 'Executed SMW calls counted once');
 	$check($event['semantic_cache_hits']['argument-parents']['query'] === 1, 'Shared query hit attributed to its requesting origin');

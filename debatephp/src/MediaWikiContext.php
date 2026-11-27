@@ -126,7 +126,7 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 		} finally { $this->telemetry?->finish('shortdesc', $started); }
 	}
 	/** PHP-only navigation anchor; no htmltag parser invocation or fallback. */
-	public function htmlTag(string $name, string $content, Table $attributes, bool $xml = false): string {
+	public function htmlTag(string $name, string $content, array $attributes, bool $xml = false): string {
 		if ($name !== 'a' || !$xml) {
 			throw new \RuntimeException('Only native XML-style navigation links are supported');
 		}
@@ -230,11 +230,11 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 	}
 	public function uriEncode(string $text, string $mode = 'QUERY'): string { return TextEscaper::uriEncode($text, $mode); }
 	public function profilePreparation(array $statistics): void { $this->telemetry?->preparation($statistics); }
-	private function url(string $page, ?Table $query, string $method): ?string {
+	private function url(string $page, ?array $query, string $method): ?string {
 		$t = Title::newFromText($page) ?? Title::newFromURL(urldecode($page));
 		if (!$t) { return null; }
 		if ($t->getNamespace() === NS_MEDIA) { $t = Title::makeTitle(NS_FILE, $t->getDBkey()); }
-		$url = $query === null ? $t->$method() : $t->$method(Table::unwrap($query));
+		$url = $query === null ? $t->$method() : $t->$method($query);
 		// mw.uri.new rebuilds the query with QUERY escaping (e.g. %20 -> +).
 		$hash = strpos($url, '#'); $fragment = $hash === false ? '' : substr($url, $hash);
 		$base = $hash === false ? $url : substr($url, 0, $hash); $q = strpos($base, '?');
@@ -247,16 +247,16 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 		}
 		return $base . $fragment;
 	}
-	public function fullUrl(string $page, ?Table $query = null): ?string { return $this->url($page, $query, 'getFullURL'); }
-	public function localUrl(string $page, ?Table $query = null): ?string { return $this->url($page, $query, 'getLocalURL'); }
-	public function smwSet(Table $data): void {
+	public function fullUrl(string $page, ?array $query = null): ?string { return $this->url($page, $query, 'getFullURL'); }
+	public function localUrl(string $page, ?array $query = null): ?string { return $this->url($page, $query, 'getLocalURL'); }
+	public function smwSet(array $data): void {
 		if (!class_exists(\SMW\Scribunto\LibraryFactory::class)) { $this->telemetry?->problem('semantic', 'service-unavailable'); return; }
 		$started = $this->telemetry?->start();
 		$failed = true;
 		try {
 			// Same path as SemanticScribunto 2.3.3. Values are parameters, never rebuilt wikitext.
 			$raw = [];
-			foreach (Table::unwrap($data) as $key => $value) {
+			foreach (SemanticProperties::present($data) as $key => $value) {
 				if (is_array($value)) { foreach ($value as $item) { $raw[] = $key . '=' . $item; } }
 				else { $raw[] = (!is_int($key) && !preg_match('/^[0-9]+$/D', (string)$key)) ? $key . '=' . $value : $value; }
 			}
@@ -275,10 +275,10 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 			$this->telemetry?->finish('semantic', $started);
 		}
 	}
-	public function seoSet(Table $data): void {
+	public function seoSet(array $data): void {
 		$started = $this->telemetry?->start();
 		try {
-			$values = Table::unwrap($data);
+			$values = $data;
 			$args = $this->readArguments();
 			$values['wd_kind'] = $this->argumentMode ? 'argument' : 'debate';
 			$values['wd_published_time'] = $this->publicationDate();
@@ -453,10 +453,10 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 		return (string)$value;
 	}
 	/** Uses the registered Page Forms callback; rendering a button never performs an edit. */
-	public function autoEdit(Table $params): string {
+	public function autoEdit(array $params): string {
 		$started = $this->telemetry?->start();
 		try {
-			$key = md5('native-autoedit\0' . serialize(Table::unwrap($params)));
+			$key = md5('native-autoedit\0' . serialize($params));
 			return $this->nativeOperation($key, function() use ($params): string {
 				$args = [''];
 				foreach ($params as $name => $value) {
