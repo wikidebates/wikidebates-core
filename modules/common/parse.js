@@ -343,7 +343,7 @@
 	function wkParseStart( job ) {
 		wkParseActive++;
 		try {
-			wkGetApi().post( {
+			var params = {
 				action: 'parse',
 				contentmodel: 'wikitext',
 				text: job.keyLocal,
@@ -352,7 +352,15 @@
 				redirects: 1,
 				useskin: 'vector',
 				uselang: job.language
-			} ).done( function ( data ) {
+			};
+			// The map consumes only HTML. Skip MediaWiki's default link, section,
+			// category, template and other metadata, and the discarded debug report.
+			// Other parse clients (including Wikipedia hovers) keep their contract.
+			if ( job.bucket === 'hover' && job.keyLocal.indexOf( '{{#argumentmap:render|' ) === 0 ) {
+				params.prop = 'text';
+				params.disablelimitreport = 1;
+			}
+			wkGetApi().post( params ).done( function ( data ) {
 				if ( job.finished ) return;
 				var html;
 				try {

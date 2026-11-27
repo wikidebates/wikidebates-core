@@ -49,6 +49,8 @@ test( 'the element-local tooltip cache never crosses user languages', async ( t 
 	await enter();
 	assert.equal( calls.length, 1 );
 	assert.equal( calls[ 0 ].params.uselang, 'fr' );
+	assert.equal( calls[ 0 ].params.prop, 'text' );
+	assert.equal( calls[ 0 ].params.disablelimitreport, 1 );
 	await reply( 0, '<strong>Francais</strong>' );
 	assert.match( contents(), /Francais/ );
 	leave();
@@ -136,4 +138,16 @@ test( 'map hover sends a native parser call with individually encoded titles', a
 	assert.equal( calls[ 2 ].params.text,
 		'{{#argumentmap:render|C%2B%2B%20et%20100%25%20%3D%20%C3%A9t%C3%A9|||encoding=uri}}' );
 	await reply( 2, '<div>fallback</div>' );
+} );
+
+test( 'other hover parse clients keep their existing API parameters', async ( t ) => {
+	const { window, calls, reply } = await fixture( t );
+	const query = '{{Wikipedia preview|Test}}';
+	const pending = window.Wikidebates.wkParseWikitext( query, 'hover' );
+	assert.equal( calls.length, 1 );
+	assert.equal( calls[ 0 ].params.text, query );
+	assert.equal( Object.hasOwn( calls[ 0 ].params, 'prop' ), false );
+	assert.equal( Object.hasOwn( calls[ 0 ].params, 'disablelimitreport' ), false );
+	await reply( 0, '<div>preview</div>' );
+	assert.equal( await pending, '<div>preview</div>' );
 } );

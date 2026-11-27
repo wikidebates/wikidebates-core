@@ -41,3 +41,34 @@ et onglets déjà ouverts peuvent encore appeler #invoke:ArgumentMap.
 Vérifier les trois types de survol sur FR/EN puis traiter cette compatibilité
 et l'accès aux révisions Scribunto avant toute désactivation. Aucun effacement
 de l'historique, purge générale ou changement de configuration n'est inclus.
+
+## Optimisations ciblées du survol
+
+La requête sémantique reste une recherche exacte d'un seul sujet, via le
+moteur SMW normal : ne pas remplacer cette recherche par du SQL direct ou
+une lecture brute des propriétés. Cela pourrait modifier les redirections,
+les filtres, les formatages et les hooks de SMW. Aucun cache serveur ni
+préchargement spéculatif supplémentaire.
+
+Le titre source n'est testé pour son existence que si une carte lui
+correspond. Une seule réponse (y compris false) est partagée entre les
+deux colonnes. Les listes vides ne sont pas découpées ; les traductions
+utilisées une seule fois ne sont plus mémorisées par instance.
+Le formateur natif résout les libellés booléens à la première valeur
+booléenne seulement et réutilise le Linker pendant la lecture.
+
+Le client conserve le même délai de survol, la même file, la même
+clé de cache et les mêmes contrôles contre les réponses périmées.
+Uniquement pour #argumentmap:render dans la file hover, il demande
+prop=text et disablelimitreport=1 : les métadonnées JSON des liens,
+sections, catégories et modèles, ainsi que le rapport de limites qui
+était supprimé par le JavaScript, ne sont pas nécessaires. Le wikicode
+est toujours analysé et assaini par MediaWiki.
+
+Les tests d'intégration vérifient les compteurs de lectures SMW et
+d'existence du titre (0 sans correspondance, 1 pour plusieurs cartes
+correspondantes), les liens rouges, les trois modes FR/EN et l'équivalence
+de l'HTML du véritable action=parse avec ou sans les paramètres compacts.
+Les lignes ARGUMENTMAP_API_BYTES mesurent la taille JSON non compressée
+des réponses du laboratoire ; elles ne mesurent pas le trafic gzip,
+les temps réseau ni les gains PHP-FPM réels de la production.

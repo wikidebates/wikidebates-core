@@ -1,6 +1,9 @@
 <?php
 
+use MediaWiki\Api\ApiMain;
 use MediaWiki\Extension\DebatePHP\I18n;
+use MediaWiki\Request\FauxRequest;
+use Wikimedia\ScopedCallback;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Parser\ParserOptions;
 use MediaWiki\Title\Title;
@@ -84,7 +87,91 @@ function fsArgumentMapCases(bool $legacy): void {
 			. '||debate|encoding=uri|lang=' . $lang . '}}');
 		check(!str_contains($invalid, 'WD Map stored fallback') && !str_contains($invalid, 'wk-arg-map'),
 			'Injected semantic syntax is rejected');
+		if (!$legacy) {
+			fsArgumentMapLazyLookup($parserHtml, $page, $properties, $lang);
+			fsArgumentMapApiEnvelope($page, $lang);
+		}
 	}
 	echo "OK: native hover map, FR/EN, full fallback, contextual columns, empty/missing data and encoded titles"
 		. ($legacy ? '; exact historical Lua HTML comparison' : '; no Lua extensions loaded') . "\n";
+}
+
+
+/** A source not present in a card must cause zero existence probes. */
+function fsArgumentMapLazyLookup(callable $render, string $page, array $properties, string $lang): void {
+	$services = MediaWikiServices::getInstance();
+	$source = 'WD Map probe ' . $lang;
+	$target = 'WD Map repeated ' . $lang;
+	fsSave($source, 'Probe source');
+	$repeated = $source . '⟬First occurrence-;-' . $source . '⟬Second occurrence';
+	fsSave($target, '{{#set:' . $properties['pro_list'] . '=' . $repeated . '|'
+		. $properties['con_list'] . '=' . $source . '⟬Third occurrence}}');
+	fsFlush();
+	$exists = 0;
+	$queries = 0;
+	$hook = $services->getHookContainer()->scopedRegister('TitleExists',
+		static function(Title $title, &$value) use ($source, &$exists): void {
+			if ($title->getPrefixedText() === $source) {
+				$exists++;
+			}
+		});
+	$queryHook = $services->getHookContainer()->scopedRegister('SMW::Store::BeforeQueryResultLookupComplete',
+		static function() use (&$queries): bool {
+			$queries++;
+			return true;
+		});
+	try {
+		$absent = $render('{{#argumentmap:render|' . $page . '|' . $source . '|debate|lang=' . $lang . '}}');
+		check(str_contains($absent, 'Other label'), 'Nonmatching source still renders the map');
+		same(0, $exists, 'Unmatched source incurs no existence probe');
+		same(1, $queries, 'One semantic query for the contextual map');
+		$queries = 0;
+		$matched = $render('{{#argumentmap:render|' . $target . '|' . $source . '|debate|lang=' . $lang . '}}');
+		same(1, $exists, 'All three matching cards share one source existence probe');
+		same(1, $queries, 'One semantic query even across two populated columns');
+		foreach (['First', 'Second', 'Third'] as $label) {
+			check(str_contains($matched, '<b>' . $label . ' occurrence</b>'), 'All matching cards are highlighted');
+		}
+	} finally {
+		ScopedCallback::consume($queryHook);
+		ScopedCallback::consume($hook);
+	}
+	$red = $render('{{#argumentmap:render|' . $page . '|WD Map redlink|debate|lang=' . $lang . '}}');
+	check(str_contains($red, 'class="new"') && !str_contains($red, '<b>Missing</b>'),
+		'Nonexistent matching source remains a red link, not a bold label');
+	echo "OK: one semantic read; source existence probes 0 for no match, 1 for three matches across both columns ($lang)\n";
+}
+
+/** Measure real MediaWiki API payloads rather than a synthetic JSON estimate. */
+function fsArgumentMapApiEnvelope(string $page, string $lang): void {
+	$call = static function(string $text, bool $compact): array {
+		$params = ['action' => 'parse', 'text' => $text, 'contentmodel' => 'wikitext',
+			'formatversion' => 2, 'usearticle' => 1, 'redirects' => 1, 'uselang' => $GLOBALS['wgLanguageCode']];
+		if ($compact) {
+			$params['prop'] = 'text';
+			$params['disablelimitreport'] = 1;
+		}
+		$api = new ApiMain(new FauxRequest($params, true));
+		$api->execute();
+		return $api->getResult()->getResultData([], ['Strip' => 'all']);
+	};
+	$visible = static function(array $response): string {
+		$html = $response['parse']['text'] ?? null;
+		check(is_string($html), 'Actual API response contains HTML');
+		// The browser already discards comments; ignore whitespace only between tags.
+		return trim(preg_replace('/>\s+</', '><', preg_replace('/<!--[\s\S]*?-->/', '', $html)));
+	};
+	foreach (['fallback' => '||', 'debate' => '|WD Map source|debate', 'argument' => '|WD Map source|'] as $mode => $tail) {
+		$text = '{{#argumentmap:render|' . $page . $tail . '|lang=' . $lang . '}}';
+		$original = $call($text, false);
+		$compact = $call($text, true);
+		same($visible($original), $visible($compact), 'Compact API keeps map HTML: ' . $lang . '/' . $mode);
+		check(isset($original['parse']['links']) && !isset($compact['parse']['links']),
+			'Compact request omits the default links payload');
+		$before = strlen(json_encode($original, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+		$after = strlen(json_encode($compact, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+		check($after < $before, 'Compact JSON is strictly smaller');
+		echo 'ARGUMENTMAP_API_BYTES ' . json_encode(['lang' => $lang, 'mode' => $mode,
+			'default' => $before, 'compact' => $after], JSON_THROW_ON_ERROR) . "\n";
+	}
 }
