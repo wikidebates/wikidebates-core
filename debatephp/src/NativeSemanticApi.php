@@ -4,6 +4,9 @@ namespace MediaWiki\Extension\DebatePHP;
 
 use MediaWiki\Linker\Linker;
 use MediaWiki\Parser\Parser;
+use MediaWiki\Title\Title;
+use SMW\DataItems\WikiPage;
+use SMW\Query\Language\ValueDescription;
 use SMW\ParameterProcessorFactory;
 use SMW\Query\QueryContext;
 use SMW\Query\QueryResult;
@@ -31,6 +34,27 @@ final class NativeSemanticApi {
 
 	/** Preserve parameter order, parser context and the established query option. */
 	public static function query(Store $store, array $raw): QueryResult {
+		return $store->getQueryResult(self::buildQuery($raw));
+	}
+
+	/**
+	 * The hover endpoint accepts titles, never arbitrary semantic query syntax.
+	 * Confirm the parsed description is exactly the requested singleton before
+	 * executing it, including for titles resembling SMW operators.
+	 */
+	public static function querySubject(Store $store, Title $subject, array $printouts): ?QueryResult {
+		$value = new ValueDescription(WikiPage::newFromTitle($subject));
+		$query = self::buildQuery([$value->getQueryString(), ...$printouts,
+			'mainlabel=-', 'headers=hide', 'link=none', 'limit=1']);
+		$description = $query->getDescription();
+		if (!$description instanceof ValueDescription || !$description->isSingleton() ||
+			!$description->getDataItem()->equals($value->getDataItem())) {
+			return null;
+		}
+		return $store->getQueryResult($query);
+	}
+
+	private static function buildQuery(array $raw): SMWQuery {
 		[$queryString, $parameters, $printouts] = SMWQueryProcessor::getComponentsFromFunctionParams($raw, false);
 		SMWQueryProcessor::addThisPrintout($printouts, $parameters);
 		$query = SMWQueryProcessor::createQuery(
@@ -41,7 +65,7 @@ final class NativeSemanticApi {
 		if (defined('SMWQuery::PROC_CONTEXT')) {
 			$query->setOption(SMWQuery::PROC_CONTEXT, 'SSC.LibraryFactory');
 		}
-		return $store->getQueryResult($query);
+		return $query;
 	}
 
 	/** The real SMW parser function owns deferred persistence and literal values. */

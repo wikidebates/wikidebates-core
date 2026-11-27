@@ -113,6 +113,8 @@ foreach (['complete debate en', 'complete argument en', 'complete debate fr', 'c
 		else { same($reference, $snapshot, 'Native render modes retain semantic effects: ' . $name); }
 	}
 }
+require __DIR__ . '/fullstackArgumentMapCases.php';
+fsArgumentMapCases(false);
 check(!class_exists(\SMW\Scribunto\LibraryFactory::class, false), 'Historical bridge class never loaded');
 check(!class_exists(\MediaWiki\Extension\Scribunto\Engines\LuaCommon\LuaEngine::class, false), 'Lua engine never loaded');
 echo "OK: real SMW deferred writes, typed queries, empty parent proof and Argument/Debate rendering without Lua extensions\n";

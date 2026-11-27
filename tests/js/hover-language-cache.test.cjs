@@ -98,7 +98,7 @@ test( 'a response to a changed query cannot overwrite the current tooltip', asyn
 	leave();
 	await enter();
 	assert.equal( calls.length, 2 );
-	assert.match( calls[ 1 ].params.text, /Context B/ );
+	assert.match( calls[ 1 ].params.text, /Context%20B/ );
 	await reply( 1, '<strong>New context</strong>' );
 	assert.match( contents(), /New context/ );
 } );
@@ -110,4 +110,30 @@ test( 'a hover that has ended never displays its late response', async ( t ) => 
 	leave();
 	await reply( 0, '<strong>Too late</strong>' );
 	assert.doesNotMatch( contents(), /Too late/ );
+} );
+
+test( 'map hover sends a native parser call with individually encoded titles', async ( t ) => {
+	const { window, calls, enter, leave, reply } = await fixture( t );
+	const wrap = window.document.getElementById( 'hover' );
+	const link = wrap.querySelector( 'a' );
+	link.title = 'C++ et 100% = été';
+	wrap.dataset.argument = 'L%27%C3%A9t%C3%A9%2B100%25';
+	await enter();
+	assert.equal( calls.length, 1 );
+	assert.equal( calls[ 0 ].params.text,
+		'{{#argumentmap:render|C%2B%2B%20et%20100%25%20%3D%20%C3%A9t%C3%A9|L\'%C3%A9t%C3%A9%2B100%25||encoding=uri}}' );
+	await reply( 0, '<div>map</div>' );
+	leave();
+	delete wrap.dataset.argument;
+	wrap.dataset.debate = 'WD+parent';
+	await enter();
+	assert.equal( calls[ 1 ].params.text,
+		'{{#argumentmap:render|C%2B%2B%20et%20100%25%20%3D%20%C3%A9t%C3%A9|WD%20parent|debate|encoding=uri}}' );
+	await reply( 1, '<div>debate</div>' );
+	leave();
+	delete wrap.dataset.debate;
+	await enter();
+	assert.equal( calls[ 2 ].params.text,
+		'{{#argumentmap:render|C%2B%2B%20et%20100%25%20%3D%20%C3%A9t%C3%A9|||encoding=uri}}' );
+	await reply( 2, '<div>fallback</div>' );
 } );
