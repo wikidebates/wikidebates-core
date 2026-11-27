@@ -5,8 +5,8 @@ const { environment, tick } = require( './fixture.cjs' );
 const markup = '<div id="hover" class="hover-map" data-argument="Context A">' +
 	'<a href="/wiki/Argument_A">Argument A</a></div>';
 
-async function fixture( t, useMapApi = false ) {
-	const env = await environment( markup, { wgWikidebatesArgumentMapApi: useMapApi } );
+async function fixture( t ) {
+	const env = await environment( markup );
 	t.after( env.close );
 	const { window, $, run } = env;
 	const el = window.document.getElementById( 'hover' );
@@ -39,7 +39,9 @@ async function fixture( t, useMapApi = false ) {
 		enter: async () => { $( el ).trigger( 'mouseenter' ); await tick(); },
 		leave: () => $( el ).trigger( 'mouseleave' ),
 		reply: async ( index, html ) => {
-			calls[ index ].pending.resolve( { parse: { text: html } } );
+			const call = calls[ index ];
+			call.pending.resolve( call.params.action === 'wikidebatesargumentmap' ?
+				{ wikidebatesargumentmap: { html } } : { parse: { text: html } } );
 			await tick();
 		},
 		contents: () => $( el ).find( '.hover-wrapper' ).html() || ''
@@ -51,8 +53,9 @@ test( 'the element-local tooltip cache never crosses user languages', async ( t 
 	await enter();
 	assert.equal( calls.length, 1 );
 	assert.equal( calls[ 0 ].params.uselang, 'fr' );
-	assert.equal( calls[ 0 ].params.prop, 'text' );
-	assert.equal( calls[ 0 ].params.disablelimitreport, 1 );
+	assert.equal( calls[ 0 ].method, 'GET' );
+	assert.equal( calls[ 0 ].params.action, 'wikidebatesargumentmap' );
+	assert.equal( Object.hasOwn( calls[ 0 ].params, 'text' ), false );
 	await reply( 0, '<strong>Francais</strong>' );
 	assert.match( contents(), /Francais/ );
 	leave();
@@ -102,7 +105,7 @@ test( 'a response to a changed query cannot overwrite the current tooltip', asyn
 	leave();
 	await enter();
 	assert.equal( calls.length, 2 );
-	assert.match( calls[ 1 ].params.text, /Context%20B/ );
+	assert.equal( calls[ 1 ].params.source, 'Context B' );
 	await reply( 1, '<strong>New context</strong>' );
 	assert.match( contents(), /New context/ );
 } );
@@ -116,7 +119,7 @@ test( 'a hover that has ended never displays its late response', async ( t ) => 
 	assert.doesNotMatch( contents(), /Too late/ );
 } );
 
-test( 'map hover sends a native parser call with individually encoded titles', async ( t ) => {
+test( 'map hover sends literal titles through the typed API', async ( t ) => {
 	const { window, calls, enter, leave, reply } = await fixture( t );
 	const wrap = window.document.getElementById( 'hover' );
 	const link = wrap.querySelector( 'a' );
@@ -124,21 +127,25 @@ test( 'map hover sends a native parser call with individually encoded titles', a
 	wrap.dataset.argument = 'L%27%C3%A9t%C3%A9%2B100%25';
 	await enter();
 	assert.equal( calls.length, 1 );
-	assert.equal( calls[ 0 ].params.text,
-		'{{#argumentmap:render|C%2B%2B%20et%20100%25%20%3D%20%C3%A9t%C3%A9|L\'%C3%A9t%C3%A9%2B100%25||encoding=uri}}' );
+	assert.equal( calls[ 0 ].params.action, 'wikidebatesargumentmap' );
+	assert.equal( calls[ 0 ].params.page, 'C++ et 100% = été' );
+	assert.equal( calls[ 0 ].params.source, "L'été+100%" );
+	assert.equal( calls[ 0 ].params.mode, 'argument' );
 	await reply( 0, '<div>map</div>' );
 	leave();
 	delete wrap.dataset.argument;
 	wrap.dataset.debate = 'WD+parent';
 	await enter();
-	assert.equal( calls[ 1 ].params.text,
-		'{{#argumentmap:render|C%2B%2B%20et%20100%25%20%3D%20%C3%A9t%C3%A9|WD%20parent|debate|encoding=uri}}' );
+	assert.equal( calls[ 1 ].params.page, 'C++ et 100% = été' );
+	assert.equal( calls[ 1 ].params.source, 'WD parent' );
+	assert.equal( calls[ 1 ].params.mode, 'debate' );
 	await reply( 1, '<div>debate</div>' );
 	leave();
 	delete wrap.dataset.debate;
 	await enter();
-	assert.equal( calls[ 2 ].params.text,
-		'{{#argumentmap:render|C%2B%2B%20et%20100%25%20%3D%20%C3%A9t%C3%A9|||encoding=uri}}' );
+	assert.equal( calls[ 2 ].params.page, 'C++ et 100% = été' );
+	assert.equal( calls[ 2 ].params.source, '' );
+	assert.equal( calls[ 2 ].params.mode, 'full' );
 	await reply( 2, '<div>fallback</div>' );
 } );
 
@@ -155,7 +162,7 @@ test( 'other hover parse clients keep their existing API parameters', async ( t 
 } );
 
 test( 'typed map API failure never switches transport or retries the generic parser', async ( t ) => {
-	const { calls, enter, leave, contents, window } = await fixture( t, true );
+	const { calls, enter, leave, contents, window } = await fixture( t );
 	await enter();
 	assert.equal( calls[ 0 ].method, 'GET' );
 	assert.equal( calls[ 0 ].params.action, 'wikidebatesargumentmap' );
@@ -178,7 +185,7 @@ test( 'typed map API failure never switches transport or retries the generic par
 } );
 
 test( 'typed API returns HTML without a generic parse request', async ( t ) => {
-	const { calls, enter, contents } = await fixture( t, true );
+	const { calls, enter, contents } = await fixture( t );
 	await enter();
 	calls[ 0 ].pending.resolve( { wikidebatesargumentmap: { html: '<b>Typed</b>' } } );
 	await tick();

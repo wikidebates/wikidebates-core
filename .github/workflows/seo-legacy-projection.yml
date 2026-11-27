@@ -210,7 +210,7 @@
 					"env": {
 						"MW_INSTALL_PATH": "${{ github.workspace }}/.seo-lab/mediawiki"
 					},
-					"run": "find lua-archive -name '*.php' -print0 | xargs -0 -n1 php -l\nlab=$(mktemp -d \"${TMPDIR:-/tmp}/wd-lua-archive-test.XXXXXXXX\")\ntrap 'rm -rf \"$lab\"' EXIT\nphp tests/mediawikiLuaArchive.php seed \"$lab\"\nphp tests/mediawikiLuaArchive.php verify \"$lab\"\nphp tests/mediawikiLuaArchive.php verify-integrated \"$lab\"\nphp tests/mediawikiLuaArchive.php verify-both \"$lab\"\nfor lang in fr en de es it pt; do php tests/mediawikiRegistrationDefaults.php \"$lang\"; done\nphp tests/mediawikiRegistrationDefaults.php fr disabled\nphp tests/mediawikiRegistrationDefaults.php fr legacy"
+					"run": "find lua-archive -name '*.php' -print0 | xargs -0 -n1 php -l\nlab=$(mktemp -d \"${TMPDIR:-/tmp}/wd-lua-archive-test.XXXXXXXX\")\ntrap 'rm -rf \"$lab\"' EXIT\nphp tests/mediawikiLuaArchive.php seed \"$lab\"\nphp tests/mediawikiLuaArchive.php verify \"$lab\"\nphp tests/mediawikiLuaArchive.php verify-integrated \"$lab\"\nphp tests/mediawikiLuaArchive.php verify-both \"$lab\"\nfor lang in fr en de es it pt; do php tests/mediawikiRegistrationDefaults.php \"$lang\"; done\nphp tests/mediawikiRegistrationDefaults.php fr legacy"
 				},
 				{
 					"name": "Verify native Variables without loading any Lua extension",

@@ -614,10 +614,6 @@
 			"value": false,
 			"description": "Log renderer integration diagnostics to the DebatePHP debug channel."
 		},
-		"WikidebatesArgumentMapApi": {
-			"value": null,
-			"description": "Default enabled on FR/EN; explicit false retains the compact action=parse transport."
-		},
 		"WikidebatesReadingFragments": {
 			"value": true
 		},

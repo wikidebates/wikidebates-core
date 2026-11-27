@@ -386,7 +386,7 @@
 				params.disablelimitreport = 1;
 			}
 			var request;
-			if ( job.isMap && job.map && mw.config.get( 'wgWikidebatesArgumentMapApi' ) === true ) {
+			if ( job.isMap && job.map ) {
 				request = wkGetApi().get( {
 					action: 'wikidebatesargumentmap', page: job.map.page, source: job.map.source,
 					mode: job.map.mode, uselang: job.language, formatversion: 2
