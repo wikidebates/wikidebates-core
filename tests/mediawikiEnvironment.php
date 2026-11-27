@@ -89,7 +89,13 @@ function wikidebatesTestConfig($settings): void {
 		// Real production workers need this exclusion before installing the pilot.
 		// The isolated lab executes semantic jobs only by explicit type.
 		'JobTypesExcludedFromDefaultQueue' => ['wikidebatesSemanticCachePurge'],
-		'WikidebatesArgumentMapDirectRead' => getenv('WD_TEST_ARGUMENTMAP_DIRECT') === '1',
+		...(defined('WD_TEST_ARGUMENTMAP_DEFAULTS') ? [] : [
+			'WikidebatesArgumentMapDirectRead' => getenv('WD_TEST_ARGUMENTMAP_DIRECT') === '1'
+		]),
+		...(defined('WD_TEST_ARGUMENTMAP_OVERRIDE') ? [
+			'WikidebatesArgumentMapApi' => false,
+			'WikidebatesArgumentMapDirectRead' => false
+		] : []),
 		'WikidebatesReadingFragments' => getenv('WD_TEST_SEMANTIC_BASELINE') === '1' || getenv('WD_TEST_SEMANTIC_TRACKING') === '1',
 		'WikidebatesSemanticCacheTracking' => getenv('WD_TEST_SEMANTIC_TRACKING') === '1',
 		// Opt in ONLY in disposable lab tests exercising active purge execution.

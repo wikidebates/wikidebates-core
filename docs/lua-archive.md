@@ -1,6 +1,8 @@
 # Conservation des révisions Scribunto sans interpréteur
 
-Le sous-répertoire `lua-archive` contient une extension autonome et facultative.
+Le sous-répertoire `lua-archive` contient le gestionnaire d'archives inerte,
+automatiquement enregistré par Wikidebates sur FR et EN sans moteur Lua.
+Le manifeste autonome reste compatible avec les anciens déploiements.
 Elle conserve les identifiants des espaces Module (828) et Discussion module
 (829), le modèle de contenu historique `Scribunto` et son format texte.
 Le code est uniquement affiché dans une balise pre échappée. Les anciennes
@@ -11,10 +13,14 @@ refuse la transclusion directe du contenu archivé. Il ne reproduit pas les
 redirections Lua ni l'affichage automatique des pages /doc. Il n'interdit pas
 les modifications de texte aux utilisateurs disposant des droits ordinaires.
 
-L'installation n'a aucun effet tant que l'extension n'est pas activée. Ne pas
-la charger sur les quatre wikis n'ayant jamais utilisé Scribunto. Ne jamais
-la charger en même temps que Scribunto, SemanticScribunto ou VariablesLua.
-Le callback refuse cette combinaison.
+Wikidebates enregistre les mêmes espaces, le modèle et les hooks au démarrage
+sur FR/EN si aucune des trois extensions Lua et aucune archive autonome
+n'est chargée. Les quatre autres langues restent inchangées. Une ancienne
+déclaration explicite de WikidebatesLuaArchive reste prise en charge sans
+double enregistrement. La retirer après déploiement du Core et vérifier
+le gestionnaire de contenu Scribunto plutôt que la présence de l'ancienne
+extension autonome dans Special:Version. Ne jamais charger simultanément
+l'archive autonome et le moteur Lua.
 
 Le test d'intégration crée des révisions avec le vrai Scribunto sous MediaWiki
 1.43.12, prend un instantané d'une base SQLite jetable puis démarre un nouveau
@@ -22,7 +28,7 @@ processus qui ne charge que le gestionnaire d'archives. Il vérifie les mêmes
 IDs de révision et octets, y compris une ancienne version Lua d'une page
 devenue wikitexte et une révision à visibilité restreinte.
 
-## Déploiement conditionnel, après validation d'ArgumentMap
+## Procédure historique de migration (ancienne version du Core)
 
 1. Déployer et vérifier la nouvelle version PHP/JS avec les extensions Lua
 encore actives. Confirmer que les anciennes versions ResourceLoader ne
@@ -45,5 +51,7 @@ préservé. Aucun renommage ni migration du modèle de contenu en base.
 En cas d'échec, rétablir les trois extensions et la configuration sauvegardée,
 sans modification du contenu. Ne pas purger tous les caches par défaut.
 
-Ce changement n'active pas le gestionnaire en production et n'enlève encore
-aucune dépendance de la ferme.
+Sur le Core actuel, le chargement explicite de l'archive à l'étape 3 n'est
+plus nécessaire après retrait des extensions Lua. Les tests rejouent la
+migration sur le même instantané avec l'archive autonome, le Core seul et
+les deux chargements pour vérifier la transition.

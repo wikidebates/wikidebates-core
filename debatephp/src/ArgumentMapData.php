@@ -10,7 +10,7 @@ use SMW\DataItems\Property;
 use SMW\DataItems\WikiPage;
 use SMW\Services\ServicesFactory;
 
-/** Source-independent map reads with a conservative, opt-in direct path. */
+/** Source-independent map reads with a conservative, guarded direct path. */
 final class ArgumentMapData {
 	public static function read(Title $title, array $properties): array {
 		if (MediaWikiServices::getInstance()->getMainConfig()->get('WikidebatesArgumentMapDirectRead')) {

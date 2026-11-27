@@ -16,8 +16,10 @@
 	},
 	"AutoloadNamespaces": {
 		"MediaWiki\\Extension\\Wikidebates\\": "src/",
-		"MediaWiki\\Extension\\DebatePHP\\": "debatephp/src/"
+		"MediaWiki\\Extension\\DebatePHP\\": "debatephp/src/",
+		"MediaWiki\\Extension\\WikidebatesLuaArchive\\": "lua-archive/src/"
 	},
+	"callback": "MediaWiki\\Extension\\Wikidebates\\Registration::onRegistration",
 	"Hooks": {
 		"BeforePageDisplay": [
 			"MediaWiki\\Extension\\Wikidebates\\Hooks::onBeforePageDisplay",
@@ -617,12 +619,12 @@
 			"description": "Log renderer integration diagnostics to the DebatePHP debug channel."
 		},
 		"WikidebatesArgumentMapDirectRead": {
-			"value": false,
-			"description": "Opt-in restricted SMW Text property lookup; keep the exact singleton query as fallback."
+			"value": null,
+			"description": "Default enabled on FR/EN; explicit false disables restricted SMW Text lookup. Exact singleton query remains the fallback."
 		},
 		"WikidebatesArgumentMapApi": {
-			"value": false,
-			"description": "Opt-in typed ArgumentMap endpoint pending parity and performance validation."
+			"value": null,
+			"description": "Default enabled on FR/EN; explicit false retains the compact action=parse transport."
 		},
 		"WikidebatesReadingFragments": {
 			"value": true
