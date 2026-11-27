@@ -1,6 +1,6 @@
 <?php
 
-/** Compare the retained Lua oracle and the canonical native renderer against real extension APIs. */
+/** Exercise the full corpus against real extension APIs, with optional historical comparison. */
 use MediaWiki\Extension\DebatePHP\I18n;
 use MediaWiki\Extension\DebatePHP\MediaWikiContext;
 use MediaWiki\MediaWikiServices;
@@ -10,9 +10,13 @@ use MediaWiki\Title\Title;
 
 require __DIR__ . '/nativeOptimizationSupport.php';
 $resources = dirname(__DIR__) . '/debatephp/resources/';
-foreach (['Module:Debate' => 'Module-Debate.reference.lua', 'Module:Argument' => 'Module-Argument.reference.lua',
-	'Module:WD/I18N' => 'WD-I18N.reference.lua', 'Module:WD/I18N/Data' => 'WD-I18N-Data.snapshot.lua'] as $title => $file) {
-	fsSave($title, file_get_contents($resources . $file), CONTENT_MODEL_SCRIBUNTO);
+$nativeOnly = !\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('Scribunto');
+$renderModes = $nativeOnly ? ['optimized'] : ['lua', 'optimized'];
+if (!$nativeOnly) {
+	foreach (['Module:Debate' => 'Module-Debate.reference.lua', 'Module:Argument' => 'Module-Argument.reference.lua',
+		'Module:WD/I18N' => 'WD-I18N.reference.lua', 'Module:WD/I18N/Data' => 'WD-I18N-Data.snapshot.lua'] as $title => $file) {
+		fsSave($title, file_get_contents($resources . $file), CONTENT_MODEL_SCRIBUNTO);
+	}
 }
 // Public snapshots already retained in the repository; no live wiki is contacted.
 foreach (['wiki-snapshot.xml', 'helpers.xml'] as $file) {
@@ -20,7 +24,8 @@ foreach (['wiki-snapshot.xml', 'helpers.xml'] as $file) {
 	foreach ($xml->page as $page) {
 		if ((int)$page->ns !== NS_TEMPLATE) { continue; }
 		$name = preg_replace('/^[^:]+:/', '', (string)$page->title);
-		fsSave(Title::makeTitle(NS_TEMPLATE, $name)->getPrefixedText(), (string)$page->revision->text);
+		$source = (string)$page->revision->text;
+		fsSave(Title::makeTitle(NS_TEMPLATE, $name)->getPrefixedText(), $nativeOnly ? fsSource($source, 'optimized') : $source);
 	}
 }
 foreach (['Débat' => 'Template-Debat.php.wikitext', 'Argument' => 'Template-Argument.php.wikitext'] as $name => $file) {
@@ -31,6 +36,10 @@ fsFlush();
 // Real semantic parent graph, both languages, including a second level and a cycle.
 $i18n = I18n::bundled();
 foreach (['en', 'fr'] as $lang) {
+	// Set actual map fields explicitly in both laboratories, before any render.
+	foreach (['arg_map', 'pro_list', 'con_list', 'justifs_list', 'objs_list'] as $key) {
+		fsSave('Property:' . $i18n->message('ArgumentMap.props', $lang, $key), '[[Has type::Text]]');
+	}
 	foreach (['arg_pro', 'arg_con', 'justif', 'obj', 'parent_debate'] as $key) {
 		fsSave('Property:' . $i18n->message('Argument.props', $lang, $key), '[[Has type::Page]]');
 	}
@@ -99,6 +108,9 @@ function fsRender(string $title, string $source, string $mode, bool $profile = f
 	foreach ($out->getLinkList(ParserOutputLinkTypes::TEMPLATE) as $entry) {
 		$templates[$entry['link']->getNamespace()][$entry['link']->getDBkey()] = [$entry['pageid'], $entry['revid']];
 	}
+	if (!\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('Scribunto')) {
+		check(!isset($templates[828]), 'No dependency on historical modules: ' . $title);
+	}
 	$variables = [];
 	foreach (['MAX', 'AUTHORS', 'ARTICLES', 'WORKS', 'PUBLISHERS', 'PLACES'] as $key) {
 		$variables[$key] = $context->variableGet('WD_QUOTES_' . $key);
@@ -154,7 +166,7 @@ $quote = '{{#argument:render|lang=en|quotes=Quote⟬⟬⟬Author⟬⟬⟬Article
 $cases[] = ['title' => 'WD FS repeated quotes', 'text' => $quote . $quote];
 $results = [];
 foreach ($cases as $case) {
-	$seoComparison = getenv('WD_FULLSTACK_LEGACY_HTMLTAGS') === '1';
+	$seoComparison = $nativeOnly || getenv('WD_FULLSTACK_LEGACY_HTMLTAGS') === '1';
 	$seoSameDay = $seoComparison && ($case['name'] ?? '') === 'argument init-today';
 	if ($seoSameDay) {
 		// The original fixture shares a title with many older arguments.
@@ -170,8 +182,9 @@ foreach ($cases as $case) {
 		try { fsSave($case['title'], 'Stable page identity for the isolated render comparison'); fsFlush(); }
 		finally { if ($seoComparison) { \MWTimestamp::setFakeTime(false); } }
 	}
-	$row = ['title' => $case['title'], 'name' => $case['name'] ?? $case['title'], 'full_stack' => true, 'variants' => []];
-	$modes = getenv('WD_OPTIMIZATION_BASELINE') ? ['lua', 'optimized', 'before-optimized'] : ['lua', 'optimized'];
+	$row = ['title' => $case['title'], 'name' => $case['name'] ?? $case['title'], 'full_stack' => true,
+		'subject_id' => (int)$title->getArticleID(), 'variants' => []];
+	$modes = getenv('WD_OPTIMIZATION_BASELINE') ? [...$renderModes, 'before-optimized'] : $renderModes;
 	$seoRevision = null;
 	if ($seoComparison) {
 		$record = $services->getWikiPageFactory()->newFromTitle($title)->getRevisionRecord();
@@ -203,7 +216,7 @@ $persisted = 0;
 foreach ($cases as $index => $case) {
 	$name = $case['name'] ?? $case['title'];
 	if (!str_contains($name, 'complete debate') && !str_contains($name, 'complete argument') && !str_contains($name, 'semantic parent graph') && !str_contains($name, 'rich native') && !str_contains($name, 'measured lists')) { continue; }
-	$modes = getenv('WD_OPTIMIZATION_BASELINE') ? ['lua', 'optimized', 'before-optimized'] : ['lua', 'optimized'];
+	$modes = getenv('WD_OPTIMIZATION_BASELINE') ? [...$renderModes, 'before-optimized'] : $renderModes;
 	foreach ($modes as $mode) {
 		fsSave($case['title'], 'Reset semantic state ' . $mode);
 		fsFlush();
@@ -250,10 +263,10 @@ fsSave('Template:WD FS cache', 'WD FS cache BEFORE');
 fsFlush();
 $cacheSource = '{{#debate:render|lang=en|topic={{WD FS cache}}|introduction=Intro⟬⟬⟬{{WD FS cache}}⟬⟬⟬⟭⟭⟭|creation-date=2026-01-01}}';
 $cacheBefore = [];
-foreach (['lua', 'optimized'] as $mode) { $cacheBefore[$mode] = fsRender('WD FS cache probe', $cacheSource, $mode); }
+foreach ($renderModes as $mode) { $cacheBefore[$mode] = fsRender('WD FS cache probe', $cacheSource, $mode); }
 fsSave('Template:WD FS cache', 'WD FS cache AFTER');
 fsFlush();
-foreach (['lua', 'optimized'] as $mode) {
+foreach ($renderModes as $mode) {
 	$after = fsRender('WD FS cache probe', $cacheSource, $mode);
 	$before = $cacheBefore[$mode];
 	check(str_contains($before['html'], 'WD FS cache BEFORE') && str_contains($after['html'], 'WD FS cache AFTER'), 'Template update is rendered: ' . $mode);
@@ -261,12 +274,12 @@ foreach (['lua', 'optimized'] as $mode) {
 	$report['template_edit'][$mode] = ['before' => $before['templates'][NS_TEMPLATE]['WD_FS_cache'], 'after' => $after['templates'][NS_TEMPLATE]['WD_FS_cache']];
 }
 
-// Warm parse-only measurements: real Lua/SMW stack, randomized order, same content.
+// Warm parse-only measurements: real SMW stack, randomized order, same content.
 $timings = [];
 foreach (['debate' => $cases[1], 'argument' => ['title' => 'WD FS related argument', 'text' => $quote]] as $kind => $case) {
-	foreach (['lua', 'optimized'] as $mode) { fsRender($case['title'], $case['text'], $mode); }
+	foreach ($renderModes as $mode) { fsRender($case['title'], $case['text'], $mode); }
 	for ($repeat = 0; $repeat < 9; $repeat++) {
-		$modes = ['lua', 'optimized'];
+		$modes = $renderModes;
 		shuffle($modes);
 		foreach ($modes as $mode) { $timings[$kind][$mode][] = fsRender($case['title'], $case['text'], $mode)['milliseconds']; }
 	}
