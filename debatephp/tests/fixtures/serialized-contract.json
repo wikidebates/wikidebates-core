@@ -1,0 +1,100 @@
+{
+	"format": 1,
+	"baseline": "ad37f75b2257b3bf0cb16d47ecf67fd20383a26e",
+	"validated_capture": "a03bad3cf369c4403f3e9eb43bf75ec5d187b188",
+	"workflow_job": 140616831443,
+	"groups": {
+		"Argument/anchorId": {
+			"count": 162,
+			"sha256": "77238f275a20f7709fa8309b4d9a30f4a630772ef07de552187c498e2a72b443"
+		},
+		"Argument/breadcrumbLenByteSafe": {
+			"count": 163,
+			"sha256": "860404703e9c3aa3fd25d600d732b53ccdaf0378c970de85e1a4b26a8026b5fe"
+		},
+		"Argument/escapeAttr": {
+			"count": 162,
+			"sha256": "8acbd755b989f6c0d1a882bf7f7f1c577e0c7a93f09cb99c59266c21e29444e3"
+		},
+		"Argument/normalizeTooltipText": {
+			"count": 162,
+			"sha256": "9a7040cd738d8bf578a4ddb5f712aade8a20b5074e72ba0fe02546b22153a112"
+		},
+		"Argument/splitByLiteral": {
+			"count": 90,
+			"sha256": "b32c0b8fc32359e7de93d94eb40f56b58b86277a3f0c88bd9fdd5ac9a85b5e93"
+		},
+		"Argument/splitCSV": {
+			"count": 157,
+			"sha256": "bfdef367107e5eb86a80337eb23a08def62f2aadee598f5e8cbde88b48f3fbc5"
+		},
+		"Argument/wkEncodePathSegment": {
+			"count": 162,
+			"sha256": "200ca986b271451cf33ec5e80de62c87021e23663e96cb50db83d621e174dd75"
+		},
+		"Argument/wkExtractItemsFromSerializedData": {
+			"count": 157,
+			"sha256": "4a5851297dd54214c11ae5d1e93dfa5115d4c56ee8e6d127f105c29730bfd849"
+		},
+		"Argument/wkParseBiblioMarkers": {
+			"count": 157,
+			"sha256": "dc2dbbdba89da36d64f58f352ce1240e20bdc61e2b121a759ac56e95329eb020"
+		},
+		"Argument/wkParseQuoteMarkers": {
+			"count": 157,
+			"sha256": "230889798f66e099d81bc2837e901835a4d617bae57b9490431e33069a2bc268"
+		},
+		"Argument/wkParseVideoMarkers": {
+			"count": 157,
+			"sha256": "381f3b4d096c66b60225061bf65042050722d5e77c8ae753d557247679084050"
+		},
+		"Argument/wkParseWeblioMarkers": {
+			"count": 157,
+			"sha256": "c1bebb0f70904a786965a1e5abf367b6987a77740d53eaef5c696c0357730b96"
+		},
+		"Argument/wkSplit2": {
+			"count": 15,
+			"sha256": "7dce845ea509cab9f069a8b79addcdf986903460d924ccc7e0c3f6edb9a984ab"
+		},
+		"Debate/anchorId": {
+			"count": 162,
+			"sha256": "9b208387ab401cfa1d3c39c7f565c89179f71b26c68eb21da98a87d931976868"
+		},
+		"Debate/escapeAttr": {
+			"count": 162,
+			"sha256": "c4066400eea6ed90ff085d03d4749db094587f004f9210adda04542f082879db"
+		},
+		"Debate/normalizeTooltipText": {
+			"count": 162,
+			"sha256": "df89a05b69057319bcd3a2b81d67e3eeeaaf3b06d5d58b4e82e532823ae7d4d6"
+		},
+		"Debate/splitCSV": {
+			"count": 157,
+			"sha256": "6f379d43b19e6155574ee9039074d0799aad4f123c30fe1705a09fad07e9dee9"
+		},
+		"Debate/wkExtractArgumentItemsFromData": {
+			"count": 157,
+			"sha256": "ed4348f4baf4950c1f75fcd3fabaad48f170e100317ad3241a50abe1996aac4b"
+		},
+		"Debate/wkParseBiblioMarkers": {
+			"count": 157,
+			"sha256": "b65c48cde14ba70f1432b8eb82e1025bdd3187900652153642068dd642a0b388"
+		},
+		"Debate/wkParseIntroSubsections": {
+			"count": 157,
+			"sha256": "9376fd4b62ef0538cd3ac9cbf5edfe5d37d15ba5a89f5d8e11e8123fa806c97e"
+		},
+		"Debate/wkParseVideoMarkers": {
+			"count": 157,
+			"sha256": "24452fe7244538953efbebf15fb842b64bcdc08f77e01297c7f2412f9bf4b2a6"
+		},
+		"Debate/wkParseWeblioMarkers": {
+			"count": 157,
+			"sha256": "8db80520964351b08489943609dac1549a351b9b26c8ae8dde778a9e49bd299a"
+		},
+		"Debate/wkSplit2": {
+			"count": 15,
+			"sha256": "7dce845ea509cab9f069a8b79addcdf986903460d924ccc7e0c3f6edb9a984ab"
+		}
+	}
+}

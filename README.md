@@ -116,14 +116,19 @@ Le PHP de `debatephp/src/` est désormais la source de référence des deux mote
 Les générateurs historiques et leurs tests propres sont archivés dans Git ;
 voir [la méthode de migration native](debatephp/docs/native-php-migration-baseline.md).
 Le contrôle PHP natif utilise un commit de référence fixe et ne régénère aucun fichier.
-Les oracles Lua hors ligne conservés nécessitent Python et `lupa` :
+Les contrats hors ligne sont figés après les dernières comparaisons Lua/PHP.
+Les tests de rendu Argument, de texte et de traduction ne nécessitent plus Lua
+ni `lupa` :
 
 ```sh
 python3 debatephp/tests/regenerate.py
-python3 debatephp/tests/serialized_differential.py php
-python3 debatephp/tests/differential_i18n.py php
-python3 debatephp/tests/argument_differential.py php
+python3 debatephp/tests/argument_contract.py php
+python3 debatephp/tests/serialized_contract.py php
+python3 debatephp/tests/i18n_contract.py php
 ```
+
+Voir [le contrat Argument](docs/argument-native-contract.md) et
+[les contrats de texte et de traduction](docs/native-text-contracts.md).
 
 La comparaison historique, les mesures et leurs commandes de reproduction sont
 détaillées dans [le bilan de migration](docs/debatephp-upgrade.md). Les doubles
@@ -136,7 +141,8 @@ documentés dans `i18n/qqq.json`. PHP et JavaScript utilisent les messages
 MediaWiki. Les identifiants du wiki sont séparés dans
 `resources/wiki-names.json` et restent indépendants de la langue du visiteur.
 `debatephp/resources/I18nData.php` conserve l’ancien format pour les outils et
-tests ; les snapshots Lua restent des oracles hors ligne.
+tests ; les snapshots Lua sont encore utilisés par les comparaisons
+historiques dans le banc MediaWiki complet et par les outils d’import.
 
 Voir [l’organisation et le bilan de migration i18n](docs/i18n-harmonization.md).
 

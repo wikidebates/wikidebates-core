@@ -35,7 +35,17 @@
 				"src/Registration.php",
 				"debatephp/tests/argument_contract.py",
 				"debatephp/tests/fixtures/argument-cases.json",
-				"debatephp/tests/fixtures/argument-contract.json"
+				"debatephp/tests/fixtures/argument-contract.json",
+				"debatephp/src/**",
+				"debatephp/tests/argument_context.php",
+				"debatephp/tests/serialized_contract.py",
+				"debatephp/tests/serialized_native.php",
+				"debatephp/tests/i18n_contract.py",
+				"debatephp/tests/i18n_native.php",
+				"debatephp/tests/fixtures/*-contract.json",
+				"i18n/**",
+				"resources/i18n-map.json",
+				"resources/wiki-names.json"
 			]
 		},
 		"workflow_dispatch": {}
@@ -72,6 +82,14 @@
 				{
 					"name": "Verify frozen Argument contract without Lua",
 					"run": "python3 debatephp/tests/argument_contract.py php"
+				},
+				{
+					"name": "Verify frozen text contract without Lua",
+					"run": "python3 debatephp/tests/serialized_contract.py php"
+				},
+				{
+					"name": "Verify frozen translation contract without Lua",
+					"run": "python3 debatephp/tests/i18n_contract.py php"
 				}
 			]
 		},
