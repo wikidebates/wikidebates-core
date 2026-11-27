@@ -91,3 +91,31 @@ Un HIT s'affiche avant le délai de 140 ms. Un seul rendu ArgumentMap
 peut occuper la file commune à la fois, et le préchauffage des noms
 des modèles Wikipedia n'est plus exécuté pour une carte. Aucun changement
 de stockage SMW, de langue ou d'accessibilité dans ce lot.
+
+## Frontière des données et étude de lecture directe
+
+Les trois moteurs partagent désormais la sérialisation des couples
+page/libellé et le conteneur des cartes. ArgumentMap décode les données
+en couples structurés, sans changer les valeurs persistées, l'ordre,
+les séparateurs ou les libellés. Le format des entrées de modèles, qui
+peut contenir des avertissements, reste distinct. Pas de migration SQL.
+
+ArgumentMapData sépare la lecture source-indépendante du rendu : un
+éventuel cache pourra porter sur ces données, jamais sur le surlignage
+ou sur un fragment HTML dépendant du visiteur.
+
+Le laboratoire compare le résultat de la requête singleton et celui
+d'une lecture des propriétés Text via Store::getPropertyValues, avec
+DataValueFactory et le formatage SMW. Les lignes ARGUMENTMAP_DIRECT_READ
+indiquent la parité stricte et des médianes de 12 mesures alternées
+par mode. L'état local du Store est vidé avant chaque mesure ; cela
+ne garantit pas des caches DB/SMW froids. Les cas incluent les trois
+cartes, les valeurs multiples, les absences et une redirection.
+La lecture directe ne devient pas le chemin de production sur la
+seule foi de ce test exploratoire.
+
+Le cache WAN reste une étape séparée : il faut couvrir les écritures
+SMW après commit, les suppressions et déplacements (chemins distincts),
+les changements de propriétés, la visibilité et les lectures concurrentes.
+Ne pas réactiver les anciens purges sémantiques de pages ni stocker
+des réponses dépendantes du visiteur dans un cache partagé.

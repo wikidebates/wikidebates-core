@@ -6,7 +6,6 @@ use MediaWiki\MediaWikiServices;
 use MediaWiki\Parser\Parser;
 use MediaWiki\Parser\PPFrame;
 use MediaWiki\Title\Title;
-use SMW\Services\ServicesFactory;
 use UtfNormal\Validator;
 
 /** Read-only argument map for the on-demand hover parser requests. */
@@ -34,8 +33,8 @@ final class ArgumentMap {
 		// A semantic subject is a page identity, not a fragment or a query.
 		$target = Title::makeTitle($target->getNamespace(), $target->getDBkey());
 		if ($source === '') {
-			$row = self::read($target, ['map' => $property('arg_map')]);
-			return self::output(self::field($row['map'] ?? null));
+			$row = ArgumentMapData::read($target, ['map' => $property('arg_map')]);
+			return self::output(ArgumentMapData::field($row['map'] ?? null));
 		}
 
 		$sourceTitle = self::localTitle($source);
@@ -44,19 +43,19 @@ final class ArgumentMap {
 		$sourceExists = null;
 		$debate = trim($args[3] ?? '', NativeText::ASCII_WHITESPACE) !== '';
 		if ($debate) {
-			$row = self::read($target, ['left' => $property('pro_list'), 'right' => $property('con_list')]);
+			$row = ArgumentMapData::read($target, ['left' => $property('pro_list'), 'right' => $property('con_list')]);
 			$separator = '-;-';
 			$heads = ['arg_map_pro_label', 'arg_map_con_label'];
 			$empty = ['none_pro_args_msg_short', 'none_con_args_msg_short'];
 		} else {
-			$row = self::read($target, ['left' => $property('justifs_list'), 'right' => $property('objs_list')]);
+			$row = ArgumentMapData::read($target, ['left' => $property('justifs_list'), 'right' => $property('objs_list')]);
 			$separator = '⟭';
 			$heads = ['justifs_label', 'objs_label'];
 			$empty = ['none_justifications_msg', 'none_objections_msg'];
 		}
 		$columns = [];
 		foreach (['left', 'right'] as $i => $key) {
-			$cards = self::cards(self::field($row[$key] ?? null), $separator, $sourceTitle, $sourceExists);
+			$cards = self::cards(ArgumentMapData::field($row[$key] ?? null), $separator, $sourceTitle, $sourceExists);
 			$columns[] = '<div class="wk-arg-map__col ' . ($i === 0 ? 'is-pro' : 'is-con') . '">'
 				. '<div class="wk-arg-map__th">' . $text($heads[$i]) . '</div>'
 				. '<div class="wk-arg-map__td">' . ($cards !== '' ? $cards
@@ -75,45 +74,14 @@ final class ArgumentMap {
 		return $title && !$title->isExternal() && $title->getNamespace() >= 0 ? $title : null;
 	}
 
-	private static function read(Title $title, array $properties): array {
-		if (!NativeSemanticApi::available()) {
-			return [];
-		}
-		$printouts = [];
-		foreach ($properties as $alias => $property) {
-			if ($property !== '') {
-				$printouts[] = '?' . $property . '=' . $alias;
-			}
-		}
-		if ($printouts === []) {
-			return [];
-		}
-		$result = NativeSemanticApi::querySubject(ServicesFactory::getInstance()->getStore(), $title, $printouts);
-		return $result === null ? [] : (NativeSemanticApi::format($result)[0] ?? []);
-	}
-
-	private static function field(mixed $value): string {
-		if (is_array($value)) {
-			return implode(',', array_filter($value, static fn($item) => is_string($item) || is_int($item) || is_float($item)));
-		}
-		return is_string($value) ? $value : '';
-	}
-
 	private static function cards(string $list, string $separator, ?Title $source, ?bool &$sourceExists): string {
-		$list = trim($list, NativeText::ASCII_WHITESPACE);
-		if ($list === '') {
-			return '';
-		}
 		$cards = [];
-		foreach (explode($separator, $list) as $item) {
-			[$page, $label] = NativeText::splitOnce($item, '⟬');
-			$page = trim($page, NativeText::ASCII_WHITESPACE);
-			$title = self::localTitle($page);
+		foreach (SerializedData::mapItems($list, $separator) as $item) {
+			$title = self::localTitle($item['page']);
 			if (!$title) {
 				continue;
 			}
-			$label = trim($label, NativeText::ASCII_WHITESPACE);
-			$display = $label !== '' ? $label : $page;
+			$display = $item['title'];
 			// Distinct live titles have distinct IDs. Do not follow redirects.
 			if ($source && $title->equals($source) && ($sourceExists ??= $source->exists())) {
 				$link = "'''" . $display . "'''";
@@ -124,7 +92,7 @@ final class ArgumentMap {
 				}
 				$link = '[[' . $target . '|' . $display . ']]';
 			}
-			$cards[] = '<div class="argument-title--map wk-icon-before wk-icon-argument">' . $link . '</div>';
+			$cards[] = ArgumentMapMarkup::card($link);
 		}
 		return implode('', $cards);
 	}

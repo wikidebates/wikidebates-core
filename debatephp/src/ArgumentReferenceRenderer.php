@@ -1145,8 +1145,8 @@ class ArgumentReferenceRenderer {
 			$page = $item['page'];
 			$title = $item['title'];
 			$listLines[] = '* ' . $title;
-			$argsVarParts[] = $page === $title ? $page : $page . $this->FIELD_SEP . $title;
-			$hoverLines[] = '<div class="argument-title--map wk-icon-before wk-icon-argument">[[' . $page . '|' . $title . ']]</div>';
+			$argsVarParts[] = SerializedData::mapItem($page, $title, $this->FIELD_SEP);
+			$hoverLines[] = ArgumentMapMarkup::card('[[' . $page . '|' . $title . ']]');
 		}
 		return [
 			'items' => $items,

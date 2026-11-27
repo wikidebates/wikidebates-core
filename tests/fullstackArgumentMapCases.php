@@ -21,6 +21,12 @@ function fsArgumentMapCases(bool $legacy): void {
 			->parse($source, Title::newFromText('WD Map hover caller'), ParserOptions::newFromAnon())->getText();
 	};
 	$i18n = I18n::bundled();
+	$mapItems = \MediaWiki\Extension\DebatePHP\SerializedData::class;
+	same([['page' => 'A', 'title' => 'A'], ['page' => 'B', 'title' => '0'],
+		['page' => 'C', 'title' => 'label⟬tail']], iterator_to_array($mapItems::mapItems(' A -;- B⟬0 -;- C⟬label⟬tail -;- ', '-;-')),
+		'Shared structured map projection preserves bare titles, zero and extra field markers');
+	same('A', $mapItems::mapItem('A', 'A'), 'Shared serialization omits redundant labels');
+	same('A⟬B', $mapItems::mapItem('A', 'B'), 'Shared serialization preserves different labels');
 	fsSave('WD Map source', 'Source');
 	fsSave('WD Map other', 'Other');
 	fsSave('WD Map été + 100%', 'Encoded source');
@@ -90,6 +96,7 @@ function fsArgumentMapCases(bool $legacy): void {
 		if (!$legacy) {
 			fsArgumentMapLazyLookup($parserHtml, $page, $properties, $lang);
 			fsArgumentMapApiEnvelope($page, $lang);
+			fsArgumentMapDirectReadStudy($page, $properties, $lang);
 		}
 	}
 	echo "OK: native hover map, FR/EN, full fallback, contextual columns, empty/missing data and encoded titles"
@@ -181,5 +188,83 @@ function fsArgumentMapApiEnvelope(string $page, string $lang): void {
 		check($after < $before, 'Compact JSON is strictly smaller');
 		echo 'ARGUMENTMAP_API_BYTES ' . json_encode(['lang' => $lang, 'mode' => $mode,
 			'default' => $before, 'compact' => $after], JSON_THROW_ON_ERROR) . "\n";
+	}
+}
+
+/**
+ * Lab-only comparison: direct Store reads can differ for redirects, property
+ * aliases, missing subjects, multiple values or output formatting. Report
+ * exact map-field parity and paired timings; do not switch the production path.
+ */
+function fsArgumentMapDirectReadStudy(string $page, array $properties, string $lang): void {
+	$store = \SMW\Services\ServicesFactory::getInstance()->getStore();
+	$read = \MediaWiki\Extension\DebatePHP\ArgumentMapData::class;
+	$factory = \SMW\DataValueFactory::getInstance();
+	$propertyClass = class_exists(\SMW\DataItems\Property::class) ? \SMW\DataItems\Property::class : \SMW\DIProperty::class;
+	$subjectClass = class_exists(\SMW\DataItems\WikiPage::class) ? \SMW\DataItems\WikiPage::class : \SMW\DIWikiPage::class;
+	$direct = static function(Title $title, array $props) use ($store, $factory, $propertyClass, $subjectClass, $read): ?array {
+		$subject = $subjectClass::newFromTitle($title);
+		$row = [];
+		$linker = new \MediaWiki\Linker\Linker();
+		foreach ($props as $alias => $name) {
+			$property = $propertyClass::newFromUserLabel($name);
+			// The experiment is deliberately limited to text properties.
+			if ($property->findPropertyValueType() !== '_txt') {
+				return null;
+			}
+			$values = [];
+			foreach ($store->getPropertyValues($subject, $property) as $item) {
+				$value = $factory->newDataValueByItem($item, $property);
+				$values[] = $value->getShortText(SMW_OUTPUT_WIKI, $linker);
+			}
+			$row[$alias] = $read::field(match (count($values)) { 0 => null, 1 => $values[0], default => $values });
+		}
+		return $row;
+	};
+	$redirect = 'WD Map redirect ' . $lang;
+	$multi = 'WD Map multiple ' . $lang;
+	fsSave($redirect, '#REDIRECT [[' . $page . ']]');
+	fsSave($multi, '{{#set:' . $properties['pro_list'] . '=First|' . $properties['pro_list'] . '=Second}}');
+	fsFlush();
+	$cases = [
+		'full' => [$page, ['map' => $properties['arg_map']]],
+		'debate' => [$page, ['left' => $properties['pro_list'], 'right' => $properties['con_list']]],
+		'argument' => [$page, ['left' => $properties['justifs_list'], 'right' => $properties['objs_list']]],
+		'empty' => ['WD Map other', ['left' => $properties['pro_list']]],
+		'missing' => ['WD Map missing ' . $lang, ['left' => $properties['pro_list']]],
+		'redirect' => [$redirect, ['left' => $properties['pro_list']]],
+		'multiple' => [$multi, ['left' => $properties['pro_list']]]
+	];
+	foreach ($cases as $case => [$name, $props]) {
+		$title = Title::newFromText($name);
+		$reference = static function() use ($read, $title, $props): array {
+			$row = $read::read($title, $props);
+			return array_map(static fn($alias) => $read::field($row[$alias] ?? null), array_combine(array_keys($props), array_keys($props)));
+		};
+		$expected = $reference();
+		$candidate = $direct($title, $props);
+		$equal = $candidate === $expected;
+		$queryNs = $directNs = [];
+		// Alternate order to reduce warming bias. Clear SMW's local store state
+		// before each measurement; database/shared cache state may remain warm.
+		for ($i = 0; $i < 12; $i++) {
+			foreach ($i % 2 === 0 ? ['query', 'direct'] : ['direct', 'query'] as $mode) {
+				$store->clear();
+				$start = hrtime(true);
+				$result = $mode === 'query' ? $reference() : $direct($title, $props);
+				$elapsed = hrtime(true) - $start;
+				if ($mode === 'query') {
+					$queryNs[] = $elapsed;
+				} else {
+					$directNs[] = $elapsed;
+					$equal = $equal && $result === $expected;
+				}
+			}
+		}
+		sort($queryNs);
+		sort($directNs);
+		echo 'ARGUMENTMAP_DIRECT_READ ' . json_encode(['lang' => $lang, 'case' => $case,
+			'equal' => $equal, 'query_median_us' => ($queryNs[5] + $queryNs[6]) / 2000,
+			'direct_median_us' => ($directNs[5] + $directNs[6]) / 2000], JSON_THROW_ON_ERROR) . "\n";
 	}
 }
