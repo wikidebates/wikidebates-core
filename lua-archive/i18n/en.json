@@ -1,0 +1,9 @@
+{
+	"@metadata": {
+		"authors": [
+			"Wikidebates"
+		]
+	},
+	"wikidebates-lua-archive-desc": "Preserves archived Lua source without an interpreter",
+	"content-model-scribunto": "Archived Lua source"
+}

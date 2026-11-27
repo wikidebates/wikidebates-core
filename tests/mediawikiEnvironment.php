@@ -33,6 +33,12 @@ if ($testSocket !== null) {
 		if ($result) { $result->free(); }
 	} while ($connection->more_results() && $connection->next_result());
 	$connection->close();
+} elseif (defined('WD_TEST_LUA_ARCHIVE_FIXTURE')) {
+	// A private SQLite snapshot created by the archive migration regression.
+	$fixture = WD_TEST_LUA_ARCHIVE_FIXTURE;
+	if (!is_file($fixture) || is_link($fixture) || !copy($fixture, $temporary . '/wikidebates_test.sqlite')) {
+		throw new RuntimeException('Unable to copy disposable Lua archive fixture');
+	}
 } else {
 	$db = new PDO('sqlite:' . $temporary . '/wikidebates_test.sqlite');
 	$db->exec(file_get_contents($install . '/maintenance/sqlite/tables-generated.sql'));
@@ -116,6 +122,9 @@ function wikidebatesTestConfig($settings): void {
 	}
 	if ((getenv('WD_TEST_SEMANTIC_BASELINE') === '1' || getenv('WD_TEST_SEMANTIC_TRACKING') === '1')) {
 		wfLoadSkin('Vector');
+	}
+	if (defined('WD_TEST_LUA_ARCHIVE')) {
+		wfLoadExtension('WikidebatesLuaArchive', dirname(__DIR__) . '/lua-archive/extension.json');
 	}
 	if (!defined('WD_TEST_WITHOUT_WIKIDEBATES')) {
 		wfLoadExtension('Wikidebates', dirname(__DIR__) . '/extension.json');
