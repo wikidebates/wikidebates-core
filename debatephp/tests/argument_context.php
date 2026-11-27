@@ -6,12 +6,12 @@ class ArgumentTestContext implements ArgumentContext {
 	public array $effects = ['preprocess' => [], 'ask' => [], 'set' => [], 'seo' => [], 'variables' => []];
 	private I18n $i18n;
 	public function __construct(private array $case) { $this->i18n = new I18n((require __DIR__ . '/../resources/I18nData.php')['data'], true); }
-	public function arguments(): Table { return Table::wrap($this->case['args']); }
-	public function language(Table $args): string { return $this->i18n->language($args, $this->case['lang'] ?? 'fr'); }
+	public function arguments(): array { return $this->case['args']; }
+	public function language(array $args): string { return $this->i18n->language($args, $this->case['lang'] ?? 'fr'); }
 	public function message(string $domain, string $lang, string $key, ...$args): string { return $this->i18n->message($domain, $lang, $key, ...$args); }
-	public function pageVars(): Table { $t = $this->case['title']; return new Table(['rawTitle'=>$t,'encoded'=>$this->uriEncode($t,'WIKI'),'pageUrl'=>$this->fullUrl($t),'pageId'=>'42']); }
+	public function pageVars(): array { $t = $this->case['title']; return ['rawTitle'=>$t,'encoded'=>$this->uriEncode($t,'WIKI'),'pageUrl'=>$this->fullUrl($t),'pageId'=>'42']; }
 	public function dbKey(string $page): string { return str_replace(' ', '_', $page); }
-	public function titleInfo(string $text): ?Table { return new Table(['prefixedText' => str_replace('_', ' ', $text)]); }
+	public function titleInfo(string $text): ?array { return ['prefixedText' => str_replace('_', ' ', $text)]; }
 	public function shortDescription(string $text): string { return $this->preprocess('{{SHORTDESC: ' . $text . '}}'); }
 	public function htmlTag(string $name, string $content, array $attributes, bool $xml = false): string {
 		$attrs=$attributes;

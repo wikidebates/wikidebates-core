@@ -3,10 +3,10 @@ namespace MediaWiki\Extension\DebatePHP;
 
 /** Boundary between the renderer and MediaWiki, also used by the differential harness. */
 interface Context extends NativeJsonContext {
-	public function arguments(): Table;
-	public function language(Table $args): string;
+	public function arguments(): array;
+	public function language(array $args): string;
 	public function message(string $domain, string $lang, string $key, ...$args): string;
-	public function pageVars(): Table;
+	public function pageVars(): array;
 	public function dbKey(string $page): string;
 	public function preprocess(string $text): string;
 	public function expandField(string $text): string;

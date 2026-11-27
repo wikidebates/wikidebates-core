@@ -996,7 +996,7 @@ class ArgumentReferenceRenderer {
 		if (!empty($cache->breadcrumbDebates) || !empty($cache->justificationParents) || !empty($cache->objectionParents)) {
 			return '';
 		}
-		$initRaw = $args['initialization'];
+		$initRaw = ($args['initialization'] ?? null);
 		$initRaw = is_string($initRaw) ? trim($initRaw, NativeText::ASCII_WHITESPACE) : '';
 		$orphanBanner = $this->renderBannerByKey($pv, $lang, 'argument_orphan', $cats);
 		if ($initRaw === '') {
@@ -1218,7 +1218,7 @@ class ArgumentReferenceRenderer {
 	protected function renderKeywords($args = null, $pv = null, ?array &$cats = null, $lang = null, ?array $PF = null) {
 		$out = [];
 		$out[count($out) + 1] = ('<div style="font-size: 95%; margin-top: 1em;">' . $PF['keywords_label']);
-		$raw = $args['keywords'];
+		$raw = ($args['keywords'] ?? null);
 		if ($raw !== null && $raw !== false && $raw !== '') {
 			$extra = null;
 			if ((($PF['search_type_field'] !== '') && ($PF['search_type_value'] !== ''))) {
@@ -1260,7 +1260,7 @@ class ArgumentReferenceRenderer {
 		$out = [];
 		$out[] = ('<h2' . $summaryId . ' class="section-modifiable wk-icon-before wk-icon-summary">' . $PF['summary'] . $edit . '</h2>');
 		{
-			$raw = $args['summary-warnings'];
+			$raw = ($args['summary-warnings'] ?? null);
 			$raw = is_string($raw) ? trim($raw, NativeText::ASCII_WHITESPACE) : '';
 			if (($raw !== '')) {
 				$lookup = $this->buildSummaryLabelLookup($lang, $this->SUMMARY_WARNING_BANNER_KEYS);
@@ -1278,9 +1278,9 @@ class ArgumentReferenceRenderer {
 				}
 			}
 		}
-		if ($args['summary'] !== null && $args['summary'] !== false && $args['summary'] !== '') {
+		if (($args['summary'] ?? null) !== null && ($args['summary'] ?? null) !== false && ($args['summary'] ?? null) !== '') {
 			$out[] = ('<div class=\'argument-summary\'>
-' . $args['summary'] . '</div>');
+' . ($args['summary'] ?? null) . '</div>');
 		}
 		else {
 			$out[] = ('<div class="aucun-contenu navigation-not-searchable">' . $PF['no_summary'] . '</div>');
@@ -1294,7 +1294,7 @@ class ArgumentReferenceRenderer {
 		$out = [];
 		$idAttr = '';
 		$out[] = ('<h2 class="section-modifiable wk-icon-before wk-icon-quote"' . $idAttr . '>' . $PF['quotes'] . $edit . '</h2>');
-		$q = $args['quotes'];
+		$q = ($args['quotes'] ?? null);
 		if ($q !== null && $q !== false && $q !== '') {
 			$out[] = $q;
 		}
@@ -1306,17 +1306,17 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function renderDebateDetailed($args = null, $pv = null, ?array &$cats = null, $lang = null, ?array $PF = null) {
-		if ($args['dedicated-debate'] === null || $args['dedicated-debate'] === false || $args['dedicated-debate'] === '') {
+		if (($args['dedicated-debate'] ?? null) === null || ($args['dedicated-debate'] ?? null) === false || ($args['dedicated-debate'] ?? null) === '') {
 			return '';
 		}
 		$cats[] = ('[[Category:' . $PF['cat_has_detailed_debate'] . ']]');
-		$contentToTransfer = (NativeText::field($args['justifications']) . NativeText::field($args['objections']) . NativeText::field($args['bibliography']) . NativeText::field($args['webliography']) . NativeText::field($args['videography']));
+		$contentToTransfer = (NativeText::field(($args['justifications'] ?? null)) . NativeText::field(($args['objections'] ?? null)) . NativeText::field(($args['bibliography'] ?? null)) . NativeText::field(($args['webliography'] ?? null)) . NativeText::field(($args['videography'] ?? null)));
 		if ((trim($contentToTransfer, NativeText::ASCII_WHITESPACE) !== '')) {
 			$cats[] = ('[[Category:' . $PF['cat_content_to_transfer'] . ']]');
 		}
 		$edit = $this->addDataEditLink($PF['form_edit_detailed_debate'], $pv['rawTitle'], '&nbsp;', sprintf($PF['edit_detailed_debate_tooltip'], $pv['rawTitle']));
 		$h2 = ('<h2 class="section-modifiable wk-icon-before wk-icon-details">' . $PF['detailed_debate'] . $edit . '</h2>');
-		$debat = $this->canonicalTitle($args['dedicated-debate']);
+		$debat = $this->canonicalTitle(($args['dedicated-debate'] ?? null));
 		$mapHtml = '';
 		if ($this->hasSMW() && NativeText::field($PF['prop_argument_map'] ?? null) !== '') {
 			$debatSafe = $this->smwSafeTitle($debat);
@@ -1372,10 +1372,10 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function renderRubriques($args = null, ?array &$cats = null, $lang = null, ?array $PF = null) {
-		if ($args['sections'] !== null && $args['sections'] !== false && $args['sections'] !== '') {
+		if (($args['sections'] ?? null) !== null && ($args['sections'] ?? null) !== false && ($args['sections'] ?? null) !== '') {
 			$out = [];
 			$nOk = 0;
-			foreach ($this->csvValues($args['sections'], ',') as $_ => $r) {
+			foreach ($this->csvValues(($args['sections'] ?? null), ',') as $_ => $r) {
 				$r = $this->safeRubriqueValue($r);
 				if (($r !== '')) {
 					$nOk = ($nOk + 1);
@@ -1610,15 +1610,15 @@ class ArgumentReferenceRenderer {
 				$props[$PF['prop_obj_list']] = $lst;
 			}
 		}
-		$mc = $args['keywords'];
+		$mc = ($args['keywords'] ?? null);
 		if ((($mc !== null && $mc !== false) && ($mc !== ''))) {
 			$list = array_values($this->csvValues($mc, ','));
 			if ((count($list) > 0)) {
 				$props[$PF['prop_keyword']] = $list;
 			}
 		}
-		if ((($args['dedicated-debate'] !== null && $args['dedicated-debate'] !== false) && ($args['dedicated-debate'] !== ''))) {
-			$props[$PF['prop_detailed_debate']] = $this->canonicalTitle($args['dedicated-debate']);
+		if (((($args['dedicated-debate'] ?? null) !== null && ($args['dedicated-debate'] ?? null) !== false) && (($args['dedicated-debate'] ?? null) !== ''))) {
+			$props[$PF['prop_detailed_debate']] = $this->canonicalTitle(($args['dedicated-debate'] ?? null));
 		}
 		$quoteProperties = [
 			'WD_QUOTES_AUTHORS' => 'authors',
@@ -1638,9 +1638,9 @@ class ArgumentReferenceRenderer {
 			}
 		}
 		{
-			if ((($args['sections'] !== null && $args['sections'] !== false) && ($args['sections'] !== ''))) {
+			if (((($args['sections'] ?? null) !== null && ($args['sections'] ?? null) !== false) && (($args['sections'] ?? null) !== ''))) {
 				$lst = [];
-				foreach ($this->csvValues($args['sections'], ',') as $_ => $r) {
+				foreach ($this->csvValues(($args['sections'] ?? null), ',') as $_ => $r) {
 					$r = $this->safeRubriqueValue($r);
 					if (($r !== '')) {
 						$lst[] = $r;
@@ -1662,14 +1662,14 @@ class ArgumentReferenceRenderer {
 
 	protected function buildSeoKeywords($args = null, $lang = null) {
 		return NativeText::seoKeywords(
-			$this->csvValues($args['keywords'], ','),
-			$this->csvValues($args['sections'], ',')
+			$this->csvValues(($args['keywords'] ?? null), ','),
+			$this->csvValues(($args['sections'] ?? null), ',')
 		);
 	}
 
 	protected function renderFullSEO($args = null, $pv = null, $lang = null) {
 		$titleText = NativeText::field($pv['rawTitle']);
-		$topic = trim(NativeText::field($args['keywords']), NativeText::ASCII_WHITESPACE);
+		$topic = trim(NativeText::field(($args['keywords'] ?? null)), NativeText::ASCII_WHITESPACE);
 		if (($topic === '')) {
 			$topic = $titleText;
 		}
@@ -2108,8 +2108,8 @@ class ArgumentReferenceRenderer {
 			'isPartOf' => $isPartOf,
 			'appearance' => ['@id' => $pv['pageUrl']]
 		];
-		if (($args['established-name'] !== null && $args['established-name'] !== false && (trim($args['established-name'], NativeText::ASCII_WHITESPACE) !== ''))) {
-			$claimNode['alternateName'] = $args['established-name'];
+		if ((($args['established-name'] ?? null) !== null && ($args['established-name'] ?? null) !== false && (trim(($args['established-name'] ?? null), NativeText::ASCII_WHITESPACE) !== ''))) {
+			$claimNode['alternateName'] = ($args['established-name'] ?? null);
 		}
 		{
 			$summary = NativeText::seoPlainText((string)($args['summary'] ?? ''), $this->context);
@@ -2151,8 +2151,8 @@ class ArgumentReferenceRenderer {
 	}
 
 	protected function computeArgumentMapsFromData($args = null): array {
-		$justifications = $this->wkExtractItemsFromSerializedData(NativeText::field($args['justifications']));
-		$objections = $this->wkExtractItemsFromSerializedData(NativeText::field($args['objections']));
+		$justifications = $this->wkExtractItemsFromSerializedData(NativeText::field(($args['justifications'] ?? null)));
+		$objections = $this->wkExtractItemsFromSerializedData(NativeText::field(($args['objections'] ?? null)));
 		return [
 			'justif' => $this->wkBuildArgumentData($justifications),
 			'obj' => $this->wkBuildArgumentData($objections)
@@ -2179,36 +2179,31 @@ class ArgumentReferenceRenderer {
 		$this->SMW_ASK_CACHE = $this->cacheMake(250);
 		$this->SMW_TITLES_CACHE = $this->cacheMake(250);
 		$args = $this->getArgs($frame);
-		$norm = static function($key) use ($args): void {
-			if (!is_string($args[$key])) { return; }
+		// Missing parameters stay absent; explicit "0" is not an empty field.
+		foreach (['summary', 'quotes', 'bibliography', 'webliography', 'videography',
+			'keywords', 'sections', 'interlanguage', 'dedicated-debate', 'title-warnings',
+			'argument-warnings', 'summary-warnings', 'justification-warnings', 'objection-warnings'] as $key) {
+			if (!is_string($args[$key] ?? null)) {
+				continue;
+			}
 			$value = trim($args[$key], NativeText::ASCII_WHITESPACE);
-			$args[$key] = $value === '' ? null : $value;
-		};
-		$norm('summary');
-		$norm('quotes');
-		$norm('bibliography');
-		$norm('webliography');
-		$norm('videography');
-		$norm('keywords');
-		$norm('sections');
-		$norm('interlanguage');
-		$norm('dedicated-debate');
-		$norm('title-warnings');
-		$norm('argument-warnings');
-		$norm('summary-warnings');
-		$norm('justification-warnings');
-		$norm('objection-warnings');
-		$rawB = NativeText::field($args['bibliography']);
-		$rawW = NativeText::field($args['webliography']);
-		$rawV = NativeText::field($args['videography']);
-		if ((!is_string($args['justifications']))) {
-			$args['justifications'] = null;
+			if ($value === '') {
+				unset($args[$key]);
+			} else {
+				$args[$key] = $value;
+			}
 		}
-		if ((!is_string($args['objections']))) {
-			$args['objections'] = null;
+		$rawB = NativeText::field(($args['bibliography'] ?? null));
+		$rawW = NativeText::field(($args['webliography'] ?? null));
+		$rawV = NativeText::field(($args['videography'] ?? null));
+		if ((!is_string(($args['justifications'] ?? null)))) {
+			unset($args['justifications']);
+		}
+		if ((!is_string(($args['objections'] ?? null)))) {
+			unset($args['objections']);
 		}
 		$this->renderData = new RenderData;
-		$this->renderData->expectReuse([$args['keywords'], $args['sections']]);
+		$this->renderData->expectReuse([($args['keywords'] ?? null), ($args['sections'] ?? null)]);
 		$lang = $this->detectLang($args);
 		$pv = $this->computePageVars();
 		$pv['lang'] = $lang;
@@ -2321,7 +2316,7 @@ class ArgumentReferenceRenderer {
 		$PF['init_summary_justif'] = $this->L($lang, 'text', 'init_summary_justif');
 		$PF['init_summary_obj'] = $this->L($lang, 'text', 'init_summary_obj');
 		{
-			$q = $args['quotes'];
+			$q = ($args['quotes'] ?? null);
 			if (((is_string($q)) && ($q !== ''))) {
 				try {
 					$r = $this->context->expandQuotes($q);
@@ -2339,11 +2334,11 @@ class ArgumentReferenceRenderer {
 				}
 			}
 		}
-		$hasResume = ($args['summary'] !== null);
-		$hasQuotes = ($args['quotes'] !== null);
-		$hasRefs = ((($args['bibliography'] !== null) || ($args['webliography'] !== null)) || ($args['videography'] !== null));
-		if (isset($args['established-name']) && $args['established-name'] !== false) {
-			$pieces[] = $this->context->shortDescription($args['established-name']);
+		$hasResume = (($args['summary'] ?? null) !== null);
+		$hasQuotes = (($args['quotes'] ?? null) !== null);
+		$hasRefs = (((($args['bibliography'] ?? null) !== null) || (($args['webliography'] ?? null) !== null)) || (($args['videography'] ?? null) !== null));
+		if (isset($args['established-name']) && ($args['established-name'] ?? null) !== false) {
+			$pieces[] = $this->context->shortDescription(($args['established-name'] ?? null));
 			$cats[] = ('[[Category:' . $this->L($lang, 'categories', 'has_alt_name') . ']]');
 		}
 		$cats[] = ('[[Category:' . $PF['cat_arguments'] . ']]');
@@ -2352,8 +2347,8 @@ class ArgumentReferenceRenderer {
 			$titleLookup = $this->buildBannerLabelLookup($lang, $this->TITLE_WARNING_BANNER_KEYS);
 			$argLookup = $this->buildBannerLabelLookup($lang, $this->ARGUMENT_WARNING_BANNER_KEYS);
 			$out = [];
-			if (isset($args['title-warnings']) && $args['title-warnings'] !== false) {
-				$out[] = $this->renderBannersFromArgList($args['title-warnings'], $titleLookup, $pv, $lang, $cats);
+			if (isset($args['title-warnings']) && ($args['title-warnings'] ?? null) !== false) {
+				$out[] = $this->renderBannersFromArgList(($args['title-warnings'] ?? null), $titleLookup, $pv, $lang, $cats);
 			}
 			if ((count($out) > 0)) {
 				$pieces[] = implode('', $out);
@@ -2365,16 +2360,16 @@ class ArgumentReferenceRenderer {
 		$pieces[] = $this->renderArgumentParentsBoxes($pv, $cats, $lang, $cache, $PF);
 		$pieces[] = $this->renderInitializationBlock($args, $pv, $cats, $lang, $cache, $PF, $maps);
 		$pieces[] = $this->renderKeywords($args, $pv, $cats, $lang, $PF);
-		if (isset($args['argument-warnings']) && $args['argument-warnings'] !== false) {
+		if (isset($args['argument-warnings']) && ($args['argument-warnings'] ?? null) !== false) {
 			$argLookup = $this->buildBannerLabelLookup($lang, $this->ARGUMENT_WARNING_BANNER_KEYS);
 			$out = [];
 			$btnForm = $this->addDataLink($this->L($lang, 'forms', 'banners_edit_title'), $pv['rawTitle'], '', $this->L($lang, 'text', 'argument_banners_edit_tt'), true);
 			$out[] = ('<h2 id="Summary" class="section-modifiable wk-icon-before wk-icon-flag">' . $this->L($lang, 'text', 'warnings_title') . $btnForm . '</h2>');
-			$out[] = $this->renderBannersFromArgList($args['argument-warnings'], $argLookup, $pv, $lang, $cats);
+			$out[] = $this->renderBannersFromArgList(($args['argument-warnings'] ?? null), $argLookup, $pv, $lang, $cats);
 			$pieces[] = implode('', $out);
 		}
 		$summaryId = ' id="Summary"';
-		if (NativeText::field($args['argument-warnings']) !== '') {
+		if (NativeText::field(($args['argument-warnings'] ?? null)) !== '') {
 			$summaryId = '';
 		}
 		$pieces[] = $this->renderSummary($args, $pv, $cats, $lang, $PF, $summaryId);
@@ -2402,7 +2397,7 @@ class ArgumentReferenceRenderer {
 			$editJust = $this->addDataEditLink($PF['form_edit_justifications'], $pv['rawTitle'], '&nbsp;', $PF['edit_justifications_tooltip']);
 			$out[] = ('<h2 class="section-modifiable wk-icon-before wk-icon-argument is-pro">' . $PF['justifications'] . $editJust . '</h2>');
 			{
-				$raw = $args['justification-warnings'];
+				$raw = ($args['justification-warnings'] ?? null);
 				$raw = is_string($raw) ? trim($raw, NativeText::ASCII_WHITESPACE) : '';
 				if (($raw !== '')) {
 					$lookup = $this->buildSummaryLabelLookup($lang, $this->JUSTIFICATION_WARNING_BANNER_KEYS);
@@ -2441,7 +2436,7 @@ class ArgumentReferenceRenderer {
 			$editObj = $this->addDataEditLink($PF['form_edit_objections'], $pv['rawTitle'], '&nbsp;', $PF['edit_objections_tooltip']);
 			$out[] = ($this->listBreaker() . '<h2 class="section-modifiable wk-icon-before wk-icon-argument is-con">' . $PF['objections'] . $editObj . '</h2>');
 			{
-				$raw = $args['objection-warnings'];
+				$raw = ($args['objection-warnings'] ?? null);
 				$raw = is_string($raw) ? trim($raw, NativeText::ASCII_WHITESPACE) : '';
 				if (($raw !== '')) {
 					$lookup = $this->buildSummaryLabelLookup($lang, $this->OBJECTION_WARNING_BANNER_KEYS);
@@ -2480,8 +2475,8 @@ class ArgumentReferenceRenderer {
 			$pieces[] = implode('', $out);
 		}
 		$pieces[] = $this->renderDebatesParentsBottom($pv, $lang, $cache, $PF);
-		if (isset($args['interlanguage']) && $args['interlanguage'] !== false) {
-			$pieces[] = $args['interlanguage'];
+		if (isset($args['interlanguage']) && ($args['interlanguage'] ?? null) !== false) {
+			$pieces[] = ($args['interlanguage'] ?? null);
 		}
 		$pieces[] = $this->renderRubriques($args, $cats, $lang, $PF);
 		if (!$hasResume && !$hasQuotes && !$hasRefs) {
@@ -2492,7 +2487,7 @@ class ArgumentReferenceRenderer {
 		$pieces[] = implode('', $cats);
 		$pieces[] = ('<span id="bouton-renommer" class="bouton-modifier navigation-not-searchable noprint" style="display: none;">[[Special:MovePage/' . $pv['encoded'] . '| ' . $PF['rename_link_text'] . ']]</span>');
 		$pieces[] = ('<span id="bouton-modifier-categories" style="display: none;">' . $this->addDataEditLink($PF['form_edit_sections'], $pv['rawTitle'], $PF['edit'], $PF['edit_sections_tooltip']) . '</span>');
-		if (trim(NativeText::field($args['interlanguage']), NativeText::ASCII_WHITESPACE) !== '') {
+		if (trim(NativeText::field(($args['interlanguage'] ?? null)), NativeText::ASCII_WHITESPACE) !== '') {
 			$pieces[] = ('<span id="bouton-modifier-interlangue" style="display: none;"' . ' data-wk-tooltip="' . $this->escapeAttr($PF['edit_interlanguage_tooltip']) . '">' . $this->addDataEditLink($PF['form_edit_interlanguage'], $pv['rawTitle'], $PF['edit'], $PF['edit_interlanguage_tooltip']) . '</span>');
 		}
 		$pieces[] = $this->renderArgumentSchemaJSONLD($args, $pv, $lang, $cache, $PF, $maps);
@@ -2537,10 +2532,10 @@ class ArgumentReferenceRenderer {
 	protected function smwCacheHit(string $origin, string $layer): void {
 		if ($this->context instanceof SemanticProfilingContext) { $this->context->smwCacheHit($origin, $layer); }
 	}
-	protected function getArgs($frame = null) { return $this->context->arguments(); }
-	protected function detectLang($args = null) { return $this->context->language($args); }
+	protected function getArgs($frame = null): array { return $this->context->arguments(); }
+	protected function detectLang(array $args): string { return $this->context->language($args); }
 	protected function L($lang = null, $section = null, $key = null, ...$rest) { return $this->context->message('Argument.' . $section, $lang, $key, ...$rest); }
-	protected function computePageVars() { return $this->context->pageVars(); }
+	protected function computePageVars(): array { return $this->context->pageVars(); }
 	protected function wkDbKey($page = null) { return $this->context->dbKey($page); }
 	protected function wkSeoSet(array $data) { $this->context->seoSet($data); }
 	protected function smwSetSafe(array $data): void { $this->context->smwSet($data); }

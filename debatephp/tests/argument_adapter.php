@@ -158,10 +158,22 @@ namespace {
 	$check($c->arguments()['summary'] === 'A=B|C', 'Expanded delimiters changed parameter boundaries');
 	$check($c->arguments()['keywords'] === 'mot', 'Parent arguments missing');
 	$check($c->arguments()['creation-date'] === ' 2025-01-01 ', 'Argument-specific trimming changed');
+	$copy = $c->arguments();
+	$copy['summary'] = 'changed locally';
+	$check($c->arguments()['summary'] === 'A=B|C', 'Native argument snapshots cannot mutate the frames');
+	$copy = $c->pageVars();
+	$copy['rawTitle'] = 'changed locally';
+	$check($c->pageVars()['rawTitle'] !== $copy['rawTitle'], 'Page metadata is an independent native array');
+	$copy = $c->titleInfo('A_B');
+	$copy['prefixedText'] = 'changed locally';
+	$check($c->titleInfo('A_B') === ['prefixedText' => 'A B'], 'Title cache returns an independent native array');
+	$merged = new MediaWikiContext(new Parser, new PPFrame(['summary' => 'inherited', 'keywords' => 'old']),
+		[$node('summary', ''), $node('keywords', '0')], true, false, null, 'Argument');
+	$check($merged->arguments() === ['summary' => 'inherited', 'keywords' => '0'], 'Empty child values do not replace inherited parameters; zero does');
 	$check($c->message('Argument.text', 'fr', 'summary_title') === 'Résumé', 'Argument translations missing');
 	$debateContext = new MediaWikiContext(new Parser, new PPFrame(['topic' => "\v\t0\f", 'intro' => "\0A\0", 'blank' => "\r\n"]), [], true, false, null, 'Debate');
 	$check($debateContext->arguments()['topic'] === '0' && $debateContext->arguments()['intro'] === "\0A\0"
-		&& $debateContext->arguments()['blank'] === null, 'Debate trims ASCII whitespace, retains zero and NUL');
+		&& !array_key_exists('blank', $debateContext->arguments()), 'Debate trims ASCII whitespace, retains zero and NUL');
 	$check($c->dbKey("[ A\tB\r\n\v\f C") === '[_A_B____ C', 'Invalid-title fallback replaces each ASCII whitespace byte');
 	$c->htmlTag('a', 'native attribute conversion', ['title' => true, 'class' => false, 'href' => '0', 'data-href' => 0, 'other' => null], true);
 	$check(\MediaWiki\Extension\DebatePHP\NativeTags::$lastAttributes === ['title' => 'true', 'class' => 'false', 'href' => '0', 'data-href' => '0', 'other' => 'nil'], 'Native link attributes preserve legacy scalar text');

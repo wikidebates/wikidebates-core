@@ -19,7 +19,7 @@ final class I18n {
 	public static function normalize(string $code): string {
 		$code = trim($code, " \t\r\n\v\f"); preg_match('/^[a-zA-Z]+/', $code, $m); return strtolower($m[0] ?? $code);
 	}
-	public function language(Table $args, string $contentLanguage): string {
+	public function language(array $args, string $contentLanguage): string {
 		$param = self::normalize($args['lang'] ?? $args['language'] ?? '');
 		return str_starts_with($param !== '' ? $param : self::normalize($contentLanguage), 'fr') ? 'fr' : 'en';
 	}

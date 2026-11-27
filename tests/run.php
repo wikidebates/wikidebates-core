@@ -73,8 +73,10 @@ $walk = static function(array $table, string $path = '') use (&$walk, &$messages
 	}
 };
 $walk($compiled['data']);
-same('fr', $reference->language(new Table(['lang' => ' FR-ca ']), 'en'), 'Explicit language');
-same('en', $reference->language(new Table, 'de'), 'English fallback');
+same('fr', $reference->language(['lang' => ' FR-ca '], 'en'), 'Explicit language');
+same('en', $reference->language([], 'de'), 'English fallback');
+same('fr', $reference->language(['language' => 'fr'], 'en'), 'Secondary language parameter');
+same('en', $reference->language(['lang' => 'en', 'language' => 'fr'], 'fr'), 'Primary language parameter takes precedence');
 same($compiled['sha256'], hash('sha256', $data), 'Offline snapshot data hash');
 same($compiled['logic_sha256'], hash('sha256', rtrim($logic, "\r\n")), 'Offline snapshot logic hash');
 rejects(static fn() => (new LiteralData)->read('return os.execute("false")'), 'Never execute Lua');

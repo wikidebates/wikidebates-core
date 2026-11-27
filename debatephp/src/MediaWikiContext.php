@@ -31,27 +31,27 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 		$this->module = $caller->newChild($nodes, $title);
 		$this->i18n = I18n::bundled($optimize);
 	}
-	public function arguments(): Table {
+	public function arguments(): array {
 		$started = $this->telemetry?->start();
 		try { return $this->readArguments(); }
 		finally { $this->telemetry?->finish('arguments', $started); }
 	}
-	private function readArguments(): Table {
-		$a = new Table;
+	private function readArguments(): array {
+		$a = [];
 		foreach ([$this->caller, $this->module] as $frame) {
 			foreach ($frame->getArguments() as $k => $v) { $v = $this->argumentMode ? (string)$v : trim((string)$v, " \t\r\n\v\f"); if ($v !== '') { $a[$k] = $v; } }
 		} return $a;
 	}
-	public function language(Table $args): string { return $this->i18n->language($args, MediaWikiServices::getInstance()->getContentLanguage()->getCode()); }
+	public function language(array $args): string { return $this->i18n->language($args, MediaWikiServices::getInstance()->getContentLanguage()->getCode()); }
 	public function message(string $domain, string $lang, string $key, ...$args): string {
 		$started = $this->telemetry?->start();
 		try { return $this->i18n->message($domain, $lang, $key, ...$args); }
 		finally { $this->telemetry?->finish('messages', $started); }
 	}
-	public function pageVars(): Table {
+	public function pageVars(): array {
 		$this->parser->getOutput()->setOutputFlag(\MediaWiki\Parser\ParserOutputFlags::VARY_PAGE_ID);
 		$t = $this->parser->getTitle(); $text = $t->getPrefixedText();
-		return new Table(['title' => $t, 'rawTitle' => $text, 'encoded' => $this->uriEncode($text, 'WIKI'), 'pageUrl' => $this->fullUrl($text), 'pageId' => (string)$t->getArticleID()]);
+		return ['title' => $t, 'rawTitle' => $text, 'encoded' => $this->uriEncode($text, 'WIKI'), 'pageUrl' => $this->fullUrl($text), 'pageId' => (string)$t->getArticleID()];
 	}
 	public function dbKey(string $page): string {
 		$t = Title::newFromText($page);
@@ -396,11 +396,11 @@ final class MediaWikiContext implements ArgumentContext, SemanticProfilingContex
 			$this->telemetry?->finish('semantic-query', $started);
 		}
 	}
-	public function titleInfo(string $text): ?Table {
+	public function titleInfo(string $text): ?array {
 		if (array_key_exists($text, $this->titles)) { return $this->titles[$text]; }
 		$title = Title::newFromText($text);
 		if (count($this->titles) >= 600) { unset($this->titles[array_key_first($this->titles)]); }
-		return $this->titles[$text] = $title ? new Table(['prefixedText' => $title->getPrefixedText()]) : null;
+		return $this->titles[$text] = $title ? ['prefixedText' => $title->getPrefixedText()] : null;
 	}
 	public function variableSet(string $name, string $value): void {
 		if (!class_exists(\ExtVariables::class) || !\MediaWiki\Registration\ExtensionRegistry::getInstance()->isLoaded('VariablesLua')) { return; }

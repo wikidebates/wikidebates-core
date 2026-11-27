@@ -212,7 +212,7 @@ final class SchemaData {
 	}
 
 	public static function argumentParts(
-		Table $args, array $maps, string $pageUrl, string $lang, callable $urlForTitle, ?Context $context = null
+		array $args, array $maps, string $pageUrl, string $lang, callable $urlForTitle, ?Context $context = null
 	): array {
 		$dedicated = trim((string)($args['dedicated-debate'] ?? ''));
 		if ($dedicated !== '') {
