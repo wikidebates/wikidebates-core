@@ -12,7 +12,6 @@ putenv( 'WD_TEST_EXTENSIONS=Scribunto,SemanticMediaWiki,SemanticScribunto' );
 require __DIR__ . '/mediawikiEnvironment.php';
 
 use MediaWiki\Extension\DebatePHP\MediaWikiContext;
-use MediaWiki\Extension\DebatePHP\Table;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Parser\ParserOptions;
 use MediaWiki\Title\Title;
@@ -42,10 +41,10 @@ check( $fsUser !== null, 'Disposable user created' );
 $register = static function ( $parser ): void {
 	$parser->setHook( 'wd-baseline-parent', static function ( $input, $args, $parser, $frame ): string {
 		$context = new MediaWikiContext( $parser, $frame, [], false );
-		$rows = $context->readSemantic( Table::wrap( [
+		$rows = $context->readSemantic( [
 			'[[WD Baseline Parent::' . trim( $input ) . ']]',
 			'limit=200', 'link=none'
-		] ), 'parent-audit' );
+		], 'parent-audit' );
 		return 'WD_BASELINE_MATCHES=' . count( $rows->rows ?? [] );
 	} );
 };
